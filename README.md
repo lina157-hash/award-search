@@ -27,3 +27,10 @@ npm test
 ## 注意
 - seats.aero Pro 金鑰僅限個人使用；公開或商業網站需與 seats.aero 簽署書面合作。
 - 規則庫為自行整理的摘要，標示「待核實」的計畫需到官方網站確認後更新。
+
+## 部署到 Vercel（從 GitHub 匯入）
+1. 在 Vercel 選「Add New → Project」，匯入這個 GitHub repo，Framework 選 **Other**。
+2. 在 Environment Variables 新增 `SEATS_AERO_API_KEY`，值填你的 seats.aero 金鑰。
+3. 按 Deploy。之後每次推送到 main 都會自動重新部署。
+
+前端放在 `public/`，`/api/*` 由 `api/index.js` 這支 serverless function 處理，金鑰不會出現在瀏覽器端。

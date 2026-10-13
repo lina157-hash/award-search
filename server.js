@@ -148,4 +148,4 @@ const server = http.createServer(route);
 if (require.main === module) {
   server.listen(PORT, () => console.log(`http://localhost:${PORT}  ${MOCK ? '(示範資料模式：未設定 SEATS_AERO_API_KEY)' : '(使用 seats.aero API)'}`));
 }
-module.exports = { server };
+module.exports = { server, route };

@@ -58,3 +58,14 @@ test('normalizeAvailability maps cabin fields', () => {
   assert.deepEqual(n.cabins.J, { available: true, miles: 75000, seats: 2, airlines: 'BR', direct: true });
   assert.equal(n.cabins.Y.available, false);
 });
+
+test('vercel adapter rewrites path back', async () => {
+  const handler = require('../api/index');
+  const out = await new Promise((resolve) => {
+    const req = { method: 'GET', url: '/api/index?__path=search&origin=TPE&destination=YVR&start=2026-11-01' };
+    const res = { writeHead(status) { this.status = status; }, end(b) { resolve({ status: this.status, body: JSON.parse(b) }); } };
+    handler(req, res);
+  });
+  assert.equal(out.status, 200);
+  assert.ok(out.body.results.length > 0);
+});
