@@ -1968,7 +1968,8 @@ function renderCalc() {
   const bonusOf = (s, col) => (mode === 'p2m' ? transferBonus(s, col) : null);
   const convert = (s, r) => {
     const out = calcConvert(r, amountOf(s), mode);
-    return out.value ? { ...out, value: withBonus(out.value, bonusOf(s, r.to)) } : out;
+    const extra = out.value ? bonusMiles(out.value, bonusOf(s, r.to)) : 0;
+    return extra ? { ...out, value: out.value + extra, extra } : out;
   };
   for (const s of sources) for (const r of s.rates) {
     if (r.to === 'other') continue;
@@ -1982,11 +1983,10 @@ function renderCalc() {
     if (col !== 'other') {
       const r = rates[0];
       const out = convert(s, r);
-      const bonus = bonusOf(s, col);
       if (!out.value) return `<td class="short"><span>${esc(out.short)}</span>${detail ? `<small>${ratioText(r)}</small>` : ''}</td>`;
       const tags = detail && r.secondary ? '<small class="warn">第三方比率</small>' : '';
       const extra = detail ? `<small>${ratioText(r)}</small>${out.note ? `<small>${esc(out.note)}</small>` : ''}${tags}` : '';
-      return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${bonus ? `<small class="bonus">🎁 含加贈 ${bonus.bonusPct}%</small>` : ''}${extra}</td>`;
+      return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${out.extra ? `<small class="bonus">🎁 含加贈 ${fmt(out.extra)} 哩</small>` : ''}${extra}</td>`;
     }
     // Other programs: group identical rates so 12 airlines at 1:1 take one line.
     const groups = new Map();

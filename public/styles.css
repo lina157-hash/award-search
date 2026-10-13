@@ -505,7 +505,7 @@ h3.sub { font-size: 1rem; margin: 22px 0 10px; }
 .calc-table td b { font-size: 1rem; }
 .calc-table small, .calc-table th small { display: block; color: var(--muted); font-size: .76rem; font-weight: 400; }
 .calc-table th small.note { margin-top: 4px; }
-.calc-table td.best { background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
+.calc-table td.best { display: table-cell; background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
 .calc-table td.best b { color: var(--accent); }
 .calc-table.simple th, .calc-table.simple td { vertical-align: middle; }
 .calc-table.simple tbody th { min-width: 9rem; }

@@ -1,5 +1,200 @@
 {
-  "note": "Active Taiwan bank transfer bonuses and airline buy-miles sales; refreshed weekly. type transfer|buy; program uses calculator column keys (eva, asiamiles, ci, sq) or other program keys.",
-  "updated": "",
-  "promos": []
+  "note": "Active Taiwan bank transfer bonuses and airline buy-miles sales; refreshed weekly. type transfer|buy. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only).",
+  "updated": "2026-10-13",
+  "promos": [
+    {
+      "id": "cx-80th-card-conversion-tw-202610",
+      "type": "transfer",
+      "bank": null,
+      "program": "asiamiles",
+      "title": "國泰80周年 卡點換里每萬里加贈800里",
+      "bonusPct": 8,
+      "price": null,
+      "start": "2026-10-01",
+      "end": "2026-10-31",
+      "conditions": "須線上登記，限台灣地址會員前10萬名；適用中信、富邦、台新、玉山、凱基、AE等13家；聯名卡及小樹點除外",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "國泰航空 80周年 換里滿萬加碼",
+          "url": "https://www.cathaypacific.com/cx/zh_TW/offers/current/autumn_conversion202610tw.html",
+          "official": true
+        }
+      ],
+      "excludeBanks": [
+        "國泰世華"
+      ],
+      "bonusPer": [
+        10000,
+        800
+      ]
+    },
+    {
+      "id": "cub-cube-asiamiles-autumn-202610",
+      "type": "transfer",
+      "bank": "國泰世華",
+      "program": "asiamiles",
+      "title": "國泰世華小樹點換亞萬 秋日遊加贈",
+      "bonusPct": 8,
+      "price": null,
+      "start": "2026-10-01",
+      "end": "2026-10-31",
+      "conditions": "須登錄，限2,000名正卡戶；換滿1萬里送800、2萬里送1,600；滿3萬里起每萬里再送800無上限",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "國泰航空 國泰世華秋日遊加贈頁",
+          "url": "https://www.cathaypacific.com/cx/zh_TW/offers/current/cub_800miles.html",
+          "official": true
+        }
+      ],
+      "bonusPer": [
+        10000,
+        800
+      ]
+    },
+    {
+      "id": "taishin-point-asiamiles-202609",
+      "type": "transfer",
+      "bank": "台新",
+      "program": "asiamiles",
+      "title": "台新Point換亞萬 回饋8%點數",
+      "bonusPct": 8,
+      "price": null,
+      "start": "2026-09-01",
+      "end": "2026-10-31",
+      "conditions": "回饋為台新Point非哩程；每兌100點送8點，每人每月上限160點、每月限1,000名；需Richart Life會員",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "台新銀行 台新Point兌換航空哩程活動",
+          "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/",
+          "official": true
+        },
+        {
+          "label": "台新銀行 亞洲萬里通子頁",
+          "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002292/",
+          "official": true
+        }
+      ],
+      "rebate": true
+    },
+    {
+      "id": "taishin-point-eva-202609",
+      "type": "transfer",
+      "bank": "台新",
+      "program": "eva",
+      "title": "台新Point換長榮哩程 回饋5%點數",
+      "bonusPct": 5,
+      "price": null,
+      "start": "2026-09-01",
+      "end": "2026-10-31",
+      "conditions": "回饋為台新Point；每兌100點送5點，每人每月上限100點、限1,000名；今年1-8月未換過哩程者首兌另送20點",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "台新銀行 台新Point兌換航空哩程活動",
+          "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/",
+          "official": true
+        },
+        {
+          "label": "長榮航空 台新Point兌換哩程活動",
+          "url": "https://www.evaair.com/zh-tw/plan-and-book/special-offers/promotions/ff-promotion/2026Taishin_promo.html",
+          "official": true
+        }
+      ],
+      "rebate": true
+    },
+    {
+      "id": "taishin-point-ci-202609",
+      "type": "transfer",
+      "bank": "台新",
+      "program": "ci",
+      "title": "台新Point換華航哩程 回饋5%點數",
+      "bonusPct": 5,
+      "price": null,
+      "start": "2026-09-01",
+      "end": "2026-10-31",
+      "conditions": "回饋為台新Point；每兌100點送5點，每人每月上限100點、限1,000名；需Richart Life會員，先到先得",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "台新銀行 台新Point兌換航空哩程活動",
+          "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/",
+          "official": true
+        }
+      ],
+      "rebate": true
+    },
+    {
+      "id": "turkish-buy-miles-202609",
+      "type": "buy",
+      "bank": null,
+      "program": "turkish",
+      "title": "土航Miles&Smiles買哩最高加贈100%",
+      "bonusPct": 100,
+      "price": null,
+      "start": "2026-09-29",
+      "end": "2026-10-15",
+      "conditions": "單筆買5萬哩起送25%、逾10萬送50%、逾25萬送100%；不可合併計算，年購上限50萬哩",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Turkish Airlines 買哩加贈活動（繁中）",
+          "url": "https://www.turkishairlines.com/zh-tw/miles-and-smiles/campaigns/buy-miles-earn-extra-miles/",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "emirates-buy-miles-202610",
+      "type": "buy",
+      "bank": null,
+      "program": "emirates",
+      "title": "阿聯酋Skywards買哩最高加贈30%",
+      "bonusPct": 30,
+      "price": null,
+      "start": "2026-10-08",
+      "end": "2026-10-22",
+      "conditions": "購買或贈送哩程皆適用，最低5,000哩；買越多加贈比例越高，分級細節見官方條款",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Emirates Tiered Bonus Miles",
+          "url": "https://www.emirates.com/english/special-offers/tiered-bonus-miles/",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "alaska-atmos-buy-points-202610",
+      "type": "buy",
+      "bank": null,
+      "program": "alaska",
+      "title": "阿拉斯加Atmos買點最高加贈100%",
+      "bonusPct": 100,
+      "price": "US$18.8/千哩",
+      "start": "2026-10-02",
+      "end": "2026-10-19",
+      "conditions": "針對性優惠，各帳戶級距不同(部分達110-120%)；買3萬點起享100%；單筆上限10萬點",
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "One Mile at a Time",
+          "url": "https://onemileatatime.com/alaska-buy-miles-promo-ending",
+          "official": false
+        },
+        {
+          "label": "The Points Party",
+          "url": "https://thepointsparty.com/articles/buy-atmos-rewards-points-100-percent-bonus-october-2026",
+          "official": false
+        },
+        {
+          "label": "Alaska Airlines 購買點數頁",
+          "url": "https://www.alaskaair.com/atmosrewards/content/buy-share-gift-points",
+          "official": true
+        }
+      ]
+    }
+  ]
 }

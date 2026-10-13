@@ -38,10 +38,14 @@ const activePromos = () => {
   return (data.promos?.promos || []).filter((p) => p.start <= today && today <= p.end).sort((a, b) => a.end.localeCompare(b.end));
 };
 // An active transfer bonus from this bank points program into one calculator column, if any.
+// A bank-wide offer (bank null) covers every bank except the ones it names; rebates paid in bank points add no miles.
 function transferBonus(source, col) {
-  return activePromos().find((p) => p.type === 'transfer' && p.bonusPct > 0 && p.bank === source.bank && promoCol(p) === col && (!p.sourceIds || p.sourceIds.includes(source.id))) || null;
+  return activePromos().find((p) => p.type === 'transfer' && p.bonusPct > 0 && !p.rebate && promoCol(p) === col
+    && (p.bank ? p.bank === source.bank : !(p.excludeBanks || []).includes(source.bank))) || null;
 }
-const withBonus = (miles, promo) => (promo ? Math.floor((miles * (100 + promo.bonusPct)) / 100) : miles);
+// Either a flat percentage, or a fixed bonus for each full block of miles (e.g. 800 per 10,000).
+const bonusMiles = (miles, promo) => (!promo ? 0 : promo.bonusPer ? Math.floor(miles / promo.bonusPer[0]) * promo.bonusPer[1] : Math.floor((miles * promo.bonusPct) / 100));
+const withBonus = (miles, promo) => miles + bonusMiles(miles, promo);
 function promosHtml() {
   const list = activePromos();
   if (!data.promos) return '';
@@ -54,7 +58,7 @@ function promosHtml() {
   return `<details class="promos"><summary>🎁 進行中的優惠 ${list.length} 項 <small>${updated}</small></summary>
     ${transfer.length ? `<h3 class="sub">轉點加贈</h3><ul>${transfer.map(row).join('')}</ul>` : ''}
     ${buy.length ? `<h3 class="sub">買哩促銷</h3><ul>${buy.map(row).join('')}</ul>` : ''}
-    <p class="hint">轉點加贈已算進下方表格（標示「含加贈」）。活動多半要先登錄，條件以銀行或航空公司公告為準。</p></details>`;
+    <p class="hint">送哩程的加贈已算進下方表格（標示「含加贈」）；回饋銀行點數的只列在這裡。活動多半要先登錄、有名額限制，條件以銀行或航空公司公告為準。</p></details>`;
 }
 
 // ---------- my points wallet (this browser only) ----------
