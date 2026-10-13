@@ -452,6 +452,10 @@ dialog.pass { width: min(380px, calc(100vw - 32px)); border-radius: 16px; }
 h3.sub { font-size: 1rem; margin: 22px 0 10px; }
 .points-filter { margin-bottom: 10px; }
 .points-table td small { display: block; color: var(--muted); font-size: .78rem; }
-.points-table td { vertical-align: top; }
+.points-table td { vertical-align: top; white-space: normal; min-width: 9rem; }
+.points-table td:first-child { min-width: 11rem; }
+.points-table td:nth-child(2) { max-width: 18rem; }
+.points-table td:nth-child(4) { min-width: 16rem; max-width: 26rem; }
+.points-table td:last-child { min-width: 12rem; max-width: 16rem; }
 .points-table .tag { margin-bottom: 2px; }
 

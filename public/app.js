@@ -1612,23 +1612,31 @@ function pointsHtml() {
   if (!pts || (!pts.transfers.length && !pts.cobrand.length)) return '';
   const src = (r) => (r.source ? `<a href="${esc(r.source.url)}" target="_blank" rel="noopener">${esc(r.source.label || '來源')} ↗</a>` : '');
   const tag = (r) => CONFIDENCE_TAG[r.confidence] || '';
-  const programs = [...new Set(pts.transfers.map((r) => r.toName))];
-  const transferRows = (filter) => pts.transfers.filter((r) => !filter || r.toName === filter).map((r) => `<tr>
+  const keys = Object.entries(pts.programKeys || {});
+  const transferRows = pts.transfers.map((r) => `<tr data-to="${esc((r.to || []).join(','))}">
       <td><b>${esc(r.bank)}</b><small>${esc(r.program)}</small></td><td>${esc(r.toName)}</td><td><b>${esc(r.ratio)}</b>${r.min ? `<small>最低 ${esc(r.min)}</small>` : ''}${r.fee ? `<small>${esc(r.fee)}</small>` : ''}</td>
       <td>${r.notes ? esc(r.notes) : ''}</td><td>${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
   const cobrandRows = pts.cobrand.map((r) => `<tr>
       <td><b>${esc(r.bank)}</b><small>${esc(r.card)}</small></td><td>${esc(r.program)}</td><td><b>${esc(r.earn)}</b></td><td>${r.notes ? esc(r.notes) : ''}</td><td>${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
   return `<h2 class="section" id="points">台灣信用卡點數轉里程</h2>
     <p class="hint">${esc(pts.disclaimer)}（最後整理：${esc(pts.lastReviewed)}）</p>
-    ${pts.transfers.length ? `<div class="filters points-filter"><button type="button" class="chip on" data-p="">全部計畫</button>${programs.map((p) => `<button type="button" class="chip" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div>
-    <div class="table-wrap points-table"><table id="points-table"><thead><tr><th>銀行／點數</th><th>轉到</th><th>比率</th><th>說明</th><th>來源</th></tr></thead><tbody>${transferRows('')}</tbody></table></div>` : ''}
+    ${pts.transfers.length ? `<div class="filters points-filter"><button type="button" class="chip on" data-p="">全部計畫</button>${keys.map(([k, label]) => `<button type="button" class="chip" data-p="${esc(k)}">${esc(label)}</button>`).join('')}</div>
+    <div class="table-wrap points-table"><table id="points-table"><thead><tr><th>銀行／點數</th><th>轉到</th><th>比率</th><th>說明</th><th>來源</th></tr></thead><tbody>${transferRows}</tbody></table></div>
+    <p class="hint" id="points-empty" hidden>這個計畫目前沒有整理到的轉點管道。</p>` : ''}
     ${pts.cobrand.length ? `<h3 class="sub">直接累積里程的聯名卡</h3><div class="table-wrap points-table"><table><thead><tr><th>銀行／卡片</th><th>累積到</th><th>累積率</th><th>說明</th><th>來源</th></tr></thead><tbody>${cobrandRows}</tbody></table></div>` : ''}`;
 }
 function bindPoints() {
   $$('.points-filter .chip').forEach((b) => b.addEventListener('click', () => {
     $$('.points-filter .chip').forEach((x) => x.classList.toggle('on', x === b));
     const p = b.dataset.p;
-    $$('#points-table tbody tr').forEach((tr) => { tr.hidden = Boolean(p) && tr.children[1].textContent !== p; });
+    let shown = 0;
+    $$('#points-table tbody tr').forEach((tr) => {
+      const hide = Boolean(p) && !tr.dataset.to.split(',').includes(p);
+      tr.hidden = hide;
+      if (!hide) shown++;
+    });
+    const empty = $('#points-empty');
+    if (empty) empty.hidden = shown > 0;
   }));
 }
 

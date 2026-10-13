@@ -1,6 +1,577 @@
 {
-  "lastReviewed": "2026-10-13",
-  "disclaimer": "銀行點數轉換比率與活動常變動，轉點前請到銀行官網確認；標示「第三方整理」的列尚未在官方頁面核對。",
-  "transfers": [],
-  "cobrand": []
+ "lastReviewed": "2026-10-13",
+ "disclaimer": "銀行點數轉換比率、最低門檻與活動常變動，轉點前請到銀行官網確認；比率多來自銀行 2026 年公告，標示「待核實」的列來源較舊或僅有第三方整理。查無可靠來源而未列入：永豐、聯邦吉鶴卡（現金回饋卡）。",
+ "programKeys": {
+  "eva": "長榮 無限萬哩遊",
+  "asiamiles": "亞洲萬里通",
+  "ci": "華航 華夏哩程",
+  "sq": "新航 KrisFlyer",
+  "other": "其他計畫"
+ },
+ "transfers": [
+  {
+   "bank": "美國運通",
+   "program": "會員酬賓 Membership Rewards",
+   "to": [
+    "eva"
+   ],
+   "toName": "長榮 無限萬哩遊",
+   "ratio": "1 分 = 1 哩",
+   "notes": "需先加入「優遊常客計劃」（簽帳白金卡免費自動加入，其他卡別首次轉入需付等同年費的轉換費）；每次最低 1,000 分、以 1,000 分遞增，約 2 至 3 週入帳。",
+   "confidence": "official",
+   "source": {
+    "label": "美國運通：長榮轉點頁",
+    "url": "https://www.americanexpress.com/zh-tw/rewards/membership-rewards/partner/Eva-Air-Infinity-Mileagelands/EVA-Air-and-Infinity-MileageLands-Transfer/EVAR"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "美國運通",
+   "program": "會員酬賓 Membership Rewards",
+   "to": [
+    "asiamiles"
+   ],
+   "toName": "亞洲萬里通",
+   "ratio": "1 分 = 1 哩",
+   "notes": "需先加入「優遊常客計劃」（簽帳白金卡免費自動加入，其他卡別首次轉入需付等同年費的轉換費）；每次最低 1,000 分、以 1,000 分遞增，約 2 至 3 週入帳。",
+   "confidence": "official",
+   "source": {
+    "label": "美國運通：亞洲萬里通轉點頁",
+    "url": "https://www.americanexpress.com/zh-tw/rewards/membership-rewards/partner/Asia_Miles/Asia-Miles-Transfer/CATH"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "美國運通",
+   "program": "會員酬賓 Membership Rewards",
+   "to": [
+    "sq",
+    "other"
+   ],
+   "toName": "新航 KrisFlyer、泰航 ROP、馬航 Enrich",
+   "ratio": "1 分 = 1 哩",
+   "notes": "同上；另可轉萬豪（1,000 分 = 900 點）與希爾頓（1,000 分 = 1,250 點）。",
+   "confidence": "official",
+   "source": {
+    "label": "美國運通：旅遊夥伴總覽",
+    "url": "https://www.americanexpress.com/zh-tw/rewards/membership-rewards/travel/all/"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "滙豐",
+   "program": "旅人卡 旅遊積分（海外 NT$10 = 1 分、國內 NT$18 = 1 分）",
+   "to": [
+    "eva",
+    "asiamiles",
+    "ci",
+    "sq",
+    "other"
+   ],
+   "toName": "長榮、亞洲萬里通、華航、新航、日航、加航、法荷航、聯合、卡達、阿聯酋、澳航、LifeMiles、土航、越南航空、海南、亞航（共 16 家）",
+   "ratio": "1 分 = 1 哩（全部 1:1）",
+   "min": "3,000 分，以 500 分為單位",
+   "notes": "華航自 2026-04-01 起由 2:1 調回 1:1。網銀或 App 兌換多數即時入帳，華航、新航、日航、海南約 7 至 21 個工作天。",
+   "confidence": "official",
+   "source": {
+    "label": "滙豐：旅人卡哩程兌換表（2026 Q4）",
+    "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/fly.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "星展 DBS",
+   "program": "飛行積金（飛行世界商務卡等）",
+   "to": [
+    "eva",
+    "asiamiles",
+    "sq"
+   ],
+   "toName": "長榮、亞洲萬里通、新航",
+   "ratio": "1 點 = 1 哩",
+   "min": "6,000 哩，以 1,000 哩為單位",
+   "notes": "約 5 個工作天，轉出後不可取消。",
+   "confidence": "official",
+   "source": {
+    "label": "星展：哩程兌換說明 PDF（適用至 2027-06-30）",
+    "url": "https://dbs.com.tw/iwov-resources/pdf/reward-tnc/miles.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "星展 DBS",
+   "program": "飛行積金",
+   "to": [
+    "ci"
+   ],
+   "toName": "華航 華夏哩程",
+   "ratio": "2 點 = 1 哩",
+   "min": "6,000 哩",
+   "confidence": "official",
+   "source": {
+    "label": "星展：哩程兌換說明 PDF",
+    "url": "https://dbs.com.tw/iwov-resources/pdf/reward-tnc/miles.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "星展 DBS",
+   "program": "活利積分（一般卡）",
+   "to": [
+    "eva",
+    "asiamiles"
+   ],
+   "toName": "長榮、亞洲萬里通",
+   "ratio": "5 點 = 1 哩（極耀無限卡 3 點 = 1 哩）",
+   "min": "3,000 哩，以 1,000 哩為單位",
+   "confidence": "official",
+   "source": {
+    "label": "星展：哩程兌換說明 PDF",
+    "url": "https://dbs.com.tw/iwov-resources/pdf/reward-tnc/miles.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "星展 DBS",
+   "program": "活利積分（一般卡）",
+   "to": [
+    "ci"
+   ],
+   "toName": "華航 華夏哩程",
+   "ratio": "9 點 = 1 哩（極耀無限卡 6 點 = 1 哩）",
+   "min": "3,000 哩",
+   "confidence": "official",
+   "source": {
+    "label": "星展：哩程兌換說明 PDF",
+    "url": "https://dbs.com.tw/iwov-resources/pdf/reward-tnc/miles.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "星展 DBS",
+   "program": "現金積點／現金紅利",
+   "to": [
+    "eva",
+    "asiamiles",
+    "ci"
+   ],
+   "toName": "長榮、亞洲萬里通（1 點 = 2 哩）；華航（9 點 = 10 哩）",
+   "ratio": "1 點 = 2 哩；華航 9 點 = 10 哩",
+   "min": "100 哩，以 100 哩為單位",
+   "confidence": "official",
+   "source": {
+    "label": "星展：哩程兌換說明 PDF",
+    "url": "https://dbs.com.tw/iwov-resources/pdf/reward-tnc/miles.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "國泰世華",
+   "program": "小樹點（信用卡）",
+   "to": [
+    "eva"
+   ],
+   "toName": "長榮 無限萬哩遊",
+   "ratio": "360 點 = 1,000 哩（世界卡 300 點）",
+   "notes": "作業約 4 至 6 週，限正卡本人帳號；長榮、亞洲萬里通聯名卡的點數不適用。",
+   "confidence": "official",
+   "source": {
+    "label": "國泰世華：2026 年小樹點權益公告",
+    "url": "https://www.cathaybk.com.tw/cathaybk/promo/event/credit-card/discount/2026/pointannounceInfo05/index.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "國泰世華",
+   "program": "小樹點（信用卡）",
+   "to": [
+    "asiamiles"
+   ],
+   "toName": "亞洲萬里通",
+   "ratio": "360 點 = 1,000 哩（世界卡 300 點）",
+   "confidence": "official",
+   "source": {
+    "label": "國泰世華：2026 年小樹點權益公告",
+    "url": "https://www.cathaybk.com.tw/cathaybk/promo/event/credit-card/discount/2026/pointannounceInfo05/index.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "國泰世華",
+   "program": "小樹點（信用卡）",
+   "to": [
+    "ci"
+   ],
+   "toName": "華航 華夏哩程",
+   "ratio": "840 點 = 1,000 哩（世界卡 720 點）",
+   "confidence": "official",
+   "source": {
+    "label": "國泰世華：2026 年小樹點權益公告",
+    "url": "https://www.cathaybk.com.tw/cathaybk/promo/event/credit-card/discount/2026/pointannounceInfo05/index.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "國泰世華",
+   "program": "小樹點（信用卡）",
+   "to": [
+    "sq",
+    "other"
+   ],
+   "toName": "法荷航 340、阿提哈德 420、泰航 450、英航 450、日航 480、卡達 480、加航 510、聯合 510、阿聯酋 550、新航 620（點數 = 1,000 哩）",
+   "ratio": "依計畫 340 至 620 點 = 1,000 哩",
+   "notes": "另可轉萬豪 340、IHG 250、雅高 600 點 = 1,000 點。日航比例 2026 年由 670 調為 480 點。",
+   "confidence": "official",
+   "source": {
+    "label": "國泰世華：2026 年小樹點權益公告",
+    "url": "https://www.cathaybk.com.tw/cathaybk/promo/event/credit-card/discount/2026/pointannounceInfo05/index.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "中國信託",
+   "program": "紅利點數「哩程酬賓計劃」",
+   "to": [
+    "asiamiles",
+    "sq"
+   ],
+   "toName": "亞洲萬里通、新航 KrisFlyer",
+   "ratio": "3 點 = 1 哩",
+   "notes": "需先加入哩程酬賓計劃：金卡扣 1,200 點、普卡 2,000 點，鼎極、御璽、鈦金、白金免扣。首次最低 3,000 點，之後每次 1,000 點以上，約 2 至 3 週入帳。",
+   "confidence": "official",
+   "source": {
+    "label": "中國信託：紅利點數哩程酬賓計劃申請書（2026）",
+    "url": "https://www.ctbcbank.com/content/dam/twrbo/pdf/creditcard/applyform/cc_bp_mileage_apply.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "中國信託",
+   "program": "紅利點數「哩程酬賓計劃」",
+   "to": [
+    "eva"
+   ],
+   "toName": "長榮 無限萬哩遊",
+   "ratio": "5 點 = 1 哩",
+   "confidence": "official",
+   "source": {
+    "label": "中國信託：紅利點數哩程酬賓計劃申請書（2026）",
+    "url": "https://www.ctbcbank.com/content/dam/twrbo/pdf/creditcard/applyform/cc_bp_mileage_apply.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "中國信託",
+   "program": "紅利點數「哩程酬賓計劃」",
+   "to": [
+    "ci"
+   ],
+   "toName": "華航 華夏哩程",
+   "ratio": "6 點 = 1 哩",
+   "confidence": "official",
+   "source": {
+    "label": "中國信託：紅利點數哩程酬賓計劃申請書（2026）",
+    "url": "https://www.ctbcbank.com/content/dam/twrbo/pdf/creditcard/applyform/cc_bp_mileage_apply.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "台新",
+   "program": "台新 Point（信用卡點數，Richart Life App 兌換）",
+   "to": [
+    "ci"
+   ],
+   "toName": "華航 華夏哩程",
+   "ratio": "11 點 = 14 哩",
+   "notes": "以 100 點為級距，兌換後不可取消。",
+   "confidence": "official",
+   "source": {
+    "label": "台新：台新 Point 兌換哩程活動頁",
+    "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "台新",
+   "program": "台新 Point",
+   "to": [
+    "eva"
+   ],
+   "toName": "長榮 無限萬哩遊",
+   "ratio": "11 點 = 13 哩",
+   "confidence": "official",
+   "source": {
+    "label": "台新：台新 Point 兌換哩程活動頁",
+    "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "台新",
+   "program": "台新 Point",
+   "to": [
+    "asiamiles"
+   ],
+   "toName": "亞洲萬里通",
+   "ratio": "10 點 = 18 哩",
+   "confidence": "official",
+   "source": {
+    "label": "台新：台新 Point 兌換哩程活動頁",
+    "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "台新",
+   "program": "環球無限卡專屬 Point",
+   "to": [
+    "ci",
+    "eva"
+   ],
+   "toName": "華航、長榮",
+   "ratio": "2,000 點 = 4,000 哩",
+   "notes": "限該卡累積的信用卡 Point。",
+   "confidence": "official",
+   "source": {
+    "label": "台新：環球無限卡",
+    "url": "https://www.taishinbank.com.tw/TSB/personal/credit/intro/overview/future/7dcbb217-3c35-11f0-b432-0050568c09e3"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "玉山",
+   "program": "e point",
+   "to": [
+    "eva",
+    "asiamiles"
+   ],
+   "toName": "長榮、亞洲萬里通",
+   "ratio": "200 點 = 300 哩",
+   "notes": "以 200 點為單位，限正卡且卡片有效。",
+   "confidence": "official",
+   "source": {
+    "label": "玉山：e point 兌換（2026）",
+    "url": "https://event.esunbank.com.tw/credit/epoint/index.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "玉山",
+   "program": "e point",
+   "to": [
+    "ci"
+   ],
+   "toName": "華航 華夏哩程",
+   "ratio": "200 點 = 180 哩",
+   "confidence": "official",
+   "source": {
+    "label": "玉山：e point 兌換（2026）",
+    "url": "https://event.esunbank.com.tw/credit/epoint/index.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "凱基",
+   "program": "雙幣哩程卡 哩程點（一般 NT$22 = 1 點）",
+   "to": [
+    "asiamiles"
+   ],
+   "toName": "亞洲萬里通",
+   "ratio": "1,000 點 = 1,000 哩",
+   "notes": "2026 年 10 至 12 月每月 5 日轉點另加贈 500 哩；也可轉高鐵 TGo（1,000 點 = 2,000 點）。",
+   "confidence": "official",
+   "source": {
+    "label": "凱基：雙幣哩程卡",
+    "url": "https://www.kgibank.com.tw/zh-tw/personal/credit-card/list/dual-currency-mileage-credit-card"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "凱基",
+   "program": "雙幣哩程卡 哩程點",
+   "to": [
+    "ci",
+    "eva"
+   ],
+   "toName": "華航、長榮",
+   "ratio": "1 點 = 1 哩",
+   "notes": "銀行官網未列華航、長榮比例，僅第三方整理。",
+   "confidence": "secondary",
+   "source": {
+    "label": "roo.cash：凱基雙幣哩程卡整理（2026-06）",
+    "url": "https://roo.cash/blog/?p=90121"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "富邦",
+   "program": "a miles 航空卡 富邦哩程（已停止受理新申請）",
+   "to": [
+    "asiamiles"
+   ],
+   "toName": "亞洲萬里通",
+   "ratio": "5,000 哩 = 5,000 哩（1:1）",
+   "min": "5,000 哩為單位，需先入會",
+   "confidence": "official",
+   "source": {
+    "label": "富邦：a miles 航空卡",
+    "url": "https://www.fubon.com/banking/personal/credit_card/all_card/amiles/amiles.htm"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "富邦",
+   "program": "a miles 航空卡 富邦哩程",
+   "to": [
+    "eva"
+   ],
+   "toName": "長榮 無限萬哩遊",
+   "ratio": "7,000 哩 = 5,000 哩",
+   "confidence": "official",
+   "source": {
+    "label": "富邦：a miles 航空卡",
+    "url": "https://www.fubon.com/banking/personal/credit_card/all_card/amiles/amiles.htm"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "富邦",
+   "program": "a miles 航空卡 富邦哩程",
+   "to": [
+    "ci"
+   ],
+   "toName": "華航 華夏哩程",
+   "ratio": "10,350 哩 = 5,000 哩",
+   "confidence": "official",
+   "source": {
+    "label": "富邦：a miles 航空卡",
+    "url": "https://www.fubon.com/banking/personal/credit_card/all_card/amiles/amiles.htm"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "渣打",
+   "program": "紅利積點",
+   "to": [
+    "asiamiles",
+    "ci",
+    "sq"
+   ],
+   "toName": "亞洲萬里通、華航、新航",
+   "ratio": "10 點 = 1 哩",
+   "min": "5,000 點",
+   "notes": "官方文件為 2017 年版本，轉點前務必向銀行確認是否仍適用。亞洲萬里通約 8 週、華航 2 至 4 週、新航 6 至 8 週入帳。",
+   "confidence": "verify",
+   "source": {
+    "label": "渣打：哩程兌換說明 PDF（2017 年版）",
+    "url": "https://www.sc.com/tw/download/air_exchange_points.pdf"
+   },
+   "date": "2026-10-13"
+  }
+ ],
+ "cobrand": [
+  {
+   "bank": "國泰世華",
+   "card": "長榮航空聯名卡（極致無限／無限／極致御璽／御璽）",
+   "program": "長榮 無限萬哩遊",
+   "earn": "一般消費 NT$20／22／30 = 1 哩；海外 NT$15 = 1 哩；長榮官網、App 購票與機上免稅品 NT$10 = 1 哩（御璽卡除外）",
+   "notes": "2026 年全年適用。",
+   "confidence": "official",
+   "source": {
+    "label": "長榮官網：聯名卡優惠",
+    "url": "https://www.evaair.com/zh-tw/infinity-mileagelands/member-special-offers/co-brand-cards/2023-09-20-card-promotion.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "美國運通",
+   "card": "長榮航空簽帳白金卡",
+   "program": "長榮 無限萬哩遊",
+   "earn": "NT$25 = 1 哩；海外消費與購買長榮機票加碼 50%",
+   "notes": "積分每月自動轉入無限萬哩遊；年費 NT$36,800（含 2 張附卡）。",
+   "confidence": "official",
+   "source": {
+    "label": "美國運通：長榮簽帳白金卡",
+    "url": "https://www.americanexpress.com/tw/campaigns/eva-platinum/rewards.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "中國信託",
+   "card": "中華航空聯名卡（鼎尊無限／璀璨無限／商務御璽）",
+   "program": "華航 華夏哩程",
+   "earn": "NT$18／20／30 = 1 哩",
+   "notes": "每滿 500 哩自動轉入華夏哩程帳戶；卡片哩程效期 2 年。文件為 2025 年版。",
+   "confidence": "official",
+   "source": {
+    "label": "中國信託：華航聯名卡權益說明 PDF",
+    "url": "https://www.ctbcbank.com/content/dam/twrbo/pdf/creditcard/N2024102300035_011.pdf"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "國泰世華",
+   "card": "亞洲萬里通聯名卡（世界／鈦商／白金／里享）",
+   "program": "亞洲萬里通",
+   "earn": "一般消費依卡等 NT$22 至 30 = 1 哩；「哩程加速器」特約商店最優 NT$10 = 1 哩；世界卡生日月 NT$5 = 1 哩",
+   "notes": "年費 世界 8,000、鈦商 1,800、白金 588、里享 288（首年免）。",
+   "confidence": "official",
+   "source": {
+    "label": "國泰世華：亞洲萬里通聯名卡",
+    "url": "https://www.cathay-cube.com.tw/cathaybk/personal/product/credit-card//cards/asia-miles"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "台新",
+   "card": "國泰航空聯名卡（世界／翱翔鈦金／鈦金）",
+   "program": "亞洲萬里通",
+   "earn": "國內／海外／國泰官網：世界卡 NT$22／15／5、翱翔鈦金 25／15／5、鈦金 30／25／5 = 1 哩",
+   "notes": "需設定自動扣繳；2026 年全年適用。",
+   "confidence": "official",
+   "source": {
+    "label": "台新：國泰航空聯名卡",
+    "url": "https://www.taishinbank.com.tw/TSB/personal/credit/intro/overview/future/abcc77c0-77c4-11e9-90fc-0050568c09e3"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "玉山",
+   "card": "星宇航空世界之極卡",
+   "program": "星宇 COSMILE",
+   "earn": "國內 NT$15、國外 NT$10 = 1 哩；星宇官網與 App 2 倍",
+   "notes": "年費 NT$100,000。另有星宇聯名世界卡（NT$20、海外 10 = 1 哩，年費 6,000，第三方整理）。",
+   "confidence": "official",
+   "source": {
+    "label": "玉山：星宇世界之極卡",
+    "url": "https://event.esunbank.com.tw/credit/starlux_card_w/index.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "中國信託",
+   "card": "ANA 聯名卡（極緻／無限）",
+   "program": "全日空 ANA Mileage Club",
+   "earn": "國外消費最高 NT$10 = 1 哩；一般消費約 NT$20 = 1 哩（第三方整理）",
+   "confidence": "official",
+   "source": {
+    "label": "中國信託：ANA 聯名卡",
+    "url": "https://www.ctbcbank.com/content/dam/minisite/long/creditcard/ANA/index.html"
+   },
+   "date": "2026-10-13"
+  },
+  {
+   "bank": "新光",
+   "card": "JAL 聯名卡",
+   "program": "日航 JMB",
+   "earn": "台灣 NT$40 = 1 哩；海外與日航官網購票 NT$40 = 2 哩",
+   "notes": "受理至 2025-12-31，可能已停發。",
+   "confidence": "verify",
+   "source": {
+    "label": "日航：新光 JAL 聯名卡",
+    "url": "https://www.jal.co.jp/tw/zhtw/jalmile/shopping/jal_shinkong.html"
+   },
+   "date": "2026-10-13"
+  }
+ ]
 }
