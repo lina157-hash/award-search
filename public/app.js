@@ -23,12 +23,30 @@ const mmdd = (iso) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
 const hhmm = (iso) => (iso || '').slice(11, 16);
 const data = {};
 
-async function api(path) {
-  const res = await fetch(path);
+async function api(path, opts) {
+  const res = await fetch(path, opts);
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { code: body.code, status: res.status });
   return body;
 }
+
+// Per-device preferences (recent searches, favourites, the cash passcode). Storage can be unavailable in private mode.
+const store = {
+  get(key, fallback) { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; } },
+  set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ } },
+  del(key) { try { localStorage.removeItem(key); } catch { /* ignore */ } },
+};
+
+// "3 小時前" for a timestamp; seats.aero rows carry when they were last refreshed.
+function ago(iso) {
+  if (!iso) return '';
+  const min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  if (min < 60) return min < 2 ? '剛剛' : `${min} 分鐘前`;
+  if (min < 48 * 60) return `${Math.round(min / 60)} 小時前`;
+  return `${Math.round(min / 1440)} 天前`;
+}
+const isStale = (iso) => iso && Date.now() - Date.parse(iso) > 24 * 3600e3;
+const taxText = (t) => `${t.symbol || `${t.currency} `}${fmt(Math.round(t.amount))}`;
 
 // Calendar date in the visitor's own time zone.
 function isoDate(offsetDays) {
@@ -604,16 +622,79 @@ $('#search-form').addEventListener('submit', (e) => {
   if (f.get('carrier')) share.set('a', f.get('carrier'));
   else if (f.get('alliance')) share.set('al', f.get('alliance'));
   if (f.get('direct')) share.set('direct', '1');
+  if (f.get('pax')) share.set('n', f.get('pax'));
   history.replaceState(null, '', `?${share}#search`);
+  remember(share);
   runSearch(share);
 });
+
+// Fill the search form from share-link params and optionally run it (used by links, recents and favourites).
+function applyShare(share, run = true) {
+  const f = $('#search-form');
+  pickers.origin.set(share.get('o').split(','));
+  pickers.destination.set(share.get('d').split(','));
+  datePickers.search.set(share.get('s'), share.get('e') || share.get('s'));
+  f.alliance.value = share.get('al') || '';
+  f.carrier.value = share.get('a') || '';
+  f.direct.checked = share.get('direct') === '1';
+  f.pax.value = share.get('n') || '';
+  const cab = $(`#search-form input[name=cabin][value="${share.get('c') || 'J'}"]`);
+  if (cab) cab.checked = true;
+  carrierHint();
+  if (run) {
+    history.replaceState(null, '', `?${share}#search`);
+    runSearch(share);
+  }
+}
+
+// ---------- recent searches and favourites (this device only) ----------
+const RECENT_KEY = 'recentSearches';
+const FAV_KEY = 'favSearches';
+const shareKey = (share) => { const p = new URLSearchParams(share); p.sort(); return p.toString(); };
+function shareLabel(q) {
+  const p = new URLSearchParams(q);
+  const s = p.get('s');
+  const e = p.get('e') || s;
+  return `${p.get('o')} → ${p.get('d')}　${ymd(s)}${e !== s ? ` – ${ymd(e)}` : ''}　${CABIN_LABEL[p.get('c')] || '商務艙'}${p.get('n') ? `　${p.get('n')}+ 位` : ''}`;
+}
+function remember(share) {
+  const key = shareKey(share);
+  const list = [key, ...store.get(RECENT_KEY, []).filter((k) => k !== key)].slice(0, 8);
+  store.set(RECENT_KEY, list);
+  renderMine();
+}
+const isFav = (share) => store.get(FAV_KEY, []).includes(shareKey(share));
+function toggleFav(share) {
+  const key = shareKey(share);
+  const list = store.get(FAV_KEY, []);
+  store.set(FAV_KEY, list.includes(key) ? list.filter((k) => k !== key) : [...list, key].slice(-12));
+  renderMine();
+  return !list.includes(key);
+}
+function renderMine() {
+  const favs = store.get(FAV_KEY, []);
+  const recent = store.get(RECENT_KEY, []).filter((k) => !favs.includes(k));
+  const chip = (q, rm) => `<span class="mine-chip"><button type="button" data-q="${esc(q)}">${esc(shareLabel(q))}</button>${rm ? `<button type="button" class="rm" data-rm="${esc(q)}" aria-label="移除">✕</button>` : ''}</span>`;
+  $('#mine').innerHTML = (favs.length ? `<div class="presets"><span class="presets-label">★ 我的常用</span>${favs.map((q) => chip(q, true)).join('')}</div>` : '')
+    + (recent.length ? `<div class="presets"><span class="presets-label">最近查過</span>${recent.map((q) => chip(q, false)).join('')}<button type="button" class="rm-all" id="recent-clear">清除</button></div>` : '');
+  $$('#mine [data-q]').forEach((b) => b.addEventListener('click', () => applyShare(new URLSearchParams(b.dataset.q))));
+  $$('#mine [data-rm]').forEach((b) => b.addEventListener('click', () => { toggleFav(new URLSearchParams(b.dataset.rm)); renderSearchFav(); }));
+  $('#recent-clear')?.addEventListener('click', () => { store.del(RECENT_KEY); renderMine(); });
+}
+function renderSearchFav() {
+  const b = $('#fav-btn');
+  if (!b) return;
+  const on = isFav(new URLSearchParams(location.search));
+  b.textContent = on ? '★ 已加入常用' : '☆ 加入常用';
+  b.classList.toggle('on', on);
+}
 
 async function runSearch(share) {
   const params = new URLSearchParams({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') });
   if (share.get('a')) params.set('carriers', share.get('a'));
   else if (share.get('al')) params.set('carriers', allianceCarriers(share.get('al')).join(','));
   if (share.get('direct')) params.set('direct', '1');
-  Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, allRows: false, results: [], start: share.get('s'), end: share.get('e') || share.get('s') });
+  Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, allRows: false, results: [], start: share.get('s'), end: share.get('e') || share.get('s'), pax: Number(share.get('n')) || 0, withTaxes: false });
   const status = $('#search-status');
   status.className = 'status';
   status.textContent = '正在搜尋各里程計畫的獎勵位…';
@@ -622,14 +703,19 @@ async function runSearch(share) {
   try {
     const body = await api(`/api/search?${params}`);
     state.results = [...body.results, ...asiaMilesRows(body.results)];
-    status.innerHTML = `<span>找到 <b>${body.results.length}</b> 筆日期與計畫組合${body.mock ? '（示範資料）' : ''}${body.truncated ? '。結果太多，只列出一部分，縮短日期範圍可以看到完整結果' : ''}</span>
-      <span class="status-actions"><button type="button" class="outline" id="to-cash">💵 比較現金票價</button><button type="button" class="outline" id="share-btn">🔗 複製分享連結</button></span>`;
+    state.withTaxes = Boolean(body.withTaxes);
+    const newest = body.results.map((r) => r.updatedAt).filter(Boolean).sort().at(-1);
+    status.innerHTML = `<span>找到 <b>${body.results.length}</b> 筆日期與計畫組合${body.mock ? '（示範資料）' : ''}${body.truncated ? '。結果太多，只列出一部分，縮短日期範圍可以看到完整結果' : ''}${newest ? `<small class="fresh" title="seats.aero 快取最後更新的時間；灰色格子代表超過一天沒更新">🕒 資料最新 ${ago(newest)}更新</small>` : ''}</span>
+      <span class="status-actions"><button type="button" class="outline" id="fav-btn">☆ 加入常用</button><button type="button" class="outline" id="to-cash">💵 比較現金票價</button><button type="button" class="outline" id="share-btn">🔗 複製分享連結</button></span>`;
     $('#share-btn').addEventListener('click', copyShare);
+    renderSearchFav();
+    $('#fav-btn').addEventListener('click', () => { toast(toggleFav(share) ? '已加入常用航線' : '已從常用移除'); renderSearchFav(); });
     $('#to-cash').addEventListener('click', () => {
       cashPickers.origin.set(share.get('o').split(','));
       cashPickers.destination.set(share.get('d').split(','));
       cashForm.depart.value = share.get('s');
       if (!cashForm.return.value || cashForm.return.value < share.get('s')) cashForm.return.value = isoDateFrom(share.get('s'), 7);
+      if (state.pax) cashForm.adults.value = String(state.pax);
       const cab = $(`#cash-form input[name=cabin][value="${share.get('c') || 'J'}"]`);
       if (cab) cab.checked = true;
       showTab('cash');
@@ -653,8 +739,10 @@ async function copyShare() {
   }
 }
 
+// Seat counts of 0/null mean "unknown", so the people filter only drops rows that are known to be short.
+const enoughSeats = (seats, pax) => !pax || !(seats > 0) || seats >= pax;
 function visibleRows() {
-  return state.results.filter((r) => r.cabins[state.cabin].available && !state.hidden.has(r.source));
+  return state.results.filter((r) => r.cabins[state.cabin].available && !state.hidden.has(r.source) && enoughSeats(r.cabins[state.cabin].seats, state.pax));
 }
 
 function renderSearch() {
@@ -691,9 +779,9 @@ function renderSearch() {
     return `<button type="button" class="deal" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">
       ${i === 0 ? '<span class="rank">★ 最低</span>' : ''}
       <div class="route">${esc(r.origin)} → ${esc(r.destination)}</div>
-      <div class="miles">${fmt(x.miles)} <small>哩起</small></div>
+      <div class="miles">${fmt(x.miles)} <small>哩起</small>${x.taxes ? `<small class="tax">＋ 稅 ${esc(taxText(x.taxes))}</small>` : ''}</div>
       <div class="meta">${mmdd(r.date)}（${dowOf(r.date)}）· ${esc(srcName(r.source))}</div>
-      <div class="meta">${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}</div>
+      <div class="meta">${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}</div>
     </button>`;
   }).join('');
 
@@ -714,7 +802,7 @@ function renderSearch() {
     <div class="best">${dealHtml}</div>
     <h2 class="section-title">日曆 <small>每天最低里程，顏色越深越便宜；點日期篩選下表</small></h2>
     ${calendarHtml(realRows.length ? realRows : rows)}
-    <h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示</small></h2>
+    <h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；里程下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>
     <div class="filters">${chips}</div>
     ${matrixHtml(rows, allSources.filter((s) => !state.hidden.has(s)))}`;
 
@@ -820,8 +908,8 @@ function matrixHtml(rows, sources) {
     if (r.estimate) {
       return `<td class="cell est" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small>${esc(x.airlines)} · ${x.kind === 'cx' ? '國泰表' : '夥伴表'}</small></td>`;
     }
-    const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : ''].join(' ');
-    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">${fmt(x.miles)}<small>${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
+    const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : '', isStale(r.updatedAt) ? 'stale' : ''].join(' ');
+    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : ''}">${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}<small>${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
   };
   return `<div class="table-wrap"><table>
     <thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}</th>`).join('')}</tr></thead>
@@ -893,10 +981,43 @@ async function openTrips(id, title, cabin) {
     const main = body.trips.filter((t) => !want || t.cabin === want).sort(byMiles);
     const rest = body.trips.filter((t) => want && t.cabin !== want).sort(byMiles);
     $('#trip-body').innerHTML = (links ? `<div class="links">${links}</div>` : '') +
+      (main.length && cashCfg.enabled ? `<div class="value-box" id="value-box"><button type="button" class="outline" id="value-btn">💵 和當天現金票比一比，算每哩價值（用 1 次查價額度）</button></div>` : '') +
       (main.map(tripHtml).join('') || '<p class="hint">此艙等沒有航班明細。</p>') +
       (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map(tripHtml).join('')}</details>` : '');
+    $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
   } catch (err) {
     $('#trip-body').innerHTML = `<p class="status error">${esc(err.message)}</p>`;
+  }
+}
+// Is the award worth it? Compare the cheapest cash fare that day with miles + taxes, in TWD per mile.
+let fxCache = null;
+async function mileValue(t) {
+  const box = $('#value-box');
+  box.innerHTML = '<p class="hint">正在查當天現金票價與匯率…</p>';
+  try {
+    const o = t.segments[0]?.from;
+    const d = t.segments.at(-1)?.to;
+    const date = (t.departsAt || '').slice(0, 10);
+    const cabin = { economy: 'Y', premium: 'W', business: 'J', first: 'F' }[t.cabin] || 'J';
+    if (!o || !d || !date) throw new Error('缺少航班資料，無法比較');
+    const [fx, body] = await Promise.all([fxCache || api('/api/fx').then((f) => (fxCache = f)), cashApi(`/api/cash?${new URLSearchParams({ origin: o, destination: d, depart: date, cabin, adults: 1 })}`)]);
+    if (!body.configured) throw new Error('網站尚未啟用即時票價');
+    const fares = body.options.filter((x) => x.price);
+    if (!fares.length) throw new Error(body.message || '當天找不到現金票價');
+    const cheapest = fares.reduce((a, b) => (a.price <= b.price ? a : b));
+    const cur = (t.taxesCurrency || '').toUpperCase();
+    const rate = cur ? fx.rates[cur] : null;
+    const taxesTwd = t.taxes != null && rate ? (t.taxes / 100) * rate : 0;
+    const saved = cheapest.price - taxesTwd;
+    const per = saved / t.miles;
+    const verdict = saved <= 0 ? ['bad', '現金票比稅金還便宜，直接買現金票'] : per >= 0.6 ? ['good', '划算，值得換'] : per >= 0.35 ? ['mid', '普通'] : ['bad', '不划算，用現金買比較好'];
+    const taxNote = t.taxes == null ? '此計畫未提供稅金，先當 0 計算' : rate ? `稅金約 NT$${fmt(Math.round(taxesTwd))}（${esc(t.taxesSymbol || cur)}${fmt(t.taxes / 100)}，匯率${fx.live ? `為 ${fx.updated}` : '為概估'}）` : `稅金 ${esc(cur)} ${fmt(t.taxes / 100)} 無法換算，先當 0 計算`;
+    box.innerHTML = `<div class="value-result ${verdict[0]}">
+      <div class="value-head"><b>每哩約 NT$${per > 0 ? per.toFixed(2) : '0'}</b><span class="pill">${verdict[1]}</span></div>
+      <p class="hint">當天最便宜現金票 NT$${fmt(cheapest.price)}（${esc(cheapest.segments[0]?.airline || '')}${cheapest.segments.length > 1 ? '，轉機' : '，直飛'}，和獎勵票的航空公司、時間可能不同${body.mock ? '；示範資料' : ''}）－ ${taxNote} ＝ 省下 NT$${fmt(Math.round(Math.max(0, saved)))}，除以 ${fmt(t.miles)} 哩。一般常見估值：每哩 NT$0.35 以下不划算、0.6 以上划算，僅供參考。</p>
+    </div>`;
+  } catch (err) {
+    box.innerHTML = `<p class="status error">${esc(err.message)}</p>`;
   }
 }
 $('#trip-close').addEventListener('click', () => $('#trip-dialog').close());
@@ -939,6 +1060,7 @@ function exploreMatches(skip) {
     (!f.to || r.date <= f.to) &&
     (!f.maxMiles || r.miles <= f.maxMiles) &&
     (!f.airline || r.airlines.split(/,\s*/).includes(f.airline)) &&
+    enoughSeats(r.seats, Number(f.pax) || 0) &&
     (!f.direct || r.direct));
 }
 
@@ -1055,6 +1177,7 @@ function renderExplore() {
           <label class="field">日期從<input type="date" data-f="from" min="${dates[0]}" max="${dates.at(-1)}"></label>
           <label class="field">日期到<input type="date" data-f="to" min="${dates[0]}" max="${dates.at(-1)}"></label>
           <label class="field">里程上限<input type="number" data-f="maxMiles" min="0" step="5000" placeholder="例：80000"></label>
+          <label class="field">人數<select data-f="pax"><option value="">不限</option><option value="2">至少 2 位</option><option value="3">至少 3 位</option><option value="4">至少 4 位</option></select></label>
           <label class="switch"><input type="checkbox" data-f="direct"><span class="knob"></span>只看直飛</label>
           <button type="button" class="outline" id="ex-reset">清除篩選</button>
         </div>
@@ -1081,7 +1204,7 @@ function renderExplore() {
   status.className = 'status';
   status.innerHTML = `<span>共 <b>${all.length}</b> 筆${ex.mock ? '（示範資料）' : ''}，篩選後 <b>${rows.length}</b> 筆${ex.truncated ? '。結果超過 5,000 筆，請縮小日期或區域範圍以看到全部' : ''}</span>`;
 
-  const cols = [['date', '日期'], ['route', '航線'], ['miles', '里程'], ['airlines', '航空公司'], ['direct', '直飛'], ['seats', '剩餘座位'], ['distance', '距離（哩）']];
+  const cols = [['date', '日期'], ['route', '航線'], ['miles', '里程'], ['airlines', '航空公司'], ['direct', '直飛'], ['seats', '剩餘座位'], ['distance', '距離（哩）'], ['updatedAt', '資料更新']];
   const arrow = (k) => (ex.sort.key === k ? (ex.sort.dir > 0 ? ' ▲' : ' ▼') : '');
   const shown = rows.slice(0, ex.shown);
   $('#ex-table').innerHTML = `<div class="table-wrap"><table>
@@ -1090,7 +1213,7 @@ function renderExplore() {
       <td><span class="d">${mmdd(r.date)}</span>（${dowOf(r.date)}）</td>
       <td><b>${esc(r.origin)}</b> → <b>${esc(r.destination)}</b></td>
       <td><b style="color:var(--accent)">${fmt(r.miles)}</b></td>
-      <td>${esc(r.airlines)}</td><td>${r.direct ? '✓' : ''}</td><td>${r.seats || '—'}</td><td>${r.distance ? fmt(r.distance) : '—'}</td></tr>`).join('')}</tbody>
+      <td>${esc(r.airlines)}</td><td>${r.direct ? '✓' : ''}</td><td>${r.seats || '—'}</td><td>${r.distance ? fmt(r.distance) : '—'}</td><td class="${isStale(r.updatedAt) ? 'stale' : ''}">${ago(r.updatedAt) || '—'}</td></tr>`).join('')}</tbody>
   </table></div>
   ${rows.length > ex.shown ? `<div class="more"><button type="button" class="outline" id="ex-more">再顯示 ${Math.min(PAGE, rows.length - ex.shown)} 筆</button><button type="button" class="outline" id="ex-all">全部顯示（${rows.length} 筆）</button></div>` : ''}`;
 
@@ -1110,6 +1233,53 @@ function renderExplore() {
 // Live prices come from Google Flights through the server (SerpApi); without a key we still offer deep links.
 const cashForm = $('#cash-form');
 const cashPickers = { origin: createAirportPicker(cashForm, 'origin'), destination: createAirportPicker(cashForm, 'destination') };
+
+// The site owner can gate live fare lookups behind a passcode (each one spends a SerpApi credit).
+const PASS_KEY = 'cashPass';
+const cashCfg = { locked: false, enabled: true };
+function askPass(message) {
+  const dlg = $('#pass-dialog');
+  const input = $('#pass-input');
+  $('#pass-msg').textContent = message || '即時票價查詢有通關密碼保護，輸入一次後這台裝置會記住。';
+  input.value = '';
+  return new Promise((resolve) => {
+    const done = () => { dlg.removeEventListener('close', done); resolve(dlg.returnValue === 'ok' && input.value ? input.value : null); dlg.returnValue = ''; };
+    dlg.addEventListener('close', done);
+    dlg.showModal();
+    input.focus();
+  });
+}
+$('#pass-cancel').addEventListener('click', () => $('#pass-dialog').close(''));
+function updateLockHint() {
+  const el = $('#cash-lock');
+  el.hidden = !cashCfg.locked;
+  if (!cashCfg.locked) return;
+  el.innerHTML = store.get(PASS_KEY, '')
+    ? '🔓 這台裝置已記住通關密碼。<button type="button" class="linklike" id="pass-forget">清除密碼</button>'
+    : '🔒 即時查價有通關密碼保護，按「搜尋票價」時會請你輸入。';
+  $('#pass-forget')?.addEventListener('click', () => { store.del(PASS_KEY); updateLockHint(); toast('已清除通關密碼'); });
+}
+// Fetch a cash-fare endpoint, asking for the passcode when the server wants one.
+async function cashApi(path) {
+  for (let tries = 0; ; tries++) {
+    let pass = store.get(PASS_KEY, '');
+    if (cashCfg.locked && !pass) {
+      pass = await askPass(tries ? '密碼不對，請再試一次。' : '');
+      if (pass == null) throw new Error('需要通關密碼才能查即時票價');
+      store.set(PASS_KEY, pass);
+    }
+    try {
+      const body = await api(path, pass ? { headers: { 'x-cash-pass': pass } } : undefined);
+      updateLockHint();
+      return body;
+    } catch (err) {
+      if (err.code !== 'passcode' || tries >= 3) throw err;
+      cashCfg.locked = true;
+      store.del(PASS_KEY);
+      updateLockHint();
+    }
+  }
+}
 const cash = { options: [], sort: 'best', directOnly: false, req: null, outbound: null, returns: null };
 const LEVEL = { low: ['偏低', 'good'], typical: ['一般', ''], high: ['偏高', 'bad'] };
 const SKY_CABIN = { Y: 'economy', W: 'premiumeconomy', J: 'business', F: 'first' };
@@ -1255,7 +1425,7 @@ async function loadReturns(outbound) {
   status.className = 'status';
   status.textContent = '正在查詢回程航班…';
   try {
-    const body = await api(`/api/cash?${cashParams(cash.req, outbound.departureToken)}`);
+    const body = await cashApi(`/api/cash?${cashParams(cash.req, outbound.departureToken)}`);
     Object.assign(cash, { outbound, returns: body.options, googleUrl: body.googleUrl || cash.googleUrl, sort: 'best' });
     status.textContent = `找到 ${body.options.length} 個回程選項${body.mock ? '（示範資料）' : ''}`;
     renderCash();
@@ -1292,7 +1462,7 @@ cashForm.addEventListener('submit', async (e) => {
   status.textContent = '正在查詢 Google 航班票價…';
   $('#cash-results').innerHTML = skeleton(5);
   try {
-    const body = await api(`/api/cash?${cashParams(r)}`);
+    const body = await cashApi(`/api/cash?${cashParams(r)}`);
     if (!body.configured) {
       cash.off = true;
       status.textContent = '';
@@ -1402,9 +1572,13 @@ function renderProgramCards() {
 
 // ---------- init ----------
 (async function init() {
-  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles'].map((n) => `/api/data/${n}`)].map(api));
+  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
   [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles] = files;
   $('#mock-banner').hidden = !config.mock;
+  cashCfg.locked = Boolean(config.cashLocked);
+  cashCfg.enabled = config.cash !== 'off';
+  updateLockHint();
+  renderMine();
 
   const carrierSel = $('#search-form [name=carrier]');
   carrierSel.insertAdjacentHTML('beforeend', data.airlines.airlines.map((a) => `<option value="${a.code}">${esc(a.name)}（${a.code}）</option>`).join(''));
@@ -1436,19 +1610,7 @@ function renderProgramCards() {
 
   // Restore a shared search from the URL and run it.
   const share = new URLSearchParams(location.search);
-  if (share.get('o') && share.get('d') && share.get('s')) {
-    const f = $('#search-form');
-    pickers.origin.set(share.get('o').split(','));
-    pickers.destination.set(share.get('d').split(','));
-    datePickers.search.set(share.get('s'), share.get('e') || share.get('s'));
-    f.alliance.value = share.get('al') || '';
-    f.carrier.value = share.get('a') || '';
-    f.direct.checked = share.get('direct') === '1';
-    const cab = $(`#search-form input[name=cabin][value="${share.get('c') || 'J'}"]`);
-    if (cab) cab.checked = true;
-    carrierHint();
-    runSearch(share);
-  }
+  if (share.get('o') && share.get('d') && share.get('s')) applyShare(share);
   showTab(['search', 'explore', 'cash', 'rules'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'search');
 })().catch((err) => {
   $('#search-status').className = 'status error';

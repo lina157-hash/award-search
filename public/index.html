@@ -10,7 +10,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+  <link rel="icon" href="/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="機票雷達">
 </head>
 <body>
   <header class="top">
@@ -69,6 +74,7 @@
                 <option value="star">星空聯盟（長榮、加航…）</option><option value="skyteam">天合聯盟（華航、法航…）</option>
               </select></label>
               <label class="field">航空公司<select name="carrier"><option value="">全部航空公司</option></select></label>
+              <label class="field">人數<select name="pax"><option value="">不限</option><option value="2">至少 2 位</option><option value="3">至少 3 位</option><option value="4">至少 4 位</option><option value="5">至少 5 位</option></select></label>
             </div>
             <div class="opts-row">
               <fieldset class="seg" aria-label="艙等">
@@ -93,6 +99,7 @@
             <button type="button" data-o="TPE" data-d="HKG" data-al="oneworld">台北 → 香港（寰宇一家）</button>
             <button type="button" data-o="HKG" data-d="LHR,JFK,YVR" data-al="oneworld">香港 → 歐美（寰宇一家）</button>
           </div>
+          <div id="mine" class="mine"></div>
         </div>
       </div>
 
@@ -194,6 +201,7 @@
               </fieldset>
               <button type="submit" class="primary big">搜尋票價</button>
             </div>
+            <p id="cash-lock" class="hint" hidden></p>
           </form>
         </div>
       </div>
@@ -218,6 +226,15 @@
   <dialog id="trip-dialog">
     <div class="dialog-head"><h2 id="trip-title">航班明細</h2><button class="ghost" id="trip-close" aria-label="關閉">✕</button></div>
     <div id="trip-body"></div>
+  </dialog>
+
+  <dialog id="pass-dialog" class="pass" aria-labelledby="pass-title">
+    <form method="dialog" class="pass-in">
+      <h2 id="pass-title">輸入通關密碼</h2>
+      <p class="hint" id="pass-msg">即時票價查詢有通關密碼保護，輸入一次後這台裝置會記住。</p>
+      <input type="password" id="pass-input" autocomplete="current-password" placeholder="通關密碼" required>
+      <div class="pass-actions"><button type="button" class="outline" id="pass-cancel">取消</button><button type="submit" class="primary small" value="ok">確定</button></div>
+    </form>
   </dialog>
 
   <div id="toast" class="toast" role="status" hidden></div>

@@ -32,6 +32,41 @@ test('search accepts a date range of up to a year', async () => {
   assert.ok(body.results.some((r) => r.date > '2027-10-01'));
 });
 
+test('search includes lowest taxes per cabin for short ranges only', async () => {
+  const short = await (await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=2026-11-01&end=2026-11-03`)).json();
+  assert.equal(short.withTaxes, true);
+  const j = short.results.find((r) => r.cabins.J.available);
+  assert.ok(j.cabins.J.taxes.amount > 0);
+  assert.equal(j.cabins.J.taxes.currency, 'TWD');
+  const long = await (await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=2026-11-01&end=2027-03-01`)).json();
+  assert.equal(long.withTaxes, false);
+  assert.equal(long.results[0].cabins.J.taxes, null);
+});
+
+test('cash lookups require the passcode when one is set', async () => {
+  process.env.CASH_PASSCODE = 'sunny';
+  try {
+    const q = 'origin=TPE&destination=NRT&depart=2026-11-20';
+    const locked = await fetch(`${base}/api/cash?${q}`);
+    assert.equal(locked.status, 401);
+    assert.equal((await locked.json()).code, 'passcode');
+    const wrong = await fetch(`${base}/api/cash?${q}`, { headers: { 'x-cash-pass': 'sunny!' } });
+    assert.equal(wrong.status, 401);
+    const ok = await fetch(`${base}/api/cash?${q}`, { headers: { 'x-cash-pass': 'sunny' } });
+    assert.equal(ok.status, 200);
+    assert.equal((await (await fetch(`${base}/api/config`)).json()).cashLocked, true);
+  } finally {
+    delete process.env.CASH_PASSCODE;
+  }
+  assert.equal((await (await fetch(`${base}/api/config`)).json()).cashLocked, false);
+});
+
+test('fx endpoint returns TWD rates', async () => {
+  const fx = await (await fetch(`${base}/api/fx`)).json();
+  assert.equal(fx.rates.TWD, 1);
+  assert.ok(fx.rates.USD > 20 && fx.rates.USD < 45);
+});
+
 test('trips and data endpoints work', async () => {
   const s = await (await fetch(`${base}/api/search?origin=TPE&destination=CDG&start=2026-11-01`)).json();
   const t = await (await fetch(`${base}/api/trips/${s.results[0].id}`)).json();
@@ -103,7 +138,7 @@ test('client sends key header and follows cursor', async () => {
 
 test('normalizeAvailability maps cabin fields', () => {
   const n = normalizeAvailability({ ID: 'x', Date: '2026-11-01', Source: 'aeroplan', Route: { OriginAirport: 'TPE', DestinationAirport: 'YVR', Distance: 6000 }, JAvailable: true, JMileageCost: '75000', JRemainingSeats: 2, JAirlines: 'BR', JDirect: true });
-  assert.deepEqual(n.cabins.J, { available: true, miles: 75000, seats: 2, airlines: 'BR', direct: true });
+  assert.deepEqual(n.cabins.J, { available: true, miles: 75000, seats: 2, airlines: 'BR', direct: true, taxes: null });
   assert.equal(n.cabins.Y.available, false);
 });
 

@@ -1,5 +1,6 @@
 // Award search server: serves the frontend and proxies seats.aero so the API key stays server-side.
 const http = require('node:http');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createClient, normalizeAvailability, normalizeTrips, SeatsAeroError } = require('./lib/seats');
@@ -45,6 +46,34 @@ async function cached(key, fn) {
 }
 
 class BadRequest extends Error {}
+
+// Optional passcode that gates the cash-fare lookups (each one spends a SerpApi credit). Read per request so tests can set it.
+const cashPasscode = () => (process.env.CASH_PASSCODE || '').trim();
+function cashUnlocked(req) {
+  const want = cashPasscode();
+  if (!want) return true;
+  const got = String(req.headers['x-cash-pass'] || '');
+  return got.length === want.length && crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
+}
+
+// TWD per unit of each currency, for converting award taxes. Refreshed daily from a free rate feed; the table is the fallback.
+const FX_FALLBACK = { USD: 31.96, CAD: 22.42, EUR: 35.81, GBP: 42.3, JPY: 0.202, HKD: 4.07, AUD: 22.32, SGD: 24.96, KRW: 0.0225, CNY: 4.45, NZD: 19.3, CHF: 39.5, THB: 0.95, MYR: 7.4, INR: 0.36, BRL: 5.9, MXN: 1.72, AED: 8.7, QAR: 8.78, TRY: 0.78, SEK: 3.3, DKK: 4.8, NOK: 3.1, TWD: 1 };
+let fxCache = { expires: 0, body: null };
+async function handleFx() {
+  if (fxCache.expires > Date.now()) return fxCache.body;
+  let body = { rates: FX_FALLBACK, updated: '2026-10-12', live: false };
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(5000) });
+    const j = await res.json();
+    if (j.result === 'success' && j.rates?.TWD) {
+      const rates = {};
+      for (const [cur, perUsd] of Object.entries(j.rates)) if (perUsd > 0) rates[cur] = Math.round((j.rates.TWD / perUsd) * 1e4) / 1e4;
+      body = { rates, updated: new Date(j.time_last_update_unix * 1000).toISOString().slice(0, 10), live: true, provider: 'exchangerate-api.com' };
+    }
+  } catch { /* keep the fallback table */ }
+  fxCache = { expires: Date.now() + 24 * 3600e3, body };
+  return body;
+}
 const IATA_LIST = /^[A-Z]{3}(,[A-Z]{3}){0,9}$/;
 const CODE_LIST = /^[A-Z0-9]{2}(,[A-Z0-9]{2}){0,29}$/;
 const SOURCE_LIST = /^[a-z]+(,[a-z]+){0,29}$/;
@@ -88,9 +117,11 @@ async function handleSearch(q) {
   };
   const cabin = param(q, 'cabin', /^[YWJF]$/, { upper: true });
   if (cabin) params.cabins = CABIN_NAMES[cabin];
+  // Trip details carry the taxes; include them for ranges short enough that the bigger payload stays quick.
+  if (pagesFor(params, 0) === 0 && (new Date(params.end_date) - new Date(params.start_date)) / 864e5 <= 45) params.include_trips = true;
   const key = 'search:' + JSON.stringify(params);
   const { items, hasMore } = await cached(key, () => (MOCK ? { items: mock.mockSearch(params), hasMore: false } : client.search(params, { maxPages: pagesFor(params, 2) })));
-  return { mock: MOCK, truncated: hasMore, results: items.map(normalizeAvailability) };
+  return { mock: MOCK, truncated: hasMore, withTaxes: Boolean(params.include_trips), results: items.map(normalizeAvailability) };
 }
 
 async function handleExplore(q) {
@@ -111,7 +142,7 @@ async function handleExplore(q) {
   // Ship one compact row per result for the requested cabin; the browser filters and sorts.
   const results = items.map(normalizeAvailability).filter((r) => r.cabins[cabin].available).map((r) => {
     const c = r.cabins[cabin];
-    return { id: r.id, date: r.date, origin: r.origin, destination: r.destination, source: r.source, distance: r.distance, miles: c.miles, seats: c.seats, airlines: c.airlines, direct: c.direct };
+    return { id: r.id, date: r.date, origin: r.origin, destination: r.destination, source: r.source, distance: r.distance, miles: c.miles, seats: c.seats, airlines: c.airlines, direct: c.direct, updatedAt: r.updatedAt };
   });
   results.sort((a, b) => a.miles - b.miles);
   return { mock: MOCK, cabin, total: results.length, truncated: hasMore, results };
@@ -120,8 +151,9 @@ async function handleExplore(q) {
 const ALLIANCE_PARAM = { star: 'STAR_ALLIANCE', skyteam: 'SKYTEAM', oneworld: 'ONEWORLD' };
 const CABIN_CLASS = { Y: 1, W: 2, J: 3, F: 4 };
 
-async function handleCash(q) {
+async function handleCash(q, req) {
   if (CASH_MODE === 'off') return { configured: false, options: [] };
+  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
   const depart = param(q, 'depart', DATE, { required: true });
   const ret = param(q, 'return', DATE);
   const today = new Date().toISOString().slice(0, 10);
@@ -157,7 +189,7 @@ async function handleTrips(id) {
   return { mock: MOCK, ...normalizeTrips(raw) };
 }
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 
 function sendJson(res, status, body) {
   res.writeHead(status, { 'content-type': MIME['.json'], 'cache-control': 'no-store' });
@@ -186,12 +218,13 @@ async function route(req, res) {
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
     if (p === '/api/config') {
       return sendJson(res, 200, {
-        mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE,
+        mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashLocked: Boolean(cashPasscode()),
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
       });
     }
-    if (p === '/api/cash') return sendJson(res, 200, await handleCash(q));
+    if (p === '/api/cash') return sendJson(res, 200, await handleCash(q, req));
+    if (p === '/api/fx') return sendJson(res, 200, await handleFx());
     if (p === '/api/search') return sendJson(res, 200, await handleSearch(q));
     if (p === '/api/explore') return sendJson(res, 200, await handleExplore(q));
     if (p.startsWith('/api/trips/')) return sendJson(res, 200, await handleTrips(decodeURIComponent(p.slice(11))));
@@ -204,7 +237,7 @@ async function route(req, res) {
     serveStatic(res, p);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
-    if (e instanceof SeatsAeroError || e instanceof CashError) return sendJson(res, e.status, { error: e.message });
+    if (e instanceof SeatsAeroError || e instanceof CashError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }
