@@ -182,9 +182,8 @@ async function route(req, res) {
     if (p === '/api/config') {
       return sendJson(res, 200, {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE,
-        // Setup diagnostics: which deployment is answering, and env var *names* (never values) that look like the SerpApi key.
-        commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7), env: process.env.VERCEL_ENV || 'local',
-        serpVarNames: Object.keys(process.env).filter((k) => /serp/i.test(k)),
+        // Which deployment is answering, to confirm a redeploy went live.
+        commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
       });
     }
     if (p === '/api/cash') return sendJson(res, 200, await handleCash(q));
@@ -200,8 +199,6 @@ async function route(req, res) {
     serveStatic(res, p);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
-    // TEMP: debug=1 returns upstream errors with 200 so they can be read while setting up the SerpApi key.
-    if (p === '/api/cash' && q.get('debug') === '1') return sendJson(res, 200, { debugError: String(e && e.message).slice(0, 300), status: e.status || 500 });
     if (e instanceof SeatsAeroError || e instanceof CashError) return sendJson(res, e.status, { error: e.message });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
