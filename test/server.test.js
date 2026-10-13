@@ -236,3 +236,40 @@ test('vercel adapter rewrites path back', async () => {
   assert.equal(out.status, 200);
   assert.ok(out.body.results.length > 0);
 });
+
+test('deals keep the cheapest seat per destination and reuse the saved copy', async () => {
+  const { createDeals } = require('../lib/deals');
+  const { memoryStore } = require('../lib/alerts');
+  let calls = 0;
+  const day = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+  const row = (dest, date, miles, available = true) => ({ id: `${dest}${date}`, origin: 'TPE', destination: dest, date, source: 'aeroplan', updatedAt: '', cabins: { J: { available, miles, seats: 2, airlines: 'BR', direct: true }, F: null } });
+  const search = async (p) => {
+    calls += 1;
+    assert.equal(p.order_by, 'lowest_mileage');
+    return p.destination_airport.includes('YVR') ? [row('YVR', day(10), 80000), row('YVR', day(5), 70000), row('SFO', day(7), 90000), row('LAX', day(8), 50000, false)] : [];
+  };
+  const deals = createDeals({ store: memoryStore(), search });
+  const d = await deals.get();
+  assert.equal(calls, deals.plan);
+  const na = d.groups.find((g) => g.id === 'na' && g.cabin === 'J');
+  assert.deepEqual(na.items.map((i) => [i.destination, i.miles]), [['YVR', 70000], ['SFO', 90000]]);
+  await deals.get();
+  assert.equal(calls, deals.plan, 'second get is served from memory');
+});
+
+test('deals endpoint answers in demo mode', async () => {
+  const res = await fetch(`${base}/api/deals`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(Array.isArray(body.groups) && body.groups.some((g) => g.items.length));
+});
+
+test('feature data files are served and well formed', async () => {
+  const products = await (await fetch(`${base}/api/data/products`)).json();
+  assert.ok(products.products.every((p) => p.id && p.name && p.airline && p.cabin && p.iata.length));
+  const booking = await (await fetch(`${base}/api/data/booking`)).json();
+  for (const [k, p] of Object.entries(booking.programs)) {
+    if (p.days != null) assert.ok(Number.isInteger(p.days) && p.days > 0 && p.days <= 366, k);
+  }
+  assert.equal((await fetch(`${base}/api/data/charts`)).status, 200);
+});

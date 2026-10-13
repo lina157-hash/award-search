@@ -1,0 +1,312 @@
+{
+ "note": "Premium cabin products by operating airline and IATA aircraft code (seats.aero AircraftCode). Researched 2026-10-13; codes cannot tell refitted from old aircraft, see caveat.",
+ "researched": "2026-10-13",
+ "products": [
+  {
+   "id": "br-royal-laurel",
+   "name": "長榮 皇璽桂冠商務艙",
+   "airline": "BR",
+   "cabin": "J",
+   "iata": [
+    "77W",
+    "789",
+    "781"
+   ],
+   "caveat": "777 與 787 座椅世代不同；全新套房預計 2027 年底起隨 A350-1000 交機，部分 777 也將翻新",
+   "sources": [
+    {
+     "label": "TPG: EVA Air new business suites & 777 refresh (2024-09)",
+     "url": "https://thepointsguy.com/news/eva-air-new-business-suites-777-cabin-refresh"
+    },
+    {
+     "label": "AirlineRatings: EVA 787-9 upgraded business class (2018)",
+     "url": "https://www.airlineratings.com/articles/eva-launch-787-9-upgraded-business-class"
+    },
+    {
+     "label": "Airways: EVA A350-1000 delivery timing (2026-09)",
+     "url": "https://airwaysmag.com/new-post/eva-air-long-haul-destinations-a350-1000-2027"
+    }
+   ]
+  },
+  {
+   "id": "jx-a350-business",
+   "name": "星宇 A350 商務艙",
+   "airline": "JX",
+   "cabin": "J",
+   "iata": [
+    "359",
+    "351"
+   ],
+   "caveat": "A350-1000 目前僅 1 架（2026 年 2 月投入），多飛東京等航線",
+   "sources": [
+    {
+     "label": "Flightradar24: STARLUX fleet overview (2026-02-25)",
+     "url": "https://www.flightradar24.com/blog/aviation-news/airline-news/starlux-the-small-airline-with-big-ambitions/"
+    }
+   ]
+  },
+  {
+   "id": "jx-first",
+   "name": "星宇 A350 頭等艙",
+   "airline": "JX",
+   "cabin": "F",
+   "iata": [
+    "359",
+    "351"
+   ],
+   "caveat": "每架僅 4 席，里程兌換機會稀少",
+   "sources": [
+    {
+     "label": "Flightradar24: STARLUX fleet overview (2026-02-25)",
+     "url": "https://www.flightradar24.com/blog/aviation-news/airline-news/starlux-the-small-airline-with-big-ambitions/"
+    }
+   ]
+  },
+  {
+   "id": "jx-a330neo-business",
+   "name": "星宇 A330neo 商務艙",
+   "airline": "JX",
+   "cabin": "J",
+   "iata": [
+    "339"
+   ],
+   "caveat": "以亞洲區域航線為主",
+   "sources": [
+    {
+     "label": "Flightradar24: STARLUX fleet overview (2026-02-25)",
+     "url": "https://www.flightradar24.com/blog/aviation-news/airline-news/starlux-the-small-airline-with-big-ambitions/"
+    },
+    {
+     "label": "Executive Traveller: Starlux A330neo business class",
+     "url": "https://executivetraveller.com/news/starlux-airbus-a330neo-delivery"
+    }
+   ]
+  },
+  {
+   "id": "ci-flatbed-business",
+   "name": "華航 A350／777 平躺商務艙",
+   "airline": "CI",
+   "cabin": "J",
+   "iata": [
+    "359",
+    "77W"
+   ],
+   "caveat": "A330 為斜躺舊座椅不在此列；新 787 套房 2026 年底起交機，先飛亞洲航線",
+   "sources": [
+    {
+     "label": "AFF: China Airlines business seat guide (upd. 2026-03)",
+     "url": "https://www.australianfrequentflyer.com.au/china-airlines-business-seat-guide"
+    },
+    {
+     "label": "Executive Traveller: China Airlines new 787 business class (2026-06)",
+     "url": "https://www.executivetraveller.com/news/china-airlines-new-787-business-class-premium-economy"
+    }
+   ]
+  },
+  {
+   "id": "jl-a350-1000-first",
+   "name": "日航 A350-1000 新頭等艙",
+   "airline": "JL",
+   "cabin": "F",
+   "iata": [
+    "351"
+   ],
+   "caveat": "每架 6 席；日航 777-300ER 的舊頭等艙不屬於此產品",
+   "sources": [
+    {
+     "label": "AirlineGeeks: JAL A350-1000 to Dallas (2023-12)",
+     "url": "https://airlinegeeks.com/?p=68694"
+    }
+   ]
+  },
+  {
+   "id": "jl-a350-1000-business",
+   "name": "日航 A350-1000 有門商務套房",
+   "airline": "JL",
+   "cabin": "J",
+   "iata": [
+    "351"
+   ],
+   "caveat": "僅國際線 A350-1000；日航 A350-900 為國內線配置",
+   "sources": [
+    {
+     "label": "AirlineGeeks: JAL A350-1000 to Dallas (2023-12)",
+     "url": "https://airlinegeeks.com/?p=68694"
+    }
+   ]
+  },
+  {
+   "id": "cx-aria-suite",
+   "name": "國泰 Aria Suite 商務艙",
+   "airline": "CX",
+   "cabin": "J",
+   "iata": [
+    "77W"
+   ],
+   "caveat": "僅已翻新的 777-300ER（2026 年中約 17/35 架），機型代碼無法區分新舊，請看座位圖",
+   "sources": [
+    {
+     "label": "SeatCompare: Cathay Aria rollout status (2026-08)",
+     "url": "https://seatcompare.ai/insights/cathay-pacific-aria-suite-rollout-status-2026"
+    },
+    {
+     "label": "OMAAT: Cathay Pacific Aria Suite routes",
+     "url": "https://onemileatatime.com/guides/cathay-pacific-aria-suite-routes"
+    }
+   ]
+  },
+  {
+   "id": "sq-a380-suites",
+   "name": "新航 A380 豪華套房",
+   "airline": "SQ",
+   "cabin": "F",
+   "iata": [
+    "388"
+   ],
+   "caveat": "不飛台北；777-300ER 的頭等艙為較舊座椅，不屬套房",
+   "sources": [
+    {
+     "label": "Mainly Miles: SQ First & Suites by route (tables to Mar 2027)",
+     "url": "https://mainlymiles.com/2026/01/27/singapore-airlines-first-class-and-suites-cabins-by-route-to-october-2026/"
+    }
+   ]
+  },
+  {
+   "id": "qr-qsuite",
+   "name": "卡達 Qsuite 商務艙",
+   "airline": "QR",
+   "cabin": "J",
+   "iata": [
+    "351",
+    "77W",
+    "77L",
+    "359"
+   ],
+   "caveat": "只有 A350-1000 全數配備；777 約七成、A350-900 約三成有，787 與 A380 沒有",
+   "sources": [
+    {
+     "label": "OMAAT: Which Qatar planes have Qsuites (2026-05)",
+     "url": "https://onemileatatime.com/guides/qatar-airways-qsuites/"
+    }
+   ]
+  },
+  {
+   "id": "nh-the-room",
+   "name": "全日空 THE Room 商務艙",
+   "airline": "NH",
+   "cabin": "J",
+   "iata": [
+    "77W",
+    "789"
+   ],
+   "caveat": "777-300ER 為 THE Room；787-9 僅翻新機有 THE Room FX（2026 年起逐步上線）",
+   "sources": [
+    {
+     "label": "AwardFares: ANA introduces THE Room FX (2025-06)",
+     "url": "https://awardfares.com/blog/ana-introduces-the-room-fx"
+    }
+   ]
+  },
+  {
+   "id": "ek-a380-first",
+   "name": "阿聯酋 A380 頭等艙（含淋浴間）",
+   "airline": "EK",
+   "cabin": "F",
+   "iata": [
+    "388"
+   ],
+   "caveat": null,
+   "sources": [
+    {
+     "label": "Prince of Travel: Emirates First Class guide (2026)",
+     "url": "https://princeoftravel.com/airlines/emirates-first-class/"
+    }
+   ]
+  },
+  {
+   "id": "ek-777-gamechanger",
+   "name": "阿聯酋 777 全封閉頭等套房",
+   "airline": "EK",
+   "cabin": "F",
+   "iata": [
+    "77W"
+   ],
+   "caveat": "2026 年初僅約 9 架；多數 777 仍為舊款頭等，代碼無法區分",
+   "sources": [
+    {
+     "label": "Prince of Travel: Emirates First Class guide (2026)",
+     "url": "https://princeoftravel.com/airlines/emirates-first-class/"
+    }
+   ]
+  },
+  {
+   "id": "ke-prestige-suites-2",
+   "name": "大韓 Prestige Suites 2.0 商務艙",
+   "airline": "KE",
+   "cabin": "J",
+   "iata": [
+    "781"
+   ],
+   "caveat": "目前以 787-10 為主；777-300ER 未來才會翻新",
+   "sources": [
+    {
+     "label": "OMAAT: New Korean Air business class Prestige Suites 2.0 (2024-10)",
+     "url": "https://onemileatatime.com/news/new-korean-air-business-class-seat/"
+    }
+   ]
+  },
+  {
+   "id": "af-la-premiere",
+   "name": "法航 La Première 頭等艙",
+   "airline": "AF",
+   "cabin": "F",
+   "iata": [
+    "77W"
+   ],
+   "caveat": "僅約半數四艙等 777-300ER 有；新套房 2026 年 8 月時已上 17 架",
+   "sources": [
+    {
+     "label": "OMAAT: Air France La Première routes (2026-08)",
+     "url": "https://onemileatatime.com/guides/air-france-la-premiere-routes/"
+    }
+   ]
+  },
+  {
+   "id": "lh-allegris-business",
+   "name": "漢莎 Allegris 商務艙",
+   "airline": "LH",
+   "cabin": "J",
+   "iata": [
+    "789",
+    "359"
+   ],
+   "caveat": "A350-900 僅新交機有，舊機 2027 年起翻新；747-8 翻新中",
+   "sources": [
+    {
+     "label": "OMAAT: Lufthansa Allegris routes (upd. 2026-07)",
+     "url": "https://onemileatatime.com/guides/lufthansa-allegris-routes/"
+    }
+   ]
+  },
+  {
+   "id": "lh-allegris-first",
+   "name": "漢莎 Allegris 頭等套房",
+   "airline": "LH",
+   "cabin": "F",
+   "iata": [
+    "359"
+   ],
+   "caveat": "僅部分 A350-900；787-9 無頭等，且據報不開放夥伴里程兌換",
+   "sources": [
+    {
+     "label": "OMAAT: Lufthansa Allegris routes (upd. 2026-07)",
+     "url": "https://onemileatatime.com/guides/lufthansa-allegris-routes/"
+    },
+    {
+     "label": "AwardFares: Phantom availability guide (2026-06-03)",
+     "url": "https://awardfares.com/blog/phantom-availability-guide/"
+    }
+   ]
+  }
+ ]
+}

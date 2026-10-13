@@ -107,15 +107,19 @@
             <summary>🔔 機位提醒 <span id="alerts-count"></span></summary>
             <div id="alerts-body" class="alerts-body"><p class="hint">載入中…</p></div>
           </details>
+          <details class="alerts-panel" id="plan-panel">
+            <summary>🧳 我的行程 <span id="plan-count"></span></summary>
+            <div id="plan-body" class="alerts-body"></div>
+          </details>
         </div>
       </div>
 
       <div class="wrap">
         <div id="search-status" class="status" aria-live="polite"></div>
         <div id="search-results"></div>
-        <div id="search-empty" class="empty">
-          <div class="empty-icon" aria-hidden="true">🗺️</div>
-          <p>輸入航線或點選熱門航線開始搜尋。可以一次輸入多個機場，例如 <code>TPE,TSA</code>。</p>
+        <div id="search-empty">
+          <div id="deals" class="deals"></div>
+          <p class="empty-hint">輸入航線或點選熱門航線開始搜尋。可以一次輸入多個機場，例如 <code>TPE,TSA</code>。</p>
         </div>
       </div>
     </section>
@@ -277,5 +281,6 @@
     </div>
   </footer>
   <script src="/app.js"></script>
+  <script src="/features.js"></script>
 </body>
 </html>

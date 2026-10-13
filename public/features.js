@@ -1,0 +1,610 @@
+// Extra tools added on top of app.js (loaded after it and sharing its globals):
+// how to book, my points wallet, award release dates, miles-needed estimate, phantom-space warnings,
+// daily deals, explore map, trip planner and the premium-product filter.
+
+// ---------- programs: names and which Taiwan bank points transfer in ----------
+const EXTRA_PROGRAM_NAMES = { eva: '長榮 無限萬哩遊', ci: '華航 華夏哩程', jal: '日航 JMB', ana: '全日空 ANA', starlux: '星宇 COSMILE' };
+const programName = (key) => SOURCE_NAMES[key] || EXTRA_PROGRAM_NAMES[key] || key;
+// Program key (seats.aero source, or eva/ci/jal) → the matching rate in data/points.json calc.sources.
+const PROGRAM_TRANSFER = {
+  asiamiles: { to: 'asiamiles' }, singapore: { to: 'sq' }, eva: { to: 'eva' }, ci: { to: 'ci' },
+  aeroplan: { name: '加航' }, flyingblue: { name: '法荷航' }, united: { name: '聯合' }, qatar: { name: '卡達' },
+  british: { name: '英航' }, turkish: { name: '土航' }, qantas: { name: '澳航' }, emirates: { name: '阿聯酋' },
+  etihad: { name: '阿提哈德' }, lifemiles: { name: 'LifeMiles' }, jal: { name: '日航' },
+};
+const programKeyOf = (source) => (source === 'asiamiles_est' ? 'asiamiles' : source);
+
+// Best rate from each bank points program into one airline program.
+function transferRates(program) {
+  const m = PROGRAM_TRANSFER[programKeyOf(program)];
+  if (!m || !data.points?.calc) return [];
+  const out = [];
+  for (const s of data.points.calc.sources) {
+    const rates = s.rates.filter((r) => (m.to ? r.to === m.to : r.to === 'other' && r.name === m.name));
+    if (!rates.length) continue;
+    const best = rates.reduce((a, b) => (b.miles / b.points > a.miles / a.points ? b : a));
+    out.push({ source: s, rate: best });
+  }
+  return out.sort((a, b) => b.rate.miles / b.rate.points - a.rate.miles / a.rate.points);
+}
+const ratioLabel = (r) => (r.points === r.miles ? '1:1' : `${fmt(r.points)} 點換 ${fmt(r.miles)} 哩`);
+const bankLabel = (s) => `${s.bank} ${s.program}${s.variant ? `（${s.variant}）` : ''}`;
+
+// ---------- my points wallet (this browser only) ----------
+const WALLET_KEY = 'wallet:v1';
+const WALLET_PROGRAMS = ['eva', 'ci', 'asiamiles', 'singapore', 'jal', 'aeroplan', 'united', 'flyingblue', 'alaska', 'american', 'british', 'qatar', 'turkish', 'lifemiles', 'emirates', 'delta', 'starlux'];
+const cleanCount = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(n, 1e9) : 0; };
+function loadWallet() {
+  const w = store.get(WALLET_KEY, {});
+  const pick = (o) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).map(([k, v]) => [k, cleanCount(v)]).filter(([k, v]) => /^[\w-]{1,40}$/.test(k) && v));
+  return { banks: pick(w.banks), miles: pick(w.miles) };
+}
+let wallet = { banks: {}, miles: {} };
+const walletEmpty = () => !Object.keys(wallet.banks).length && !Object.keys(wallet.miles).length;
+
+// Miles reachable in one program: own balance plus everything each bank balance could transfer in.
+function reach(program) {
+  const key = programKeyOf(program);
+  const own = wallet.miles[key] || 0;
+  const banks = [];
+  for (const { source, rate } of transferRates(key)) {
+    const pts = wallet.banks[source.id];
+    if (!pts) continue;
+    const got = calcConvert(rate, pts, 'p2m').value || 0;
+    if (got) banks.push({ source, rate, points: pts, miles: got });
+  }
+  return { own, banks, total: own + banks.reduce((n, b) => n + b.miles, 0) };
+}
+
+// ---------- booking channels, release windows, phantom space (data/booking.json) ----------
+const bookingInfo = (program) => data.booking?.programs?.[programKeyOf(program)] || null;
+
+function phantomWarnings(program, airlines) {
+  const info = bookingInfo(program);
+  if (!info?.phantom?.length) return [];
+  const codes = String(airlines || '').split(/[,\s]+/).filter(Boolean);
+  return info.phantom.filter((p) => p.airlines.includes('*') || p.airlines.some((a) => codes.includes(a)));
+}
+
+function howToBookHtml(program, milesNeeded) {
+  const key = programKeyOf(program);
+  if (!key) return '';
+  const info = bookingInfo(key);
+  const rates = transferRates(key);
+  const lines = [];
+  if (info?.booking) {
+    const b = info.booking;
+    const where = b.partnerOnline === true ? '官網可線上訂，夥伴航班也可以' : b.partnerOnline === 'partial' ? '官網可線上訂，部分夥伴航班要打電話' : b.ownOnline ? '自家航班可線上訂，夥伴航班要打電話' : '需要打電話訂';
+    lines.push(`<li><b>訂位方式</b>　${where}${b.phoneFee ? `；${esc(b.phoneFee)}` : ''}${b.note ? `。${esc(b.note)}` : ''}</li>`);
+  }
+  // Banks the user holds come first, then the best ratios; only three show until expanded.
+  const mine = (r) => (wallet.banks[r.source.id] ? 1 : 0);
+  const sorted = [...rates].sort((a, b) => mine(b) - mine(a));
+  const rateLi = ({ source, rate }) => `<li>${esc(bankLabel(source))}　<b>${ratioLabel(rate)}</b>${mine({ source }) ? ' <span class="ok-text">你有</span>' : ''}</li>`;
+  lines.push(rates.length
+    ? `<li><b>台灣可轉入</b><ul class="howto-rates">${sorted.slice(0, 3).map(rateLi).join('')}</ul>${sorted.length > 3 ? `<details class="howto-more"><summary>其他 ${sorted.length - 3} 家</summary><ul class="howto-rates">${sorted.slice(3).map(rateLi).join('')}</ul></details>` : ''}</li>`
+    : '<li><b>台灣可轉入</b>　台灣的信用卡點數目前沒有直接轉入這個計畫，要用該計畫自己的哩程。</li>');
+  if (!walletEmpty() && milesNeeded) {
+    const r = reach(key);
+    lines.push(`<li><b>你的點數</b>　最多可湊到 ${fmt(r.total)} 哩，${r.total >= milesNeeded ? '<span class="ok-text">夠換這張票</span>' : `還差 ${fmt(milesNeeded - r.total)} 哩`}</li>`);
+  }
+  if (info?.days) lines.push(`<li><b>開票</b>　${esc(info.windowNote || `約 ${info.days} 天前開放`)}</li>`);
+  const src = info?.sources?.[0];
+  return `<div class="howto"><h3>怎麼用 ${esc(programName(key))} 訂</h3><ul>${lines.join('')}</ul>${src ? `<p class="hint">資料來源：<a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label)} ↗</a>${info.confidence === 'secondary' ? '（第三方整理）' : ''}</p>` : ''}</div>`;
+}
+
+const phantomHtml = (program, airlines) => phantomWarnings(program, airlines).map((p) => `<p class="phantom">⚠️ ${esc(p.warning)}</p>`).join('');
+
+// ---------- award release dates ----------
+// For each program in the results, the first searched date that is not bookable yet and when it opens.
+function releaseNotices(programs, start, end) {
+  const today = isoDate(0);
+  const out = [];
+  for (const p of programs) {
+    const info = bookingInfo(p);
+    if (!info?.days) continue;
+    const lastOpen = isoDateFrom(today, info.days);
+    if (end <= lastOpen) continue;
+    const first = start > lastOpen ? start : isoDateFrom(lastOpen, 1);
+    out.push({ program: programKeyOf(p), days: info.days, first, opens: isoDateFrom(first, -info.days) });
+  }
+  const seen = new Set();
+  return out.filter((n) => !seen.has(n.program) && seen.add(n.program)).sort((a, b) => a.opens.localeCompare(b.opens));
+}
+
+function releaseNoticeHtml(programs, start, end, route) {
+  const list = releaseNotices(programs, start, end);
+  if (!list.length) return '';
+  return `<details class="release"><summary>⏳ 有 ${list.length} 個計畫還沒開放你查的部分日期</summary>
+    <ul>${list.map((n) => `<li>${esc(programName(n.program))}：約 ${n.days} 天前開放，${mmdd(n.first)} 的座位約 <b>${n.opens.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${n.opens.slice(0, 4)}/` : ''}${mmdd(n.opens)}</b> 開放
+      <button type="button" class="linklike" data-ics="${esc(n.program)}|${n.opens}|${n.first}|${esc(route)}">📅 加入行事曆</button></li>`).join('')}</ul>
+    <p class="hint">天數依各計畫公告或常見整理，實際開放時間可能差一兩天。</p></details>`;
+}
+
+// A one-event calendar file that reminds on the morning the seats open.
+function downloadIcs(program, opens, flightDate, route) {
+  const d = opens.replace(/-/g, '');
+  const next = isoDateFrom(opens, 1).replace(/-/g, '');
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  const text = (s) => s.replace(/[\\;,]/g, (c) => `\\${c}`);
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//award-search//release//ZH', 'BEGIN:VEVENT',
+    `UID:${program}-${d}-${flightDate}@award-search`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${next}`,
+    `SUMMARY:${text(`${programName(program)} 開放 ${flightDate} ${route} 獎勵位`)}`,
+    `DESCRIPTION:${text(`${programName(program)} 約今天開放 ${flightDate} 的獎勵機位，可以到機票搜索雷達查詢。`)}`,
+    'BEGIN:VALARM', 'TRIGGER:PT9H', 'ACTION:DISPLAY', 'DESCRIPTION:獎勵位今天開放', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+  a.download = `award-release-${program}-${opens}.ics`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest?.('[data-ics]');
+  if (!b) return;
+  const [program, opens, flightDate, route] = b.dataset.ics.split('|');
+  downloadIcs(program, opens, flightDate, route);
+});
+
+function releaseTableHtml() {
+  const progs = Object.entries(data.booking?.programs || {}).filter(([, v]) => v.days);
+  if (!progs.length) return '';
+  progs.sort((a, b) => b[1].days - a[1].days);
+  const how = (b) => (!b ? '—' : b.partnerOnline === true ? '線上' : b.partnerOnline === 'partial' ? '線上，部分夥伴要來電' : b.ownOnline ? '自家線上，夥伴來電' : '來電');
+  return `<h2 class="section" id="release-dates">開票日：最早幾天前可以訂</h2>
+    <p class="hint">獎勵位通常在出發前固定天數開放。查詢日期超過這個天數時，搜尋結果上方會提醒你哪天開放，並可加入行事曆。</p>
+    <details class="release-wrap"><summary>看 ${progs.length} 個計畫的天數</summary>
+    <div class="table-wrap"><table class="release-table"><thead><tr><th>計畫</th><th>最早</th><th>訂位方式</th><th>來源</th></tr></thead><tbody>
+    ${progs.map(([k, v]) => `<tr><td><b>${esc(programName(k))}</b>${v.windowNote ? `<small>${esc(v.windowNote)}</small>` : ''}</td><td class="num">${v.days} 天</td>
+      <td>${how(v.booking)}${v.booking?.phoneFee ? `<small>${esc(v.booking.phoneFee)}</small>` : ''}</td>
+      <td>${CONFIDENCE_TAG[v.confidence] || ''}${(v.sources || []).slice(0, 1).map((x) => `<small><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a></small>`).join('')}</td></tr>`).join('')}
+    </tbody></table></div></details>`;
+}
+
+// ---------- points tab: converter / my points / miles needed ----------
+const pointsView = { view: 'calc' };
+function pointsTabsHtml() {
+  const v = pointsView.view;
+  return `<fieldset class="seg points-seg" aria-label="工具">${[['calc', '點數換算'], ['wallet', '我的點數'], ['need', '哩程試算']].map(([k, l]) =>
+    `<label><input type="radio" name="points-view" value="${k}" ${k === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
+}
+function bindPointsTabs(host) {
+  $$('input[name=points-view]', host).forEach((i) => i.addEventListener('change', () => { pointsView.view = i.value; renderPoints(); }));
+}
+
+// Only what the user entered is listed; everything else is picked from one dropdown, so the page stays short.
+const walletItemName = (kind, id) => {
+  if (kind === 'm') return { name: programName(id), sub: '' };
+  const s = (data.points?.calc?.sources || []).find((x) => x.id === id);
+  return s ? { name: s.bank, sub: `${s.program}${s.variant ? `（${s.variant}）` : ''}` } : null;
+};
+function walletHtml() {
+  const sources = data.points?.calc?.sources || [];
+  return `<div class="wallet">
+    <p class="hint">填入你手上的點數與哩程，只會存在這台裝置的瀏覽器，不會上傳。填好後，搜尋結果可以開「只看我換得起的」，航班明細也會告訴你夠不夠換。</p>
+    <div id="wallet-list"></div>
+    <div class="w-add">
+      <select id="w-pick" aria-label="選擇點數或哩程"><option value="">選擇信用卡點數或航空哩程</option>
+        <optgroup label="信用卡點數">${sources.map((x) => `<option value="b:${esc(x.id)}">${esc(bankLabel(x))}</option>`).join('')}</optgroup>
+        <optgroup label="航空哩程">${WALLET_PROGRAMS.map((k) => `<option value="m:${esc(k)}">${esc(programName(k))}</option>`).join('')}</optgroup>
+      </select>
+      <input type="number" id="w-amt" min="0" step="100" inputmode="numeric" placeholder="數量" aria-label="數量">
+      <button type="button" class="primary" id="w-add-btn">加入</button>
+    </div>
+    <div id="wallet-sum-wrap"><h3 class="sub">合計可換到</h3><div id="wallet-sum"></div></div>
+  </div>`;
+}
+function renderWalletSum() {
+  const host = $('#wallet-sum');
+  if (!host) return;
+  const keys = [...new Set([...WALLET_PROGRAMS, ...Object.keys(PROGRAM_TRANSFER)])];
+  const rows = keys.map((k) => ({ k, r: reach(k) })).filter(({ r }) => r.total > 0).sort((a, b) => b.r.total - a.r.total);
+  host.innerHTML = rows.length ? `<div class="table-wrap"><table class="wallet-sum"><thead><tr><th>計畫</th><th>最多可湊到</th><th>來源</th></tr></thead><tbody>
+    ${rows.map(({ k, r }) => `<tr><td><b>${esc(programName(k))}</b></td><td><b>${fmt(r.total)} 哩</b></td><td><small>${[r.own ? `自有 ${fmt(r.own)}` : '', ...r.banks.map((b) => `${esc(b.source.bank)} ${fmt(b.points)} 點 → ${fmt(b.miles)}`)].filter(Boolean).join('、')}</small></td></tr>`).join('')}
+    </tbody></table></div><p class="hint">每一列各自計算：同一筆點數只能轉進一個計畫，不能同時用在兩列。</p>`
+    : '<p class="hint">加入點數後，這裡會算出每個航空計畫最多能湊到多少哩。</p>';
+}
+function renderWalletList() {
+  const host = $('#wallet-list');
+  if (!host) return;
+  const items = [...Object.entries(wallet.banks).map(([id, n]) => ['b', id, n]), ...Object.entries(wallet.miles).map(([id, n]) => ['m', id, n])]
+    .map(([kind, id, n]) => ({ kind, id, n, label: walletItemName(kind, id) })).filter((x) => x.label);
+  host.innerHTML = items.length ? `${items.map(({ kind, id, n, label }) => `<div class="w-row"><span><b>${esc(label.name)}</b>${label.sub ? `<small>${esc(label.sub)}</small>` : ''}</span>
+      <input type="number" min="0" step="100" inputmode="numeric" data-w="${kind}:${esc(id)}" value="${n}" aria-label="${esc(label.name)} 數量">
+      <button type="button" class="w-del" data-w-del="${kind}:${esc(id)}" aria-label="移除 ${esc(label.name)}">×</button></div>`).join('')}
+    <button type="button" class="outline" id="wallet-clear">清除全部</button>`
+    : '<p class="w-empty">還沒有加入任何點數，從下面選一個開始。</p>';
+}
+function setWallet(ref, value) {
+  const [kind, id] = ref.split(':');
+  const bucket = kind === 'b' ? wallet.banks : wallet.miles;
+  const n = cleanCount(value);
+  if (n) bucket[id] = n; else delete bucket[id];
+  if (walletEmpty()) store.del(WALLET_KEY); else store.set(WALLET_KEY, wallet);
+}
+function bindWallet(host) {
+  const refresh = () => { renderWalletList(); renderWalletSum(); };
+  const add = () => {
+    const ref = $('#w-pick', host).value;
+    const amt = $('#w-amt', host);
+    if (!ref) { $('#w-pick', host).focus(); return; }
+    if (!cleanCount(amt.value)) { amt.focus(); return; }
+    setWallet(ref, amt.value);
+    $('#w-pick', host).value = '';
+    amt.value = '';
+    refresh();
+  };
+  $('#w-add-btn', host).addEventListener('click', add);
+  $('#w-amt', host).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+  host.addEventListener('input', (e) => { if (e.target.dataset.w) { setWallet(e.target.dataset.w, e.target.value); renderWalletSum(); } });
+  host.addEventListener('click', (e) => {
+    const del = e.target.closest('[data-w-del]');
+    if (del) { setWallet(del.dataset.wDel, 0); refresh(); return; }
+    if (e.target.id === 'wallet-clear') {
+      if (!confirm('清除所有填入的點數與哩程？')) return;
+      wallet = { banks: {}, miles: {} };
+      store.del(WALLET_KEY);
+      refresh();
+    }
+  });
+  refresh();
+}
+
+// ---------- miles needed (fixed award charts, no seat search) ----------
+const need = { origin: '', destination: '', cabin: 'J' };
+function haversineMiles(a, b) {
+  const rad = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;
+  return Math.round(2 * 3958.8 * Math.asin(Math.sqrt(h)));
+}
+function regionOf(regions, country) {
+  return Object.entries(regions || {}).find(([, r]) => r.countries.includes(country))?.[0] || null;
+}
+// Price one program's chart for a route; returns [{ label, miles, note }].
+function chartPrices(p, from, to, cabin, dist) {
+  const out = [];
+  for (const t of p.tables || []) {
+    let miles = null;
+    let note = '';
+    if (p.kind === 'distance') {
+      const band = t.bands.find((b) => dist <= b.upTo);
+      miles = band ? band[cabin] : null;
+      if (band) note = `${fmt(dist)} 哩（${fmt(band.upTo)} 哩以內）`;
+    } else if (p.kind === 'zone') {
+      if (from.country !== 'TW') continue;
+      const z = t.zones.find((x) => x.countries.includes(to.country));
+      miles = z ? z[cabin] : null;
+      if (z) note = `台灣 → ${z.name}`;
+    } else if (p.kind === 'regionMatrix') {
+      const ra = regionOf(p.regions, from.country);
+      const rb = regionOf(p.regions, to.country);
+      const pair = t.pairs.find((x) => (x.from === ra && x.to === rb) || (x.from === rb && x.to === ra));
+      miles = pair ? pair[cabin] : null;
+      if (pair) note = `${p.regions[ra].name} → ${p.regions[rb].name}`;
+    }
+    if (miles) out.push({ label: t.label, miles, note });
+  }
+  return out;
+}
+function needHtml() {
+  return `<form id="need-form" class="need" autocomplete="off">
+    <p class="hint">不查座位，只依各計畫公布的固定哩程表，估算單程一個人要多少哩。動態定價的計畫（聯合、達美、法荷航等）沒有固定表，請用航線查詢看實際價格。</p>
+    <div class="route-row">
+      <div class="field grow ac-host">
+        <label for="n-origin">出發地</label>
+        <div class="chips-box" data-for="origin"><span class="chips"></span>
+          <input id="n-origin" class="chips-q" placeholder="城市、機場或代碼" autocapitalize="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-n-origin"></div>
+        <input type="hidden" name="origin" value="${esc(need.origin)}">
+        <div class="ac-list" id="ac-n-origin" role="listbox" aria-label="出發地建議" hidden></div>
+      </div>
+      <div class="field grow ac-host ac-end">
+        <label for="n-destination">目的地</label>
+        <div class="chips-box" data-for="destination"><span class="chips"></span>
+          <input id="n-destination" class="chips-q" placeholder="城市、機場或代碼" autocapitalize="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-n-destination"></div>
+        <input type="hidden" name="destination" value="${esc(need.destination)}">
+        <div class="ac-list" id="ac-n-destination" role="listbox" aria-label="目的地建議" hidden></div>
+      </div>
+    </div>
+    <div class="opts-row">
+      <fieldset class="seg" aria-label="艙等">${Object.entries({ Y: '經濟', W: '豪經', J: '商務', F: '頭等' }).map(([k, l]) => `<label><input type="radio" name="cabin" value="${k}" ${need.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
+      <button type="submit" class="primary">試算</button>
+    </div>
+  </form>
+  <div id="need-result"></div>`;
+}
+function bindNeed(host) {
+  const form = $('#need-form', host);
+  const pk = { origin: createAirportPicker(form, 'origin'), destination: createAirportPicker(form, 'destination') };
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    for (const p of Object.values(pk)) {
+      const unknown = p.commit();
+      if (unknown.length || !p.codes().length) { toast(unknown.length ? `找不到「${unknown.join('、')}」` : `請輸入${p.label}`); p.focus(); return; }
+    }
+    need.origin = pk.origin.codes()[0];
+    need.destination = pk.destination.codes()[0];
+    need.cabin = new FormData(form).get('cabin') || 'J';
+    renderNeed();
+  });
+  if (need.origin && need.destination) renderNeed();
+}
+function renderNeed() {
+  const host = $('#need-result');
+  const a = AP.byCode.get(need.origin);
+  const b = AP.byCode.get(need.destination);
+  if (!host || !a || !b || a.lat == null || b.lat == null) return;
+  const dist = haversineMiles(a, b);
+  const c = need.cabin;
+  const rows = [];
+  // Asia Miles from the chart the site already carries.
+  for (const kind of ['cx', 'partner']) {
+    const am = amPrice(kind, dist, c, need.origin, need.destination);
+    if (am?.miles) rows.push({ key: 'asiamiles', label: kind === 'cx' ? '國泰航班' : '夥伴航班', miles: am.miles, note: `${fmt(dist)} 哩`, confidence: 'official' });
+  }
+  for (const p of data.charts?.programs || []) {
+    if (!['distance', 'zone', 'regionMatrix'].includes(p.kind)) continue;
+    for (const x of chartPrices(p, a, b, c, dist)) rows.push({ key: p.id, name: p.name, label: x.label, miles: x.miles, note: x.note, confidence: p.confidence, perSegment: p.perSegment, src: p.sources?.[0], pnote: p.note });
+  }
+  rows.sort((x, y) => x.miles - y.miles);
+  const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic').map((p) => p.name || programName(p.id));
+  host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${CABIN_LABEL[c]}・直線距離 ${fmt(dist)} 哩</h3>
+    ${rows.length ? `<div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>單程哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
+      ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(r.name || programName(r.key))}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b></td>
+        <td><small>${esc(r.note)}${r.perSegment ? '；每段航班分開計價，轉機會更貴' : ''}</small></td>
+        <td>${CONFIDENCE_TAG[r.confidence] || ''}${r.src ? `<small><a href="${esc(r.src.url)}" target="_blank" rel="noopener">${esc(r.src.label)} ↗</a></small>` : ''}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="hint">這條航線找不到適用的固定哩程表。</p>'}
+    <p class="hint">以直線距離或區域估算，最低（Saver）價格；實際轉機路線、旺季與燃油附加費可能讓價格不同。${dyn.length ? `${esc(dyn.join('、'))} 為動態定價，不列入。` : ''}</p>
+    <button type="button" class="outline" id="need-search">用航線查詢找實際座位</button>`;
+  $('#need-search').addEventListener('click', () => {
+    pickers.origin.set([need.origin]);
+    pickers.destination.set([need.destination]);
+    const cab = $(`#search-form input[name=cabin][value="${c}"]`);
+    if (cab) cab.checked = true;
+    showTab('search');
+    $('#search-form .dp-btn').focus();
+    toast('選好出發日期後按「搜尋機位」');
+  });
+}
+
+// ---------- daily deals (shown on the search page before searching) ----------
+const dealsState = { cabin: 'J', body: null };
+async function loadDeals() {
+  const host = $('#deals');
+  if (!host) return;
+  try {
+    dealsState.body = await api('/api/deals');
+    renderDeals();
+  } catch {
+    host.innerHTML = '';
+  }
+}
+function renderDeals() {
+  const host = $('#deals');
+  const body = dealsState.body;
+  if (!host || !body) return;
+  const groups = body.groups.filter((g) => g.cabin === dealsState.cabin && g.items.length);
+  if (!body.groups.some((g) => g.items.length)) { host.innerHTML = ''; return; }
+  host.innerHTML = `<div class="deals-head"><h2 class="section-title">今日好康 <small>台北出發最便宜的獎勵位・${body.generatedAt ? `${ago(body.generatedAt)}整理` : ''}${body.mock ? '（示範資料）' : ''}</small></h2>
+    <fieldset class="seg" aria-label="艙等">${[['J', '商務'], ['F', '頭等']].map(([k, l]) => `<label><input type="radio" name="deal-cabin" value="${k}" ${dealsState.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset></div>
+    ${groups.map((g) => `<div class="deal-group"><h3 class="sub">${esc(g.name)}</h3><div class="deal-row">${g.items.slice(0, 4).map((d) => `
+      <button type="button" class="deal-mini" data-deal="${esc(d.origin)}|${esc(d.destination)}|${esc(d.date)}">
+        <span class="dm-route">${esc(d.origin)} → ${esc(d.destination)} <small>${esc(airportCity(d.destination))}</small></span>
+        <span class="dm-miles">${fmt(d.miles)} <small>哩</small></span>
+        <span class="dm-meta">${mmdd(d.date)}（${dowOf(d.date)}）· ${esc(srcName(d.source))}${d.direct ? ' · 直飛' : ''}</span>
+      </button>`).join('')}</div></div>`).join('') || '<p class="hint">這個艙等今天沒有整理到好康。</p>'}
+    <p class="hint">每天早上整理一次，座位可能已被訂走；點卡片會查那一天前後三天。</p>`;
+  $$('input[name=deal-cabin]', host).forEach((i) => i.addEventListener('change', () => { dealsState.cabin = i.value; renderDeals(); }));
+  $$('[data-deal]', host).forEach((b) => b.addEventListener('click', () => {
+    const [o, d, date] = b.dataset.deal.split('|');
+    const s = date < isoDateFrom(isoDate(0), 3) ? isoDate(0) : isoDateFrom(date, -3);
+    applyShare(new URLSearchParams({ o, d, s, e: isoDateFrom(date, 3), c: dealsState.cabin }));
+  }));
+}
+
+// ---------- explore map (Leaflet, loaded on first use) ----------
+let leafletReady = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  leafletReady ||= new Promise((resolve, reject) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css';
+    document.head.append(css);
+    const js = document.createElement('script');
+    js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+    js.onload = () => resolve();
+    js.onerror = () => { leafletReady = null; reject(new Error('地圖元件載入失敗，請檢查網路後再試')); };
+    document.head.append(js);
+  });
+  return leafletReady;
+}
+const isDark = () => document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+let exMap = null;
+async function renderExploreMap(rows) {
+  const box = $('#ex-table');
+  box.innerHTML = '<div id="ex-map" class="ex-map"><p class="hint">地圖載入中…</p></div><p class="hint">圓圈是目的地，數字是最低哩數（千哩）；點圓圈看細節。</p>';
+  try {
+    await loadLeaflet();
+  } catch (err) {
+    box.innerHTML = `<p class="status error">${esc(err.message)}</p>`;
+    return;
+  }
+  if (!$('#ex-map')) return;
+  $('#ex-map').innerHTML = '';
+  if (exMap) { exMap.remove(); exMap = null; }
+  const byDest = new Map();
+  for (const r of rows) {
+    const g = byDest.get(r.destination) || { code: r.destination, min: Infinity, n: 0, best: null };
+    g.n++;
+    if (r.miles < g.min) { g.min = r.miles; g.best = r; }
+    byDest.set(r.destination, g);
+  }
+  const origins = new Set(rows.map((r) => r.origin));
+  const L = window.L;
+  exMap = L.map('ex-map', { worldCopyJump: true, scrollWheelZoom: false });
+  L.tileLayer(`https://{s}.basemaps.cartocdn.com/${isDark() ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, {
+    maxZoom: 12, subdomains: 'abcd',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  }).addTo(exMap);
+  const pts = [];
+  const mins = [...byDest.values()].map((g) => g.min).sort((a, b) => a - b);
+  const tier = (m) => (mins.length < 2 ? 0 : Math.min(3, Math.floor((mins.indexOf(m) / (mins.length - 1)) * 4)));
+  for (const code of origins) {
+    const a = AP.byCode.get(code);
+    if (a?.lat == null) continue;
+    L.circleMarker([a.lat, a.lon], { radius: 4, color: '#6b5d50', weight: 1, fillOpacity: 0.6 }).bindTooltip(`${code} 出發`).addTo(exMap);
+  }
+  for (const g of byDest.values()) {
+    const a = AP.byCode.get(g.code);
+    if (a?.lat == null) continue;
+    pts.push([a.lat, a.lon]);
+    const icon = L.divIcon({ className: `map-pin t${tier(g.min)}`, html: `<span>${Math.round(g.min / 1000)}</span>`, iconSize: [34, 34] });
+    const m = L.marker([a.lat, a.lon], { icon, title: `${g.code} ${airportCity(g.code)}` }).addTo(exMap);
+    m.bindPopup(`<b>${esc(g.code)} ${esc(airportCity(g.code))}</b><br>最低 <b>${fmt(g.min)}</b> 哩・${g.n} 筆<br>${mmdd(g.best.date)} ${esc(g.best.origin)} 出發・${esc(g.best.airlines)}
+      <div class="map-actions"><button type="button" data-map-dest="${esc(g.code)}">只看這裡</button><button type="button" data-map-trip="${esc(g.best.id)}" data-title="${esc(titleOf(g.best))}">看最便宜航班</button></div>`);
+  }
+  if (pts.length) exMap.fitBounds(pts, { padding: [30, 30], maxZoom: 6 });
+  else exMap.setView([25, 121], 3);
+}
+document.addEventListener('click', (e) => {
+  const dest = e.target.closest?.('[data-map-dest]');
+  if (dest) {
+    ex.f.destination = new Set([dest.dataset.mapDest]);
+    $$('#ex-filters [data-mp="destination"] .mp-opt input').forEach((i) => (i.checked = i.value === dest.dataset.mapDest));
+    ex.view = 'table';
+    ex.shown = PAGE;
+    renderExplore();
+    return;
+  }
+  const trip = e.target.closest?.('[data-map-trip]');
+  if (trip) openTrips(trip.dataset.mapTrip, trip.dataset.title, ex.cabin);
+});
+
+// ---------- trip planner (this browser; shareable by link) ----------
+const PLAN_KEY = 'plan:v1';
+const MAX_LEGS = 12;
+// Strictly validate anything that comes from storage or a shared link before rendering it.
+function cleanLeg(x) {
+  if (!x || typeof x !== 'object') return null;
+  const str = (v, re, max) => (typeof v === 'string' && v.length <= max && re.test(v) ? v : null);
+  const num = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 1e9 ? v : null);
+  const leg = {
+    k: x.k === 'c' ? 'c' : x.k === 'a' ? 'a' : null,
+    date: str(x.date, /^\d{4}-\d{2}-\d{2}$/, 10),
+    from: str(x.from, /^[A-Z]{3}$/, 3),
+    to: str(x.to, /^[A-Z]{3}$/, 3),
+    flights: str(x.flights ?? '', /^[A-Z0-9 ,/·-]*$/, 60) ?? '',
+    cabin: str(x.cabin, /^[YWJF]$/, 1) || 'Y',
+    pax: Math.min(9, Math.max(1, Math.floor(num(x.pax) || 1))),
+    miles: num(x.miles),
+    program: str(x.program ?? '', /^[a-z_]{0,30}$/, 30) || '',
+    tax: x.tax && num(x.tax.amount) != null && str(x.tax.cur ?? '', /^[A-Z]{0,3}$/, 3) != null ? { amount: x.tax.amount, cur: x.tax.cur || '' } : null,
+    price: num(x.price),
+    note: typeof x.note === 'string' ? x.note.slice(0, 30) : '',
+  };
+  return leg.k && leg.date && leg.from && leg.to ? leg : null;
+}
+function cleanPlan(p) {
+  const legs = Array.isArray(p?.legs) ? p.legs.map(cleanLeg).filter(Boolean).slice(0, MAX_LEGS) : [];
+  return { name: typeof p?.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 40) : '我的行程', legs };
+}
+let plan = { name: '我的行程', legs: [] };
+let sharedPlan = null;
+function savePlan() { store.set(PLAN_KEY, plan); renderPlan(); }
+function addLegs(legs) {
+  const clean = legs.map(cleanLeg).filter(Boolean);
+  if (plan.legs.length + clean.length > MAX_LEGS) { toast(`行程最多 ${MAX_LEGS} 段`); return; }
+  plan.legs.push(...clean);
+  plan.legs.sort((a, b) => a.date.localeCompare(b.date));
+  savePlan();
+  toast('已加入「我的行程」（在航線查詢頁下方）');
+}
+function awardLeg(t, pax) {
+  const cabin = { economy: 'Y', premium: 'W', business: 'J', first: 'F' }[t.cabin] || 'J';
+  return { k: 'a', date: (t.departsAt || '').slice(0, 10), from: t.segments[0]?.from, to: t.segments.at(-1)?.to, flights: String(t.flightNumbers || '').toUpperCase().replace(/[^A-Z0-9 ,/·-]/g, '').slice(0, 60), cabin, pax: pax || 1, miles: t.miles, program: t.source, tax: t.taxes != null ? { amount: t.taxes / 100, cur: (t.taxesCurrency || '').toUpperCase().slice(0, 3) } : null };
+}
+function cashLegs() {
+  const r = cash.req;
+  const { out, back } = cash.chosen;
+  const fl = (o) => o.segments.map((s) => (s.flightNumber || '').toUpperCase()).join(' / ').replace(/[^A-Z0-9 ,/·-]/g, '').slice(0, 60);
+  const total = (back || out).price;
+  const legs = [{ k: 'c', date: r.depart, from: out.segments[0].from.code, to: out.segments.at(-1).to.code, flights: fl(out), cabin: r.cabin, pax: r.adults, price: total, note: back ? '來回總價' : '' }];
+  if (back) legs.push({ k: 'c', date: r.ret, from: back.segments[0].from.code, to: back.segments.at(-1).to.code, flights: fl(back), cabin: r.cabin, pax: r.adults, price: null, note: '含在去程票價' });
+  return legs;
+}
+
+function planHtml(p, editable) {
+  if (!p.legs.length) return '<p class="hint">還沒有航段。在航班明細按「＋ 加入我的行程」，或在買機票選好航班後加入。可以把里程票和現金票混搭，例如去程用哩程、回程買票。</p>';
+  const milesBy = {};
+  const taxBy = {};
+  let cashTotal = 0;
+  for (const l of p.legs) {
+    if (l.k === 'a' && l.miles) milesBy[l.program] = (milesBy[l.program] || 0) + l.miles * l.pax;
+    if (l.k === 'a' && l.tax) taxBy[l.tax.cur || '?'] = (taxBy[l.tax.cur || '?'] || 0) + l.tax.amount * l.pax;
+    if (l.k === 'c' && l.price) cashTotal += l.price;
+  }
+  const rows = p.legs.map((l, i) => `<tr>
+    <td>${mmdd(l.date)}（${dowOf(l.date)}）</td><td><b>${esc(l.from)} → ${esc(l.to)}</b><small>${esc(l.flights)}</small></td><td>${CABIN_LABEL[l.cabin]}${l.pax > 1 ? `・${l.pax} 人` : ''}</td>
+    <td>${l.k === 'a' ? `<b>${fmt(l.miles * l.pax)} 哩</b><small>${esc(programName(l.program))}${l.tax ? `・稅 ${esc(l.tax.cur)} ${fmt(Math.round(l.tax.amount * l.pax))}` : ''}</small>` : l.price ? `<b>NT$${fmt(l.price)}</b><small>現金票${l.note ? `・${esc(l.note)}` : ''}</small>` : `<small>現金票・${esc(l.note)}</small>`}</td>
+    ${editable ? `<td><button type="button" class="linklike" data-leg-rm="${i}" aria-label="移除這段">✕</button></td>` : ''}</tr>`).join('');
+  const sum = [
+    ...Object.entries(milesBy).map(([k, v]) => `${esc(programName(k))} <b>${fmt(v)} 哩</b>`),
+    ...Object.entries(taxBy).map(([c, v]) => `稅金 ${esc(c === '?' ? '' : c)} <b>${fmt(Math.round(v))}</b>`),
+    cashTotal ? `現金票 <b>NT$${fmt(cashTotal)}</b>` : '',
+  ].filter(Boolean).join('　');
+  return `<div class="table-wrap"><table class="plan-table"><tbody>${rows}</tbody></table></div><p class="plan-sum">合計：${sum}</p>`;
+}
+function renderPlan() {
+  const body = $('#plan-body');
+  if (!body) return;
+  $('#plan-count').textContent = plan.legs.length ? `（${plan.legs.length} 段）` : '';
+  body.innerHTML = `${sharedPlan ? `<div class="plan-shared"><b>朋友分享的行程：${esc(sharedPlan.name)}</b>${planHtml(sharedPlan, false)}
+      <div class="plan-actions"><button type="button" class="primary small" id="plan-import">存成我的行程</button><button type="button" class="outline" id="plan-dismiss">不用了</button></div></div>` : ''}
+    <label class="field plan-name">行程名稱<input id="plan-name" maxlength="40" value="${esc(plan.name)}"></label>
+    ${planHtml(plan, true)}
+    ${plan.legs.length ? '<div class="plan-actions"><button type="button" class="outline" id="plan-share">🔗 複製行程連結</button><button type="button" class="outline" id="plan-clear">清空</button></div>' : ''}`;
+  $('#plan-name').addEventListener('change', (e) => { plan.name = e.target.value.trim().slice(0, 40) || '我的行程'; store.set(PLAN_KEY, plan); });
+  $$('[data-leg-rm]', body).forEach((b) => b.addEventListener('click', () => { plan.legs.splice(Number(b.dataset.legRm), 1); savePlan(); }));
+  $('#plan-clear')?.addEventListener('click', () => { if (confirm('清空我的行程？')) { plan.legs = []; savePlan(); } });
+  $('#plan-share')?.addEventListener('click', async () => {
+    const json = JSON.stringify(plan);
+    const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const url = `${location.origin}/?plan=${b64}#search`;
+    try { await navigator.clipboard.writeText(url); toast('已複製行程連結'); } catch { prompt('複製這個連結：', url); }
+  });
+  $('#plan-import')?.addEventListener('click', () => { plan = sharedPlan; sharedPlan = null; savePlan(); toast('已存成我的行程'); });
+  $('#plan-dismiss')?.addEventListener('click', () => { sharedPlan = null; renderPlan(); });
+}
+function readSharedPlan() {
+  const raw = new URLSearchParams(location.search).get('plan');
+  if (!raw || raw.length > 6000) return;
+  try {
+    const bin = atob(raw.replace(/-/g, '+').replace(/_/g, '/'));
+    const p = cleanPlan(JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))));
+    if (p.legs.length) sharedPlan = p;
+  } catch { /* ignore a broken link */ }
+  history.replaceState(null, '', `${location.pathname}${location.hash}`);
+}
+
+// ---------- premium product filter ----------
+const productList = () => data.products?.products || [];
+function productMatches(prod, fleet) {
+  return (fleet || []).some((x) => {
+    const [carrier, ac] = x.split(':');
+    return carrier === prod.airline && prod.iata.includes(ac);
+  });
+}
+function productOfSegment(seg) {
+  const carrier = (seg.flight || '').slice(0, 2).toUpperCase();
+  const ac = String(seg.aircraftCode || '').toUpperCase();
+  return productList().filter((p) => p.airline === carrier && p.iata.includes(ac));
+}
+
+// ---------- wiring ----------
+function initFeatures() {
+  wallet = loadWallet();
+  plan = cleanPlan(store.get(PLAN_KEY, null));
+  readSharedPlan();
+  renderPlan();
+  if (sharedPlan) { $('#plan-panel').open = true; }
+  loadDeals();
+}

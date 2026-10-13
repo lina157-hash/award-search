@@ -7,6 +7,7 @@ const { createClient, normalizeAvailability, normalizeTrips, SeatsAeroError } = 
 const mock = require('./lib/mock');
 const { createCashClient, normalizeCash, CashError } = require('./lib/cash');
 const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = require('./lib/alerts');
+const { createDeals } = require('./lib/deals');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -17,7 +18,7 @@ const CASH_MODE = SERPAPI_KEY ? 'live' : MOCK ? 'mock' : 'off';
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products'];
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
 
@@ -66,6 +67,21 @@ const alerts = alertStore && createAlerts({
     return items.map(normalizeAvailability);
   },
 });
+// Daily deals from Taipei, refreshed by the same daily cron as the alerts and kept in the same Redis.
+const deals = createDeals({
+  store: REDIS_URL && REDIS_TOKEN ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'award-deals:v1' }) : memoryStore(),
+  search: async (params) => {
+    const { items } = await cached('deals:' + JSON.stringify(params), () => (MOCK ? { items: mock.mockSearch(params), hasMore: false } : client.search(params, { maxPages: 1 })));
+    return items.map(normalizeAvailability);
+  },
+});
+let dealsPending = null;
+async function handleDeals() {
+  // Concurrent first visitors share one build instead of each spending API calls.
+  dealsPending ||= deals.get().finally(() => { dealsPending = null; });
+  return { mock: MOCK, ...(await dealsPending) };
+}
+
 // Vercel's cron calls the run endpoint with the CRON_SECRET; people use the passcode (when one is set).
 function alertsAllowed(req) {
   const secret = (process.env.CRON_SECRET || '').trim();
@@ -86,9 +102,12 @@ function readJson(req, limit = 10_000) {
   });
 }
 async function handleAlerts(req, q, sub) {
-  if (!alerts) return { configured: false, email: false, alerts: [] };
+  if (sub === 'run' && !alertsAllowed(req)) throw Object.assign(new CashError('需要通關密碼才能管理提醒', 401), { code: 'passcode' });
+  // The daily cron also refreshes the deals list; a failure there must not stop the alert run.
+  const dealsRun = sub === 'run' ? await deals.refresh().then((d) => ({ deals: d.groups.reduce((n, g) => n + g.items.length, 0) }), (e) => ({ dealsError: e.message })) : {};
+  if (!alerts) return { configured: false, email: false, alerts: [], ...dealsRun };
   if (!alertsAllowed(req)) throw Object.assign(new CashError('需要通關密碼才能管理提醒', 401), { code: 'passcode' });
-  if (sub === 'run') return { configured: true, ...(await alerts.run()) };
+  if (sub === 'run') return { configured: true, ...dealsRun, ...(await alerts.run()) };
   if (req.method === 'POST') return { configured: true, ...(await alerts.add(await readJson(req))) };
   if (req.method === 'DELETE') { await alerts.remove(String(q.get('id') || '')); return { ok: true }; }
   return { configured: true, email: Boolean(alertMailer), alerts: await alerts.list() };
@@ -281,6 +300,7 @@ async function route(req, res) {
     }
     if (p === '/api/cash') return sendJson(res, 200, await handleCash(q, req));
     if (p === '/api/fx') return sendJson(res, 200, await handleFx());
+    if (p === '/api/deals') return sendJson(res, 200, await handleDeals());
     if (p === '/api/search') return sendJson(res, 200, await handleSearch(q));
     if (p === '/api/explore') return sendJson(res, 200, await handleExplore(q));
     if (p.startsWith('/api/trips/')) {

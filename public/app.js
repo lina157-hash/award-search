@@ -193,9 +193,9 @@ const splitCodes = (v) => v.split(/\s*[,，、]\s*/);
 const airportsReady = fetch('/airports.min.json').then((r) => r.json()).then((body) => {
   AP.groups = body.groups.map((g) => ({ ...g, enL: g.en.toLowerCase() }));
   for (const g of AP.groups) g.codes.forEach((c, i) => AP.rank.set(c, i)); // main airport first on ties
-  AP.list = body.airports.map(([code, city, name, country, , large, zh, alt]) => {
+  AP.list = body.airports.map(([code, city, name, country, , large, zh, alt, lat, lon]) => {
     const c = regionName(country);
-    const a = { code, city, name, country, large, zh, alt, cn: c.zh, cnL: c.en.toLowerCase(), cityL: city.toLowerCase(), altL: alt.toLowerCase() };
+    const a = { code, city, name, country, large, zh, alt, lat, lon, cn: c.zh, cnL: c.en.toLowerCase(), cityL: city.toLowerCase(), altL: alt.toLowerCase() };
     a.words = `${city} ${alt} ${name}`.toLowerCase().split(/[\s\-/'.]+/).filter(Boolean);
     a.hay = `${city} ${alt} ${name} ${c.en}`.toLowerCase();
     return a;
@@ -789,7 +789,7 @@ async function runSearch(share) {
   if (share.get('a')) params.set('carriers', share.get('a'));
   else if (share.get('al')) params.set('carriers', allianceCarriers(share.get('al')).join(','));
   if (share.get('direct')) params.set('direct', '1');
-  Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, allRows: false, results: [], start: share.get('s'), end: share.get('e') || share.get('s'), pax: Number(share.get('n')) || 0, withTaxes: false });
+  Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, allRows: false, results: [], start: share.get('s'), end: share.get('e') || share.get('s'), pax: Number(share.get('n')) || 0, withTaxes: false, product: '', route: `${share.get('o')} → ${share.get('d')}` });
   const status = $('#search-status');
   status.className = 'status';
   status.textContent = '正在搜尋各里程計畫的獎勵位…';
@@ -842,7 +842,39 @@ async function copyShare() {
 // Seat counts of 0/null mean "unknown", so the people filter only drops rows that are known to be short.
 const enoughSeats = (seats, pax) => !pax || !(seats > 0) || seats >= pax;
 function visibleRows() {
-  return state.results.filter((r) => r.cabins[state.cabin].available && !state.hidden.has(r.source) && enoughSeats(r.cabins[state.cabin].seats, state.pax));
+  const c = state.cabin;
+  const prod = state.product && state.withTaxes ? productList().find((p) => p.id === state.product) : null;
+  return state.results.filter((r) => r.cabins[c].available && !state.hidden.has(r.source) && enoughSeats(r.cabins[c].seats, state.pax)
+    && (!state.affordOnly || walletEmpty() || reach(r.source).total >= r.cabins[c].miles * Math.max(1, state.pax))
+    && (!prod || (!r.estimate && productMatches(prod, r.cabins[c].fleet))));
+}
+
+// Result filters that need extra data: my points, and a specific premium product (aircraft from the trips).
+function resultToolsHtml() {
+  const c = state.cabin;
+  const carriers = new Set(state.results.flatMap((r) => (r.cabins[c].available ? r.cabins[c].airlines.split(/,\s*/) : [])));
+  const prods = productList().filter((p) => p.cabin === c && carriers.has(p.airline));
+  if (state.product && !prods.some((p) => p.id === state.product)) state.product = '';
+  const chosen = prods.find((p) => p.id === state.product);
+  const prodNote = !chosen ? '' : !state.withTaxes ? '<span class="hint">日期範圍 45 天內才有機型資料，請縮短範圍再用這個篩選。</span>'
+    : chosen.caveat ? `<span class="hint">ⓘ ${esc(chosen.caveat)}</span>` : '';
+  return `<div class="result-tools">
+    <label class="switch"><input type="checkbox" id="afford-only" ${state.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>
+    ${prods.length ? `<label class="field compact">艙位產品<select id="product-filter"><option value="">全部</option>${prods.map((p) => `<option value="${esc(p.id)}" ${state.product === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
+    ${prodNote}
+  </div>`;
+}
+function bindResultTools(root) {
+  $('#afford-only', root)?.addEventListener('change', (e) => {
+    if (e.target.checked && walletEmpty()) {
+      e.target.checked = false;
+      toast('先到「點數換算器 › 我的點數」填入你的點數');
+      return;
+    }
+    state.affordOnly = e.target.checked;
+    renderSearch();
+  });
+  $('#product-filter', root)?.addEventListener('change', (e) => { state.product = e.target.value; renderSearch(); });
 }
 
 function renderSearch() {
@@ -866,10 +898,14 @@ function renderSearch() {
   const cabinSeg = `<fieldset class="seg" aria-label="切換艙等">${Object.entries(CABIN_LABEL).map(([k, l]) =>
     `<label><input type="radio" name="view-cabin" value="${k}" ${k === c ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
 
+  const programs = [...new Set(state.results.map((r) => r.source))];
+  const release = releaseNoticeHtml(programs, state.start, state.end, state.route || '');
   if (!rows.length) {
-    root.innerHTML = `<div class="section-title">${cabinSeg}</div>
-      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。</p></div>`;
+    const filtered = state.affordOnly || state.product;
+    root.innerHTML = `<div class="section-title">${cabinSeg}</div>${resultToolsHtml()}${release}
+      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」或改選全部艙位產品。' : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>`;
     bindCabin(root);
+    bindResultTools(root);
     return;
   }
 
@@ -890,6 +926,8 @@ function renderSearch() {
 
   root.innerHTML = `
     <div class="section-title">${cabinSeg}</div>
+    ${resultToolsHtml()}
+    ${release}
     ${amReal.length ? `<div class="am-callout">
       <div><b>國泰 亞洲萬里通</b>　最低 <b class="am-miles">${fmt(amReal[0].cabins[c].miles)} 哩</b>（${mmdd(amReal[0].date)} ${esc(amReal[0].origin)} → ${esc(amReal[0].destination)}，${esc(amReal[0].cabins[c].airlines)}），共 ${amReal.length} 個日期／航線有位</div>
       <div class="hint">來自 seats.aero 的亞洲萬里通實際資料。可在下方表格「國泰 亞洲萬里通」欄點選看航班。</div>
@@ -907,6 +945,7 @@ function renderSearch() {
     ${matrixHtml(rows, allSources.filter((s) => !state.hidden.has(s)))}`;
 
   bindCabin(root);
+  bindResultTools(root);
   $$('[data-goto]', root).forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.goto); $('#am-chart')?.scrollIntoView(); }));
   $$('.deal, td.cell[data-id]', root).forEach((el) => el.addEventListener('click', () => openTrips(el.dataset.id, el.dataset.title, state.cabin)));
   $$('.chip[data-src]', root).forEach((b) => b.addEventListener('click', () => {
@@ -1009,7 +1048,8 @@ function matrixHtml(rows, sources) {
       return `<td class="cell est" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small>${esc(x.airlines)} · ${x.kind === 'cx' ? '國泰表' : '夥伴表'}</small></td>`;
     }
     const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : '', isStale(r.updatedAt) ? 'stale' : ''].join(' ');
-    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : ''}">${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}<small>${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
+    const ph = phantomWarnings(r.source, x.airlines);
+    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${ph.length ? '<i class="ph" aria-label="可能是幻影機位">⚠</i>' : ''}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}<small>${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
   };
   return `<div class="table-wrap"><table>
     <thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}</th>`).join('')}</tr></thead>
@@ -1022,6 +1062,13 @@ function matrixHtml(rows, sources) {
 
 // ---------- trip details ----------
 // Seat map sites have no public API, so we link out: SeatMaps per aircraft, AeroLOPA per airline fleet.
+const AIRCRAFT_NAMES = {
+  '77W': 'Boeing 777-300ER', '77L': 'Boeing 777-200LR', '772': 'Boeing 777-200', '773': 'Boeing 777-300', '779': 'Boeing 777-9', '788': 'Boeing 787-8', '789': 'Boeing 787-9', '781': 'Boeing 787-10',
+  '744': 'Boeing 747-400', '748': 'Boeing 747-8', '738': 'Boeing 737-800', '739': 'Boeing 737-900', '7M8': 'Boeing 737 MAX 8', '7M9': 'Boeing 737 MAX 9', '763': 'Boeing 767-300', '764': 'Boeing 767-400',
+  '359': 'Airbus A350-900', '351': 'Airbus A350-1000', '388': 'Airbus A380', '332': 'Airbus A330-200', '333': 'Airbus A330-300', '339': 'Airbus A330-900neo', '338': 'Airbus A330-800neo',
+  '321': 'Airbus A321', '32N': 'Airbus A320neo', '32Q': 'Airbus A321neo', '320': 'Airbus A320', '319': 'Airbus A319', '223': 'Airbus A220-300', '221': 'Airbus A220-100', 'E90': 'Embraer 190', 'E75': 'Embraer 175',
+};
+const aircraftLabel = (s) => (s.aircraft && s.aircraft !== s.aircraftCode ? s.aircraft : AIRCRAFT_NAMES[String(s.aircraftCode || '').toUpperCase()] || s.aircraft || '');
 const SEATMAPS_SLUG = {
   CX: 'cx-cathay-pacific', BR: 'br-eva-air', CI: 'ci-china-airlines', AF: 'af-air-france', AC: 'ac-air-canada', KL: 'kl-klm',
   JL: 'jl-jal', NH: 'nh-ana', SQ: 'sq-singapore-airlines', DL: 'dl-delta', BA: 'ba-british-airways', QR: 'qr-qatar-airways',
@@ -1034,24 +1081,26 @@ function seatLinks(seg) {
   const code = (seg.flight || '').slice(0, 2).toUpperCase();
   const links = [];
   const slug = SEATMAPS_SLUG[code];
+  const acName = aircraftLabel(seg);
   if (slug) {
-    const ac = /^(boeing|airbus)\b/i.test(seg.aircraft || '') ? `${seg.aircraft.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}/` : '';
+    const ac = /^(boeing|airbus)\b/i.test(acName) ? `${acName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}/` : '';
     links.push(`<a href="https://seatmaps.com/airlines/${slug}/${ac}" target="_blank" rel="noopener">SeatMaps ↗</a>`);
   }
   if (/^[A-Z0-9]{2}$/.test(code)) links.push(`<a href="https://www.aerolopa.com/${code.toLowerCase()}" target="_blank" rel="noopener">AeroLOPA ↗</a>`);
   return links.length ? `<span class="seatmap">座位圖 ${links.join(' ')}</span>` : '';
 }
 
-function tripHtml(t) {
+function tripHtml(t, i) {
   const taxes = t.taxes != null ? `${esc(t.taxesSymbol || '')}${fmt(t.taxes / 100)} ${esc(t.taxesCurrency || '')}` : '稅金未提供';
   const dur = t.durationMin ? `${Math.floor(t.durationMin / 60)} 小時 ${t.durationMin % 60} 分` : '';
   return `<div class="trip">
     <div class="trip-top">
       <div><b>${esc(t.flightNumbers)}</b><span class="pill">${esc(CABIN_ZH[t.cabin] || t.cabin)}</span><span class="pill">${t.stops ? `轉機 ${t.stops} 次` : '直飛'}</span>${t.seats ? `<span class="pill">剩 ${t.seats} 位</span>` : ''}</div>
-      <div><span class="miles">${fmt(t.miles)} 哩</span> ＋ ${taxes}</div>
+      <div><span class="miles">${fmt(t.miles)} 哩</span> ＋ ${taxes}${i != null ? `<button type="button" class="linklike add-plan" data-plan="${i}">＋ 加入我的行程</button>` : ''}</div>
     </div>
+    ${phantomHtml(t.source, t.carriers)}
     ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
-      <span></span><span class="ac">✈ ${esc(s.aircraft || '機型未提供')}${s.aircraftCode ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
+      <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod">${esc(p.name)}</span>`).join('')}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
     ${amTripLine(t)}
   </div>`;
@@ -1082,11 +1131,16 @@ async function openTrips(id, title, cabin) {
     const byMiles = (a, b) => a.miles - b.miles || a.stops - b.stops;
     const main = body.trips.filter((t) => !want || t.cabin === want).sort(byMiles);
     const rest = body.trips.filter((t) => want && t.cabin !== want).sort(byMiles);
+    const all = [...main, ...rest];
+    const pax = $('#tab-search').hidden ? Number(ex.f?.pax) || 1 : state.pax || 1;
+    const first = main[0] || rest[0];
     $('#trip-body').innerHTML = (links ? `<div class="links">${links}</div>` : '') +
+      (first ? howToBookHtml(first.source, first.miles * pax) : '') +
       (main.length && cashCfg.enabled ? `<div class="value-box" id="value-box"><button type="button" class="outline" id="value-btn">💵 和當天現金票比一比，算每哩價值（用 1 次查價額度）</button></div>` : '') +
-      (main.map(tripHtml).join('') || '<p class="hint">此艙等沒有航班明細。</p>') +
-      (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map(tripHtml).join('')}</details>` : '');
+      (main.map((t, i) => tripHtml(t, i)).join('') || '<p class="hint">此艙等沒有航班明細。</p>') +
+      (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map((t, i) => tripHtml(t, main.length + i)).join('')}</details>` : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
+    $$('[data-plan]', $('#trip-body')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
   } catch (err) {
     if (!fresh()) return;
     $('#trip-body').innerHTML = `<p class="status error">${esc(err.message)}</p>`;
@@ -1128,7 +1182,7 @@ $('#trip-dialog').addEventListener('click', (e) => { if (e.target.id === 'trip-d
 
 // ---------- explore ----------
 const PAGE = 200;
-const ex = { rows: [], cabin: 'J', sort: { key: 'miles', dir: 1 }, f: {}, shown: PAGE };
+const ex = { rows: [], cabin: 'J', sort: { key: 'miles', dir: 1 }, f: {}, shown: PAGE, view: 'table' };
 const airportCity = (code) => { const a = AP.byCode.get(code); return a ? a.zh || a.city : ''; };
 
 $('#explore-form').addEventListener('submit', async (e) => {
@@ -1299,6 +1353,7 @@ function renderExplore() {
           <button type="button" class="outline" id="ex-reset">清除篩選</button>
         </div>
       </div>
+      <div id="ex-view"></div>
       <div id="ex-table"></div>`;
     $$('#ex-filters [data-f]').forEach((el) => el.addEventListener(el.type === 'number' ? 'input' : 'change', () => {
       const k = el.dataset.f;
@@ -1320,6 +1375,11 @@ function renderExplore() {
   const rows = exploreFiltered();
   status.className = 'status';
   status.innerHTML = `<span>共 <b>${all.length}</b> 筆${ex.mock ? '（示範資料）' : ''}，篩選後 <b>${rows.length}</b> 筆${ex.truncated ? '。結果超過 5,000 筆，請縮小日期或區域範圍以看到全部' : ''}</span>`;
+
+  $('#ex-view').innerHTML = `<fieldset class="seg" aria-label="顯示方式">${[['table', '表格'], ['map', '地圖']].map(([k, l]) => `<label><input type="radio" name="ex-view" value="${k}" ${ex.view === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
+  $$('input[name=ex-view]').forEach((i) => i.addEventListener('change', () => { ex.view = i.value; renderExplore(); }));
+  if (ex.view === 'map') { renderExploreMap(rows); return; }
+  if (exMap) { exMap.remove(); exMap = null; }
 
   const cols = [['date', '日期'], ['route', '航線'], ['miles', '里程'], ['airlines', '航空公司'], ['direct', '直飛'], ['seats', '剩餘座位'], ['distance', '距離（哩）'], ['updatedAt', '資料更新']];
   const arrow = (k) => (ex.sort.key === k ? (ex.sort.dir > 0 ? ' ▲' : ' ▼') : '');
@@ -1543,6 +1603,7 @@ function renderChosen(box) {
     <div class="chosen-total">
       <div><span>${back ? '來回' : '單程'}總價${r.adults > 1 ? `・${r.adults} 位成人` : ''}${CABIN_LABEL[r.cabin] ? `・${CABIN_LABEL[r.cabin]}` : ''}</span><b>${money(total)}</b>${per ? `<small>每人約 ${money(per)}</small>` : ''}</div>
       <div class="chosen-actions">
+        <button type="button" class="outline" id="cash-plan">＋ 加入我的行程</button>
         ${back ? '<button type="button" class="outline" id="cash-reback">重新選回程</button>' : ''}
         <button type="button" class="outline" id="cash-back">重新選去程</button>
       </div>
@@ -1559,6 +1620,7 @@ function renderChosen(box) {
     el.addEventListener('click', toggle);
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
   });
+  $('#cash-plan').addEventListener('click', () => addLegs(cashLegs()));
   $('#cash-reback')?.addEventListener('click', () => { seq.booking++; cash.chosen = null; cash.booking = null; renderCash(); });
   $('#cash-back').addEventListener('click', () => { seq.booking++; Object.assign(cash, { chosen: null, booking: null, returns: null, outbound: null }); renderCash(); });
   renderBooking();
@@ -1758,6 +1820,7 @@ function renderRules() {
       <input type="search" id="rules-q" placeholder="搜尋規則，例如：中停、燃油、效期">
     </div>
     <div class="cards" id="program-cards"></div>
+    ${releaseTableHtml()}
     ${pointsHtml()}
     ${glossary.sections.map((s) => `<h2 class="section">${esc(s.title)}</h2><div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div>`).join('')}`;
 
@@ -1789,10 +1852,14 @@ function renderPoints() {
   if (!host) return;
   const pts = data.points;
   const calc = pts && calcHtml(pts);
-  host.innerHTML = calc
-    ? `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積里程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉里程」</a>。</p>`
-    : '<p class="hint">點數資料載入失敗，請重新整理。</p>';
-  bindCalc();
+  if (!calc) { host.innerHTML = '<p class="hint">點數資料載入失敗，請重新整理。</p>'; return; }
+  const view = pointsView.view;
+  host.innerHTML = pointsTabsHtml() + (view === 'wallet' ? walletHtml() : view === 'need' ? needHtml()
+    : `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積里程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉里程」</a>。</p>`);
+  bindPointsTabs(host);
+  if (view === 'wallet') bindWallet(host);
+  else if (view === 'need') bindNeed(host);
+  else bindCalc();
   bindTabLinks(host);
 }
 
@@ -1827,9 +1894,9 @@ function calcHtml(pts) {
   const banks = [...new Set(sources.map((s) => s.bank))];
   return `<div class="calc" id="calc">
     <div class="calc-bar">
-      <label class="field">我想算<select id="calc-mode"><option value="p2m">手上的點數能換多少哩</option><option value="m2p">想要的哩程需要多少點</option></select></label>
+      <label class="field">我想算<select id="calc-mode">${[['p2m', '手上的點數能換多少哩'], ['m2p', '想要的哩程需要多少點'], ['mine', '用「我的點數」各自計算']].map(([v, l]) => `<option value="${v}" ${calcState.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="field"><span id="calc-amount-label">點數（假設每家都有這麼多）</span><input type="number" id="calc-amount" min="0" step="100" value="${calcState.amount}" inputmode="numeric"></label>
-      <label class="field">銀行<select id="calc-bank"><option value="">全部銀行</option>${banks.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join('')}</select></label>
+      <label class="field">銀行<select id="calc-bank"><option value="">全部銀行</option>${banks.map((b) => `<option value="${esc(b)}" ${calcState.bank === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select></label>
     </div>
     <div class="calc-options">
       <div class="presets calc-presets"><span class="presets-label">快速填入</span>${CALC_PRESETS.map((n) => `<button type="button" data-n="${n}">${fmt(n)}</button>`).join('')}</div>
@@ -1871,10 +1938,19 @@ function renderCalc() {
   const table = $('#calc-table');
   if (!table) return;
   const pts = data.points;
-  const { mode, amount, bank, detail } = calcState;
+  const { amount: typed, bank, detail } = calcState;
+  const mine = calcState.mode === 'mine';
+  const mode = mine ? 'p2m' : calcState.mode;
   const unit = mode === 'p2m' ? '哩' : '點';
   const ratioText = (r) => `${fmt(r.points)} 點 = ${fmt(r.miles)} 哩`;
-  const sources = pts.calc.sources.filter((s) => !bank || s.bank === bank);
+  // In "my points" mode each bank row converts its own balance from the wallet.
+  const sources = pts.calc.sources.filter((s) => (!bank || s.bank === bank) && (!mine || wallet.banks[s.id]));
+  const amountOf = (s) => (mine ? wallet.banks[s.id] || 0 : typed);
+  const amount = mine ? (sources.length ? 1 : 0) : typed;
+  if (mine && !sources.length) {
+    table.innerHTML = `<tbody><tr><td class="none">還沒有填點數。請先到上方「我的點數」填入各銀行的點數。</td></tr></tbody>`;
+    return;
+  }
   if (!(amount > 0)) {
     table.innerHTML = `<thead><tr><th>請輸入${mode === 'p2m' ? '點數' : '哩程'}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody><tr><td colspan="${CALC_COLS.length + 1}" class="none">輸入數字後，這裡會列出每家銀行能換到的哩程。</td></tr></tbody>`;
     return;
@@ -1883,7 +1959,7 @@ function renderCalc() {
   const best = {};
   for (const s of sources) for (const r of s.rates) {
     if (r.to === 'other') continue;
-    const v = calcConvert(r, amount, mode).value;
+    const v = calcConvert(r, amountOf(s), mode).value;
     if (!v) continue;
     if (best[r.to] == null || (mode === 'p2m' ? v > best[r.to] : v < best[r.to])) best[r.to] = v;
   }
@@ -1892,7 +1968,7 @@ function renderCalc() {
     if (!rates.length) return '<td class="none">—</td>';
     if (col !== 'other') {
       const r = rates[0];
-      const out = calcConvert(r, amount, mode);
+      const out = calcConvert(r, amountOf(s), mode);
       if (!out.value) return `<td class="short"><span>${esc(out.short)}</span>${detail ? `<small>${ratioText(r)}</small>` : ''}</td>`;
       const tags = detail && r.secondary ? '<small class="warn">第三方比率</small>' : '';
       const extra = detail ? `<small>${ratioText(r)}</small>${out.note ? `<small>${esc(out.note)}</small>` : ''}${tags}` : '';
@@ -1906,14 +1982,14 @@ function renderCalc() {
       groups.get(k).names.push(r.name);
     }
     const lines = [...groups.values()].map(({ rate, names }) => {
-      const out = calcConvert(rate, amount, mode);
+      const out = calcConvert(rate, amountOf(s), mode);
       const label = names.length > 3 ? `${names.slice(0, 3).join('、')}等 ${names.length} 家` : names.join('、');
       return `<div><b>${out.value ? `${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}` : esc(out.short)}</b><small>${esc(label)}${detail ? `，${ratioText(rate)}` : ''}</small></div>`;
     });
     return `<td class="others">${lines.join('')}</td>`;
   };
-  const rows = sources.map((s) => `<tr><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${detail && s.confidence === 'verify' ? '<span class="tag verify">待核實</span>' : ''}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}</th>${CALC_COLS.map(([col]) => cell(s, col)).join('')}</tr>`);
-  table.innerHTML = `<thead><tr><th>${mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} 哩需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`;
+  const rows = sources.map((s) => `<tr><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${detail && s.confidence === 'verify' ? '<span class="tag verify">待核實</span>' : ''}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}</th>${CALC_COLS.map(([col]) => cell(s, col)).join('')}</tr>`);
+  table.innerHTML = `<thead><tr><th>${mine ? '我的點數可換' : mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} 哩需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`;
 }
 
 function bindCalc() {
@@ -1925,7 +2001,8 @@ function bindCalc() {
     calcState.amount = Math.max(0, Math.floor(Number(amountEl.value) || 0));
     calcState.bank = $('#calc-bank').value;
     calcState.detail = $('#calc-detail').checked;
-    $('#calc-amount-label').textContent = calcState.mode === 'p2m' ? '點數（假設每家都有這麼多）' : '想換到的哩程';
+    $('#calc-amount-label').textContent = calcState.mode === 'm2p' ? '想換到的哩程' : calcState.mode === 'mine' ? '點數（改用「我的點數」）' : '點數（假設每家都有這麼多）';
+    amountEl.disabled = calcState.mode === 'mine';
     $('.calc-table').classList.toggle('simple', !calcState.detail);
     $('#calc-note').textContent = `${calcState.detail ? data.points.calc.note || '' : ''} 底色標示的是該計畫最划算的來源。`.trim();
     renderCalc();
@@ -1934,8 +2011,8 @@ function bindCalc() {
   amountEl.addEventListener('input', sync);
   $('#calc-bank').addEventListener('change', sync);
   $('#calc-detail').addEventListener('change', sync);
-  $$('.calc-presets button').forEach((b) => b.addEventListener('click', () => { amountEl.value = b.dataset.n; sync(); }));
-  renderCalc();
+  $$('.calc-presets button').forEach((b) => b.addEventListener('click', () => { if (calcState.mode === 'mine') modeEl.value = 'p2m'; amountEl.value = b.dataset.n; sync(); }));
+  sync();
 }
 
 function bindPoints() {
@@ -2007,8 +2084,8 @@ function renderVersion(config) {
 
 // ---------- init ----------
 (async function init() {
-  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
-  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points] = files;
+  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
+  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points, data.booking, data.charts, data.products] = files;
   SOURCE_NAMES = data.sourceNames.names;
   $('#mock-banner').hidden = !config.mock;
   renderVersion(config);
@@ -2044,6 +2121,7 @@ function renderVersion(config) {
   datePickers.explore.set(isoDate(30), isoDate(44));
   cashForm.depart.min = isoDate(0);
   cashForm.return.min = isoDate(0);
+  initFeatures();
   renderRules();
   renderPoints();
 

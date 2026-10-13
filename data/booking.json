@@ -1,0 +1,742 @@
+{
+  "note": "Per-program booking channel, award release window and phantom-availability warnings; keys are seats.aero sources plus eva/ci/jal/ana/starlux.",
+  "programs": {
+    "united": {
+      "days": 337,
+      "partnerDays": null,
+      "windowNote": "聯合航空約出發前 337 天開放；全日空等夥伴雖較早釋出，仍須等 337 天",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": "電話訂位每張約 25 美元（白金卡／1K 免收）",
+        "note": "多數星空聯盟夥伴可線上訂；系統無法處理的行程需來電"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "AwardWallet：United 獎勵規則",
+          "url": "https://awardwallet.com/airlines/united-mileageplus/award-travel-rules/",
+          "official": false
+        },
+        {
+          "label": "AwardWallet 各計畫可訂天數",
+          "url": "https://awardwallet.com/blog/far-advance-can-book-airline-award-tickets/",
+          "official": false
+        }
+      ],
+      "phantom": [
+        {
+          "airlines": [
+            "LH",
+            "LX",
+            "OS",
+            "SN"
+          ],
+          "warning": "漢莎集團艙位常在聯合航空顯示卻無法開票，轉點前請先確認",
+          "sources": [
+            {
+              "label": "InsideFlyer: Lufthansa first class award space reappears but unbookable (2026-07-03)",
+              "url": "https://www.insideflyer.com/posts/lufthansa-first-class-award-space-reappears-but-unbookable"
+            },
+            {
+              "label": "Live and Let's Fly: Lufthansa phantom award space (2026-07-03)",
+              "url": "https://liveandletsfly.com/lufthansa-phantom-award-space/"
+            },
+            {
+              "label": "seats.aero docs: Why can't I book this flight with my miles?",
+              "url": "https://docs.seats.aero/article/41-why-can-t-i-book-this-flight-with-my-miles"
+            }
+          ]
+        },
+        {
+          "airlines": [
+            "BR"
+          ],
+          "warning": "長榮艙位曾在聯合航空大量出現卻無法訂到，請先致電確認",
+          "sources": [
+            {
+              "label": "Roame: Dealing With Phantom/Ghost Award Availability (EVA/United, 2024; upd. 2025-09)",
+              "url": "https://roame.travel/guides/phantom-space"
+            }
+          ]
+        }
+      ]
+    },
+    "aeroplan": {
+      "days": 355,
+      "partnerDays": null,
+      "windowNote": "官方未公布天數；第三方觀察約 355 天（部分來源稱可查至 360 天）",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": "客服中心訂位每筆 30 加幣",
+        "note": "官網訂位免手續費；夥伴航班每張另收 39 加幣夥伴訂位費"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "Aeroplan 機票獎勵政策",
+          "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/legal/aeroplan-flight-reward-policy.html",
+          "official": true
+        },
+        {
+          "label": "AwardWallet 各計畫可訂天數",
+          "url": "https://awardwallet.com/blog/far-advance-can-book-airline-award-tickets/",
+          "official": false
+        },
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        }
+      ],
+      "phantom": [
+        {
+          "airlines": [
+            "NH",
+            "LH",
+            "LX",
+            "OS",
+            "SN"
+          ],
+          "warning": "Aeroplan 顯示的全日空與漢莎集團艙位不一定能開票",
+          "sources": [
+            {
+              "label": "AwardFares: Phantom availability guide (2026-06-03)",
+              "url": "https://awardfares.com/blog/phantom-availability-guide/"
+            },
+            {
+              "label": "point.me: Phantom space in award booking (2025-09-24)",
+              "url": "https://www.point.me/insights/phantom-space-in-award-booking"
+            }
+          ]
+        },
+        {
+          "airlines": [
+            "UA"
+          ],
+          "warning": "聯合航空商務艙幾乎不再開放夥伴，Aeroplan 顯示的位子可能訂不到",
+          "sources": [
+            {
+              "label": "AwardWallet: Avoiding phantom award availability (2024-12, upd. 2026-04)",
+              "url": "https://awardwallet.com/blog/avoiding-phantom-award-availability/"
+            },
+            {
+              "label": "OMAAT: The sad decline of United Polaris award availability (2025-12)",
+              "url": "https://onemileatatime.com/?p=348930"
+            }
+          ]
+        }
+      ]
+    },
+    "american": {
+      "days": 331,
+      "partnerDays": null,
+      "windowNote": "出發前 331 天至起飛前 2 小時可訂；自家與夥伴相同（第三方：約美東午夜）",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": "無（2020 年起取消電話訂位費）",
+        "note": "多數夥伴可於 aa.com 訂；愛爾蘭航空、IndiGo 等需來電"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "AAdvantage 常見問題",
+          "url": "https://www.aa.com/web/i18n/aadvantage-program/answers-support/aadvantage-faq.html",
+          "official": true
+        },
+        {
+          "label": "AwardWallet：AA 獎勵規則",
+          "url": "https://awardwallet.com/blog/aa-award-travel-rules/",
+          "official": false
+        }
+      ],
+      "phantom": [
+        {
+          "airlines": [
+            "JL",
+            "AY"
+          ],
+          "warning": "AA 顯示的日航、芬航艙位偶有幻影機位，訂位時可能出錯",
+          "sources": [
+            {
+              "label": "AwardFares: Phantom availability guide (2026-06-03)",
+              "url": "https://awardfares.com/blog/phantom-availability-guide/"
+            },
+            {
+              "label": "TPG: JAL first class phantom award space (2020, background)",
+              "url": "https://thepointsguy.com/news/jal-first-class-phantom-award-space"
+            }
+          ]
+        }
+      ]
+    },
+    "alaska": {
+      "days": 330,
+      "partnerDays": null,
+      "windowNote": "阿拉斯加航班通常出發前約 330 天開放；夥伴機位視各航空釋出",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": "電話訂位每張加收 15 美元",
+        "note": "除國泰與 LATAM 須來電外，其餘夥伴皆可線上訂"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Alaska：獎勵訂位基本須知",
+          "url": "https://news.alaskaair.com/alaska-airlines/mileage-plan-101-the-basics-of-booking-award-travel/",
+          "official": true
+        },
+        {
+          "label": "Alaska：夥伴獎勵機票",
+          "url": "https://www.alaskaair.com/AwardAdvisory/AboutAwardOptions",
+          "official": true
+        }
+      ],
+      "phantom": [
+        {
+          "airlines": [
+            "JL",
+            "FJ"
+          ],
+          "warning": "阿拉斯加航空顯示的日航、斐濟航空艙位可能是幻影機位",
+          "sources": [
+            {
+              "label": "AwardFares: Phantom availability guide (2026-06-03)",
+              "url": "https://awardfares.com/blog/phantom-availability-guide/"
+            },
+            {
+              "label": "point.me: Phantom space in award booking (2025-09-24)",
+              "url": "https://www.point.me/insights/phantom-space-in-award-booking"
+            }
+          ]
+        }
+      ]
+    },
+    "qantas": {
+      "days": 353,
+      "partnerDays": null,
+      "windowNote": "Classic Reward 出發前 353 天起可訂；部分夥伴航班截止時間不同",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": "電話訂位收 Reward Assistance Fee（金額見官方費用表）",
+        "note": "官網訂位免手續費；部分夥伴航線或艙等不開放"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Qantas 常客計畫條款（14.2）",
+          "url": "https://www.qantas.com/us/en/frequent-flyer/discover-and-join/terms-and-conditions.html",
+          "official": true
+        },
+        {
+          "label": "Executive Traveller 開放日整理",
+          "url": "https://executivetraveller.com/when-do-award-calendars-open",
+          "official": false
+        }
+      ],
+      "phantom": [
+        {
+          "airlines": [
+            "JL"
+          ],
+          "warning": "澳航常顯示日航高艙等空位，客服表示實際無法訂位",
+          "sources": [
+            {
+              "label": "TPG: Phantom award space (2026-08-26)",
+              "url": "https://thepointsguy.com/loyalty-programs/phantom-award-space"
+            }
+          ]
+        }
+      ]
+    },
+    "turkish": {
+      "days": 355,
+      "partnerDays": null,
+      "windowNote": "第三方觀察約 355 天（另有 331 天之說）；官方未公布",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": null,
+        "note": "星空聯盟夥伴可線上開票；Azul、GOL 等非聯盟夥伴需洽客服或櫃檯"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "土航：獎勵機票",
+          "url": "https://www.turkishairlines.com/en-us/miles-and-smiles/redeem-miles/redeem-miles-on-flights/turkish-airlines-award-tickets/",
+          "official": true
+        },
+        {
+          "label": "土航：獎勵機票條款",
+          "url": "https://www.turkishairlines.com/en-us/miles-and-smiles/redeem-miles/redeem-miles-on-flights/award-travel-terms-conditions/",
+          "official": true
+        },
+        {
+          "label": "AwardWallet 各計畫可訂天數",
+          "url": "https://awardwallet.com/blog/far-advance-can-book-airline-award-tickets/",
+          "official": false
+        }
+      ],
+      "phantom": [
+        {
+          "airlines": [
+            "AI"
+          ],
+          "warning": "土航官網可搜到印度航空艙位，但線上與電話都無法開票",
+          "sources": [
+            {
+              "label": "Live From A Lounge: Air India award space inaccessible via Miles&Smiles (2024-11-05)",
+              "url": "https://livefromalounge.com/air-india-award-space-continues-to-be-inaccessible-via-turkish-airlines-miles-smiles/"
+            },
+            {
+              "label": "AwardFares: Phantom availability guide (2026-06-03)",
+              "url": "https://awardfares.com/blog/phantom-availability-guide/"
+            }
+          ]
+        }
+      ]
+    },
+    "flyingblue": {
+      "days": 359,
+      "partnerDays": null,
+      "windowNote": "第三方觀察約 359 天（各來源 353–361 天不等）；部分聯營航班較晚釋出",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": null,
+        "note": "夥伴多可線上訂；達美航班官網常出錯，需來電"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        },
+        {
+          "label": "OMAAT：Flying Blue 兌換教學",
+          "url": "https://onemileatatime.com/how-to-redeem-flying-blue-miles/",
+          "official": false
+        }
+      ],
+      "phantom": [
+        {
+          "airlines": [
+            "*"
+          ],
+          "warning": "Flying Blue 近期幻影機位增加，法航與荷航官網結果也可能不同",
+          "sources": [
+            {
+              "label": "TPG: Phantom award space (2026-08-26; cites a seats.aero notice)",
+              "url": "https://thepointsguy.com/loyalty-programs/phantom-award-space"
+            },
+            {
+              "label": "AwardFares: Phantom availability guide (2026-06-03)",
+              "url": "https://awardfares.com/blog/phantom-availability-guide/"
+            }
+          ]
+        }
+      ]
+    },
+    "lifemiles": {
+      "days": 360,
+      "partnerDays": null,
+      "windowNote": "第三方觀察約 360 天；可訂到各航空班表開放的最遠日期",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": null,
+        "note": "星空聯盟夥伴多可線上訂；舊資料稱另收約 25 美元手續費（未經官方確認）"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "LifeMiles 說明中心：兌換機票",
+          "url": "https://helpcenter.lifemiles.com/hc/en-us/articles/15775783299355-Miles-redemption-for-Flights-with-avianca-and-Air-Partners",
+          "official": true
+        },
+        {
+          "label": "AwardWallet 各計畫可訂天數",
+          "url": "https://awardwallet.com/blog/far-advance-can-book-airline-award-tickets/",
+          "official": false
+        },
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        }
+      ],
+      "phantom": [
+        {
+          "airlines": [
+            "*"
+          ],
+          "warning": "LifeMiles 網站與電話客服的艙位常不一致，開票前請再確認",
+          "sources": [
+            {
+              "label": "AwardFares: Phantom availability guide (2026-06-03)",
+              "url": "https://awardfares.com/blog/phantom-availability-guide/"
+            }
+          ]
+        }
+      ]
+    },
+    "asiamiles": {
+      "days": 360,
+      "partnerDays": null,
+      "windowNote": "國泰標準獎勵機票最早出發前 360 天可訂（第三方觀察約香港時間午夜開放）；夥伴航班依各航空而異",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": null,
+        "note": "官網可即時兌換寰宇一家等多家夥伴；其他夥伴需填表或洽客服（香港快運除外）"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "國泰會員計劃條款 2026（繁中 PDF）",
+          "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-zhTW.pdf",
+          "official": true
+        },
+        {
+          "label": "國泰：如何線上兌換機票",
+          "url": "https://www.cathaypacific.com/cx/en_US/faqs/cathay-membership-programme/asia-miles/spend-miles-when-you-fly/how-can-i-redeem-a-ticket-online.html",
+          "official": true
+        },
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        }
+      ]
+    },
+    "british": {
+      "days": 355,
+      "partnerDays": null,
+      "windowNote": "出發前 355 天可訂（第三方：英國時間午夜開放）；夥伴機位依夥伴釋出，但 BA 系統上限仍為 355 天",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": null,
+        "note": "可於 ba.com 線上或聯絡服務中心訂位；起飛前 24 小時內不可訂"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "British Airways Club 條款（15.11）",
+          "url": "https://www.britishairways.com/content/the-british-airways-club/about-the-club/terms-and-conditions",
+          "official": true
+        },
+        {
+          "label": "Head for Points：Avios 可提前多久訂",
+          "url": "https://headforpoints.com/2024/02/01/how-far-in-advance-can-you-book-flights-with-avios-3",
+          "official": false
+        }
+      ]
+    },
+    "delta": {
+      "days": 331,
+      "partnerDays": null,
+      "windowNote": "獎勵機位可能於出發前 331 天開放；動態定價，越早查通常越便宜",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": "無（2016 年起取消電話訂位費）",
+        "note": "多數天合聯盟夥伴可於 delta.com 訂位"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Delta 獎勵機票小撇步",
+          "url": "https://www.delta.com/content/www/en_US/skymiles/use-miles/award-travel/about-award-travel/award_travel_tips.html",
+          "official": true
+        },
+        {
+          "label": "TPG：Delta 取消電話訂位費",
+          "url": "https://thepointsguy.com/news/delta-phone-booking-fee/",
+          "official": false
+        }
+      ]
+    },
+    "singapore": {
+      "days": 355,
+      "partnerDays": null,
+      "windowNote": "第三方觀察約 355 天；KrisFlyer 與夥伴計畫共用同一窗口",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": null,
+        "note": "星空聯盟夥伴逐步開放線上訂；查無航點需填表或洽會員服務"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "新航：星空聯盟獎勵機票",
+          "url": "https://www.singaporeair.com/en_UK/us/ppsclub-krisflyer/use-miles/redeem-miles/award-tickets-on-star-alliance-airlines/",
+          "official": true
+        },
+        {
+          "label": "Executive Traveller 開放日整理",
+          "url": "https://executivetraveller.com/when-do-award-calendars-open",
+          "official": false
+        },
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        }
+      ]
+    },
+    "virginatlantic": {
+      "days": 331,
+      "partnerDays": null,
+      "windowNote": "維珍航班獎勵座位於出發前 331 天釋出；夥伴航班依各航空",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": null,
+        "note": "達美、法荷航等可線上訂；部分夥伴（如全日空）需來電"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Flying Club 條款（4.2.2）",
+          "url": "https://www.virginatlantic.com/policies/virgin-atlantic-flying-club-terms-and-conditions",
+          "official": true
+        },
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        }
+      ]
+    },
+    "emirates": {
+      "days": 330,
+      "partnerDays": null,
+      "windowNote": "第三方觀察約 328–330 天，各來源說法不一（另有稱 360 天）",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": null,
+        "note": "澳航等部分夥伴可登入官網兌換；其他夥伴需洽客服"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "阿聯酋：以哩程搭乘澳航",
+          "url": "https://www.emirates.com/us/english/skywards/partners/qantas/",
+          "official": true
+        },
+        {
+          "label": "Executive Traveller 開放日整理",
+          "url": "https://executivetraveller.com/when-do-award-calendars-open",
+          "official": false
+        },
+        {
+          "label": "Award Travel Finder：阿聯酋",
+          "url": "https://awardtravelfinder.com/award-release-windows/emirates",
+          "official": false
+        }
+      ]
+    },
+    "etihad": {
+      "days": 330,
+      "partnerDays": null,
+      "windowNote": "第三方說法不一，約 330–355 天；官方未公布",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": null,
+        "note": "夥伴航班可線上訂或來電，依夥伴而定"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "阿提哈德會員常見問題",
+          "url": "https://www.etihad.com/en-us/help/faq/etihad-guest",
+          "official": true
+        },
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        },
+        {
+          "label": "Executive Traveller 開放日整理",
+          "url": "https://executivetraveller.com/when-do-award-calendars-open",
+          "official": false
+        }
+      ]
+    },
+    "qatar": {
+      "days": 361,
+      "partnerDays": null,
+      "windowNote": "第三方觀察約 360–361 天；卡達航班開放時保證有商務與經濟艙獎勵位",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": null,
+        "note": "官網可訂寰宇一家及其他夥伴航班"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "卡達 Privilege Club：以 Avios 搭機",
+          "url": "https://www.qatarairways.com/en-us/Privilege-Club/fly-with-avios.html",
+          "official": true
+        },
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        },
+        {
+          "label": "point.me 開放日整理",
+          "url": "https://www.point.me/insights/when-do-airlines-release-award-seats/",
+          "official": false
+        }
+      ]
+    },
+    "eva": {
+      "days": 360,
+      "partnerDays": null,
+      "windowNote": "長榮航班第三方觀察約 360 天；官方註明開放時間依各航空規定",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": null,
+        "note": "官網或訂位組皆可訂；含長榮航班每張另收 25 美元訂位服務費（YR）"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "長榮：星空聯盟獎勵機票",
+          "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html",
+          "official": true
+        },
+        {
+          "label": "AwardFares：長榮計畫",
+          "url": "https://awardfares.com/programs/eva-infinity-mileage-lands",
+          "official": false
+        },
+        {
+          "label": "Executive Traveller 開放日整理",
+          "url": "https://executivetraveller.com/when-do-award-calendars-open",
+          "official": false
+        }
+      ]
+    },
+    "ci": {
+      "days": 360,
+      "partnerDays": null,
+      "windowNote": "第三方觀察約 353–360 天，說法不一；官方未公布",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": null,
+        "phoneFee": null,
+        "note": "華航／華信國際線可線上兌換；天合聯盟夥伴的訂位管道官網未說明"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "華航：酬賓機票",
+          "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket",
+          "official": true
+        },
+        {
+          "label": "AwardFares 開放日指南",
+          "url": "https://awardfares.com/blog/ultimate-guide-to-award-release-dates",
+          "official": false
+        },
+        {
+          "label": "AwardWallet 各計畫可訂天數",
+          "url": "https://awardwallet.com/blog/far-advance-can-book-airline-award-tickets/",
+          "official": false
+        }
+      ]
+    },
+    "jal": {
+      "days": 360,
+      "partnerDays": null,
+      "windowNote": "出發前 360 天日本時間 00:00 開放；來回票以回程日起算",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": "電話訂位收開票服務費（台灣每張 550 元）",
+        "note": "線上至起飛前 48 小時，電話至 24 小時；部分夥伴可能較晚開放"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "JAL 國際線獎勵機票申請方式",
+          "url": "https://www.jal.co.jp/jp/en/jalmile/use/jal/inter/application.html",
+          "official": true
+        },
+        {
+          "label": "JAL 寰宇一家夥伴獎勵機票",
+          "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/application.html",
+          "official": true
+        },
+        {
+          "label": "JAL 開票服務費",
+          "url": "https://www.jal.co.jp/en/jalmile/use/inter/tsf.html",
+          "official": true
+        }
+      ]
+    },
+    "ana": {
+      "days": 355,
+      "partnerDays": null,
+      "windowNote": "出發前 355 天日本時間 09:00 開放；來回票以回程日起算",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": true,
+        "phoneFee": "非官網開票收服務費（如美國每張 25 美元）",
+        "note": "官網開票免服務費；含嬰兒或兒童單獨旅行須來電"
+      },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "ANA 國際線獎勵機票",
+          "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/",
+          "official": true
+        },
+        {
+          "label": "ANA 夥伴航空獎勵機票",
+          "url": "https://www.ana.co.jp/en/us/amc/partner-flight-awards/",
+          "official": true
+        }
+      ]
+    },
+    "starlux": {
+      "days": 331,
+      "partnerDays": null,
+      "windowNote": "官方未公布；第三方僅一來源列約 331 天，僅供參考",
+      "booking": {
+        "ownOnline": true,
+        "partnerOnline": "partial",
+        "phoneFee": null,
+        "note": "可登入會員線上兌換阿拉斯加航空酬賓票；其他夥伴管道未確認"
+      },
+      "confidence": "secondary",
+      "sources": [
+        {
+          "label": "星宇：線上兌換阿拉斯加航空酬賓機票",
+          "url": "https://latestnews.starlux-airlines.com/zh-TW/about-us/travel-advisories/advisories/latest-news/Redeem_Award_Ticket_AS",
+          "official": true
+        },
+        {
+          "label": "AwardWallet 各計畫可訂天數",
+          "url": "https://awardwallet.com/blog/far-advance-can-book-airline-award-tickets/",
+          "official": false
+        }
+      ]
+    }
+  },
+  "researched": "2026-10-13"
+}
