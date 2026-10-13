@@ -37,15 +37,23 @@
             <div class="route-row">
               <div class="field grow ac-host">
                 <label for="f-origin">出發地</label>
-                <input id="f-origin" name="origin" value="TPE" placeholder="城市、機場或代碼" required autocapitalize="off" spellcheck="false"
-                  role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-origin">
+                <div class="chips-box" data-for="origin">
+                  <span class="chips"></span>
+                  <input id="f-origin" class="chips-q" placeholder="城市、機場或代碼" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-origin">
+                </div>
+                <input type="hidden" name="origin" value="TPE">
                 <div class="ac-list" id="ac-origin" role="listbox" aria-label="出發地建議" hidden></div>
               </div>
               <button type="button" class="swap" id="swap" aria-label="對調出發與抵達">⇄</button>
               <div class="field grow ac-host ac-end">
                 <label for="f-destination">目的地</label>
-                <input id="f-destination" name="destination" value="YVR,YYZ" placeholder="可輸入多個，以逗號分隔" required autocapitalize="off" spellcheck="false"
-                  role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-destination">
+                <div class="chips-box" data-for="destination">
+                  <span class="chips"></span>
+                  <input id="f-destination" class="chips-q" placeholder="城市、機場或代碼" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-destination">
+                </div>
+                <input type="hidden" name="destination" value="YVR,YYZ">
                 <div class="ac-list" id="ac-destination" role="listbox" aria-label="目的地建議" hidden></div>
               </div>
             </div>

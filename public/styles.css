@@ -48,8 +48,8 @@ code { background: var(--surface-2); padding: 1px 6px; border-radius: 6px; font-
 .hero.slim .lead:last-child { margin-bottom: 0; }
 
 /* ---------- forms ---------- */
-.search-card { background: var(--surface); color: var(--text); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; display: grid; gap: 14px; position: relative; z-index: 1; }
-.route-row { display: flex; align-items: flex-end; gap: 8px; }
+.search-card { background: var(--surface); color: var(--text); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; display: grid; gap: 14px; position: relative; z-index: 3; }
+.route-row { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
 .opts-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); font-weight: 500; min-width: 140px; flex: 1 1 140px; }
 .field.grow { flex: 1 1 0; min-width: 0; }
@@ -57,6 +57,15 @@ input, select { font: inherit; font-size: 1rem; padding: 10px 12px; border: 1px 
 input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .route-row input { font-size: 1.15rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .ac-host { position: relative; }
+.chips-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 46px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); cursor: text; transition: border-color .15s, box-shadow .15s; }
+.chips-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.chips { display: contents; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 3px 3px 9px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: .95rem; line-height: 1.4; white-space: nowrap; max-width: 100%; }
+.chip b { letter-spacing: .04em; color: var(--accent); }
+.chip small { color: var(--muted); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; }
+.chip button { border: 0; background: none; color: var(--muted); font-size: 1rem; line-height: 1; width: 22px; height: 22px; border-radius: 6px; cursor: pointer; padding: 0; }
+.chip button:hover { background: var(--surface); color: var(--danger); }
+.route-row input.chips-q, .route-row input.chips-q:focus { flex: 1 1 90px; width: 0; min-width: 72px; border: 0; background: transparent; box-shadow: none; padding: 6px 2px; font-size: 1rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
 .ac-host > label { color: var(--muted); }
 .ac-list { position: absolute; top: calc(100% + 6px); left: 0; width: max(100%, 400px); max-height: 360px; overflow-y: auto; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow), 0 12px 32px rgb(16 24 40 / .12); padding: 6px; z-index: 30; }
 .ac-end .ac-list { left: auto; right: 0; }
@@ -198,9 +207,14 @@ h2.section { font-size: 1.1rem; margin: 30px 0 12px; }
   .hero::after { display: none; }
   .search-card { padding: 14px; }
   .opts-row > .field { flex-basis: calc(50% - 6px); }
-  .route-row { position: relative; }
-  .ac-host { position: static; }
-  .ac-list, .ac-end .ac-list { left: 0; right: 0; width: auto; top: calc(100% + 6px); }
+  .route-row { display: grid; grid-template-columns: minmax(0, 1fr) 40px; gap: 10px 8px; align-items: center; }
+  .route-row > .ac-host { grid-column: 1; }
+  .route-row > .swap { grid-column: 2; grid-row: 1 / span 2; transform: rotate(90deg); }
+  .route-row > .swap:hover { transform: rotate(270deg); }
+  .ac-list, .ac-end .ac-list { left: 0; right: 0; width: auto; }
+  .chips-box { padding: 4px 6px; }
+  .mp-pop { width: min(340px, calc(100vw - 48px)); }
+  .mp:nth-child(2) .mp-pop { left: auto; right: 0; }
   .seg { width: 100%; } .seg label { flex: 1; } .seg span { text-align: center; padding: 8px 4px; }
   button.primary.big { width: 100%; margin-left: 0; }
   .day { min-height: 48px; font-size: .68rem; padding: 4px 2px; }
@@ -210,6 +224,24 @@ h2.section { font-size: 1.1rem; margin: 30px 0 12px; }
 }
 mark { background: var(--few); color: inherit; border-radius: 3px; padding: 0 2px; }
 .status { scroll-margin-top: 80px; }
+.mp { position: relative; }
+.mp-btn { font: inherit; font-size: 1rem; text-align: left; padding: 10px 32px 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; position: relative; }
+.mp-btn::after { content: "▾"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.mp-btn.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.mp-btn[aria-expanded="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.mp-pop { position: absolute; top: calc(100% + 6px); left: 0; width: max(100%, 340px); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow), 0 12px 32px rgb(16 24 40 / .12); padding: 10px; z-index: 30; }
+.mp-actions { display: flex; gap: 8px; margin: 8px 0 6px; }
+.mp-actions button { font: inherit; font-size: .8rem; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.mp-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.mp-opts { max-height: 300px; overflow-y: auto; }
+.mp-opt { display: grid; grid-template-columns: auto 3.2em 1fr auto; align-items: center; gap: 8px; padding: 7px 6px; border-radius: 8px; cursor: pointer; color: var(--text); font-size: .9rem; font-weight: 400; }
+.mp-opt:hover { background: var(--accent-soft); }
+.mp-opt[hidden] { display: none; }
+.mp-opt input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+.mp-opt b { color: var(--accent); letter-spacing: .04em; }
+.mp-opt small { margin-left: 6px; color: var(--muted); font-size: .75rem; }
+.mp-opt em { font-style: normal; color: var(--muted); font-size: .78rem; }
+.mp-opt.zero { opacity: .45; }
 th.sortable { cursor: pointer; user-select: none; }
 th.sortable:hover { color: var(--accent); }
 th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--accent); }

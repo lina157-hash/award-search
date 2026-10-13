@@ -154,21 +154,6 @@ function carrierHint() {
     : ALLIANCE_HINT[al] || '';
 }
 
-$('#swap').addEventListener('click', () => {
-  const f = $('#search-form');
-  [f.origin.value, f.destination.value] = [f.destination.value, f.origin.value];
-});
-
-$$('.presets button').forEach((b) => b.addEventListener('click', () => {
-  const f = $('#search-form');
-  f.origin.value = b.dataset.o;
-  f.destination.value = b.dataset.d;
-  f.alliance.value = b.dataset.al || '';
-  f.carrier.value = '';
-  carrierHint();
-  f.requestSubmit();
-}));
-
 // ---------- airport autocomplete ----------
 // Full list (3,000+ airports) loads from /airports.min.json; tokens are comma separated, the last one is completed.
 const AP = { list: [], byCode: new Map(), groups: [], rank: new Map() };
@@ -240,22 +225,55 @@ function resolveAirports(value) {
   return { codes: [...new Set(codes)], unknown };
 }
 
-function setupAirportInput(input) {
-  const list = document.getElementById(input.getAttribute('aria-controls'));
+// Airport field with chips: each picked airport is a removable chip, so several can be searched at once.
+// The hidden input (name=origin / destination) keeps the comma-separated codes the rest of the page reads.
+const MAX_AIRPORTS = 10;
+function createAirportPicker(name) {
+  const form = $('#search-form');
+  const hidden = form[name];
+  const box = $(`.chips-box[data-for=${name}]`);
+  const q = $('input.chips-q', box);
+  const list = document.getElementById(q.getAttribute('aria-controls'));
+  const label = q.labels[0].textContent;
   let items = [];
   let active = -1;
-  const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1; };
+
+  const codes = () => hidden.value.split(',').filter(Boolean);
+  const renderChips = () => {
+    $('.chips', box).innerHTML = codes().map((c) => {
+      const a = AP.byCode.get(c);
+      const nm = a ? a.zh || a.city : '';
+      return `<span class="chip" title="${esc(a ? `${a.name}（${a.cn}）` : c)}"><b>${c}</b>${nm ? `<small>${esc(nm)}</small>` : ''}<button type="button" data-rm="${c}" aria-label="移除 ${c}">×</button></span>`;
+    }).join('');
+    q.placeholder = codes().length ? '＋ 加入機場' : '城市、機場或代碼';
+  };
+  const set = (list) => {
+    const uniq = [...new Set(list.map((c) => c.toUpperCase()))];
+    if (uniq.length > MAX_AIRPORTS) toast(`${label}最多 ${MAX_AIRPORTS} 個機場`);
+    hidden.value = uniq.slice(0, MAX_AIRPORTS).join(',');
+    renderChips();
+  };
+  const add = (more) => set([...codes(), ...more]);
+  // Turn leftover typed text into chips; returns the parts that matched nothing.
+  const commit = () => {
+    const { codes: found, unknown } = resolveAirports(q.value);
+    if (found.length) add(found);
+    q.value = unknown.join(',');
+    return unknown;
+  };
+
+  const close = () => { list.hidden = true; q.setAttribute('aria-expanded', 'false'); q.removeAttribute('aria-activedescendant'); active = -1; };
   const highlight = (i) => {
     active = i;
     $$('[role=option]', list).forEach((el, j) => el.classList.toggle('active', j === i));
     if (i >= 0) {
-      input.setAttribute('aria-activedescendant', `${list.id}-${i}`);
+      q.setAttribute('aria-activedescendant', `${list.id}-${i}`);
       list.children[i].scrollIntoView({ block: 'nearest' });
     }
   };
   const render = () => {
-    const token = splitCodes(input.value).at(-1);
-    items = apSuggest(token);
+    const have = new Set(codes());
+    items = apSuggest(splitCodes(q.value).at(-1)).filter((it) => (it.group ? it.group.codes.some((c) => !have.has(c)) : !have.has(it.a.code)));
     if (!items.length) return close();
     list.innerHTML = items.map((it, i) => {
       if (it.group) {
@@ -271,23 +289,37 @@ function setupAirportInput(input) {
         <span class="ac-sub">${esc(a.name)}</span></div>`;
     }).join('');
     list.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
+    q.setAttribute('aria-expanded', 'true');
     highlight(0);
   };
   const choose = (i) => {
     const it = items[i];
     if (!it) return;
-    const tokens = splitCodes(input.value).slice(0, -1).filter(Boolean);
-    const picked = it.group ? it.group.codes : [it.a.code];
-    input.value = [...new Set([...tokens, ...picked])].join(',');
+    add(it.group ? it.group.codes : [it.a.code]);
+    q.value = '';
     close();
-    input.focus();
+    q.focus();
   };
-  input.addEventListener('input', () => airportsReady.then(render));
-  input.addEventListener('focus', () => { if (splitCodes(input.value).at(-1) && !/^[A-Za-z]{3}$/.test(splitCodes(input.value).at(-1))) airportsReady.then(render); });
-  input.addEventListener('blur', close);
-  input.addEventListener('keydown', (e) => {
-    if (list.hidden) return;
+
+  q.addEventListener('input', () => airportsReady.then(() => {
+    // A comma after a name or code (or a space after a 3-letter code) turns what came before it into chips.
+    if (/^[A-Za-z]{3}\s+$/.test(q.value)) q.value = `${q.value.trim()},`;
+    if (/[,，、]/.test(q.value)) {
+      const parts = splitCodes(q.value);
+      const tail = parts.pop();
+      const { codes: found, unknown } = resolveAirports(parts.join(','));
+      if (found.length) add(found);
+      q.value = [...unknown, tail].filter(Boolean).join(',');
+    }
+    render();
+  }));
+  q.addEventListener('blur', close);
+  q.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !q.value && codes().length) { set(codes().slice(0, -1)); return; }
+    if (list.hidden) {
+      if (e.key === 'Enter' && q.value.trim()) { e.preventDefault(); commit(); }
+      return;
+    }
     if (e.key === 'ArrowDown') { e.preventDefault(); highlight((active + 1) % items.length); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); highlight((active - 1 + items.length) % items.length); }
     else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); choose(active); }
@@ -298,24 +330,47 @@ function setupAirportInput(input) {
     const el = e.target.closest('[data-i]');
     if (el) choose(Number(el.dataset.i));
   });
+  box.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-rm]');
+    if (rm) set(codes().filter((c) => c !== rm.dataset.rm));
+    q.focus();
+  });
+
+  renderChips();
+  airportsReady.then(renderChips);
+  return { codes, set, commit, label, focus: () => q.focus() };
 }
-$$('#search-form [role=combobox]').forEach(setupAirportInput);
+const pickers = { origin: createAirportPicker('origin'), destination: createAirportPicker('destination') };
+
+$('#swap').addEventListener('click', () => {
+  const [o, d] = [pickers.origin.codes(), pickers.destination.codes()];
+  pickers.origin.set(d);
+  pickers.destination.set(o);
+});
+
+$$('.presets button').forEach((b) => b.addEventListener('click', () => {
+  const f = $('#search-form');
+  pickers.origin.set(b.dataset.o.split(','));
+  pickers.destination.set(b.dataset.d.split(','));
+  f.alliance.value = b.dataset.al || '';
+  f.carrier.value = '';
+  carrierHint();
+  f.requestSubmit();
+}));
 
 $('#search-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const form = e.target;
-  for (const input of [form.origin, form.destination]) {
-    const { codes, unknown } = resolveAirports(input.value);
-    const label = input.labels[0].textContent;
-    const problem = unknown.length ? `${label}找不到「${unknown.join('、')}」，請從下拉選單選擇機場或輸入三碼代號。`
-      : codes.length > 10 ? `${label}最多 10 個機場。` : codes.length ? '' : `請輸入${label}。`;
+  for (const p of [pickers.origin, pickers.destination]) {
+    const unknown = p.commit();
+    const problem = unknown.length ? `${p.label}找不到「${unknown.join('、')}」，請從下拉選單選擇機場或輸入三碼代號。`
+      : p.codes().length ? '' : `請輸入${p.label}。`;
     if (problem) {
       $('#search-status').className = 'status error';
       $('#search-status').textContent = problem;
-      input.focus();
+      p.focus();
       return;
     }
-    input.value = codes.join(',');
   }
   const f = new FormData(form);
   const share = new URLSearchParams({ o: f.get('origin'), d: f.get('destination'), s: f.get('start'), e: f.get('end'), c: f.get('cabin') || 'J' });
@@ -596,6 +651,7 @@ $('#explore-form').addEventListener('submit', async (e) => {
   $('#explore-results').innerHTML = skeleton(6);
   try {
     const body = await api(`/api/explore?${params}`);
+    await airportsReady;
     Object.assign(ex, { rows: body.results, cabin: body.cabin, f: {}, shown: PAGE, sort: { key: 'miles', dir: 1 }, mock: body.mock, truncated: body.truncated });
     renderExplore();
   } catch (err) {
@@ -605,19 +661,107 @@ $('#explore-form').addEventListener('submit', async (e) => {
   }
 });
 
-function exploreFiltered() {
+// Rows matching every filter except `skip` (used to count options in each airport picker).
+function exploreMatches(skip) {
   const { f } = ex;
-  const list = ex.rows.filter((r) =>
-    (!f.origin || r.origin === f.origin) &&
-    (!f.destination || r.destination === f.destination) &&
+  const inSet = (k, v) => k === skip || !f[k]?.size || f[k].has(v);
+  return ex.rows.filter((r) =>
+    inSet('origin', r.origin) &&
+    inSet('destination', r.destination) &&
     (!f.from || r.date >= f.from) &&
     (!f.to || r.date <= f.to) &&
     (!f.maxMiles || r.miles <= f.maxMiles) &&
     (!f.airline || r.airlines.split(/,\s*/).includes(f.airline)) &&
     (!f.direct || r.direct));
+}
+
+function exploreFiltered() {
+  const list = exploreMatches();
   const { key, dir } = ex.sort;
   const val = (r) => (key === 'route' ? `${r.origin}${r.destination}` : key === 'direct' ? Number(r.direct) : r[key] ?? '');
   return list.sort((a, b) => (val(a) > val(b) ? dir : val(a) < val(b) ? -dir : a.miles - b.miles));
+}
+
+// Multi-select airport filter: a button opens a panel with a search box and a checkbox per airport.
+function airportFilterHtml(key, label, codes) {
+  return `<div class="field mp" data-mp="${key}">
+    <span>${label}</span>
+    <button type="button" class="mp-btn" aria-haspopup="true" aria-expanded="false"></button>
+    <div class="mp-pop" hidden>
+      <input type="search" class="mp-q" placeholder="輸入代號、城市或國家" aria-label="搜尋${label}">
+      <div class="mp-actions"><button type="button" data-act="all">全選目前清單</button><button type="button" data-act="none">清除</button></div>
+      <div class="mp-opts">${codes.map((c) => {
+        const a = AP.byCode.get(c);
+        const search = [c, a?.zh, a?.city, a?.alt, a?.cn, a?.cnL, a?.name].filter(Boolean).join(' ').toLowerCase();
+        return `<label class="mp-opt" data-s="${esc(search)}"><input type="checkbox" value="${c}"><b>${c}</b><span>${esc(airportCity(c))}${a ? `<small>${esc(a.cn)}</small>` : ''}</span><em></em></label>`;
+      }).join('')}</div>
+    </div>
+  </div>`;
+}
+
+function setupAirportFilter(el) {
+  const key = el.dataset.mp;
+  const btn = $('.mp-btn', el);
+  const pop = $('.mp-pop', el);
+  const q = $('.mp-q', el);
+  const open = (yes) => {
+    pop.hidden = !yes;
+    btn.setAttribute('aria-expanded', String(yes));
+    if (yes) { q.value = ''; filterOpts(); q.focus(); }
+  };
+  const filterOpts = () => {
+    const t = normQ(q.value).toLowerCase();
+    $$('.mp-opt', el).forEach((o) => (o.hidden = !!t && !o.dataset.s.includes(t)));
+  };
+  const changed = () => {
+    ex.f[key] = new Set($$('.mp-opt input:checked', el).map((i) => i.value));
+    ex.shown = PAGE;
+    renderExplore();
+  };
+  btn.addEventListener('click', () => open(pop.hidden));
+  q.addEventListener('input', filterOpts);
+  q.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { open(false); btn.focus(); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const first = $$('.mp-opt', el).find((o) => !o.hidden);
+      if (first) { first.querySelector('input').checked = !first.querySelector('input').checked; changed(); }
+    }
+  });
+  $$('.mp-opt input', el).forEach((i) => i.addEventListener('change', changed));
+  $('.mp-actions', el).addEventListener('click', (e) => {
+    const act = e.target.dataset.act;
+    if (!act) return;
+    $$('.mp-opt', el).forEach((o) => { if (act === 'none' || !o.hidden) o.querySelector('input').checked = act === 'all'; });
+    changed();
+  });
+}
+document.addEventListener('click', (e) => {
+  for (const el of $$('[data-mp]')) {
+    if (el.contains(e.target)) continue;
+    $('.mp-pop', el).hidden = true;
+    $('.mp-btn', el).setAttribute('aria-expanded', 'false');
+  }
+});
+
+// Refresh button text and per-airport counts after any filter change.
+function updateAirportFilters() {
+  for (const el of $$('#ex-filters [data-mp]')) {
+    const key = el.dataset.mp;
+    const sel = [...(ex.f[key] || [])];
+    const counts = new Map();
+    for (const r of exploreMatches(key)) counts.set(r[key], (counts.get(r[key]) || 0) + 1);
+    $$('.mp-opt', el).forEach((o) => {
+      const n = counts.get(o.querySelector('input').value) || 0;
+      o.querySelector('em').textContent = `${n} 筆`;
+      o.classList.toggle('zero', !n);
+    });
+    const total = $$('.mp-opt', el).length;
+    $('.mp-btn', el).textContent = !sel.length ? `全部（${total} 個）`
+      : sel.length <= 2 ? sel.map((c) => `${c} ${airportCity(c)}`.trim()).join('、')
+      : `${sel.slice(0, 2).join('、')} 等 ${sel.length} 個`;
+    $('.mp-btn', el).classList.toggle('on', sel.length > 0);
+  }
 }
 
 function renderExplore() {
@@ -630,15 +774,14 @@ function renderExplore() {
   }
   const uniq = (fn) => [...new Set(all.flatMap(fn))].filter(Boolean).sort();
   const opt = (v, label, cur) => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(label)}</option>`;
-  const ap = (c) => (airportCity(c) ? `${c} ${airportCity(c)}` : c);
   const dates = uniq((r) => [r.date]);
 
   if (!$('#ex-filters')) {
     $('#explore-results').innerHTML = `
       <div class="search-card ex-filters" id="ex-filters">
         <div class="opts-row">
-          <label class="field">出發機場<select data-f="origin"><option value="">全部</option>${uniq((r) => [r.origin]).map((c) => opt(c, ap(c))).join('')}</select></label>
-          <label class="field">抵達機場<select data-f="destination"><option value="">全部</option>${uniq((r) => [r.destination]).map((c) => opt(c, ap(c))).join('')}</select></label>
+          ${airportFilterHtml('origin', '出發機場', uniq((r) => [r.origin]))}
+          ${airportFilterHtml('destination', '抵達機場', uniq((r) => [r.destination]))}
           <label class="field">航空公司<select data-f="airline"><option value="">全部</option>${uniq((r) => r.airlines.split(/,\s*/)).map((c) => opt(c, c)).join('')}</select></label>
         </div>
         <div class="opts-row">
@@ -656,13 +799,16 @@ function renderExplore() {
       ex.shown = PAGE;
       renderExplore();
     }));
+    $$('#ex-filters [data-mp]').forEach(setupAirportFilter);
     $('#ex-reset').addEventListener('click', () => {
       ex.f = {};
       $$('#ex-filters [data-f]').forEach((el) => (el.type === 'checkbox' ? (el.checked = false) : (el.value = '')));
+      $$('#ex-filters .mp-opt input').forEach((el) => (el.checked = false));
       ex.shown = PAGE;
       renderExplore();
     });
   }
+  updateAirportFilters();
 
   const rows = exploreFiltered();
   status.className = 'status';
@@ -806,8 +952,8 @@ function renderProgramCards() {
   const share = new URLSearchParams(location.search);
   if (share.get('o') && share.get('d') && share.get('s')) {
     const f = $('#search-form');
-    f.origin.value = share.get('o');
-    f.destination.value = share.get('d');
+    pickers.origin.set(share.get('o').split(','));
+    pickers.destination.set(share.get('d').split(','));
     f.start.value = share.get('s');
     f.end.value = share.get('e') || share.get('s');
     f.alliance.value = share.get('al') || '';
