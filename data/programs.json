@@ -17,7 +17,7 @@
       "name": "亞洲萬里通 Asia Miles",
       "airline": "CX",
       "alliance": "oneworld",
-      "seatsAeroSource": null,
+      "seatsAeroSource": "asiamiles",
       "pricing": "依單程飛行距離分段計價（短程再細分兩類）。國泰自家航班以「標準」獎勵為基本價，另有較高價位等級；夥伴航班使用另一張較貴的距離表，另有寰宇一家多航司獎勵表。",
       "oneWay": "自家與夥伴航班皆可開單程；單程最多 2 段航班，中間只能轉機一次（24 小時內）。",
       "stopover": "單程票不可中停（2020 年 4 月起）；來回票在 4 段內可中停 1 次；寰宇一家多航司獎勵最多 5 次。",
@@ -26,7 +26,7 @@
       "changes": "網上改期 50 美元或 7,500 哩；其他管道另加 40 美元或 6,000 哩手續費。取消退票 120 美元或 17,000 哩，退回里程與稅費。",
       "expiry": "每 18 個月內有任何一筆累積、兌換或轉移等紀錄，里程就持續有效。",
       "pooling": "不能合併他人里程；可登記最多 5 位「兌換組別」成員，由會員本人替他們兌換。",
-      "notes": "seats.aero 沒有直接收錄 Asia Miles，本站以阿拉斯加、美航、澳航看到的國泰座位作為參考。高於「標準」的價格等級名稱與 2026 年最新哩數表尚未在官網確認。",
+      "notes": "seats.aero 有收錄亞洲萬里通的實際獎勵位與哩數（官方文件未列出，2026-10-13 實測確認），可直接查詢國泰與寰宇一家夥伴航班。沒有資料的航線，本站改用距離哩數表估算。",
       "confidence": "official",
       "officialUrl": "https://www.cathaypacific.com/cx/zh_TW/membership/asia-miles.html",
       "sources": [

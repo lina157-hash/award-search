@@ -4,7 +4,8 @@ const SOURCE_NAMES = {
   lufthansa: '漢莎 Miles&More', turkish: '土航 Miles&Smiles', singapore: '新航 KrisFlyer', eurobonus: 'SAS EuroBonus',
   ethiopian: '衣索比亞 ShebaMiles', aeromexico: '墨航 Club Premier', etihad: '阿提哈德 Guest', emirates: '阿聯酋 Skywards',
   qatar: '卡達 Privilege Club', velocity: '維珍澳洲 Velocity', smiles: 'GOL Smiles', azul: 'Azul TudoAzul',
-  asiamiles_est: '亞洲萬里通（估算）', connectmiles: 'Copa ConnectMiles', jetblue: 'JetBlue TrueBlue', saudia: '沙烏地 AlFursan', finnair: '芬航 Finnair Plus',
+  asiamiles: '國泰 亞洲萬里通', asiamiles_est: '亞洲萬里通（估算）', connectmiles: 'Copa ConnectMiles', copa: 'Copa ConnectMiles',
+  lifemiles: 'Avianca LifeMiles', british: '英航 Avios', jetblue: 'JetBlue TrueBlue', saudia: '沙烏地 AlFursan', finnair: '芬航 Finnair Plus',
 };
 const CABIN_LABEL = { Y: '經濟艙', W: '豪華經濟艙', J: '商務艙', F: '頭等艙' };
 const CABIN_API = { Y: 'economy', W: 'premium', J: 'business', F: 'first' };
@@ -99,8 +100,11 @@ function amFromTrip(t) {
 }
 
 function asiaMilesRows(results) {
+  // seats.aero carries real Asia Miles data on many routes; only estimate routes it doesn't cover.
+  const covered = new Set(results.filter((r) => r.source === 'asiamiles').map((r) => `${r.origin}|${r.destination}`));
   const groups = new Map();
   for (const r of results) {
+    if (covered.has(`${r.origin}|${r.destination}`)) continue;
     const k = `${r.date}|${r.origin}|${r.destination}`;
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(r);
@@ -130,7 +134,7 @@ function asiaMilesRows(results) {
 const state = { results: [], cabin: 'J', hidden: new Set(), day: null };
 
 const ALLIANCE_HINT = {
-  oneworld: '寰宇一家的座位會透過阿拉斯加 Atmos、美航 AAdvantage、澳航、卡達等計畫查到；結果會另外估算用亞洲萬里通開票所需的哩數。',
+  oneworld: '寰宇一家的座位會透過亞洲萬里通、阿拉斯加 Atmos、美航 AAdvantage、澳航、卡達等計畫查到；沒有亞洲萬里通資料的航線會另外估算哩數。',
   star: '星空聯盟的座位會透過 Aeroplan、聯合、漢莎、土航等計畫查到；長榮會員通常能看到更多自家座位。',
   skyteam: '天合聯盟的座位會透過 Flying Blue、達美、維珍等計畫查到；華航會員通常能看到更多自家座位。',
 };
@@ -227,9 +231,11 @@ function renderSearch() {
     const m = r.cabins[c].available && r.cabins[c].miles;
     if (m && (!bestBySource[r.source] || m < bestBySource[r.source])) bestBySource[r.source] = m;
   }
-  allSources.sort((a, b) => (a === 'asiamiles_est' ? -1 : b === 'asiamiles_est' ? 1 : (bestBySource[a] || Infinity) - (bestBySource[b] || Infinity)));
+  const pin = (x) => ['asiamiles', 'asiamiles_est'].indexOf(x) + 1 || 9;
+  allSources.sort((a, b) => pin(a) - pin(b) || (bestBySource[a] || Infinity) - (bestBySource[b] || Infinity));
   const realRows = rows.filter((r) => !r.estimate);
   const amRows = rows.filter((r) => r.estimate).sort((a, b) => a.cabins[c].miles - b.cabins[c].miles);
+  const amReal = rows.filter((r) => r.source === 'asiamiles').sort((a, b) => a.cabins[c].miles - b.cabins[c].miles);
 
   const cabinSeg = `<fieldset class="seg" aria-label="切換艙等">${Object.entries(CABIN_LABEL).map(([k, l]) =>
     `<label><input type="radio" name="view-cabin" value="${k}" ${k === c ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
@@ -258,6 +264,10 @@ function renderSearch() {
 
   root.innerHTML = `
     <div class="section-title">${cabinSeg}</div>
+    ${amReal.length ? `<div class="am-callout">
+      <div><b>國泰 亞洲萬里通</b>　最低 <b class="am-miles">${fmt(amReal[0].cabins[c].miles)} 哩</b>（${mmdd(amReal[0].date)} ${esc(amReal[0].origin)} → ${esc(amReal[0].destination)}，${esc(amReal[0].cabins[c].airlines)}），共 ${amReal.length} 個日期／航線有位</div>
+      <div class="hint">來自 seats.aero 的亞洲萬里通實際資料。可在下方表格「國泰 亞洲萬里通」欄點選看航班。</div>
+    </div>` : ''}
     ${amRows.length ? `<div class="am-callout">
       <div><b>亞洲萬里通估算</b>　國泰／寰宇一家航班最低約 <b class="am-miles">${fmt(amRows[0].cabins[c].miles)} 哩</b>（${mmdd(amRows[0].date)} ${esc(amRows[0].origin)} → ${esc(amRows[0].destination)}，${amRows[0].cabins[c].kind === 'cx' ? '國泰航班' : '夥伴航班'}）</div>
       <div class="hint">依 2026-05-01 起的距離哩數表推算，實際座位與價格請至國泰官網確認；轉機行程依各段距離相加，可能落在更高區間。<a href="#rules" data-goto="rules">看哩數表</a></div>
@@ -392,6 +402,7 @@ function tripHtml(t) {
 }
 
 function amTripLine(t) {
+  if (t.source === 'asiamiles') return '';
   const am = amFromTrip(t);
   if (!am) return '';
   const dist = am.dist ? `各段合計 ${fmt(am.dist)} 哩` : '';
