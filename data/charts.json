@@ -1,1 +1,3674 @@
-{ "note": "Fixed award charts for the miles-needed estimate.", "programs": [] }
+{
+ "note": "Fixed award charts for the miles-needed estimate.",
+ "researched": "2026-10-13",
+ "programs": [
+  {
+   "id": "british",
+   "name": "英航 Avios",
+   "kind": "distance",
+   "perSegment": true,
+   "oneWay": true,
+   "note": "每一航段依距離各自計價再相加；2025/12/15起約漲一成，豪經與頭等新價未能查證故留空",
+   "effective": "2025-12",
+   "confidence": "secondary",
+   "unknownCabins": [
+    "W",
+    "F"
+   ],
+   "sources": [
+    {
+     "label": "MileLion 2025/12 調整明細",
+     "url": "https://milelion.com/2025/12/16/details-british-airways-avios-award-devaluation/",
+     "official": false
+    },
+    {
+     "label": "VeryLvke 夥伴新表",
+     "url": "https://www.verylvke.com/en/2025/12/19/ba-avios-partner-award-devaluation-full-chart-included/",
+     "official": false
+    },
+    {
+     "label": "AwardFares 調整整理",
+     "url": "https://awardfares.com/blog/ba-avios-devaluation-2025/",
+     "official": false
+    },
+    {
+     "label": "英航官網兌換說明",
+     "url": "https://www.britishairways.com/content/the-british-airways-club/avios/spending-avios/reward-flights",
+     "official": true
+    }
+   ],
+   "tables": [
+    {
+     "label": "一般夥伴航班（馬航、澳航、芬航等）",
+     "bands": [
+      {
+       "upTo": 650,
+       "Y": 6500,
+       "W": null,
+       "J": 14000,
+       "F": null
+      },
+      {
+       "upTo": 1150,
+       "Y": 10000,
+       "W": null,
+       "J": 18500,
+       "F": null
+      },
+      {
+       "upTo": 2000,
+       "Y": 12500,
+       "W": null,
+       "J": 24500,
+       "F": null
+      },
+      {
+       "upTo": 3000,
+       "Y": 14500,
+       "W": null,
+       "J": 43000,
+       "F": null
+      },
+      {
+       "upTo": 4000,
+       "Y": 23000,
+       "W": null,
+       "J": 68500,
+       "F": null
+      },
+      {
+       "upTo": 5500,
+       "Y": 28500,
+       "W": null,
+       "J": 85000,
+       "F": null
+      },
+      {
+       "upTo": 6500,
+       "Y": 34500,
+       "W": null,
+       "J": 102500,
+       "F": null
+      },
+      {
+       "upTo": 7000,
+       "Y": 40000,
+       "W": null,
+       "J": 120000,
+       "F": null
+      },
+      {
+       "upTo": null,
+       "Y": 57000,
+       "W": null,
+       "J": 170000,
+       "F": null
+      }
+     ]
+    },
+    {
+     "label": "國泰航空",
+     "bands": [
+      {
+       "upTo": 650,
+       "Y": 11000,
+       "W": null,
+       "J": 23000,
+       "F": null
+      },
+      {
+       "upTo": 1150,
+       "Y": 13500,
+       "W": null,
+       "J": 33000,
+       "F": null
+      },
+      {
+       "upTo": 2000,
+       "Y": 16000,
+       "W": null,
+       "J": 36000,
+       "F": null
+      },
+      {
+       "upTo": 3000,
+       "Y": 17500,
+       "W": null,
+       "J": 51500,
+       "F": null
+      },
+      {
+       "upTo": 4000,
+       "Y": 23000,
+       "W": null,
+       "J": 68500,
+       "F": null
+      },
+      {
+       "upTo": 5500,
+       "Y": 28500,
+       "W": null,
+       "J": 85000,
+       "F": null
+      },
+      {
+       "upTo": 6500,
+       "Y": 34500,
+       "W": null,
+       "J": 102500,
+       "F": null
+      },
+      {
+       "upTo": 7000,
+       "Y": 40000,
+       "W": null,
+       "J": 120000,
+       "F": null
+      },
+      {
+       "upTo": null,
+       "Y": 57000,
+       "W": null,
+       "J": 170000,
+       "F": null
+      }
+     ]
+    },
+    {
+     "label": "日本航空",
+     "bands": [
+      {
+       "upTo": 650,
+       "Y": 12000,
+       "W": null,
+       "J": 19500,
+       "F": null
+      },
+      {
+       "upTo": 1150,
+       "Y": 12500,
+       "W": null,
+       "J": 29500,
+       "F": null
+      },
+      {
+       "upTo": 2000,
+       "Y": 16000,
+       "W": null,
+       "J": 34500,
+       "F": null
+      },
+      {
+       "upTo": 3000,
+       "Y": 17500,
+       "W": null,
+       "J": 51500,
+       "F": null
+      },
+      {
+       "upTo": 4000,
+       "Y": 23000,
+       "W": null,
+       "J": 68500,
+       "F": null
+      },
+      {
+       "upTo": 5500,
+       "Y": 28500,
+       "W": null,
+       "J": 85000,
+       "F": null
+      },
+      {
+       "upTo": 6500,
+       "Y": 34500,
+       "W": null,
+       "J": 102500,
+       "F": null
+      },
+      {
+       "upTo": 7000,
+       "Y": 40000,
+       "W": null,
+       "J": 120000,
+       "F": null
+      },
+      {
+       "upTo": null,
+       "Y": 57000,
+       "W": null,
+       "J": 170000,
+       "F": null
+      }
+     ]
+    },
+    {
+     "label": "美國航空／阿拉斯加航空",
+     "bands": [
+      {
+       "upTo": 650,
+       "Y": 13500,
+       "W": null,
+       "J": 26500,
+       "F": null
+      },
+      {
+       "upTo": 1150,
+       "Y": 18000,
+       "W": null,
+       "J": 35500,
+       "F": null
+      },
+      {
+       "upTo": 2000,
+       "Y": 20000,
+       "W": null,
+       "J": 44000,
+       "F": null
+      },
+      {
+       "upTo": 3000,
+       "Y": 22000,
+       "W": null,
+       "J": 55000,
+       "F": null
+      },
+      {
+       "upTo": 4000,
+       "Y": 23000,
+       "W": null,
+       "J": 68500,
+       "F": null
+      },
+      {
+       "upTo": 5500,
+       "Y": 28500,
+       "W": null,
+       "J": 85000,
+       "F": null
+      },
+      {
+       "upTo": 6500,
+       "Y": 34500,
+       "W": null,
+       "J": 102500,
+       "F": null
+      },
+      {
+       "upTo": 7000,
+       "Y": 40000,
+       "W": null,
+       "J": 120000,
+       "F": null
+      },
+      {
+       "upTo": null,
+       "Y": 57000,
+       "W": null,
+       "J": 170000,
+       "F": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "alaska",
+   "name": "阿拉斯加 Atmos Rewards",
+   "kind": "distance",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "夥伴獎勵依整段行程總飛行距離（含轉機）計價；依行程所在地區選用美洲／歐非中東／亞太表",
+   "effective": "2024-10",
+   "confidence": "secondary",
+   "sources": [
+    {
+     "label": "AwardFares Atmos 指南",
+     "url": "https://awardfares.com/blog/atmos-rewards-guide/",
+     "official": false
+    },
+    {
+     "label": "Dan's Deals 新夥伴表",
+     "url": "https://www.dansdeals.com/points-travel/milespoints/mileage-bargains-alaskas-new-partner-award-charts/",
+     "official": false
+    },
+    {
+     "label": "10xTravel Atmos 獎勵表",
+     "url": "https://10xtravel.com/atmos-award-charts/",
+     "official": false
+    }
+   ],
+   "tables": [
+    {
+     "label": "亞太（行程涉及亞洲或大洋洲）",
+     "appliesWhen": "ASIA_PACIFIC",
+     "bands": [
+      {
+       "upTo": 1500,
+       "Y": 7500,
+       "W": 10000,
+       "J": 15000,
+       "F": 22500
+      },
+      {
+       "upTo": 3000,
+       "Y": 25000,
+       "W": 32500,
+       "J": 50000,
+       "F": 75000
+      },
+      {
+       "upTo": 5000,
+       "Y": 30000,
+       "W": 40000,
+       "J": 60000,
+       "F": 90000
+      },
+      {
+       "upTo": 7000,
+       "Y": 37500,
+       "W": 50000,
+       "J": 75000,
+       "F": 110000
+      },
+      {
+       "upTo": 10000,
+       "Y": 42500,
+       "W": 55000,
+       "J": 85000,
+       "F": 130000
+      },
+      {
+       "upTo": null,
+       "Y": 65000,
+       "W": 85000,
+       "J": 130000,
+       "F": 195000
+      }
+     ]
+    },
+    {
+     "label": "歐洲、中東、非洲",
+     "appliesWhen": "EMEA",
+     "bands": [
+      {
+       "upTo": 1500,
+       "Y": 7500,
+       "W": 10000,
+       "J": 15000,
+       "F": 22500
+      },
+      {
+       "upTo": 3500,
+       "Y": 22500,
+       "W": 30000,
+       "J": 45000,
+       "F": 67500
+      },
+      {
+       "upTo": 5000,
+       "Y": 27500,
+       "W": 35000,
+       "J": 55000,
+       "F": 82500
+      },
+      {
+       "upTo": 7000,
+       "Y": 35000,
+       "W": 45000,
+       "J": 70000,
+       "F": 105000
+      },
+      {
+       "upTo": 10000,
+       "Y": 42500,
+       "W": 55000,
+       "J": 85000,
+       "F": 130000
+      },
+      {
+       "upTo": null,
+       "Y": 55000,
+       "W": 72500,
+       "J": 110000,
+       "F": 165000
+      }
+     ]
+    },
+    {
+     "label": "美洲境內／美國往返美洲",
+     "appliesWhen": "AMERICAS",
+     "bands": [
+      {
+       "upTo": 700,
+       "Y": 4500,
+       "W": 6000,
+       "J": 9000,
+       "F": 13500
+      },
+      {
+       "upTo": 1400,
+       "Y": 7500,
+       "W": 10000,
+       "J": 15000,
+       "F": 25000
+      },
+      {
+       "upTo": 2100,
+       "Y": 12500,
+       "W": 17500,
+       "J": 25000,
+       "F": 40000
+      },
+      {
+       "upTo": 4000,
+       "Y": 17500,
+       "W": 22500,
+       "J": 35000,
+       "F": 52500
+      },
+      {
+       "upTo": 6000,
+       "Y": 25000,
+       "W": 32500,
+       "J": 50000,
+       "F": 75000
+      },
+      {
+       "upTo": null,
+       "Y": 30000,
+       "W": 40000,
+       "J": 60000,
+       "F": 90000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "aeroplan",
+   "name": "加航 Aeroplan",
+   "kind": "regionMatrix",
+   "perSegment": false,
+   "oneWay": true,
+   "symmetric": true,
+   "note": "其他夥伴為固定價，依區域組合與整段實際飛行距離分級；夥伴豪經未列價",
+   "effective": "2026-06",
+   "confidence": "official",
+   "sources": [
+    {
+     "label": "Aeroplan 官方獎勵表 PDF（2026-08版）",
+     "url": "https://www.aircanada.com/content/dam/aircanada/loyalty-content/documents/flight-rewards-chart-june2026-en.pdf",
+     "official": true
+    },
+    {
+     "label": "加航 2026 獎勵表調整公告",
+     "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/news/2026-an-update-on-the-aeroplan-flight-reward-chart.html",
+     "official": true
+    },
+    {
+     "label": "Prince of Travel 區域說明",
+     "url": "https://princeoftravel.com/guides/aeroplan-flight-reward-chart/",
+     "official": false
+    }
+   ],
+   "regions": {
+    "NA": {
+     "name": "北美（含中美洲、加勒比海、夏威夷）",
+     "countries": [
+      "US",
+      "CA",
+      "MX",
+      "BZ",
+      "CR",
+      "SV",
+      "GT",
+      "HN",
+      "NI",
+      "PA",
+      "AG",
+      "AI",
+      "AW",
+      "BS",
+      "BB",
+      "BM",
+      "BQ",
+      "VG",
+      "KY",
+      "CU",
+      "CW",
+      "DM",
+      "DO",
+      "GD",
+      "GP",
+      "HT",
+      "JM",
+      "MQ",
+      "MS",
+      "PR",
+      "KN",
+      "LC",
+      "MF",
+      "SX",
+      "VC",
+      "TT",
+      "TC",
+      "VI",
+      "BL"
+     ]
+    },
+    "ATL": {
+     "name": "大西洋（歐洲、非洲、中東、西／中／南亞）",
+     "countries": [
+      "AL",
+      "AD",
+      "AT",
+      "BY",
+      "BE",
+      "BA",
+      "BG",
+      "HR",
+      "CY",
+      "CZ",
+      "DK",
+      "EE",
+      "FO",
+      "FI",
+      "FR",
+      "DE",
+      "GI",
+      "GR",
+      "HU",
+      "IS",
+      "IE",
+      "IT",
+      "XK",
+      "LV",
+      "LI",
+      "LT",
+      "LU",
+      "MT",
+      "MD",
+      "MC",
+      "ME",
+      "NL",
+      "MK",
+      "NO",
+      "PL",
+      "PT",
+      "RO",
+      "SM",
+      "RS",
+      "SK",
+      "SI",
+      "ES",
+      "SE",
+      "CH",
+      "UA",
+      "GB",
+      "VA",
+      "RU",
+      "TR",
+      "AM",
+      "AZ",
+      "GE",
+      "AE",
+      "BH",
+      "IL",
+      "IQ",
+      "IR",
+      "JO",
+      "KW",
+      "LB",
+      "OM",
+      "PS",
+      "QA",
+      "SA",
+      "SY",
+      "YE",
+      "DZ",
+      "EG",
+      "LY",
+      "MA",
+      "TN",
+      "AO",
+      "BJ",
+      "BW",
+      "BF",
+      "BI",
+      "CV",
+      "CM",
+      "CF",
+      "TD",
+      "KM",
+      "CG",
+      "CD",
+      "CI",
+      "DJ",
+      "GQ",
+      "ER",
+      "SZ",
+      "ET",
+      "GA",
+      "GM",
+      "GH",
+      "GN",
+      "GW",
+      "KE",
+      "LS",
+      "LR",
+      "MG",
+      "MW",
+      "ML",
+      "MR",
+      "MU",
+      "YT",
+      "MZ",
+      "NA",
+      "NE",
+      "NG",
+      "RE",
+      "RW",
+      "ST",
+      "SN",
+      "SC",
+      "SL",
+      "SO",
+      "ZA",
+      "SS",
+      "SD",
+      "TZ",
+      "TG",
+      "UG",
+      "ZM",
+      "ZW",
+      "KZ",
+      "KG",
+      "TJ",
+      "TM",
+      "UZ",
+      "IN",
+      "PK",
+      "BD",
+      "LK",
+      "NP",
+      "BT",
+      "MV",
+      "AF"
+     ]
+    },
+    "PAC": {
+     "name": "太平洋（東北亞、東南亞、大洋洲）",
+     "countries": [
+      "JP",
+      "KR",
+      "KP",
+      "CN",
+      "HK",
+      "MO",
+      "TW",
+      "MN",
+      "BN",
+      "KH",
+      "ID",
+      "LA",
+      "MY",
+      "MM",
+      "PH",
+      "SG",
+      "TH",
+      "TL",
+      "VN",
+      "AU",
+      "NZ",
+      "FJ",
+      "PG",
+      "NC",
+      "PF",
+      "VU",
+      "WS",
+      "TO",
+      "SB",
+      "KI",
+      "TV",
+      "NR",
+      "FM",
+      "MH",
+      "PW",
+      "CK",
+      "NU",
+      "NF",
+      "AS",
+      "GU",
+      "MP",
+      "WF"
+     ]
+    },
+    "SA": {
+     "name": "南美洲",
+     "countries": [
+      "AR",
+      "BO",
+      "BR",
+      "CL",
+      "CO",
+      "EC",
+      "FK",
+      "GF",
+      "GY",
+      "PY",
+      "PE",
+      "SR",
+      "UY",
+      "VE"
+     ]
+    }
+   },
+   "tables": [
+    {
+     "label": "其他夥伴航班（固定價）",
+     "pairs": [
+      {
+       "from": "PAC",
+       "to": "PAC",
+       "bands": [
+        {
+         "upTo": 1000,
+         "Y": 8000,
+         "W": null,
+         "J": 20000,
+         "F": 25000
+        },
+        {
+         "upTo": 2000,
+         "Y": 15000,
+         "W": null,
+         "J": 30000,
+         "F": 50000
+        },
+        {
+         "upTo": 5000,
+         "Y": 30000,
+         "W": null,
+         "J": 52500,
+         "F": 60000
+        },
+        {
+         "upTo": 7000,
+         "Y": 35000,
+         "W": null,
+         "J": 72500,
+         "F": 80000
+        },
+        {
+         "upTo": null,
+         "Y": 50000,
+         "W": null,
+         "J": 85000,
+         "F": 130000
+        }
+       ]
+      },
+      {
+       "from": "PAC",
+       "to": "NA",
+       "bands": [
+        {
+         "upTo": 5000,
+         "Y": 32500,
+         "W": null,
+         "J": 55000,
+         "F": 90000
+        },
+        {
+         "upTo": 7500,
+         "Y": 50000,
+         "W": null,
+         "J": 85000,
+         "F": 120000
+        },
+        {
+         "upTo": 11000,
+         "Y": 65000,
+         "W": null,
+         "J": 102500,
+         "F": 140000
+        },
+        {
+         "upTo": null,
+         "Y": 70000,
+         "W": null,
+         "J": 115000,
+         "F": 150000
+        }
+       ]
+      },
+      {
+       "from": "PAC",
+       "to": "ATL",
+       "bands": [
+        {
+         "upTo": 2500,
+         "Y": 25000,
+         "W": null,
+         "J": 47500,
+         "F": 55000
+        },
+        {
+         "upTo": 5000,
+         "Y": 40000,
+         "W": null,
+         "J": 75000,
+         "F": 95000
+        },
+        {
+         "upTo": 7000,
+         "Y": 60000,
+         "W": null,
+         "J": 92500,
+         "F": 120000
+        },
+        {
+         "upTo": null,
+         "Y": 75000,
+         "W": null,
+         "J": 130000,
+         "F": 150000
+        }
+       ]
+      },
+      {
+       "from": "PAC",
+       "to": "SA",
+       "bands": [
+        {
+         "upTo": 11000,
+         "Y": 60000,
+         "W": null,
+         "J": 90000,
+         "F": 130000
+        },
+        {
+         "upTo": null,
+         "Y": 80000,
+         "W": null,
+         "J": 140000,
+         "F": 200000
+        }
+       ]
+      },
+      {
+       "from": "NA",
+       "to": "NA",
+       "bands": [
+        {
+         "upTo": 500,
+         "Y": 6000,
+         "W": null,
+         "J": 15000,
+         "F": null
+        },
+        {
+         "upTo": 1500,
+         "Y": 10000,
+         "W": null,
+         "J": 20000,
+         "F": null
+        },
+        {
+         "upTo": 2750,
+         "Y": 12500,
+         "W": null,
+         "J": 25000,
+         "F": null
+        },
+        {
+         "upTo": null,
+         "Y": 22500,
+         "W": null,
+         "J": 35000,
+         "F": null
+        }
+       ]
+      },
+      {
+       "from": "NA",
+       "to": "ATL",
+       "bands": [
+        {
+         "upTo": 4000,
+         "Y": 32500,
+         "W": null,
+         "J": 60000,
+         "F": 90000
+        },
+        {
+         "upTo": 6000,
+         "Y": 42500,
+         "W": null,
+         "J": 75000,
+         "F": 120000
+        },
+        {
+         "upTo": 8000,
+         "Y": 60000,
+         "W": null,
+         "J": 90000,
+         "F": 150000
+        },
+        {
+         "upTo": null,
+         "Y": 75000,
+         "W": null,
+         "J": 110000,
+         "F": 165000
+        }
+       ]
+      },
+      {
+       "from": "NA",
+       "to": "SA",
+       "bands": [
+        {
+         "upTo": 2500,
+         "Y": 20000,
+         "W": null,
+         "J": 40000,
+         "F": 60000
+        },
+        {
+         "upTo": 4500,
+         "Y": 30000,
+         "W": null,
+         "J": 50000,
+         "F": 80000
+        },
+        {
+         "upTo": null,
+         "Y": 40000,
+         "W": null,
+         "J": 60000,
+         "F": 100000
+        }
+       ]
+      },
+      {
+       "from": "ATL",
+       "to": "ATL",
+       "bands": [
+        {
+         "upTo": 1000,
+         "Y": 7500,
+         "W": null,
+         "J": 12500,
+         "F": 25000
+        },
+        {
+         "upTo": 2000,
+         "Y": 15000,
+         "W": null,
+         "J": 22500,
+         "F": 40000
+        },
+        {
+         "upTo": 4000,
+         "Y": 30000,
+         "W": null,
+         "J": 40000,
+         "F": 75000
+        },
+        {
+         "upTo": 6000,
+         "Y": 42500,
+         "W": null,
+         "J": 70000,
+         "F": 100000
+        },
+        {
+         "upTo": null,
+         "Y": 50000,
+         "W": null,
+         "J": 95000,
+         "F": 130000
+        }
+       ]
+      },
+      {
+       "from": "ATL",
+       "to": "SA",
+       "bands": [
+        {
+         "upTo": 7000,
+         "Y": 45000,
+         "W": null,
+         "J": 80000,
+         "F": 100000
+        },
+        {
+         "upTo": null,
+         "Y": 60000,
+         "W": null,
+         "J": 100000,
+         "F": 130000
+        }
+       ]
+      },
+      {
+       "from": "SA",
+       "to": "SA",
+       "bands": [
+        {
+         "upTo": 1600,
+         "Y": 10000,
+         "W": null,
+         "J": 20000,
+         "F": 30000
+        },
+        {
+         "upTo": null,
+         "Y": 20000,
+         "W": null,
+         "J": 35000,
+         "F": 50000
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "american",
+   "name": "美國航空 AAdvantage",
+   "kind": "regionMatrix",
+   "perSegment": false,
+   "oneWay": true,
+   "symmetric": true,
+   "note": "夥伴獎勵依出發與抵達區域定價（起價）；夏威夷、阿拉斯加需以機場判斷；日本境內另有優惠價",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": [
+    {
+     "label": "AA 官網夥伴航班與區域定義",
+     "url": "https://www.aa.com/web/i18n/aadvantage-program/use-miles/partner-airline-flights.html",
+     "official": true
+    },
+    {
+     "label": "10xTravel AA 夥伴獎勵表",
+     "url": "https://10xtravel.com/american-airlines-aadvantage-award-charts/",
+     "official": false
+    },
+    {
+     "label": "MileValue 亞洲區內價格",
+     "url": "https://milevalue.com/redeem-american-airlines-miles-asia/",
+     "official": false
+    },
+    {
+     "label": "AwardFares 北美出發表",
+     "url": "https://awardfares.com/blog/aadvantage-guide/",
+     "official": false
+    },
+    {
+     "label": "AwardWallet 2026 日航混搭漲價",
+     "url": "https://awardwallet.com/news/american-aadvantage/partner-award-price-increase-asia/",
+     "official": false
+    }
+   ],
+   "regions": {
+    "ASIA1": {
+     "name": "亞洲 1",
+     "countries": [
+      "JP",
+      "KR"
+     ]
+    },
+    "ASIA2": {
+     "name": "亞洲 2",
+     "countries": [
+      "BN",
+      "KH",
+      "CN",
+      "HK",
+      "ID",
+      "MY",
+      "MM",
+      "PH",
+      "SG",
+      "TW",
+      "TH",
+      "VN",
+      "MO",
+      "LA"
+     ]
+    },
+    "SP": {
+     "name": "南太平洋",
+     "countries": [
+      "AS",
+      "WS",
+      "AU",
+      "FJ",
+      "PF",
+      "GU",
+      "KI",
+      "NC",
+      "NZ",
+      "PW",
+      "PG",
+      "SB",
+      "TO",
+      "TV",
+      "VU"
+     ]
+    },
+    "ME": {
+     "name": "中東",
+     "countries": [
+      "BH",
+      "EG",
+      "IR",
+      "IQ",
+      "IL",
+      "JO",
+      "KW",
+      "LB",
+      "OM",
+      "QA",
+      "SA",
+      "AE"
+     ]
+    },
+    "IS": {
+     "name": "印度次大陸",
+     "countries": [
+      "BD",
+      "IN",
+      "KZ",
+      "MV",
+      "NP",
+      "PK",
+      "LK",
+      "TM",
+      "UZ"
+     ]
+    },
+    "EU": {
+     "name": "歐洲",
+     "countries": [
+      "AL",
+      "AM",
+      "AT",
+      "AZ",
+      "BE",
+      "BG",
+      "HR",
+      "CY",
+      "CZ",
+      "DK",
+      "EE",
+      "FI",
+      "FR",
+      "DE",
+      "GI",
+      "GR",
+      "HU",
+      "IS",
+      "IE",
+      "IT",
+      "LV",
+      "LT",
+      "LU",
+      "MK",
+      "MT",
+      "MD",
+      "ME",
+      "MA",
+      "NL",
+      "NO",
+      "PL",
+      "PT",
+      "RO",
+      "RS",
+      "SI",
+      "ES",
+      "SE",
+      "CH",
+      "TR",
+      "UA",
+      "GB",
+      "SK",
+      "BA"
+     ]
+    },
+    "AF": {
+     "name": "非洲",
+     "countries": [
+      "DZ",
+      "AO",
+      "BW",
+      "DJ",
+      "GQ",
+      "ET",
+      "GH",
+      "KE",
+      "MU",
+      "MZ",
+      "NA",
+      "NG",
+      "RW",
+      "SN",
+      "SC",
+      "ZA",
+      "SD",
+      "TZ",
+      "TN",
+      "UG",
+      "ZM",
+      "ZW"
+     ]
+    },
+    "NA48": {
+     "name": "美國本土48州與加拿大",
+     "countries": [
+      "US",
+      "CA"
+     ],
+     "excludeAirports": [
+      "HNL",
+      "OGG",
+      "KOA",
+      "LIH",
+      "ITO",
+      "MKK",
+      "LNY",
+      "ANC",
+      "FAI",
+      "JNU",
+      "KTN",
+      "SIT",
+      "ADQ",
+      "BET",
+      "OME",
+      "OTZ",
+      "BRW",
+      "SCC",
+      "CDV",
+      "YAK",
+      "WRG",
+      "PSG",
+      "DLG",
+      "AKN"
+     ]
+    },
+    "AK": {
+     "name": "阿拉斯加",
+     "airports": [
+      "ANC",
+      "FAI",
+      "JNU",
+      "KTN",
+      "SIT",
+      "ADQ",
+      "BET",
+      "OME",
+      "OTZ",
+      "BRW",
+      "SCC",
+      "CDV",
+      "YAK",
+      "WRG",
+      "PSG",
+      "DLG",
+      "AKN"
+     ]
+    },
+    "HI": {
+     "name": "夏威夷",
+     "airports": [
+      "HNL",
+      "OGG",
+      "KOA",
+      "LIH",
+      "ITO",
+      "MKK",
+      "LNY"
+     ]
+    },
+    "MX": {
+     "name": "墨西哥",
+     "countries": [
+      "MX"
+     ]
+    },
+    "CAR": {
+     "name": "加勒比海",
+     "countries": [
+      "AI",
+      "AG",
+      "AW",
+      "BS",
+      "BB",
+      "BM",
+      "BQ",
+      "VG",
+      "KY",
+      "CW",
+      "DM",
+      "DO",
+      "GD",
+      "GP",
+      "HT",
+      "JM",
+      "MQ",
+      "PR",
+      "KN",
+      "LC",
+      "SX",
+      "VC",
+      "TT",
+      "TC",
+      "VI"
+     ]
+    },
+    "CAM": {
+     "name": "中美洲",
+     "countries": [
+      "BZ",
+      "CR",
+      "SV",
+      "GT",
+      "HN",
+      "NI",
+      "PA"
+     ]
+    },
+    "SA1": {
+     "name": "南美 1",
+     "countries": [
+      "BO",
+      "CO",
+      "EC",
+      "GY",
+      "PE",
+      "SR"
+     ],
+     "extraAirports": [
+      "MAO"
+     ]
+    },
+    "SA2": {
+     "name": "南美 2",
+     "countries": [
+      "AR",
+      "BR",
+      "CL",
+      "FK",
+      "PY",
+      "UY",
+      "VE"
+     ],
+     "excludeAirports": [
+      "MAO"
+     ]
+    }
+   },
+   "tables": [
+    {
+     "label": "夥伴航班（單程起價）",
+     "pairs": [
+      {
+       "from": "ASIA2",
+       "to": "ASIA2",
+       "Y": 17500,
+       "W": 20000,
+       "J": 22500,
+       "F": 32500
+      },
+      {
+       "from": "ASIA2",
+       "to": "ASIA1",
+       "Y": 20000,
+       "W": 25000,
+       "J": 30000,
+       "F": 40000
+      },
+      {
+       "from": "ASIA2",
+       "to": "SP",
+       "Y": 30000,
+       "W": 35000,
+       "J": 40000,
+       "F": 50000
+      },
+      {
+       "from": "ASIA2",
+       "to": "ME",
+       "Y": 25000,
+       "W": 35000,
+       "J": 40000,
+       "F": 50000
+      },
+      {
+       "from": "ASIA2",
+       "to": "IS",
+       "Y": 25000,
+       "W": 35000,
+       "J": 40000,
+       "F": 50000
+      },
+      {
+       "from": "ASIA2",
+       "to": "EU",
+       "Y": 35000,
+       "W": 55000,
+       "J": 75000,
+       "F": 90000
+      },
+      {
+       "from": "ASIA2",
+       "to": "AF",
+       "Y": 40000,
+       "W": 55000,
+       "J": 70000,
+       "F": 80000
+      },
+      {
+       "from": "ASIA2",
+       "to": "NA48",
+       "Y": 37500,
+       "W": 50000,
+       "J": 70000,
+       "F": 110000
+      },
+      {
+       "from": "ASIA2",
+       "to": "AK",
+       "Y": 37500,
+       "W": 52500,
+       "J": 72500,
+       "F": 112500
+      },
+      {
+       "from": "ASIA2",
+       "to": "HI",
+       "Y": 35000,
+       "W": 45000,
+       "J": 55000,
+       "F": 80000
+      },
+      {
+       "from": "ASIA2",
+       "to": "MX",
+       "Y": 37500,
+       "W": 52500,
+       "J": 75000,
+       "F": 112500
+      },
+      {
+       "from": "ASIA2",
+       "to": "CAR",
+       "Y": 37500,
+       "W": 52500,
+       "J": 75000,
+       "F": 112500
+      },
+      {
+       "from": "ASIA1",
+       "to": "ASIA1",
+       "Y": 12500,
+       "W": 17500,
+       "J": 20000,
+       "F": 30000
+      },
+      {
+       "from": "ASIA1",
+       "to": "SP",
+       "Y": 30000,
+       "W": 35000,
+       "J": 40000,
+       "F": 60000
+      },
+      {
+       "from": "ASIA1",
+       "to": "ME",
+       "Y": 22500,
+       "W": 32500,
+       "J": 40000,
+       "F": 50000
+      },
+      {
+       "from": "ASIA1",
+       "to": "IS",
+       "Y": 22500,
+       "W": 32500,
+       "J": 40000,
+       "F": 50000
+      },
+      {
+       "from": "ASIA1",
+       "to": "EU",
+       "Y": 35000,
+       "W": 52500,
+       "J": 75000,
+       "F": 90000
+      },
+      {
+       "from": "ASIA1",
+       "to": "AF",
+       "Y": 45000,
+       "W": 57500,
+       "J": 75000,
+       "F": 90000
+      },
+      {
+       "from": "ASIA1",
+       "to": "NA48",
+       "Y": 35000,
+       "W": 50000,
+       "J": 60000,
+       "F": 80000
+      },
+      {
+       "from": "ASIA1",
+       "to": "AK",
+       "Y": 37500,
+       "W": 52500,
+       "J": 65000,
+       "F": 85000
+      },
+      {
+       "from": "ASIA1",
+       "to": "HI",
+       "Y": 32500,
+       "W": 42500,
+       "J": 52500,
+       "F": 75000
+      },
+      {
+       "from": "ASIA1",
+       "to": "MX",
+       "Y": 37500,
+       "W": 52500,
+       "J": 72500,
+       "F": 85000
+      },
+      {
+       "from": "ASIA1",
+       "to": "CAR",
+       "Y": 37500,
+       "W": 52500,
+       "J": 72500,
+       "F": 85000
+      },
+      {
+       "from": "NA48",
+       "to": "NA48",
+       "Y": 12500,
+       "W": 22500,
+       "J": 25000,
+       "F": 50000
+      },
+      {
+       "from": "NA48",
+       "to": "AK",
+       "Y": 15000,
+       "W": 25000,
+       "J": 30000,
+       "F": 55000
+      },
+      {
+       "from": "NA48",
+       "to": "HI",
+       "Y": 22500,
+       "W": 50000,
+       "J": 55000,
+       "F": 80000
+      },
+      {
+       "from": "NA48",
+       "to": "CAR",
+       "Y": 17500,
+       "W": null,
+       "J": 27500,
+       "F": 52500
+      },
+      {
+       "from": "NA48",
+       "to": "MX",
+       "Y": 17500,
+       "W": null,
+       "J": 27500,
+       "F": 52500
+      },
+      {
+       "from": "NA48",
+       "to": "CAM",
+       "Y": 17500,
+       "W": null,
+       "J": 27500,
+       "F": 52500
+      },
+      {
+       "from": "NA48",
+       "to": "SA1",
+       "Y": 20000,
+       "W": null,
+       "J": 30000,
+       "F": 55000
+      },
+      {
+       "from": "NA48",
+       "to": "SA2",
+       "Y": 30000,
+       "W": 40000,
+       "J": 57500,
+       "F": 85000
+      },
+      {
+       "from": "NA48",
+       "to": "EU",
+       "Y": 30000,
+       "W": 40000,
+       "J": 57500,
+       "F": 85000
+      },
+      {
+       "from": "NA48",
+       "to": "ME",
+       "Y": 40000,
+       "W": 62500,
+       "J": 70000,
+       "F": 115000
+      },
+      {
+       "from": "NA48",
+       "to": "IS",
+       "Y": 40000,
+       "W": 62500,
+       "J": 70000,
+       "F": 115000
+      },
+      {
+       "from": "NA48",
+       "to": "AF",
+       "Y": 40000,
+       "W": 65000,
+       "J": 75000,
+       "F": 120000
+      },
+      {
+       "from": "NA48",
+       "to": "SP",
+       "Y": 40000,
+       "W": 65000,
+       "J": 80000,
+       "F": 110000
+      }
+     ]
+    }
+   ],
+   "specialCases": [
+    "日本國內線（僅限日本境內）單程 7,500／商務 15,000／頭等 20,000",
+    "北美—歐洲經濟艙淡季 22,500（1/10–3/14、11/1–12/14）",
+    "2026年7月起觀察到日航+美航/阿航混搭到日韓漲價（經濟45,000、商務80,000）"
+   ]
+  },
+  {
+   "id": "jal",
+   "name": "日航 JAL Mileage Bank",
+   "kind": "routeSpecific",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "日航自營國際線依航線定基本哩數，無位時改收較高的PLUS價；此處只列台北—日本基本價",
+   "effective": "2026-04",
+   "confidence": "official",
+   "sources": [
+    {
+     "label": "日航台灣官網獎勵機票哩程表",
+     "url": "https://www.jal.co.jp/tw/zhtw/jalmile/use/jal/inter/routemiles.html",
+     "official": true
+    },
+    {
+     "label": "日航官網（英文）哩程表",
+     "url": "https://www.jal.co.jp/jp/en/jalmile/use/jal/inter/routemiles.html",
+     "official": true
+    }
+   ],
+   "routes": [
+    {
+     "from": [
+      "TPE",
+      "TSA"
+     ],
+     "to": [
+      "HND"
+     ],
+     "Y": 11000,
+     "W": null,
+     "J": 26000,
+     "F": null
+    },
+    {
+     "from": [
+      "TPE",
+      "TSA"
+     ],
+     "to": [
+      "NRT",
+      "KIX",
+      "NGO"
+     ],
+     "Y": 9000,
+     "W": null,
+     "J": 24000,
+     "F": null
+    }
+   ]
+  },
+  {
+   "id": "jal_partner",
+   "name": "日航 寰宇一家獎勵機票",
+   "kind": "distance",
+   "perSegment": false,
+   "oneWay": false,
+   "distanceBasis": "roundTripTotal",
+   "note": "寰宇一家夥伴票以整趟行程總飛行距離（通常為來回）計算，非單程價",
+   "effective": null,
+   "confidence": "official",
+   "sources": [
+    {
+     "label": "日航寰宇一家獎勵機票表",
+     "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/miles.html",
+     "official": true
+    }
+   ],
+   "tables": [
+    {
+     "label": "寰宇一家（含日航以外航段）",
+     "bands": [
+      {
+       "upTo": 4000,
+       "Y": 25000,
+       "W": null,
+       "J": 48000,
+       "F": 72000
+      },
+      {
+       "upTo": 8000,
+       "Y": 40000,
+       "W": null,
+       "J": 80000,
+       "F": 100000
+      },
+      {
+       "upTo": 10000,
+       "Y": 50000,
+       "W": null,
+       "J": 85000,
+       "F": 110000
+      },
+      {
+       "upTo": 12000,
+       "Y": 60000,
+       "W": null,
+       "J": 110000,
+       "F": 160000
+      },
+      {
+       "upTo": 14000,
+       "Y": 70000,
+       "W": null,
+       "J": 115000,
+       "F": 165000
+      },
+      {
+       "upTo": 20000,
+       "Y": 90000,
+       "W": null,
+       "J": 120000,
+       "F": 170000
+      },
+      {
+       "upTo": 25000,
+       "Y": 120000,
+       "W": null,
+       "J": 150000,
+       "F": 230000
+      },
+      {
+       "upTo": 29000,
+       "Y": 140000,
+       "W": null,
+       "J": 190000,
+       "F": 280000
+      },
+      {
+       "upTo": 34000,
+       "Y": 150000,
+       "W": null,
+       "J": 200000,
+       "F": 300000
+      },
+      {
+       "upTo": 50000,
+       "Y": 160000,
+       "W": null,
+       "J": 220000,
+       "F": 330000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ana",
+   "name": "全日空 ANA 星盟夥伴",
+   "kind": "zone",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "台灣屬第3區（亞洲1）；2025/6/24起可開單程，約為來回一半；不可兌豪經",
+   "effective": "2025-06",
+   "confidence": "official",
+   "sources": [
+    {
+     "label": "ANA 台灣官網夥伴獎勵機票",
+     "url": "https://www.ana.co.jp/en/tw/amc/partner-flight-awards/",
+     "official": true
+    }
+   ],
+   "tables": [
+    {
+     "label": "星空聯盟夥伴航班（自台灣，第3區出發）",
+     "zones": [
+      {
+       "name": "日本（第1-A區）",
+       "countries": [
+        "JP"
+       ],
+       "Y": 10000,
+       "W": null,
+       "J": 20000,
+       "F": 30000,
+       "note": "行程含日本國內線時屬1-B：11,500／21,500／34,500"
+      },
+      {
+       "name": "韓國（第2區）",
+       "countries": [
+        "KR"
+       ],
+       "Y": 11000,
+       "W": null,
+       "J": 21000,
+       "F": 33000,
+       "extraAirports": [
+        "VVO"
+       ]
+      },
+      {
+       "name": "亞洲1（第3區）",
+       "countries": [
+        "TW",
+        "CN",
+        "HK",
+        "MO",
+        "PH",
+        "GU"
+       ],
+       "Y": 10000,
+       "W": null,
+       "J": 20000,
+       "F": 30000
+      },
+      {
+       "name": "亞洲2（第4區）",
+       "countries": [
+        "BN",
+        "KH",
+        "ID",
+        "LA",
+        "MY",
+        "MM",
+        "PH",
+        "SG",
+        "TH",
+        "TL",
+        "VN",
+        "IN",
+        "PK",
+        "BD",
+        "LK",
+        "NP",
+        "BT",
+        "MV",
+        "AF",
+        "KZ",
+        "KG",
+        "TJ",
+        "TM",
+        "UZ",
+        "MN"
+       ],
+       "Y": 18000,
+       "W": null,
+       "J": 30500,
+       "F": 54000
+      },
+      {
+       "name": "夏威夷（第5區）",
+       "countries": [],
+       "Y": 27500,
+       "W": null,
+       "J": 55500,
+       "F": 96500,
+       "airports": [
+        "HNL",
+        "OGG",
+        "KOA",
+        "LIH",
+        "ITO",
+        "MKK",
+        "LNY"
+       ]
+      },
+      {
+       "name": "北美（第6區）",
+       "countries": [
+        "US",
+        "CA",
+        "MX"
+       ],
+       "Y": 30000,
+       "W": null,
+       "J": 65000,
+       "F": 102000,
+       "excludeAirports": [
+        "HNL",
+        "OGG",
+        "KOA",
+        "LIH",
+        "ITO",
+        "MKK",
+        "LNY"
+       ]
+      },
+      {
+       "name": "歐洲（第7區）",
+       "countries": [
+        "AL",
+        "AD",
+        "AT",
+        "BY",
+        "BE",
+        "BA",
+        "BG",
+        "HR",
+        "CY",
+        "CZ",
+        "DK",
+        "EE",
+        "FO",
+        "FI",
+        "FR",
+        "DE",
+        "GI",
+        "GR",
+        "HU",
+        "IS",
+        "IE",
+        "IT",
+        "XK",
+        "LV",
+        "LI",
+        "LT",
+        "LU",
+        "MT",
+        "MD",
+        "MC",
+        "ME",
+        "NL",
+        "MK",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SM",
+        "RS",
+        "SK",
+        "SI",
+        "ES",
+        "SE",
+        "CH",
+        "UA",
+        "GB",
+        "VA",
+        "RU",
+        "TR",
+        "GL",
+        "SJ",
+        "AM",
+        "AZ",
+        "GE",
+        "DZ",
+        "MA",
+        "TN"
+       ],
+       "Y": 30000,
+       "W": null,
+       "J": 59000,
+       "F": 100000
+      },
+      {
+       "name": "非洲・中東（第8區）",
+       "countries": [
+        "AE",
+        "BH",
+        "IL",
+        "IQ",
+        "IR",
+        "JO",
+        "KW",
+        "LB",
+        "OM",
+        "PS",
+        "QA",
+        "SA",
+        "SY",
+        "YE",
+        "EG",
+        "AO",
+        "BJ",
+        "BW",
+        "BF",
+        "BI",
+        "CV",
+        "CM",
+        "CF",
+        "TD",
+        "KM",
+        "CG",
+        "CD",
+        "CI",
+        "DJ",
+        "GQ",
+        "ER",
+        "SZ",
+        "ET",
+        "GA",
+        "GM",
+        "GH",
+        "GN",
+        "GW",
+        "KE",
+        "LS",
+        "LR",
+        "MG",
+        "MW",
+        "ML",
+        "MR",
+        "MU",
+        "YT",
+        "MZ",
+        "NA",
+        "NE",
+        "NG",
+        "RE",
+        "RW",
+        "ST",
+        "SN",
+        "SC",
+        "SL",
+        "SO",
+        "ZA",
+        "SS",
+        "SD",
+        "TZ",
+        "TG",
+        "UG",
+        "ZM",
+        "ZW"
+       ],
+       "Y": 48000,
+       "W": null,
+       "J": 89500,
+       "F": 139000
+      },
+      {
+       "name": "中南美（第9區）",
+       "countries": [
+        "AR",
+        "BO",
+        "BR",
+        "CL",
+        "CO",
+        "EC",
+        "FK",
+        "GF",
+        "GY",
+        "PY",
+        "PE",
+        "SR",
+        "UY",
+        "VE",
+        "BZ",
+        "CR",
+        "SV",
+        "GT",
+        "HN",
+        "NI",
+        "PA",
+        "AG",
+        "AI",
+        "AW",
+        "BS",
+        "BB",
+        "BM",
+        "BQ",
+        "VG",
+        "KY",
+        "CU",
+        "CW",
+        "DM",
+        "DO",
+        "GD",
+        "GP",
+        "HT",
+        "JM",
+        "MQ",
+        "MS",
+        "PR",
+        "KN",
+        "LC",
+        "MF",
+        "SX",
+        "VC",
+        "TT",
+        "TC",
+        "VI",
+        "BL"
+       ],
+       "Y": 61000,
+       "W": null,
+       "J": 103500,
+       "F": 173500
+      },
+      {
+       "name": "大洋洲・密克羅尼西亞（第10區）",
+       "countries": [
+        "AU",
+        "NZ",
+        "FJ",
+        "PG",
+        "NC",
+        "PF",
+        "VU",
+        "WS",
+        "TO",
+        "SB",
+        "KI",
+        "TV",
+        "NR",
+        "FM",
+        "MH",
+        "PW",
+        "CK",
+        "NU",
+        "NF",
+        "AS",
+        "MP",
+        "WF"
+       ],
+       "Y": 25000,
+       "W": null,
+       "J": 48000,
+       "F": 90000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "singapore",
+   "name": "新加坡航空 KrisFlyer 星盟夥伴",
+   "kind": "regionMatrix",
+   "perSegment": false,
+   "oneWay": true,
+   "symmetric": true,
+   "note": "官方表為來回價，單程為一半；台灣屬「北亞1」；星盟夥伴不能兌豪經",
+   "effective": "2025-11",
+   "confidence": "official",
+   "sources": [
+    {
+     "label": "KrisFlyer 星盟獎勵表 PDF（2025/11/1）",
+     "url": "https://www.singaporeair.com/content/dam/sia/web-assets/pdfs/ppsclub-krisflyer/krisflyer/progupdates/awardcharts/StarAllianceRound-TripAwardChartupdated1Nov25.pdf",
+     "official": true
+    },
+    {
+     "label": "MileLion 新加坡出發對照",
+     "url": "https://milelion.com/2025/08/31/krisflyer-devalues-star-alliance-award-chart-nerfs-free-ride-perk/",
+     "official": false
+    },
+    {
+     "label": "10xTravel 區域國家清單",
+     "url": "https://10xtravel.com/singapore-airlines-krisflyer-award-charts/",
+     "official": false
+    }
+   ],
+   "regions": {
+    "SEA1": {
+     "name": "東南亞1",
+     "countries": [
+      "BN",
+      "ID",
+      "MY",
+      "SG"
+     ]
+    },
+    "SEA2": {
+     "name": "東南亞2",
+     "countries": [
+      "KH",
+      "LA",
+      "MM",
+      "PH",
+      "TH",
+      "VN",
+      "TL"
+     ]
+    },
+    "NA1": {
+     "name": "北亞1",
+     "countries": [
+      "HK",
+      "MO",
+      "TW"
+     ]
+    },
+    "NA2": {
+     "name": "北亞2",
+     "countries": [
+      "CN",
+      "GU",
+      "JP",
+      "FM",
+      "PW",
+      "KR",
+      "MP"
+     ]
+    },
+    "CSA": {
+     "name": "中亞・南亞",
+     "countries": [
+      "AF",
+      "BD",
+      "IN",
+      "KZ",
+      "KG",
+      "MV",
+      "NP",
+      "PK",
+      "LK",
+      "TJ",
+      "TM",
+      "UZ",
+      "BT"
+     ]
+    },
+    "SWP": {
+     "name": "西南太平洋",
+     "countries": [
+      "AU",
+      "CK",
+      "FJ",
+      "NZ",
+      "NU",
+      "NF",
+      "WS",
+      "PF",
+      "TO",
+      "VU",
+      "NC"
+     ]
+    },
+    "MENA": {
+     "name": "中東・北非",
+     "countries": [
+      "DZ",
+      "AM",
+      "AZ",
+      "BH",
+      "CY",
+      "EG",
+      "GE",
+      "IR",
+      "IQ",
+      "IL",
+      "JO",
+      "KW",
+      "LB",
+      "LY",
+      "MA",
+      "OM",
+      "QA",
+      "SA",
+      "SY",
+      "TN",
+      "TR",
+      "AE"
+     ]
+    },
+    "EUR": {
+     "name": "歐洲",
+     "countries": [
+      "AL",
+      "AD",
+      "AT",
+      "BY",
+      "BE",
+      "BA",
+      "BG",
+      "HR",
+      "CZ",
+      "DK",
+      "EE",
+      "FO",
+      "FI",
+      "FR",
+      "DE",
+      "GI",
+      "GR",
+      "HU",
+      "IS",
+      "IE",
+      "IT",
+      "XK",
+      "LV",
+      "LI",
+      "LT",
+      "LU",
+      "MT",
+      "MD",
+      "MC",
+      "ME",
+      "NL",
+      "MK",
+      "NO",
+      "PL",
+      "PT",
+      "RO",
+      "SM",
+      "RS",
+      "SK",
+      "SI",
+      "ES",
+      "SE",
+      "CH",
+      "UA",
+      "GB",
+      "VA",
+      "RU"
+     ]
+    },
+    "NAM": {
+     "name": "北美（不含夏威夷）",
+     "countries": [
+      "US",
+      "CA"
+     ],
+     "excludeAirports": [
+      "HNL",
+      "OGG",
+      "KOA",
+      "LIH",
+      "ITO",
+      "MKK",
+      "LNY"
+     ]
+    },
+    "HICA": {
+     "name": "夏威夷・中美洲",
+     "countries": [
+      "MX",
+      "BZ",
+      "CR",
+      "SV",
+      "GT",
+      "HN",
+      "NI",
+      "PA",
+      "AG",
+      "AI",
+      "AW",
+      "BS",
+      "BB",
+      "BM",
+      "BQ",
+      "VG",
+      "KY",
+      "CU",
+      "CW",
+      "DM",
+      "DO",
+      "GD",
+      "GP",
+      "HT",
+      "JM",
+      "MQ",
+      "MS",
+      "PR",
+      "KN",
+      "LC",
+      "MF",
+      "SX",
+      "VC",
+      "TT",
+      "TC",
+      "VI",
+      "BL"
+     ],
+     "airports": [
+      "HNL",
+      "OGG",
+      "KOA",
+      "LIH",
+      "ITO",
+      "MKK",
+      "LNY"
+     ]
+    },
+    "SAM": {
+     "name": "南美洲",
+     "countries": [
+      "AR",
+      "BO",
+      "BR",
+      "CL",
+      "CO",
+      "EC",
+      "FK",
+      "GF",
+      "GY",
+      "PY",
+      "PE",
+      "SR",
+      "UY",
+      "VE"
+     ]
+    },
+    "CSAF": {
+     "name": "中非・南非",
+     "countries": [
+      "AO",
+      "BJ",
+      "BW",
+      "BF",
+      "BI",
+      "CV",
+      "CM",
+      "CF",
+      "TD",
+      "KM",
+      "CG",
+      "CD",
+      "CI",
+      "DJ",
+      "GQ",
+      "ER",
+      "SZ",
+      "ET",
+      "GA",
+      "GM",
+      "GH",
+      "GN",
+      "GW",
+      "KE",
+      "LS",
+      "LR",
+      "MG",
+      "MW",
+      "ML",
+      "MR",
+      "MU",
+      "YT",
+      "MZ",
+      "NA",
+      "NE",
+      "NG",
+      "RE",
+      "RW",
+      "ST",
+      "SN",
+      "SC",
+      "SL",
+      "SO",
+      "ZA",
+      "SS",
+      "SD",
+      "TZ",
+      "TG",
+      "UG",
+      "ZM",
+      "ZW"
+     ]
+    }
+   },
+   "tables": [
+    {
+     "label": "星空聯盟夥伴航班（Saver，單程）",
+     "pairs": [
+      {
+       "from": "NA1",
+       "to": "NA1",
+       "Y": 14500,
+       "W": null,
+       "J": 32000,
+       "F": 42000
+      },
+      {
+       "from": "NA1",
+       "to": "NA2",
+       "Y": 14500,
+       "W": null,
+       "J": 32000,
+       "F": 42000
+      },
+      {
+       "from": "NA1",
+       "to": "SEA1",
+       "Y": 17500,
+       "W": null,
+       "J": 51000,
+       "F": 63000
+      },
+      {
+       "from": "NA1",
+       "to": "SEA2",
+       "Y": 17500,
+       "W": null,
+       "J": 52500,
+       "F": 66000
+      },
+      {
+       "from": "NA1",
+       "to": "CSA",
+       "Y": 34500,
+       "W": null,
+       "J": 66000,
+       "F": 98000
+      },
+      {
+       "from": "NA1",
+       "to": "SWP",
+       "Y": 40000,
+       "W": null,
+       "J": 90000,
+       "F": 113000
+      },
+      {
+       "from": "NA1",
+       "to": "MENA",
+       "Y": 50500,
+       "W": null,
+       "J": 104000,
+       "F": 146000
+      },
+      {
+       "from": "NA1",
+       "to": "EUR",
+       "Y": 58000,
+       "W": null,
+       "J": 131000,
+       "F": 201500
+      },
+      {
+       "from": "NA1",
+       "to": "NAM",
+       "Y": 56000,
+       "W": null,
+       "J": 142500,
+       "F": 173500
+      },
+      {
+       "from": "NA1",
+       "to": "HICA",
+       "Y": 56000,
+       "W": null,
+       "J": 142500,
+       "F": 173500
+      },
+      {
+       "from": "NA1",
+       "to": "SAM",
+       "Y": 78500,
+       "W": null,
+       "J": 147000,
+       "F": 186000
+      },
+      {
+       "from": "NA1",
+       "to": "CSAF",
+       "Y": 48500,
+       "W": null,
+       "J": 91500,
+       "F": 140500
+      },
+      {
+       "from": "NA2",
+       "to": "NA2",
+       "Y": 14500,
+       "W": null,
+       "J": 32000,
+       "F": 42000
+      },
+      {
+       "from": "NA2",
+       "to": "SEA1",
+       "Y": 28500,
+       "W": null,
+       "J": 58000,
+       "F": 85000
+      },
+      {
+       "from": "NA2",
+       "to": "SEA2",
+       "Y": 28500,
+       "W": null,
+       "J": 57500,
+       "F": 85000
+      },
+      {
+       "from": "NA2",
+       "to": "CSA",
+       "Y": 45500,
+       "W": null,
+       "J": 91000,
+       "F": 117000
+      },
+      {
+       "from": "NA2",
+       "to": "SWP",
+       "Y": 51000,
+       "W": null,
+       "J": 114500,
+       "F": 145500
+      },
+      {
+       "from": "NA2",
+       "to": "MENA",
+       "Y": 59000,
+       "W": null,
+       "J": 118500,
+       "F": 152000
+      },
+      {
+       "from": "NA2",
+       "to": "EUR",
+       "Y": 58000,
+       "W": null,
+       "J": 137500,
+       "F": 190000
+      },
+      {
+       "from": "NA2",
+       "to": "NAM",
+       "Y": 62500,
+       "W": null,
+       "J": 142500,
+       "F": 173500
+      },
+      {
+       "from": "NA2",
+       "to": "HICA",
+       "Y": 62500,
+       "W": null,
+       "J": 142500,
+       "F": 173500
+      },
+      {
+       "from": "NA2",
+       "to": "SAM",
+       "Y": 78500,
+       "W": null,
+       "J": 147000,
+       "F": 193500
+      },
+      {
+       "from": "NA2",
+       "to": "CSAF",
+       "Y": 55000,
+       "W": null,
+       "J": 100500,
+       "F": 143000
+      },
+      {
+       "from": "SEA1",
+       "to": "SEA1",
+       "Y": 9000,
+       "W": null,
+       "J": 23500,
+       "F": 34000
+      },
+      {
+       "from": "SEA1",
+       "to": "SEA2",
+       "Y": 14500,
+       "W": null,
+       "J": 26500,
+       "F": 40000
+      },
+      {
+       "from": "SEA1",
+       "to": "CSA",
+       "Y": 28500,
+       "W": null,
+       "J": 57500,
+       "F": 81000
+      },
+      {
+       "from": "SEA1",
+       "to": "SWP",
+       "Y": 37000,
+       "W": null,
+       "J": 90000,
+       "F": 119000
+      },
+      {
+       "from": "SEA1",
+       "to": "MENA",
+       "Y": 43000,
+       "W": null,
+       "J": 90500,
+       "F": 115500
+      },
+      {
+       "from": "SEA1",
+       "to": "EUR",
+       "Y": 52000,
+       "W": null,
+       "J": 114000,
+       "F": 174500
+      },
+      {
+       "from": "SEA1",
+       "to": "NAM",
+       "Y": 64000,
+       "W": null,
+       "J": 131000,
+       "F": 184500
+      },
+      {
+       "from": "SEA1",
+       "to": "HICA",
+       "Y": 64000,
+       "W": null,
+       "J": 131000,
+       "F": 184500
+      },
+      {
+       "from": "SEA1",
+       "to": "SAM",
+       "Y": 78500,
+       "W": null,
+       "J": 147500,
+       "F": 188000
+      },
+      {
+       "from": "SEA1",
+       "to": "CSAF",
+       "Y": 46000,
+       "W": null,
+       "J": 76000,
+       "F": 102500
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "eva",
+   "name": "長榮 無限萬哩遊",
+   "kind": "zone",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "長榮／立榮自營航班；官方以來回列價，單程為一半；美東六城另計較高價",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": [
+    {
+     "label": "長榮官網獎勵機票（長榮/立榮）",
+     "url": "https://www.evaair.com/zh-tw/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/eva-uni-air/",
+     "official": true
+    },
+    {
+     "label": "研究生 長榮哩程手冊（2026/8官網資料）",
+     "url": "https://www.pointsjourney.com/blog/guide-eva-air/",
+     "official": false
+    },
+    {
+     "label": "10xTravel 長榮獎勵表",
+     "url": "https://10xtravel.com/eva-air-infinity-mileagelands-award-charts/",
+     "official": false
+    }
+   ],
+   "tables": [
+    {
+     "label": "長榮航班（自台灣出發，單程）",
+     "zones": [
+      {
+       "name": "港澳",
+       "countries": [
+        "HK",
+        "MO"
+       ],
+       "Y": 10000,
+       "W": null,
+       "J": 25000,
+       "F": null
+      },
+      {
+       "name": "亞洲其他（東北亞、東南亞、大陸、德里）",
+       "countries": [
+        "JP",
+        "KR",
+        "CN",
+        "TH",
+        "VN",
+        "PH",
+        "MY",
+        "SG",
+        "ID",
+        "KH",
+        "MM",
+        "IN"
+       ],
+       "Y": 17500,
+       "W": 20000,
+       "J": 25000,
+       "F": null
+      },
+      {
+       "name": "大洋洲",
+       "countries": [
+        "AU",
+        "NZ"
+       ],
+       "Y": 50000,
+       "W": null,
+       "J": 75000,
+       "F": null
+      },
+      {
+       "name": "美洲（美東六城）",
+       "countries": [],
+       "Y": 55000,
+       "W": 60000,
+       "J": 80000,
+       "F": null,
+       "airports": [
+        "ORD",
+        "JFK",
+        "IAH",
+        "DFW",
+        "IAD",
+        "YYZ"
+       ]
+      },
+      {
+       "name": "美洲（其他）",
+       "countries": [
+        "US",
+        "CA"
+       ],
+       "Y": 50000,
+       "W": 55000,
+       "J": 75000,
+       "F": null,
+       "excludeAirports": [
+        "ORD",
+        "JFK",
+        "IAH",
+        "DFW",
+        "IAD",
+        "YYZ"
+       ]
+      },
+      {
+       "name": "歐洲",
+       "countries": [
+        "AL",
+        "AD",
+        "AT",
+        "BY",
+        "BE",
+        "BA",
+        "BG",
+        "HR",
+        "CY",
+        "CZ",
+        "DK",
+        "EE",
+        "FO",
+        "FI",
+        "FR",
+        "DE",
+        "GI",
+        "GR",
+        "HU",
+        "IS",
+        "IE",
+        "IT",
+        "XK",
+        "LV",
+        "LI",
+        "LT",
+        "LU",
+        "MT",
+        "MD",
+        "MC",
+        "ME",
+        "NL",
+        "MK",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SM",
+        "RS",
+        "SK",
+        "SI",
+        "ES",
+        "SE",
+        "CH",
+        "UA",
+        "GB",
+        "VA"
+       ],
+       "Y": 50000,
+       "W": 55000,
+       "J": 75000,
+       "F": null
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ci",
+   "name": "華航 華夏哩程",
+   "kind": "zone",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "2026/9/16起改三段式（充足/有限/稀少），此列最低「充足」價；單程為來回一半",
+   "effective": "2026-09",
+   "confidence": "secondary",
+   "sources": [
+    {
+     "label": "研究生 華航哩程手冊（新制表）",
+     "url": "https://www.pointsjourney.com/blog/guide-china-airlines/",
+     "official": false
+    },
+    {
+     "label": "痞客邦轉載官方調整公告",
+     "url": "https://aerotravel.pixnet.net/blog/posts/929174815286114525",
+     "official": false
+    },
+    {
+     "label": "波比看世界 新制懶人包",
+     "url": "https://pokem.tw/chinaairlines-dynastyflyerprogram-intro-08/",
+     "official": false
+    }
+   ],
+   "tables": [
+    {
+     "label": "華航／華信航班（自台灣出發，最低層級單程）",
+     "zones": [
+      {
+       "name": "亞洲（一）香港・廈門・福州",
+       "countries": [],
+       "Y": 9000,
+       "W": null,
+       "J": 25000,
+       "F": null,
+       "airports": [
+        "HKG",
+        "XMN",
+        "FOC"
+       ]
+      },
+      {
+       "name": "亞洲（三）東京・大阪・札幌・首爾・曼谷等",
+       "countries": [],
+       "Y": 17500,
+       "W": 20000,
+       "J": 30000,
+       "F": null,
+       "airports": [
+        "HND",
+        "NRT",
+        "KIX",
+        "CTS",
+        "ICN",
+        "GMP",
+        "BKK",
+        "CNX",
+        "PEN",
+        "DPS",
+        "ROR",
+        "RGN"
+       ]
+      },
+      {
+       "name": "亞洲（二）其他東北亞・東南亞・大陸",
+       "countries": [
+        "JP",
+        "KR",
+        "CN",
+        "MO",
+        "VN",
+        "MY",
+        "PH",
+        "ID",
+        "SG",
+        "KH",
+        "TH",
+        "MM"
+       ],
+       "Y": 15000,
+       "W": 20000,
+       "J": 27500,
+       "F": null,
+       "excludeAirports": [
+        "HKG",
+        "XMN",
+        "FOC",
+        "HND",
+        "NRT",
+        "KIX",
+        "CTS",
+        "ICN",
+        "GMP",
+        "BKK",
+        "CNX",
+        "PEN",
+        "DPS",
+        "ROR",
+        "RGN"
+       ]
+      },
+      {
+       "name": "紐澳",
+       "countries": [
+        "AU",
+        "NZ"
+       ],
+       "Y": 40000,
+       "W": 55000,
+       "J": 75000,
+       "F": null
+      },
+      {
+       "name": "北美（紐約除外）",
+       "countries": [
+        "US",
+        "CA"
+       ],
+       "Y": 40000,
+       "W": 60000,
+       "J": 80000,
+       "F": null,
+       "excludeAirports": [
+        "JFK"
+       ]
+      },
+      {
+       "name": "紐約",
+       "countries": [],
+       "Y": 45000,
+       "W": 60000,
+       "J": 80000,
+       "F": null,
+       "airports": [
+        "JFK"
+       ]
+      },
+      {
+       "name": "歐洲",
+       "countries": [
+        "AL",
+        "AD",
+        "AT",
+        "BY",
+        "BE",
+        "BA",
+        "BG",
+        "HR",
+        "CY",
+        "CZ",
+        "DK",
+        "EE",
+        "FO",
+        "FI",
+        "FR",
+        "DE",
+        "GI",
+        "GR",
+        "HU",
+        "IS",
+        "IE",
+        "IT",
+        "XK",
+        "LV",
+        "LI",
+        "LT",
+        "LU",
+        "MT",
+        "MD",
+        "MC",
+        "ME",
+        "NL",
+        "MK",
+        "NO",
+        "PL",
+        "PT",
+        "RO",
+        "SM",
+        "RS",
+        "SK",
+        "SI",
+        "ES",
+        "SE",
+        "CH",
+        "UA",
+        "GB",
+        "VA"
+       ],
+       "Y": 45000,
+       "W": 60000,
+       "J": 80000,
+       "F": null
+      }
+     ]
+    }
+   ],
+   "tiers": {
+    "說明": "有限、稀少層級（來回）見來源；例：北美經濟 80k/90k/105k、商務 160k/180k/200k"
+   }
+  },
+  {
+   "id": "turkish",
+   "name": "土耳其航空 Miles&Smiles 星盟夥伴",
+   "kind": "regionMatrix",
+   "perSegment": false,
+   "oneWay": true,
+   "symmetric": true,
+   "note": "星盟夥伴依出發與抵達區域單程計價；同一國家境內夥伴航班另有固定價",
+   "effective": "2024-02",
+   "confidence": "secondary",
+   "sources": [
+    {
+     "label": "10xTravel 土航獎勵表",
+     "url": "https://10xtravel.com/turkish-airlines-award-charts/",
+     "official": false
+    },
+    {
+     "label": "AwardFares Miles&Smiles 指南",
+     "url": "https://awardfares.com/blog/miles-and-smiles-guide/",
+     "official": false
+    },
+    {
+     "label": "Prince of Travel 2024 新表",
+     "url": "https://princeoftravel.com/news/turkish-airlines-milessmiles-publishes-new-award-charts/",
+     "official": false
+    }
+   ],
+   "regions": {
+    "TR": {
+     "name": "土耳其",
+     "countries": [
+      "TR"
+     ]
+    },
+    "EU1": {
+     "name": "歐洲 1",
+     "countries": [
+      "AL",
+      "AM",
+      "BA",
+      "BG",
+      "HR",
+      "GE",
+      "GR",
+      "HU",
+      "XK",
+      "MK",
+      "MD",
+      "ME",
+      "RO",
+      "RS",
+      "SI",
+      "UA",
+      "CY"
+     ]
+    },
+    "EU2": {
+     "name": "歐洲 2",
+     "countries": [
+      "AT",
+      "AZ",
+      "BY",
+      "BE",
+      "CZ",
+      "DK",
+      "EE",
+      "FO",
+      "FI",
+      "FR",
+      "DE",
+      "IS",
+      "IE",
+      "IT",
+      "LV",
+      "LT",
+      "LU",
+      "MT",
+      "NL",
+      "NO",
+      "PL",
+      "PT",
+      "RU",
+      "SK",
+      "ES",
+      "SE",
+      "CH",
+      "GB"
+     ]
+    },
+    "CAS": {
+     "name": "中亞",
+     "countries": [
+      "AF",
+      "BD",
+      "IN",
+      "KZ",
+      "KG",
+      "NP",
+      "PK",
+      "TJ",
+      "TM",
+      "UZ"
+     ]
+    },
+    "ME": {
+     "name": "中東",
+     "countries": [
+      "BH",
+      "IR",
+      "IQ",
+      "IL",
+      "JO",
+      "KW",
+      "LB",
+      "OM",
+      "QA",
+      "SA",
+      "SY",
+      "AE",
+      "YE"
+     ]
+    },
+    "NAF": {
+     "name": "北非",
+     "countries": [
+      "DZ",
+      "MA",
+      "LY",
+      "EG",
+      "TN"
+     ]
+    },
+    "CAF": {
+     "name": "中非",
+     "countries": [
+      "BJ",
+      "BF",
+      "CM",
+      "DJ",
+      "TD",
+      "CD",
+      "ER",
+      "ET",
+      "GA",
+      "GM",
+      "GH",
+      "GN",
+      "KE",
+      "CI",
+      "ML",
+      "MR",
+      "NE",
+      "NG",
+      "CG",
+      "RW",
+      "SN",
+      "SL",
+      "SO",
+      "SD",
+      "SS",
+      "TZ",
+      "UG",
+      "GQ"
+     ]
+    },
+    "SAF": {
+     "name": "南部非洲",
+     "countries": [
+      "ZA",
+      "KM",
+      "MG",
+      "MU",
+      "MZ",
+      "SC",
+      "ZM"
+     ]
+    },
+    "FE": {
+     "name": "遠東",
+     "countries": [
+      "BN",
+      "KH",
+      "CN",
+      "HK",
+      "ID",
+      "JP",
+      "KR",
+      "LA",
+      "MO",
+      "MY",
+      "MV",
+      "MN",
+      "MM",
+      "PH",
+      "SG",
+      "LK",
+      "TW",
+      "TH",
+      "VN"
+     ]
+    },
+    "NAM": {
+     "name": "北美",
+     "countries": [
+      "BM",
+      "CA",
+      "MX",
+      "US"
+     ]
+    },
+    "SAM": {
+     "name": "中南美・加勒比海",
+     "countries": [
+      "AR",
+      "BO",
+      "BR",
+      "CL",
+      "CO",
+      "EC",
+      "FK",
+      "GF",
+      "GY",
+      "PY",
+      "PE",
+      "SR",
+      "UY",
+      "VE",
+      "BZ",
+      "CR",
+      "SV",
+      "GT",
+      "HN",
+      "NI",
+      "PA",
+      "AG",
+      "AW",
+      "BS",
+      "BB",
+      "BQ",
+      "KY",
+      "CU",
+      "CW",
+      "DO",
+      "GD",
+      "GP",
+      "HT",
+      "JM",
+      "MQ",
+      "PR",
+      "KN",
+      "LC",
+      "SX",
+      "TT",
+      "TC",
+      "VI"
+     ]
+    },
+    "OCE": {
+     "name": "大洋洲",
+     "countries": [
+      "AU",
+      "CK",
+      "FM",
+      "FJ",
+      "PF",
+      "GU",
+      "MH",
+      "NC",
+      "NZ",
+      "NU",
+      "NF",
+      "MP",
+      "PW",
+      "PG",
+      "WS",
+      "TO",
+      "VU"
+     ]
+    }
+   },
+   "tables": [
+    {
+     "label": "星空聯盟夥伴航班（遠東出發）",
+     "pairs": [
+      {
+       "from": "FE",
+       "to": "FE",
+       "Y": 35000,
+       "W": null,
+       "J": 50000,
+       "F": 65000
+      },
+      {
+       "from": "FE",
+       "to": "TR",
+       "Y": 35000,
+       "W": null,
+       "J": 65000,
+       "F": 100000
+      },
+      {
+       "from": "FE",
+       "to": "EU1",
+       "Y": 45000,
+       "W": null,
+       "J": 85000,
+       "F": 130000
+      },
+      {
+       "from": "FE",
+       "to": "EU2",
+       "Y": 50000,
+       "W": null,
+       "J": 90000,
+       "F": 135000
+      },
+      {
+       "from": "FE",
+       "to": "CAS",
+       "Y": 55000,
+       "W": null,
+       "J": 100000,
+       "F": 150000
+      },
+      {
+       "from": "FE",
+       "to": "ME",
+       "Y": 53000,
+       "W": null,
+       "J": 93000,
+       "F": 140000
+      },
+      {
+       "from": "FE",
+       "to": "NAF",
+       "Y": 55000,
+       "W": null,
+       "J": 105000,
+       "F": 160000
+      },
+      {
+       "from": "FE",
+       "to": "CAF",
+       "Y": 60000,
+       "W": null,
+       "J": 125000,
+       "F": 190000
+      },
+      {
+       "from": "FE",
+       "to": "SAF",
+       "Y": 70000,
+       "W": null,
+       "J": 140000,
+       "F": 210000
+      },
+      {
+       "from": "FE",
+       "to": "NAM",
+       "Y": 75000,
+       "W": null,
+       "J": 130000,
+       "F": 195000
+      },
+      {
+       "from": "FE",
+       "to": "SAM",
+       "Y": 85000,
+       "W": null,
+       "J": 140000,
+       "F": 210000
+      },
+      {
+       "from": "FE",
+       "to": "OCE",
+       "Y": 95000,
+       "W": null,
+       "J": 205000,
+       "F": 290000
+      }
+     ]
+    }
+   ],
+   "specialCases": [
+    "同一國家境內夥伴航班（2025/12起）：經濟 15,000／商務 22,500／頭等 30,000",
+    "美國本土—夏威夷：25,000／40,000／50,000"
+   ]
+  },
+  {
+   "id": "united",
+   "name": "聯合航空 MileagePlus",
+   "kind": "dynamic",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "無公開獎勵表，自家與夥伴皆浮動定價",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": []
+  },
+  {
+   "id": "delta",
+   "name": "達美 SkyMiles",
+   "kind": "dynamic",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "無公開獎勵表，全面浮動定價",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": []
+  },
+  {
+   "id": "flyingblue",
+   "name": "法荷航 Flying Blue",
+   "kind": "dynamic",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "無公開固定表，依日期與需求浮動",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": []
+  },
+  {
+   "id": "lifemiles",
+   "name": "哥倫比亞航空 LifeMiles",
+   "kind": "dynamic",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "無公開獎勵表，夥伴價格依航線浮動",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": []
+  },
+  {
+   "id": "emirates",
+   "name": "阿聯酋 Skywards",
+   "kind": "dynamic",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "自家航班未公布固定表，依航線與Saver/Flex查詢；2026/5/20起高艙等約漲15%",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": [
+    {
+     "label": "AwardWallet 2026 調整",
+     "url": "https://awardwallet.com/news/airlines/emirates-skywards-2026-devaluation/",
+     "official": false
+    }
+   ]
+  },
+  {
+   "id": "qatar",
+   "name": "卡達 Privilege Club",
+   "kind": "dynamic",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "卡達自營航班未公布表，分淡旺季浮動；夥伴航班另有距離表未收錄",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": [
+    {
+     "label": "AwardFares 卡達指南",
+     "url": "https://awardfares.com/blog/qatar-airways-privilege-club-guide/",
+     "official": false
+    }
+   ]
+  },
+  {
+   "id": "virginatlantic",
+   "name": "維珍航空 Flying Club",
+   "kind": "routeSpecific",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "自家航班浮動；全日空等夥伴依航線區域定價，未收錄",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": []
+  }
+ ]
+}

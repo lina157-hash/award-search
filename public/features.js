@@ -256,30 +256,63 @@ function haversineMiles(a, b) {
   const h = Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;
   return Math.round(2 * 3958.8 * Math.asin(Math.sqrt(h)));
 }
-function regionOf(regions, country) {
-  return Object.entries(regions || {}).find(([, r]) => r.countries.includes(country))?.[0] || null;
+// Airport lists win over country lists (Hawaii, EVA's US-East cities, China Airlines' city tiers…).
+function inArea(area, ap) {
+  if (area.excludeAirports?.includes(ap.code)) return false;
+  if (area.airports?.includes(ap.code) || area.extraAirports?.includes(ap.code)) return true;
+  return (area.countries || []).includes(ap.country);
+}
+function regionOf(regions, ap) {
+  const list = Object.entries(regions || {});
+  return (list.find(([, r]) => r.airports?.includes(ap.code)) || list.find(([, r]) => inArea(r, ap)))?.[0] || null;
+}
+const bandFor = (bands, dist) => bands.find((b) => b.upTo == null || dist <= b.upTo);
+const bandNote = (dist, band) => `${fmt(dist)} 哩（${band.upTo == null ? '最高級距' : `${fmt(band.upTo)} 哩以內`}）`;
+// Alaska picks its chart by where the trip goes; Aeroplan's zones tell us which part of the world each end is in.
+function alaskaArea(a, b) {
+  const ac = data.charts?.programs?.find((p) => p.id === 'aeroplan');
+  const zones = [a, b].map((x) => (ac ? regionOf(ac.regions, x) : null));
+  if (zones.includes('PAC')) return 'ASIA_PACIFIC';
+  if (zones.includes('ATL')) return 'EMEA';
+  return 'AMERICAS';
 }
 // Price one program's chart for a route; returns [{ label, miles, note }].
 function chartPrices(p, from, to, cabin, dist) {
   const out = [];
+  if (p.unknownCabins?.includes(cabin)) return out;
+  if (p.kind === 'routeSpecific') {
+    for (const r of p.routes || []) {
+      const hit = (r.from.includes(from.code) && r.to.includes(to.code)) || (r.from.includes(to.code) && r.to.includes(from.code));
+      if (hit && r[cabin]) out.push({ label: '自家航班', miles: r[cabin], note: `${r.from.join('/')} ↔ ${r.to.join('/')} 固定價` });
+    }
+    return out;
+  }
+  const area = p.id === 'alaska' ? alaskaArea(from, to) : null;
   for (const t of p.tables || []) {
+    if (t.appliesWhen && t.appliesWhen !== area) continue;
     let miles = null;
     let note = '';
     if (p.kind === 'distance') {
-      const band = t.bands.find((b) => dist <= b.upTo);
+      const d = p.distanceBasis === 'roundTripTotal' ? dist * 2 : dist;
+      const band = bandFor(t.bands, d);
       miles = band ? band[cabin] : null;
-      if (band) note = `${fmt(dist)} 哩（${fmt(band.upTo)} 哩以內）`;
+      if (band) note = p.oneWay === false ? `來回總價；來回 ${bandNote(d, band)}` : bandNote(d, band);
     } else if (p.kind === 'zone') {
-      if (from.country !== 'TW') continue;
-      const z = t.zones.find((x) => x.countries.includes(to.country));
+      // Zone charts here are priced from Taiwan.
+      const [home, away] = from.country === 'TW' ? [from, to] : to.country === 'TW' ? [to, from] : [];
+      if (!home) continue;
+      const z = t.zones.find((x) => x.airports?.includes(away.code)) || t.zones.find((x) => inArea(x, away));
       miles = z ? z[cabin] : null;
-      if (z) note = `台灣 → ${z.name}`;
+      if (z) note = `台灣 ↔ ${z.name}${z.note ? `；${z.note}` : ''}`;
     } else if (p.kind === 'regionMatrix') {
-      const ra = regionOf(p.regions, from.country);
-      const rb = regionOf(p.regions, to.country);
-      const pair = t.pairs.find((x) => (x.from === ra && x.to === rb) || (x.from === rb && x.to === ra));
-      miles = pair ? pair[cabin] : null;
-      if (pair) note = `${p.regions[ra].name} → ${p.regions[rb].name}`;
+      const ra = regionOf(p.regions, from);
+      const rb = regionOf(p.regions, to);
+      if (!ra || !rb) continue;
+      const pair = t.pairs.find((x) => x.from === ra && x.to === rb) || t.pairs.find((x) => x.from === rb && x.to === ra);
+      if (!pair) continue;
+      const band = pair.bands ? bandFor(pair.bands, dist) : pair;
+      miles = band ? band[cabin] : null;
+      if (band) note = `${p.regions[ra].name} ↔ ${p.regions[rb].name}${pair.bands ? `・${bandNote(dist, band)}` : ''}`;
     }
     if (miles) out.push({ label: t.label, miles, note });
   }
@@ -341,11 +374,17 @@ function renderNeed() {
     if (am?.miles) rows.push({ key: 'asiamiles', label: kind === 'cx' ? '國泰航班' : '夥伴航班', miles: am.miles, note: `${fmt(dist)} 哩`, confidence: 'official' });
   }
   for (const p of data.charts?.programs || []) {
-    if (!['distance', 'zone', 'regionMatrix'].includes(p.kind)) continue;
-    for (const x of chartPrices(p, a, b, c, dist)) rows.push({ key: p.id, name: p.name, label: x.label, miles: x.miles, note: x.note, confidence: p.confidence, perSegment: p.perSegment, src: p.sources?.[0], pnote: p.note });
+    // Round-trip-only charts don't compare with one-way prices, so they stay out of this table.
+    if (!['distance', 'zone', 'regionMatrix', 'routeSpecific'].includes(p.kind) || p.oneWay === false) continue;
+    // One row per program: its cheapest table, plus the top of the range when partners price differently.
+    const prices = chartPrices(p, a, b, c, dist).sort((x, y) => x.miles - y.miles);
+    if (!prices.length) continue;
+    const [x] = prices;
+    const top = prices[prices.length - 1].miles;
+    rows.push({ key: p.id, name: p.name, label: x.label, miles: x.miles, note: `${x.note}${top > x.miles ? `；其他航空最高 ${fmt(top)} 哩` : ''}`, confidence: p.confidence, perSegment: p.perSegment, src: p.sources?.[0], pnote: p.note });
   }
   rows.sort((x, y) => x.miles - y.miles);
-  const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic').map((p) => p.name || programName(p.id));
+  const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic' || (p.kind === 'routeSpecific' && !p.routes?.length)).map((p) => p.name || programName(p.id));
   host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${CABIN_LABEL[c]}・直線距離 ${fmt(dist)} 哩</h3>
     ${rows.length ? `<div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>單程哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(r.name || programName(r.key))}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b></td>
