@@ -1593,7 +1593,7 @@ function renderRules() {
       <input type="search" id="rules-q" placeholder="搜尋規則，例如：中停、燃油、效期">
     </div>
     <div class="cards" id="program-cards"></div>
-    ${data.points ? '<p class="hint goto-points">想知道信用卡點數能換多少哩？請看 <a href="#points" data-tab-link="points">點數轉里程</a> 分頁。</p>' : ''}
+    ${pointsHtml()}
     ${glossary.sections.map((s) => `<h2 class="section">${esc(s.title)}</h2><div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div>`).join('')}`;
 
   $$('#alliance-filter .chip').forEach((b) => b.addEventListener('click', () => {
@@ -1603,15 +1603,32 @@ function renderRules() {
   }));
   $('#rules-q').addEventListener('input', (e) => { rulesState.q = e.target.value.trim(); renderProgramCards(); });
   renderProgramCards();
-  $$('[data-tab-link]', $('#rules')).forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.tabLink); window.scrollTo({ top: 0 }); }));
+  bindPoints();
+  bindTabLinks($('#rules'));
 }
 
-// ---------- 點數轉里程 ----------
+// Links that switch tab and optionally jump to a section on it.
+function bindTabLinks(root) {
+  $$('[data-tab-link]', root).forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    showTab(a.dataset.tabLink);
+    const target = a.dataset.anchor && document.getElementById(a.dataset.anchor);
+    if (target) window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 76 });
+    else window.scrollTo({ top: 0 });
+  }));
+}
+
+// ---------- 點數換算器 tab ----------
 function renderPoints() {
   const host = $('#points-page');
   if (!host) return;
-  host.innerHTML = pointsHtml() || '<p class="hint">點數資料載入失敗，請重新整理。</p>';
-  bindPoints();
+  const pts = data.points;
+  const calc = pts && calcHtml(pts);
+  host.innerHTML = calc
+    ? `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積里程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉里程」</a>。</p>`
+    : '<p class="hint">點數資料載入失敗，請重新整理。</p>';
+  bindCalc();
+  bindTabLinks(host);
 }
 
 // Taiwan bank points that convert into airline miles, plus co-brand cards that earn miles directly.
@@ -1626,12 +1643,13 @@ function pointsHtml() {
       <td>${r.notes ? esc(r.notes) : ''}</td><td>${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
   const cobrandRows = pts.cobrand.map((r) => `<tr>
       <td><b>${esc(r.bank)}</b><small>${esc(r.card)}</small></td><td>${esc(r.program)}</td><td><b>${esc(r.earn)}</b></td><td>${r.notes ? esc(r.notes) : ''}</td><td>${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
-  return `${calcHtml(pts)}
+  return `<h2 class="section" id="points-rules">台灣信用卡點數轉里程</h2>
     <p class="hint">${esc(pts.disclaimer)}（最後整理：${esc(pts.lastReviewed)}）</p>
-    ${pts.transfers.length ? `<h2 class="section">各銀行轉點規則</h2><div class="filters points-filter"><button type="button" class="chip on" data-p="">全部計畫</button>${keys.map(([k, label]) => `<button type="button" class="chip" data-p="${esc(k)}">${esc(label)}</button>`).join('')}</div>
+    ${pts.calc?.sources?.length ? '<p class="hint tab-link-hint">想直接算手上的點數能換多少哩？用 <a href="#points" data-tab-link="points">點數換算器</a> 分頁。</p>' : ''}
+    ${pts.transfers.length ? `<div class="filters points-filter"><button type="button" class="chip on" data-p="">全部計畫</button>${keys.map(([k, label]) => `<button type="button" class="chip" data-p="${esc(k)}">${esc(label)}</button>`).join('')}</div>
     <div class="table-wrap points-table"><table id="points-table"><thead><tr><th>銀行／點數</th><th>轉到</th><th>比率</th><th>說明</th><th>來源</th></tr></thead><tbody>${transferRows}</tbody></table></div>
     <p class="hint" id="points-empty" hidden>這個計畫目前沒有整理到的轉點管道。</p>` : ''}
-    ${pts.cobrand.length ? `<h2 class="section">直接累積里程的聯名卡</h2><div class="table-wrap points-table"><table><thead><tr><th>銀行／卡片</th><th>累積到</th><th>累積率</th><th>說明</th><th>來源</th></tr></thead><tbody>${cobrandRows}</tbody></table></div>` : ''}`;
+    ${pts.cobrand.length ? `<h3 class="sub">直接累積里程的聯名卡</h3><div class="table-wrap points-table"><table><thead><tr><th>銀行／卡片</th><th>累積到</th><th>累積率</th><th>說明</th><th>來源</th></tr></thead><tbody>${cobrandRows}</tbody></table></div>` : ''}`;
 }
 // Dynamic conversion table: one row per bank points program, one column per airline program.
 const CALC_COLS = [['eva', '長榮'], ['asiamiles', '亞洲萬里通'], ['ci', '華航'], ['sq', '新航'], ['other', '其他計畫']];
@@ -1643,7 +1661,6 @@ function calcHtml(pts) {
   if (!sources.length) return '';
   const banks = [...new Set(sources.map((s) => s.bank))];
   return `<div class="calc" id="calc">
-    <h2 class="section">點數換算器</h2>
     <div class="calc-bar">
       <label class="field">我想算<select id="calc-mode"><option value="p2m">手上的點數能換多少哩</option><option value="m2p">想要的哩程需要多少點</option></select></label>
       <label class="field"><span id="calc-amount-label">點數（假設每家都有這麼多）</span><input type="number" id="calc-amount" min="0" step="100" value="${calcState.amount}" inputmode="numeric"></label>
@@ -1749,7 +1766,6 @@ function bindCalc() {
 }
 
 function bindPoints() {
-  bindCalc();
   $$('.points-filter .chip').forEach((b) => b.addEventListener('click', () => {
     $$('.points-filter .chip').forEach((x) => x.classList.toggle('on', x === b));
     const p = b.dataset.p;
