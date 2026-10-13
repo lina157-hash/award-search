@@ -3,13 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>里程票查詢</title>
+  <title>里程票雷達｜里程機票查詢</title>
+  <meta name="description" content="一次查詢多個里程計畫的獎勵機位：國泰、長榮、華航、法航、加航等，附航空聯盟與開票規則整理。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
 </head>
 <body>
   <header class="top">
     <div class="wrap top-inner">
-      <h1>里程票查詢</h1>
+      <a class="brand" href="/#search"><span class="logo" aria-hidden="true">✈</span><span>里程票雷達</span></a>
       <nav class="tabs" role="tablist">
         <button role="tab" data-tab="search" aria-selected="true">航線查詢</button>
         <button role="tab" data-tab="explore">區域探索</button>
@@ -20,45 +25,105 @@
 
   <div id="mock-banner" class="banner" hidden>目前為<strong>示範資料</strong>模式：尚未設定 seats.aero API 金鑰，顯示的座位與里程都是假資料。</div>
 
-  <main class="wrap">
+  <main>
+    <!-- ================= 航線查詢 ================= -->
     <section id="tab-search" class="panel">
-      <form id="search-form" class="form-grid">
-        <label>出發機場<input name="origin" value="TPE" placeholder="TPE,TSA" autocomplete="off" list="airport-list" required></label>
-        <label>抵達機場<input name="destination" value="YVR,YYZ" placeholder="YVR,YYZ" autocomplete="off" list="airport-list" required></label>
-        <label>出發日起<input type="date" name="start" required></label>
-        <label>出發日迄<input type="date" name="end" required></label>
-        <label>航空公司<select name="carrier"><option value="">全部</option></select></label>
-        <label>艙等<select name="cabin">
-          <option value="">全部</option><option value="Y">經濟艙</option><option value="W">豪華經濟艙</option>
-          <option value="J" selected>商務艙</option><option value="F">頭等艙</option>
-        </select></label>
-        <label class="check"><input type="checkbox" name="direct" value="1"> 只看直飛</label>
-        <button type="submit" class="primary">查詢</button>
-      </form>
-      <p id="carrier-hint" class="hint"></p>
-      <div id="search-status" class="status" aria-live="polite"></div>
-      <div id="search-results"></div>
+      <div class="hero">
+        <div class="wrap">
+          <h1>找出用里程換得到的機位</h1>
+          <p class="lead">一次比較 Aeroplan、Flying Blue、阿拉斯加、聯合等計畫的獎勵座位，涵蓋國泰、長榮、華航、法航、加航等航空公司。</p>
+
+          <form id="search-form" class="search-card" autocomplete="off">
+            <div class="route-row">
+              <label class="field grow">出發地
+                <input name="origin" value="TPE" placeholder="例：TPE" list="airport-list" required>
+              </label>
+              <button type="button" class="swap" id="swap" aria-label="對調出發與抵達">⇄</button>
+              <label class="field grow">目的地
+                <input name="destination" value="YVR,YYZ" placeholder="例：YVR,YYZ" list="airport-list" required>
+              </label>
+            </div>
+            <div class="opts-row">
+              <label class="field">出發日起<input type="date" name="start" required></label>
+              <label class="field">出發日迄<input type="date" name="end" required></label>
+              <label class="field">航空公司<select name="carrier"><option value="">全部航空公司</option></select></label>
+            </div>
+            <div class="opts-row">
+              <fieldset class="seg" aria-label="艙等">
+                <label><input type="radio" name="cabin" value="Y"><span>經濟</span></label>
+                <label><input type="radio" name="cabin" value="W"><span>豪經</span></label>
+                <label><input type="radio" name="cabin" value="J" checked><span>商務</span></label>
+                <label><input type="radio" name="cabin" value="F"><span>頭等</span></label>
+              </fieldset>
+              <label class="switch"><input type="checkbox" name="direct" value="1"><span class="knob"></span>只看直飛</label>
+              <button type="submit" class="primary big">搜尋機位</button>
+            </div>
+            <p id="carrier-hint" class="hint"></p>
+          </form>
+
+          <div class="presets" aria-label="熱門航線">
+            <span class="presets-label">熱門航線</span>
+            <button type="button" data-o="TPE" data-d="YVR,YYZ">台北 → 加拿大</button>
+            <button type="button" data-o="TPE" data-d="SFO,LAX,SEA">台北 → 美西</button>
+            <button type="button" data-o="TPE" data-d="JFK,ORD">台北 → 美東</button>
+            <button type="button" data-o="TPE" data-d="CDG,AMS">台北 → 巴黎／阿姆斯特丹</button>
+            <button type="button" data-o="TPE" data-d="NRT,HND,KIX">台北 → 日本</button>
+            <button type="button" data-o="HKG" data-d="LHR">香港 → 倫敦</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wrap">
+        <div id="search-status" class="status" aria-live="polite"></div>
+        <div id="search-results"></div>
+        <div id="search-empty" class="empty">
+          <div class="empty-icon" aria-hidden="true">🗺️</div>
+          <p>輸入航線或點選熱門航線開始搜尋。可以一次輸入多個機場，例如 <code>TPE,TSA</code>。</p>
+        </div>
+      </div>
     </section>
 
+    <!-- ================= 區域探索 ================= -->
     <section id="tab-explore" class="panel" hidden>
-      <form id="explore-form" class="form-grid">
-        <label>里程計畫<select name="program" required></select></label>
-        <label>出發區域<select name="origin_region"></select></label>
-        <label>抵達區域<select name="destination_region"></select></label>
-        <label>出發日起<input type="date" name="start" required></label>
-        <label>出發日迄<input type="date" name="end" required></label>
-        <label>艙等<select name="cabin">
-          <option value="Y">經濟艙</option><option value="W">豪華經濟艙</option>
-          <option value="J" selected>商務艙</option><option value="F">頭等艙</option>
-        </select></label>
-        <button type="submit" class="primary">探索</button>
-      </form>
-      <div id="explore-status" class="status" aria-live="polite"></div>
-      <div id="explore-results"></div>
+      <div class="hero slim">
+        <div class="wrap">
+          <h1>區域探索</h1>
+          <p class="lead">不確定去哪？選一個里程計畫和區域，列出所有還有獎勵位的航線，依里程由低到高排序。</p>
+          <form id="explore-form" class="search-card">
+            <div class="opts-row">
+              <label class="field">里程計畫<select name="program" required></select></label>
+              <label class="field">出發區域<select name="origin_region"></select></label>
+              <label class="field">抵達區域<select name="destination_region"></select></label>
+            </div>
+            <div class="opts-row">
+              <label class="field">出發日起<input type="date" name="start" required></label>
+              <label class="field">出發日迄<input type="date" name="end" required></label>
+              <fieldset class="seg" aria-label="艙等">
+                <label><input type="radio" name="cabin" value="Y"><span>經濟</span></label>
+                <label><input type="radio" name="cabin" value="W"><span>豪經</span></label>
+                <label><input type="radio" name="cabin" value="J" checked><span>商務</span></label>
+                <label><input type="radio" name="cabin" value="F"><span>頭等</span></label>
+              </fieldset>
+              <button type="submit" class="primary big">開始探索</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="wrap">
+        <div id="explore-status" class="status" aria-live="polite"></div>
+        <div id="explore-results"></div>
+      </div>
     </section>
 
+    <!-- ================= 規則庫 ================= -->
     <section id="tab-rules" class="panel" hidden>
-      <div id="rules"></div>
+      <div class="hero slim">
+        <div class="wrap">
+          <h1>規則庫</h1>
+          <p class="lead">航空聯盟、各里程計畫的單程、中停、開口、燃油費與改退票規則，每條都附上資料來源。</p>
+        </div>
+      </div>
+      <div class="wrap"><div id="rules"></div></div>
     </section>
   </main>
 
@@ -67,6 +132,7 @@
     <div id="trip-body"></div>
   </dialog>
 
+  <div id="toast" class="toast" role="status" hidden></div>
   <datalist id="airport-list"></datalist>
   <footer class="wrap foot">座位資料來自 seats.aero 快取，可能有延遲，開票前請至航空公司官網確認。規則整理僅供參考。</footer>
   <script src="/app.js"></script>
