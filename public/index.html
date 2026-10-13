@@ -100,6 +100,10 @@
             <button type="button" data-o="HKG" data-d="LHR,JFK,YVR" data-al="oneworld">香港 → 歐美（寰宇一家）</button>
           </div>
           <div id="mine" class="mine"></div>
+          <details class="alerts-panel" id="alerts-panel">
+            <summary>🔔 機位提醒 <span id="alerts-count"></span></summary>
+            <div id="alerts-body" class="alerts-body"><p class="hint">載入中…</p></div>
+          </details>
         </div>
       </div>
 
@@ -226,6 +230,17 @@
   <dialog id="trip-dialog">
     <div class="dialog-head"><h2 id="trip-title">航班明細</h2><button class="ghost" id="trip-close" aria-label="關閉">✕</button></div>
     <div id="trip-body"></div>
+  </dialog>
+
+  <dialog id="alert-dialog" class="pass" aria-labelledby="alert-title">
+    <form class="pass-in" id="alert-form">
+      <h2 id="alert-title">有新機位時通知我</h2>
+      <p class="hint" id="alert-summary"></p>
+      <label class="field">通知信箱（選填，留空就只在網站上看）<input type="email" name="email" placeholder="you@example.com" autocomplete="email"></label>
+      <label class="field">座位數<select name="pax"><option value="">不限</option><option value="2">至少 2 位</option><option value="3">至少 3 位</option><option value="4">至少 4 位</option></select></label>
+      <p class="hint" id="alert-note">每天早上自動檢查一次，有新的獎勵位就通知；現在已有的座位不會重複通知。</p>
+      <div class="pass-actions"><button type="button" class="outline" id="alert-cancel">取消</button><button type="submit" class="primary small">建立提醒</button></div>
+    </form>
   </dialog>
 
   <dialog id="pass-dialog" class="pass" aria-labelledby="pass-title">

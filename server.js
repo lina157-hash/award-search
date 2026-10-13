@@ -6,6 +6,7 @@ const path = require('node:path');
 const { createClient, normalizeAvailability, normalizeTrips, SeatsAeroError } = require('./lib/seats');
 const mock = require('./lib/mock');
 const { createCashClient, normalizeCash, CashError } = require('./lib/cash');
+const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = require('./lib/alerts');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -16,7 +17,7 @@ const CASH_MODE = SERPAPI_KEY ? 'live' : MOCK ? 'mock' : 'off';
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames'];
 
 const usage = { day: '', calls: 0 };
 function countCall() {
@@ -46,6 +47,45 @@ async function cached(key, fn) {
 }
 
 class BadRequest extends Error {}
+
+// Seat alerts: Upstash Redis (Vercel Storage tab) keeps the watches, Resend sends the mail. Demo mode keeps them in memory.
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '';
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '';
+const alertStore = REDIS_URL && REDIS_TOKEN ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN }) : MOCK ? memoryStore() : null;
+const alertMailer = process.env.RESEND_API_KEY ? resendMailer({ apiKey: process.env.RESEND_API_KEY, from: process.env.ALERT_FROM }) : null;
+const SOURCE_NAMES = require('./data/source-names.json').names;
+const alerts = alertStore && createAlerts({
+  store: alertStore,
+  sendEmail: alertMailer,
+  siteUrl: process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''),
+  programNames: SOURCE_NAMES,
+  search: async (params) => {
+    const { items } = await cached('alert:' + JSON.stringify(params), () => (MOCK ? { items: mock.mockSearch(params), hasMore: false } : client.search(params, { maxPages: pagesFor(params, 2) })));
+    return items.map(normalizeAvailability);
+  },
+});
+// Vercel's cron calls the run endpoint with the CRON_SECRET; people use the passcode (when one is set).
+function alertsAllowed(req) {
+  const secret = (process.env.CRON_SECRET || '').trim();
+  if (secret && req.headers.authorization === `Bearer ${secret}`) return true;
+  return cashUnlocked(req);
+}
+function readJson(req, limit = 10_000) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (chunk) => { data += chunk; if (data.length > limit) reject(new BadRequest('內容太長')); });
+    req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}); } catch { reject(new BadRequest('JSON 格式錯誤')); } });
+    req.on('error', reject);
+  });
+}
+async function handleAlerts(req, q, sub) {
+  if (!alerts) return { configured: false, email: false, alerts: [] };
+  if (!alertsAllowed(req)) throw Object.assign(new CashError('需要通關密碼才能管理提醒', 401), { code: 'passcode' });
+  if (sub === 'run') return { configured: true, ...(await alerts.run()) };
+  if (req.method === 'POST') return { configured: true, ...(await alerts.add(await readJson(req))) };
+  if (req.method === 'DELETE') { await alerts.remove(String(q.get('id') || '')); return { ok: true }; }
+  return { configured: true, email: Boolean(alertMailer), alerts: await alerts.list() };
+}
 
 // Optional passcode that gates the cash-fare lookups (each one spends a SerpApi credit). Read per request so tests can set it.
 const cashPasscode = () => (process.env.CASH_PASSCODE || '').trim();
@@ -215,10 +255,15 @@ async function route(req, res) {
   const q = url.searchParams;
   const p = url.pathname;
   try {
+    if (p === '/api/alerts' || p === '/api/alerts/run') {
+      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleAlerts(req, q, p.endsWith('/run') ? 'run' : ''));
+    }
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
     if (p === '/api/config') {
       return sendJson(res, 200, {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashLocked: Boolean(cashPasscode()),
+        alerts: { store: Boolean(alerts), email: Boolean(alertMailer) },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
       });
@@ -231,13 +276,13 @@ async function route(req, res) {
     const m = p.match(/^\/api\/data\/(\w+)$/);
     if (m && DATA_FILES.includes(m[1])) {
       res.writeHead(200, { 'content-type': MIME['.json'] });
-      return fs.createReadStream(path.join(DATA_DIR, m[1] + '.json')).pipe(res);
+      return fs.createReadStream(path.join(DATA_DIR, (m[1] === 'sourcenames' ? 'source-names' : m[1]) + '.json')).pipe(res);
     }
     if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'not found' });
     serveStatic(res, p);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
-    if (e instanceof SeatsAeroError || e instanceof CashError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

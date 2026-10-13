@@ -67,6 +67,51 @@ test('fx endpoint returns TWD rates', async () => {
   assert.ok(fx.rates.USD > 20 && fx.rates.USD < 45);
 });
 
+test('alerts: add takes a baseline, run reports and mails only new seats', async () => {
+  const { createAlerts, memoryStore } = require('../lib/alerts');
+  const row = (id, date, seats = 2) => ({ id, date, origin: 'TPE', destination: 'YVR', source: 'aeroplan', cabins: { J: { available: true, miles: 75000, seats, airlines: 'AC', direct: true } } });
+  let rows = [row('a', '2026-12-01')];
+  const mails = [];
+  const al = createAlerts({ store: memoryStore(), search: async () => rows, sendEmail: async (m) => mails.push(m), siteUrl: 'https://x.test', programNames: { aeroplan: '加航 Aeroplan' } });
+  const added = await al.add({ origin: 'tpe', destination: 'YVR', start: '2026-12-01', end: '2026-12-10', cabin: 'J', pax: 2, email: 'me@example.com' });
+  assert.equal(added.found, 1);
+  assert.equal((await al.list())[0].seenCount, 1);
+  let r = await al.run();
+  assert.deepEqual(r.report[0], { id: added.alert.id, found: 1, fresh: 0, mailed: false });
+  rows = [row('a', '2026-12-01'), row('b', '2026-12-03'), row('c', '2026-12-04', 1)];
+  r = await al.run();
+  assert.deepEqual(r.report[0], { id: added.alert.id, found: 2, fresh: 1, mailed: true });
+  assert.equal(mails.length, 1);
+  assert.match(mails[0].subject, /新增 1 筆/);
+  assert.match(mails[0].html, /加航 Aeroplan/);
+  await assert.rejects(al.add({ origin: 'TPE', destination: 'YVR', start: '2020-01-01', cabin: 'J' }), /日期已經過了/);
+  await al.remove(added.alert.id);
+  assert.equal((await al.list()).length, 0);
+});
+
+test('alerts endpoints work in demo mode and honour the passcode', async () => {
+  const cfg = await (await fetch(`${base}/api/config`)).json();
+  assert.equal(cfg.alerts.store, true);
+  const res = await fetch(`${base}/api/alerts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ origin: 'TPE', destination: 'YVR', start: '2026-12-01', end: '2026-12-05', cabin: 'J' }) });
+  assert.equal(res.status, 200);
+  const { alert, found } = await res.json();
+  assert.ok(found > 0);
+  process.env.CASH_PASSCODE = 'sunny';
+  try {
+    assert.equal((await fetch(`${base}/api/alerts`)).status, 401);
+    const run = await (await fetch(`${base}/api/alerts/run`, { headers: { 'x-cash-pass': 'sunny' } })).json();
+    assert.equal(run.checked, 1);
+    assert.equal(run.report[0].fresh, 0);
+    process.env.CRON_SECRET = 'cron';
+    assert.equal((await fetch(`${base}/api/alerts/run`, { headers: { authorization: 'Bearer cron' } })).status, 200);
+  } finally {
+    delete process.env.CASH_PASSCODE;
+    delete process.env.CRON_SECRET;
+  }
+  assert.equal((await fetch(`${base}/api/alerts?id=${alert.id}`, { method: 'DELETE' })).status, 200);
+  assert.equal((await (await fetch(`${base}/api/alerts`)).json()).alerts.length, 0);
+});
+
 test('trips and data endpoints work', async () => {
   const s = await (await fetch(`${base}/api/search?origin=TPE&destination=CDG&start=2026-11-01`)).json();
   const t = await (await fetch(`${base}/api/trips/${s.results[0].id}`)).json();

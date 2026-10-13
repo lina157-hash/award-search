@@ -1,12 +1,5 @@
-const SOURCE_NAMES = {
-  aeroplan: '加航 Aeroplan', united: '聯合 MileagePlus', alaska: '阿拉斯加 Atmos', american: '美航 AAdvantage',
-  delta: '達美 SkyMiles', flyingblue: '法荷航 Flying Blue', virginatlantic: '維珍 Flying Club', qantas: '澳航 Frequent Flyer',
-  lufthansa: '漢莎 Miles&More', turkish: '土航 Miles&Smiles', singapore: '新航 KrisFlyer', eurobonus: 'SAS EuroBonus',
-  ethiopian: '衣索比亞 ShebaMiles', aeromexico: '墨航 Club Premier', etihad: '阿提哈德 Guest', emirates: '阿聯酋 Skywards',
-  qatar: '卡達 Privilege Club', velocity: '維珍澳洲 Velocity', smiles: 'GOL Smiles', azul: 'Azul TudoAzul',
-  asiamiles: '國泰 亞洲萬里通', asiamiles_est: '亞洲萬里通（估算）', connectmiles: 'Copa ConnectMiles', copa: 'Copa ConnectMiles',
-  lifemiles: 'Avianca LifeMiles', british: '英航 Avios', jetblue: 'JetBlue TrueBlue', saudia: '沙烏地 AlFursan', finnair: '芬航 Finnair Plus',
-};
+// Program names by seats.aero source code, loaded from data/source-names.json at start.
+let SOURCE_NAMES = {};
 const CABIN_LABEL = { Y: '經濟艙', W: '豪華經濟艙', J: '商務艙', F: '頭等艙' };
 const CABIN_API = { Y: 'economy', W: 'premium', J: 'business', F: 'first' };
 const CABIN_ZH = { economy: '經濟艙', premium: '豪華經濟艙', business: '商務艙', first: '頭等艙' };
@@ -46,7 +39,7 @@ function ago(iso) {
   return `${Math.round(min / 1440)} 天前`;
 }
 const isStale = (iso) => iso && Date.now() - Date.parse(iso) > 24 * 3600e3;
-const taxText = (t) => `${t.symbol || `${t.currency} `}${fmt(Math.round(t.amount))}`;
+const taxText = (t) => `${t.symbol || (t.currency ? `${t.currency} ` : '')}${fmt(Math.round(t.amount))}${t.symbol || t.currency ? '' : '（幣別未標）'}`;
 
 // Calendar date in the visitor's own time zone.
 function isoDate(offsetDays) {
@@ -681,6 +674,81 @@ function renderMine() {
   $$('#mine [data-rm]').forEach((b) => b.addEventListener('click', () => { toggleFav(new URLSearchParams(b.dataset.rm)); renderSearchFav(); }));
   $('#recent-clear')?.addEventListener('click', () => { store.del(RECENT_KEY); renderMine(); });
 }
+// ---------- seat alerts (server-side watches, checked daily) ----------
+const alertCfg = { store: false, email: false };
+const ALERT_EMAIL_KEY = 'alertEmail';
+const alertSummary = (a) => `${a.origin} → ${a.destination}　${ymd(a.start)}${a.end !== a.start ? ` – ${ymd(a.end)}` : ''}　${CABIN_LABEL[a.cabin]}${a.pax ? `　至少 ${a.pax} 位` : ''}`;
+const ALERT_SETUP = `<p class="hint">機位提醒還沒啟用。網站主人要在 Vercel 做兩件事：① Storage 分頁用 Marketplace 建一個 Upstash Redis（免費方案），它會自動加上連線設定；② 到 resend.com 申請免費金鑰，在 Environment Variables 新增 <code>RESEND_API_KEY</code>。都設好後重新部署。</p>`;
+function openAlertDialog() {
+  const share = new URLSearchParams(location.search);
+  if (!share.get('o')) return toast('請先搜尋一條航線');
+  const dlg = $('#alert-dialog');
+  const f = $('#alert-form');
+  f.email.value = store.get(ALERT_EMAIL_KEY, '');
+  f.pax.value = share.get('n') || '';
+  $('#alert-summary').textContent = alertSummary({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J' });
+  $('#alert-note').innerHTML = alertCfg.store
+    ? `每天早上自動檢查一次，有新的獎勵位就${alertCfg.email ? '寄信通知' : '顯示在「機位提醒」裡（網站尚未設定寄信服務）'}；現在已有的座位不會重複通知。`
+    : ALERT_SETUP;
+  dlg.showModal();
+}
+$('#alert-cancel').addEventListener('click', () => $('#alert-dialog').close());
+$('#alert-dialog').addEventListener('click', (e) => { if (e.target.id === 'alert-dialog') e.target.close(); });
+$('#alert-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!alertCfg.store) return;
+  const share = new URLSearchParams(location.search);
+  const f = e.target;
+  const btn = $('button[type=submit]', f);
+  btn.disabled = true;
+  try {
+    store.set(ALERT_EMAIL_KEY, f.email.value.trim());
+    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim() }), headers: { 'content-type': 'application/json' } });
+    $('#alert-dialog').close();
+    toast(`已建立提醒，目前有 ${body.found} 筆有位`);
+    $('#alerts-panel').open = true;
+    loadAlerts();
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+async function loadAlerts() {
+  const box = $('#alerts-body');
+  if (!alertCfg.store) { box.innerHTML = ALERT_SETUP; $('#alerts-count').textContent = ''; return; }
+  box.innerHTML = '<p class="hint">載入中…</p>';
+  try {
+    const body = await cashApi('/api/alerts');
+    const list = body.alerts || [];
+    $('#alerts-count').textContent = list.length ? `（${list.length}）` : '';
+    box.innerHTML = (list.length ? `<ul class="alert-list">${list.map((a) => `<li>
+        <div><b>${esc(alertSummary(a))}</b>${a.email ? `<small>→ ${esc(a.email)}</small>` : '<small>只在網站顯示</small>'}</div>
+        <div class="hint">${a.lastRun ? `上次檢查 ${ago(a.lastRun)}：有位 ${a.lastFound ?? '—'} 筆${a.lastNew ? `，<b class="new">新增 ${a.lastNew} 筆</b>` : ''}` : '尚未檢查'}${a.lastError ? `　⚠ ${esc(a.lastError)}` : ''}</div>
+        <div class="alert-actions"><button type="button" class="outline" data-open="${esc(new URLSearchParams({ o: a.origin, d: a.destination, s: a.start, e: a.end, c: a.cabin, ...(a.pax ? { n: a.pax } : {}) }))}">查看</button><button type="button" class="outline" data-del="${esc(a.id)}">刪除</button></div>
+      </li>`).join('')}</ul>` : '<p class="hint">還沒有提醒。搜尋一條航線後，按結果上方的「🔔 有新機位通知我」。</p>')
+      + `<div class="alert-foot"><button type="button" class="outline" id="alerts-run" ${list.length ? '' : 'disabled'}>立即檢查全部</button><span class="hint">每天早上 7 點（台灣時間）自動檢查${body.email ? '並寄信' : '；尚未設定寄信服務，只會顯示在這裡'}。</span></div>`;
+    $$('[data-open]', box).forEach((b) => b.addEventListener('click', () => applyShare(new URLSearchParams(b.dataset.open))));
+    $$('[data-del]', box).forEach((b) => b.addEventListener('click', async () => {
+      try { await cashApi(`/api/alerts?id=${encodeURIComponent(b.dataset.del)}`, { method: 'DELETE' }); toast('已刪除提醒'); loadAlerts(); } catch (err) { toast(err.message); }
+    }));
+    $('#alerts-run')?.addEventListener('click', async () => {
+      const b = $('#alerts-run');
+      b.disabled = true;
+      b.textContent = '檢查中…';
+      try {
+        const r = await cashApi('/api/alerts/run');
+        const fresh = r.report.reduce((n, x) => n + (x.fresh || 0), 0);
+        toast(fresh ? `檢查完成，新增 ${fresh} 筆機位` : '檢查完成，沒有新機位');
+        loadAlerts();
+      } catch (err) { toast(err.message); b.disabled = false; b.textContent = '立即檢查全部'; }
+    });
+  } catch (err) {
+    box.innerHTML = `<p class="status error">${esc(err.message)}</p>`;
+  }
+}
+$('#alerts-panel').addEventListener('toggle', () => { if ($('#alerts-panel').open) loadAlerts(); });
+
 function renderSearchFav() {
   const b = $('#fav-btn');
   if (!b) return;
@@ -706,7 +774,8 @@ async function runSearch(share) {
     state.withTaxes = Boolean(body.withTaxes);
     const newest = body.results.map((r) => r.updatedAt).filter(Boolean).sort().at(-1);
     status.innerHTML = `<span>找到 <b>${body.results.length}</b> 筆日期與計畫組合${body.mock ? '（示範資料）' : ''}${body.truncated ? '。結果太多，只列出一部分，縮短日期範圍可以看到完整結果' : ''}${newest ? `<small class="fresh" title="seats.aero 快取最後更新的時間；灰色格子代表超過一天沒更新">🕒 資料最新 ${ago(newest)}更新</small>` : ''}</span>
-      <span class="status-actions"><button type="button" class="outline" id="fav-btn">☆ 加入常用</button><button type="button" class="outline" id="to-cash">💵 比較現金票價</button><button type="button" class="outline" id="share-btn">🔗 複製分享連結</button></span>`;
+      <span class="status-actions"><button type="button" class="outline" id="fav-btn">☆ 加入常用</button><button type="button" class="outline" id="alert-btn">🔔 有新機位通知我</button><button type="button" class="outline" id="to-cash">💵 比較現金票價</button><button type="button" class="outline" id="share-btn">🔗 複製分享連結</button></span>`;
+    $('#alert-btn').addEventListener('click', openAlertDialog);
     $('#share-btn').addEventListener('click', copyShare);
     renderSearchFav();
     $('#fav-btn').addEventListener('click', () => { toast(toggleFav(share) ? '已加入常用航線' : '已從常用移除'); renderSearchFav(); });
@@ -1011,7 +1080,7 @@ async function mileValue(t) {
     const saved = cheapest.price - taxesTwd;
     const per = saved / t.miles;
     const verdict = saved <= 0 ? ['bad', '現金票比稅金還便宜，直接買現金票'] : per >= 0.6 ? ['good', '划算，值得換'] : per >= 0.35 ? ['mid', '普通'] : ['bad', '不划算，用現金買比較好'];
-    const taxNote = t.taxes == null ? '此計畫未提供稅金，先當 0 計算' : rate ? `稅金約 NT$${fmt(Math.round(taxesTwd))}（${esc(t.taxesSymbol || cur)}${fmt(t.taxes / 100)}，匯率${fx.live ? `為 ${fx.updated}` : '為概估'}）` : `稅金 ${esc(cur)} ${fmt(t.taxes / 100)} 無法換算，先當 0 計算`;
+    const taxNote = t.taxes == null ? '此計畫未提供稅金，先當 0 計算' : rate ? `稅金約 NT$${fmt(Math.round(taxesTwd))}（${esc(t.taxesSymbol || cur)}${fmt(t.taxes / 100)}，匯率${fx.live ? `為 ${fx.updated}` : '為概估'}）` : cur ? `稅金 ${esc(cur)} ${fmt(t.taxes / 100)} 無法換算，先當 0 計算` : `此計畫的稅金 ${fmt(t.taxes / 100)} 未標幣別，先當 0 計算`;
     box.innerHTML = `<div class="value-result ${verdict[0]}">
       <div class="value-head"><b>每哩約 NT$${per > 0 ? per.toFixed(2) : '0'}</b><span class="pill">${verdict[1]}</span></div>
       <p class="hint">當天最便宜現金票 NT$${fmt(cheapest.price)}（${esc(cheapest.segments[0]?.airline || '')}${cheapest.segments.length > 1 ? '，轉機' : '，直飛'}，和獎勵票的航空公司、時間可能不同${body.mock ? '；示範資料' : ''}）－ ${taxNote} ＝ 省下 NT$${fmt(Math.round(Math.max(0, saved)))}，除以 ${fmt(t.miles)} 哩。一般常見估值：每哩 NT$0.35 以下不划算、0.6 以上划算，僅供參考。</p>
@@ -1260,7 +1329,7 @@ function updateLockHint() {
   $('#pass-forget')?.addEventListener('click', () => { store.del(PASS_KEY); updateLockHint(); toast('已清除通關密碼'); });
 }
 // Fetch a cash-fare endpoint, asking for the passcode when the server wants one.
-async function cashApi(path) {
+async function cashApi(path, opts = {}) {
   for (let tries = 0; ; tries++) {
     let pass = store.get(PASS_KEY, '');
     if (cashCfg.locked && !pass) {
@@ -1269,7 +1338,7 @@ async function cashApi(path) {
       store.set(PASS_KEY, pass);
     }
     try {
-      const body = await api(path, pass ? { headers: { 'x-cash-pass': pass } } : undefined);
+      const body = await api(path, { ...opts, headers: { ...(opts.headers || {}), ...(pass ? { 'x-cash-pass': pass } : {}) } });
       updateLockHint();
       return body;
     } catch (err) {
@@ -1572,11 +1641,14 @@ function renderProgramCards() {
 
 // ---------- init ----------
 (async function init() {
-  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
-  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles] = files;
+  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
+  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames] = files;
+  SOURCE_NAMES = data.sourceNames.names;
   $('#mock-banner').hidden = !config.mock;
   cashCfg.locked = Boolean(config.cashLocked);
   cashCfg.enabled = config.cash !== 'off';
+  Object.assign(alertCfg, config.alerts || {});
+  $('#alerts-count').textContent = alertCfg.store ? '' : '（未啟用）';
   updateLockHint();
   renderMine();
 
