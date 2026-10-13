@@ -144,8 +144,6 @@ async function route(req, res) {
     if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'not found' });
     serveStatic(res, p);
   } catch (e) {
-    // TEMP diagnostics: ?debug=1 returns the error with 200 so it can be read remotely.
-    if (q.get('debug') === '1') return sendJson(res, 200, { debugError: String(e && e.message), name: e && e.name, status: e && e.status });
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
     if (e instanceof SeatsAeroError) return sendJson(res, e.status, { error: e.message });
     console.error(e);
