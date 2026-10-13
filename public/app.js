@@ -169,9 +169,155 @@ $$('.presets button').forEach((b) => b.addEventListener('click', () => {
   f.requestSubmit();
 }));
 
+// ---------- airport autocomplete ----------
+// Full list (3,000+ airports) loads from /airports.min.json; tokens are comma separated, the last one is completed.
+const AP = { list: [], byCode: new Map(), groups: [], rank: new Map() };
+const COUNTRY_ZH = { TW: '台灣', HK: '香港', MO: '澳門', CN: '中國', KR: '韓國', KP: '北韓', AE: '阿聯酋' };
+const regionName = (() => {
+  const make = (lang) => { try { return new Intl.DisplayNames([lang], { type: 'region' }); } catch { return null; } };
+  const zh = make('zh-Hant-TW');
+  const en = make('en');
+  const safe = (dn, cc) => { try { return dn?.of(cc) || ''; } catch { return ''; } };
+  return (cc) => ({ zh: COUNTRY_ZH[cc] || safe(zh, cc) || cc, en: safe(en, cc) });
+})();
+const normQ = (s) => s.trim().replace(/臺/g, '台');
+const splitCodes = (v) => v.split(/\s*[,，、]\s*/);
+
+const airportsReady = fetch('/airports.min.json').then((r) => r.json()).then((body) => {
+  AP.groups = body.groups.map((g) => ({ ...g, enL: g.en.toLowerCase() }));
+  for (const g of AP.groups) g.codes.forEach((c, i) => AP.rank.set(c, i)); // main airport first on ties
+  AP.list = body.airports.map(([code, city, name, country, , large, zh, alt]) => {
+    const c = regionName(country);
+    const a = { code, city, name, country, large, zh, alt, cn: c.zh, cnL: c.en.toLowerCase(), cityL: city.toLowerCase(), altL: alt.toLowerCase() };
+    a.words = `${city} ${alt} ${name}`.toLowerCase().split(/[\s\-/'.]+/).filter(Boolean);
+    a.hay = `${city} ${alt} ${name} ${c.en}`.toLowerCase();
+    return a;
+  });
+  for (const a of AP.list) AP.byCode.set(a.code, a);
+}).catch(() => {});
+
+function apScore(a, q, ql, qu) {
+  if (a.code === qu) return 100;
+  let s = 0;
+  if (/^[A-Z]{1,2}$/.test(qu) && a.code.startsWith(qu)) s = 70;
+  if (a.zh) s = Math.max(s, a.zh === q ? 92 : a.zh.startsWith(q) ? 85 : a.zh.includes(q) ? 75 : 0);
+  if (a.cityL === ql || a.altL === ql) s = Math.max(s, 80);
+  else if (ql.length >= 2 && (a.cityL.startsWith(ql) || a.altL.startsWith(ql))) s = Math.max(s, 65);
+  else if (ql.length >= 2 && a.words.some((w) => w.startsWith(ql))) s = Math.max(s, 50);
+  if (a.cn.startsWith(q) || (ql.length >= 3 && a.cnL.startsWith(ql))) s = Math.max(s, 40);
+  if (!s && ql.length >= 3 && a.hay.includes(ql)) s = 20;
+  return s && s + a.large * 8 + (a.zh ? 3 : 0) + (a.country === 'TW' ? 1 : 0);
+}
+
+function apSuggest(raw, limit = 10) {
+  const q = normQ(raw);
+  if (!q) return [];
+  const ql = q.toLowerCase();
+  const qu = q.toUpperCase();
+  const out = [];
+  for (const g of AP.groups) {
+    const s = g.zh === q || g.enL === ql ? 99 : g.zh.startsWith(q) || (ql.length >= 2 && g.enL.startsWith(ql)) ? 88 : 0;
+    if (s) out.push({ s, group: g });
+  }
+  for (const a of AP.list) {
+    const s = apScore(a, q, ql, qu);
+    if (s) out.push({ s, a });
+  }
+  const tie = (x) => (x.a ? AP.rank.get(x.a.code) ?? 9 : -1);
+  return out.sort((x, y) => y.s - x.s || tie(x) - tie(y) || (x.a?.code || '').localeCompare(y.a?.code || '')).slice(0, limit);
+}
+
+// Turn what the user typed (codes, Chinese or English names) into IATA codes for the API.
+function resolveAirports(value) {
+  const codes = [];
+  const unknown = [];
+  for (const t of splitCodes(value).filter(Boolean)) {
+    if (/^[A-Za-z]{3}$/.test(t)) { codes.push(t.toUpperCase()); continue; }
+    const best = apSuggest(t, 1)[0];
+    if (best) codes.push(...(best.group ? best.group.codes : [best.a.code]));
+    else unknown.push(t);
+  }
+  return { codes: [...new Set(codes)], unknown };
+}
+
+function setupAirportInput(input) {
+  const list = document.getElementById(input.getAttribute('aria-controls'));
+  let items = [];
+  let active = -1;
+  const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); active = -1; };
+  const highlight = (i) => {
+    active = i;
+    $$('[role=option]', list).forEach((el, j) => el.classList.toggle('active', j === i));
+    if (i >= 0) {
+      input.setAttribute('aria-activedescendant', `${list.id}-${i}`);
+      list.children[i].scrollIntoView({ block: 'nearest' });
+    }
+  };
+  const render = () => {
+    const token = splitCodes(input.value).at(-1);
+    items = apSuggest(token);
+    if (!items.length) return close();
+    list.innerHTML = items.map((it, i) => {
+      if (it.group) {
+        return `<div role="option" id="${list.id}-${i}" class="ac-item" data-i="${i}">
+          <span class="ac-code multi">${it.group.codes.join(' ')}</span>
+          <span class="ac-main">${esc(it.group.zh)}<small>全部 ${it.group.codes.length} 個機場</small></span>
+          <span class="ac-sub">${esc(it.group.en)}</span></div>`;
+      }
+      const a = it.a;
+      return `<div role="option" id="${list.id}-${i}" class="ac-item" data-i="${i}">
+        <span class="ac-code">${a.code}</span>
+        <span class="ac-main">${esc(a.zh || a.city)}<small>${esc(a.cn)}</small></span>
+        <span class="ac-sub">${esc(a.name)}</span></div>`;
+    }).join('');
+    list.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+    highlight(0);
+  };
+  const choose = (i) => {
+    const it = items[i];
+    if (!it) return;
+    const tokens = splitCodes(input.value).slice(0, -1).filter(Boolean);
+    const picked = it.group ? it.group.codes : [it.a.code];
+    input.value = [...new Set([...tokens, ...picked])].join(',');
+    close();
+    input.focus();
+  };
+  input.addEventListener('input', () => airportsReady.then(render));
+  input.addEventListener('focus', () => { if (splitCodes(input.value).at(-1) && !/^[A-Za-z]{3}$/.test(splitCodes(input.value).at(-1))) airportsReady.then(render); });
+  input.addEventListener('blur', close);
+  input.addEventListener('keydown', (e) => {
+    if (list.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlight((active + 1) % items.length); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlight((active - 1 + items.length) % items.length); }
+    else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); choose(active); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+  });
+  list.addEventListener('mousedown', (e) => e.preventDefault());
+  list.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-i]');
+    if (el) choose(Number(el.dataset.i));
+  });
+}
+$$('#search-form [role=combobox]').forEach(setupAirportInput);
+
 $('#search-form').addEventListener('submit', (e) => {
   e.preventDefault();
-  const f = new FormData(e.target);
+  const form = e.target;
+  for (const input of [form.origin, form.destination]) {
+    const { codes, unknown } = resolveAirports(input.value);
+    const label = input.labels[0].textContent;
+    const problem = unknown.length ? `${label}找不到「${unknown.join('、')}」，請從下拉選單選擇機場或輸入三碼代號。`
+      : codes.length > 10 ? `${label}最多 10 個機場。` : codes.length ? '' : `請輸入${label}。`;
+    if (problem) {
+      $('#search-status').className = 'status error';
+      $('#search-status').textContent = problem;
+      input.focus();
+      return;
+    }
+    input.value = codes.join(',');
+  }
+  const f = new FormData(form);
   const share = new URLSearchParams({ o: f.get('origin'), d: f.get('destination'), s: f.get('start'), e: f.get('end'), c: f.get('cabin') || 'J' });
   if (f.get('carrier')) share.set('a', f.get('carrier'));
   else if (f.get('alliance')) share.set('al', f.get('alliance'));
@@ -437,7 +583,7 @@ $('#trip-dialog').addEventListener('click', (e) => { if (e.target.id === 'trip-d
 // ---------- explore ----------
 const PAGE = 200;
 const ex = { rows: [], cabin: 'J', sort: { key: 'miles', dir: 1 }, f: {}, shown: PAGE };
-const airportCity = (code) => (data.airports.airports.find((a) => a.code === code) || {}).city || '';
+const airportCity = (code) => { const a = AP.byCode.get(code); return a ? a.zh || a.city : ''; };
 
 $('#explore-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -629,7 +775,6 @@ function renderProgramCards() {
   [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles] = files;
   $('#mock-banner').hidden = !config.mock;
 
-  $('#airport-list').innerHTML = data.airports.airports.map((a) => `<option value="${a.code}">${esc(a.city)}</option>`).join('');
   const carrierSel = $('#search-form [name=carrier]');
   carrierSel.insertAdjacentHTML('beforeend', data.airlines.airlines.map((a) => `<option value="${a.code}">${esc(a.name)}（${a.code}）</option>`).join(''));
   carrierSel.addEventListener('change', () => {

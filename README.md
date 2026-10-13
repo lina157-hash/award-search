@@ -23,6 +23,7 @@ npm test
 - API 金鑰只存在伺服器端環境變數，前端呼叫 `/api/*`，由伺服器轉發至 seats.aero。
 - 同樣查詢會在記憶體快取 30 分鐘（`CACHE_TTL_SECONDS`），節省每日 1,000 次的 Pro 額度。
 - seats.aero 有收錄亞洲萬里通（source `asiamiles`，官方文件未列出），但沒有長榮、華航自家里程計畫；這兩家以可換到其座位的夥伴計畫（見 `data/airlines.json` 的 `bookableVia`）呈現。沒有亞洲萬里通資料的寰宇一家航線，前端會依 `data/asiamiles.json` 的距離哩數表估算。
+- 機場清單（`public/airports.min.json`，約 3,200 個有定期航班的機場）由 `scripts/build-airports.js` 產生：機場資料來自 OurAirports（公有領域），城市別名來自 airportsdata（MIT，© Mike Borsetti），常用機場中文名與多機場城市（東京、倫敦等）在 `data/airport-names-zh.json` 手動維護。改了中文名之後重新執行該腳本即可。
 
 ## 注意
 - seats.aero Pro 金鑰僅限個人使用；公開或商業網站需與 seats.aero 簽署書面合作。

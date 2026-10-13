@@ -34,6 +34,17 @@ test('trips and data endpoints work', async () => {
   assert.equal((await fetch(`${base}/api/data/..%2Fserver`)).status, 404);
 });
 
+test('full airport list is served for autocomplete', async () => {
+  const res = await fetch(`${base}/airports.min.json`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(body.airports.length > 3000);
+  const byCode = new Map(body.airports.map((r) => [r[0], r]));
+  for (const code of ['TPE', 'TSA', 'KHH', 'RMQ', 'MZG', 'KNH', 'HKG', 'NRT', 'HND', 'YVR', 'CDG', 'LHR', 'JFK', 'SYD', 'GRU', 'JNB']) assert.ok(byCode.has(code), code);
+  assert.equal(byCode.get('TPE')[6], '台北桃園');
+  assert.deepEqual(body.groups.find((g) => g.zh === '東京').codes, ['NRT', 'HND']);
+});
+
 test('static path traversal is blocked', async () => {
   const res = await fetch(`${base}/..%2fserver.js`);
   assert.notEqual(await res.text().then((t) => t.includes('SEATS_AERO_API_KEY')), true);
