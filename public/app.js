@@ -8,7 +8,7 @@ const DOW = ['日', '一', '二', '三', '四', '五', '六'];
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const fmt = (n) => (n ? Number(n).toLocaleString('zh-TW') : '—');
+const fmt = (n) => (n == null || n === '' || Number.isNaN(Number(n)) ? '—' : Number(n).toLocaleString('zh-TW'));
 const kfmt = (n) => (n >= 10000 ? `${(n / 10000).toFixed(n % 10000 ? 1 : 0)}萬` : fmt(n));
 const srcName = (s) => SOURCE_NAMES[s] || s;
 const dowOf = (iso) => DOW[new Date(iso + 'T00:00:00Z').getUTCDay()];
@@ -22,6 +22,10 @@ async function api(path, opts) {
   if (!res.ok) throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { code: body.code, status: res.status });
   return body;
 }
+
+// Each async view keeps a request counter so a slow older response cannot overwrite a newer one.
+const seq = { search: 0, trips: 0, explore: 0, cash: 0, returns: 0 };
+const latest = (key) => { const n = ++seq[key]; return () => n === seq[key]; };
 
 // Per-device preferences (recent searches, favourites, the cash passcode). Storage can be unavailable in private mode.
 const store = {
@@ -260,12 +264,12 @@ function createAirportPicker(form, name) {
     $('.chips', box).innerHTML = codes().map((c) => {
       const a = AP.byCode.get(c);
       const nm = a ? a.zh || a.city : '';
-      return `<span class="chip" title="${esc(a ? `${a.name}（${a.cn}）` : c)}"><b>${c}</b>${nm ? `<small>${esc(nm)}</small>` : ''}<button type="button" data-rm="${c}" aria-label="移除 ${c}">×</button></span>`;
+      return `<span class="chip" title="${esc(a ? `${a.name}（${a.cn}）` : c)}"><b>${esc(c)}</b>${nm ? `<small>${esc(nm)}</small>` : ''}<button type="button" data-rm="${esc(c)}" aria-label="移除 ${esc(c)}">×</button></span>`;
     }).join('');
     q.placeholder = codes().length ? '＋ 加入機場' : '城市、機場或代碼';
   };
   const set = (list) => {
-    const uniq = [...new Set(list.map((c) => c.toUpperCase()))];
+    const uniq = [...new Set(list.map((c) => String(c).trim().toUpperCase()).filter((c) => /^[A-Z]{3}$/.test(c)))];
     if (uniq.length > MAX_AIRPORTS) toast(`${label}最多 ${MAX_AIRPORTS} 個機場`);
     hidden.value = uniq.slice(0, MAX_AIRPORTS).join(',');
     renderChips();
@@ -505,9 +509,9 @@ function createDatePicker(form, label) {
     if (dlg.open) dlg.close();
   }
   dlg.addEventListener('close', () => {
-    // Closing after only the first click of a range means a single day.
-    if (st.anchor) write(st.anchor, st.anchor);
+    // Closing after only the first click of a range abandons it; the previous dates stay.
     st.anchor = null;
+    st.hover = null;
     btn.focus();
   });
 
@@ -523,7 +527,7 @@ function createDatePicker(form, label) {
       if (st.mode === 'flex') {
         // Centre on the middle of the current range, rounded to a ± option that covers it.
         const s = startIn.value;
-        const half = Math.floor((dayCount(s, endIn.value) - 1) / 2);
+        const half = Math.ceil((dayCount(s, endIn.value) - 1) / 2);
         st.center = isoDateFrom(s, half);
         st.flex = FLEX_DAYS.find((n) => n >= half) ?? FLEX_DAYS.at(-1);
         write(...flexRange());
@@ -606,6 +610,7 @@ $('#search-form').addEventListener('submit', (e) => {
     if (problem) {
       $('#search-status').className = 'status error';
       $('#search-status').textContent = problem;
+      toast(problem);
       p.focus();
       return;
     }
@@ -621,8 +626,17 @@ $('#search-form').addEventListener('submit', (e) => {
   runSearch(share);
 });
 
+// Share-link params come from the URL, so default anything missing or invalid before using them.
+function normalizeShare(share) {
+  if (!/^[YWJF]$/.test(share.get('c') || '')) share.set('c', 'J');
+  if (!share.get('e')) share.set('e', share.get('s'));
+  if (share.get('n') && !/^[1-9]$/.test(share.get('n'))) share.delete('n');
+  return share;
+}
+
 // Fill the search form from share-link params and optionally run it (used by links, recents and favourites).
 function applyShare(share, run = true) {
+  normalizeShare(share);
   const f = $('#search-form');
   pickers.origin.set(share.get('o').split(','));
   pickers.destination.set(share.get('d').split(','));
@@ -758,6 +772,8 @@ function renderSearchFav() {
 }
 
 async function runSearch(share) {
+  normalizeShare(share);
+  const fresh = latest('search');
   const params = new URLSearchParams({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') });
   if (share.get('a')) params.set('carriers', share.get('a'));
   else if (share.get('al')) params.set('carriers', allianceCarriers(share.get('al')).join(','));
@@ -770,6 +786,7 @@ async function runSearch(share) {
   $('#search-results').innerHTML = skeleton();
   try {
     const body = await api(`/api/search?${params}`);
+    if (!fresh()) return;
     state.results = [...body.results, ...asiaMilesRows(body.results)];
     state.withTaxes = Boolean(body.withTaxes);
     const newest = body.results.map((r) => r.updatedAt).filter(Boolean).sort().at(-1);
@@ -778,14 +795,16 @@ async function runSearch(share) {
     $('#alert-btn').addEventListener('click', openAlertDialog);
     $('#share-btn').addEventListener('click', copyShare);
     renderSearchFav();
-    $('#fav-btn').addEventListener('click', () => { toast(toggleFav(share) ? '已加入常用航線' : '已從常用移除'); renderSearchFav(); });
+    $('#fav-btn').addEventListener('click', () => { toast(toggleFav(new URLSearchParams(location.search)) ? '已加入常用航線' : '已從常用移除'); renderSearchFav(); });
     $('#to-cash').addEventListener('click', () => {
+      // Award results are one-way per seat, so compare against a one-way fare for the same people.
       cashPickers.origin.set(share.get('o').split(','));
       cashPickers.destination.set(share.get('d').split(','));
       cashForm.depart.value = share.get('s');
-      if (!cashForm.return.value || cashForm.return.value < share.get('s')) cashForm.return.value = isoDateFrom(share.get('s'), 7);
-      if (state.pax) cashForm.adults.value = String(state.pax);
-      const cab = $(`#cash-form input[name=cabin][value="${share.get('c') || 'J'}"]`);
+      cashForm.adults.value = String(state.pax || 1);
+      $('#cash-form input[name=trip][value="ow"]').checked = true;
+      $('#cash-return').hidden = true;
+      const cab = $(`#cash-form input[name=cabin][value="${state.cabin}"]`);
       if (cab) cab.checked = true;
       showTab('cash');
       cashForm.requestSubmit();
@@ -793,6 +812,7 @@ async function runSearch(share) {
     renderSearch();
     status.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
+    if (!fresh()) return;
     status.className = 'status error';
     status.textContent = err.message;
     $('#search-results').innerHTML = '';
@@ -1039,11 +1059,13 @@ function amTripLine(t) {
 
 async function openTrips(id, title, cabin) {
   const dlg = $('#trip-dialog');
+  const fresh = latest('trips');
   $('#trip-title').textContent = title;
   $('#trip-body').innerHTML = skeleton(3);
   dlg.showModal();
   try {
     const body = await api(`/api/trips/${encodeURIComponent(id)}`);
+    if (!fresh()) return;
     const links = body.bookingLinks.map((l) => `<a href="${esc(l.link)}" target="_blank" rel="noopener">${esc(l.label)} ↗</a>`).join('');
     const want = CABIN_API[cabin];
     const byMiles = (a, b) => a.miles - b.miles || a.stops - b.stops;
@@ -1055,6 +1077,7 @@ async function openTrips(id, title, cabin) {
       (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map(tripHtml).join('')}</details>` : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
   } catch (err) {
+    if (!fresh()) return;
     $('#trip-body').innerHTML = `<p class="status error">${esc(err.message)}</p>`;
   }
 }
@@ -1102,6 +1125,8 @@ $('#explore-form').addEventListener('submit', async (e) => {
   const f = new FormData(e.target);
   const params = new URLSearchParams();
   for (const [k, v] of f) if (v) params.set(k, v);
+  const fresh = latest('explore');
+  history.replaceState(null, '', `?${new URLSearchParams({ x: '1', ...Object.fromEntries(params) })}#explore`);
   const status = $('#explore-status');
   status.className = 'status';
   status.textContent = '正在探索，資料量大時可能需要幾秒…';
@@ -1109,14 +1134,26 @@ $('#explore-form').addEventListener('submit', async (e) => {
   try {
     const body = await api(`/api/explore?${params}`);
     await airportsReady;
+    if (!fresh()) return;
     Object.assign(ex, { rows: body.results, cabin: body.cabin, f: {}, shown: PAGE, sort: { key: 'miles', dir: 1 }, mock: body.mock, truncated: body.truncated });
     renderExplore();
   } catch (err) {
+    if (!fresh()) return;
     status.className = 'status error';
     status.textContent = err.message;
     $('#explore-results').innerHTML = '';
   }
 });
+
+// Restore an explore query from the URL (written on submit) and run it.
+function applyExploreShare(share) {
+  const f = $('#explore-form');
+  for (const k of ['program', 'origin_region', 'destination_region']) if (share.get(k)) f[k].value = share.get(k);
+  if (share.get('start')) datePickers.explore.set(share.get('start'), share.get('end') || share.get('start'));
+  const cab = $(`#explore-form input[name=cabin][value="${share.get('cabin') || 'J'}"]`);
+  if (cab) cab.checked = true;
+  f.requestSubmit();
+}
 
 // Rows matching every filter except `skip` (used to count options in each airport picker).
 function exploreMatches(skip) {
@@ -1491,15 +1528,18 @@ function cashParams(r, token) {
 
 async function loadReturns(outbound) {
   const status = $('#cash-status');
+  const fresh = latest('returns');
   status.className = 'status';
   status.textContent = '正在查詢回程航班…';
   try {
     const body = await cashApi(`/api/cash?${cashParams(cash.req, outbound.departureToken)}`);
+    if (!fresh()) return;
     Object.assign(cash, { outbound, returns: body.options, googleUrl: body.googleUrl || cash.googleUrl, sort: 'best' });
     status.textContent = `找到 ${body.options.length} 個回程選項${body.mock ? '（示範資料）' : ''}`;
     renderCash();
     status.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
+    if (!fresh()) return;
     status.className = 'status error';
     status.textContent = err.message;
   }
@@ -1513,6 +1553,7 @@ cashForm.addEventListener('submit', async (e) => {
     if (problem) {
       $('#cash-status').className = 'status error';
       $('#cash-status').textContent = problem;
+      toast(problem);
       p.focus();
       return;
     }
@@ -1527,22 +1568,27 @@ cashForm.addEventListener('submit', async (e) => {
     return;
   }
   Object.assign(cash, { req: r, options: [], returns: null, outbound: null, insights: null, googleUrl: '', off: false, sort: 'best', directOnly: false });
+  const fresh = latest('cash');
+  seq.returns++; // any pending return-leg lookup belongs to the previous search
   status.className = 'status';
   status.textContent = '正在查詢 Google 航班票價…';
   $('#cash-results').innerHTML = skeleton(5);
   try {
     const body = await cashApi(`/api/cash?${cashParams(r)}`);
+    if (!fresh()) return;
     if (!body.configured) {
       cash.off = true;
       status.textContent = '';
     } else {
       Object.assign(cash, { options: body.options, insights: body.insights, googleUrl: body.googleUrl });
       status.textContent = body.options.length
-        ? `找到 ${body.options.length} 個航班選項${body.mock ? '（示範資料）' : ''}${rt ? '，價格為來回總價，選去程後可看回程' : ''}`
+        ? `找到 ${body.options.length} 個航班選項${body.mock ? '（示範資料）' : ''}${rt ? '，價格為來回總價，選去程後可看回程' : `，單程 ${r.adults} 人總價`}`
         : body.message || '沒有找到航班';
     }
     renderCash();
+    status.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
+    if (!fresh()) return;
     status.className = 'status error';
     status.textContent = err.message;
     $('#cash-results').innerHTML = '';
@@ -1877,8 +1923,10 @@ function renderVersion(config) {
 
   // Restore a shared search from the URL and run it.
   const share = new URLSearchParams(location.search);
-  if (share.get('o') && share.get('d') && share.get('s')) applyShare(share);
-  showTab(['search', 'explore', 'cash', 'points', 'rules'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'search');
+  const tab = ['search', 'explore', 'cash', 'points', 'rules'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'search';
+  showTab(tab);
+  if (share.get('x') && share.get('program')) applyExploreShare(share);
+  else if (share.get('o') && share.get('d') && share.get('s')) applyShare(share);
 })().catch((err) => {
   $('#search-status').className = 'status error';
   $('#search-status').textContent = `初始化失敗：${err.message}`;

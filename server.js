@@ -76,7 +76,12 @@ function readJson(req, limit = 10_000) {
   return new Promise((resolve, reject) => {
     let data = '';
     req.on('data', (chunk) => { data += chunk; if (data.length > limit) reject(new BadRequest('內容太長')); });
-    req.on('end', () => { try { resolve(data ? JSON.parse(data) : {}); } catch { reject(new BadRequest('JSON 格式錯誤')); } });
+    req.on('end', () => {
+      let body;
+      try { body = data ? JSON.parse(data) : {}; } catch { return reject(new BadRequest('JSON 格式錯誤')); }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) return reject(new BadRequest('JSON 格式錯誤'));
+      resolve(body);
+    });
     req.on('error', reject);
   });
 }
@@ -276,7 +281,11 @@ async function route(req, res) {
     if (p === '/api/fx') return sendJson(res, 200, await handleFx());
     if (p === '/api/search') return sendJson(res, 200, await handleSearch(q));
     if (p === '/api/explore') return sendJson(res, 200, await handleExplore(q));
-    if (p.startsWith('/api/trips/')) return sendJson(res, 200, await handleTrips(decodeURIComponent(p.slice(11))));
+    if (p.startsWith('/api/trips/')) {
+      let id;
+      try { id = decodeURIComponent(p.slice(11)); } catch { throw new BadRequest('網址編碼錯誤'); }
+      return sendJson(res, 200, await handleTrips(id));
+    }
     const m = p.match(/^\/api\/data\/(\w+)$/);
     if (m && DATA_FILES.includes(m[1])) {
       res.writeHead(200, { 'content-type': MIME['.json'] });

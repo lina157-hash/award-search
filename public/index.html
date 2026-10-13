@@ -8,7 +8,9 @@
   <meta name="theme-color" content="#0a6a96">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- Web font loads after first paint; system fonts show meanwhile. -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/styles.css">
   <link rel="icon" href="/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="/icon-180.png">
@@ -249,7 +251,7 @@
       <h2 id="alert-title">有新機位時通知我</h2>
       <p class="hint" id="alert-summary"></p>
       <label class="field">通知信箱（選填，留空就只在網站上看）<input type="email" name="email" placeholder="you@example.com" autocomplete="email"></label>
-      <label class="field">座位數<select name="pax"><option value="">不限</option><option value="2">至少 2 位</option><option value="3">至少 3 位</option><option value="4">至少 4 位</option></select></label>
+      <label class="field">座位數<select name="pax"><option value="">不限</option><option value="2">至少 2 位</option><option value="3">至少 3 位</option><option value="4">至少 4 位</option><option value="5">至少 5 位</option></select></label>
       <p class="hint" id="alert-note">每天早上自動檢查一次，有新的獎勵位就通知；現在已有的座位不會重複通知。</p>
       <div class="pass-actions"><button type="button" class="outline" id="alert-cancel">取消</button><button type="submit" class="primary small">建立提醒</button></div>
     </form>

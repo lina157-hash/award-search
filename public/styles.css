@@ -299,7 +299,8 @@ td.cell.est { background: repeating-linear-gradient(135deg, var(--surface-2), va
 .am-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
 h3.sub { font-size: .95rem; margin: 8px 0; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) td.cell.est, :root:not([data-theme="light"]) .am-callout .am-miles, :root:not([data-theme="light"]) .am-line b { color: #f08aa8; } }
-@media (max-width: 640px) { .am-tables { grid-template-columns: 1fr; } }
+.am-tables > div { min-width: 0; }
+@media (max-width: 640px) { .am-tables { grid-template-columns: minmax(0, 1fr); } }
 .seg-line .ac { color: var(--text); }
 .seatmap { white-space: nowrap; font-size: .8rem; color: var(--muted); }
 .seatmap a { margin-left: 4px; text-decoration: none; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
@@ -484,7 +485,7 @@ h3.sub { font-size: 1rem; margin: 22px 0 10px; }
 .calc-table small, .calc-table th small { display: block; color: var(--muted); font-size: .76rem; font-weight: 400; }
 .calc-table th small.note { margin-top: 4px; }
 .calc-table td.best { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
-.calc-table td.best b { color: var(--accent-text); }
+.calc-table td.best b { color: var(--accent); }
 .calc-table td.short span { color: var(--muted); font-size: .85rem; }
 .calc-table td.none { color: var(--muted); text-align: center; }
 .calc-table td.others div + div { margin-top: 6px; }

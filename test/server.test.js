@@ -190,6 +190,29 @@ test('config carries a version, an update date and a history', async () => {
   assert.ok(file.history.every((h) => /^\d+\.\d+\.\d+$/.test(h.version) && /^\d{4}-\d{2}-\d{2}$/.test(h.date) && h.note));
 });
 
+test('alerts ask seats.aero for the cabin name, not the stored code', async () => {
+  const { createAlerts, memoryStore } = require('../lib/alerts');
+  const seen = [];
+  const alerts = createAlerts({ store: memoryStore(), search: async (params) => { seen.push(params); return []; } });
+  await alerts.add({ origin: 'TPE', destination: 'NRT', start: '2099-01-01', end: '2099-01-05', cabin: 'J' });
+  assert.equal(seen[0].cabins, 'business');
+  await alerts.run();
+  assert.equal(seen[1].cabins, 'business');
+});
+
+test('bad input is a 400, not a 500', async () => {
+  assert.equal((await fetch(`${base}/api/trips/%E0%A4%A`)).status, 400);
+  process.env.CASH_PASSCODE = 'pw';
+  try {
+    for (const body of ['null', '[1]', '"x"']) {
+      const res = await fetch(`${base}/api/alerts`, { method: 'POST', headers: { 'x-cash-pass': 'pw', 'content-type': 'application/json' }, body });
+      assert.equal(res.status, 400, body);
+    }
+  } finally {
+    delete process.env.CASH_PASSCODE;
+  }
+});
+
 test('normalizeAvailability maps cabin fields', () => {
   const n = normalizeAvailability({ ID: 'x', Date: '2026-11-01', Source: 'aeroplan', Route: { OriginAirport: 'TPE', DestinationAirport: 'YVR', Distance: 6000 }, JAvailable: true, JMileageCost: '75000', JRemainingSeats: 2, JAirlines: 'BR', JDirect: true });
   assert.deepEqual(n.cabins.J, { available: true, miles: 75000, seats: 2, airlines: 'BR', direct: true, taxes: null });
