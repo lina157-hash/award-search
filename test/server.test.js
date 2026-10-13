@@ -277,24 +277,61 @@ test('feature data files are served and well formed', async () => {
 test('price watch mails only after a real drop and tracks the picked flights', async () => {
   const { createPriceWatch } = require('../lib/pricewatch');
   const { memoryStore } = require('../lib/alerts');
-  const day = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  const day = new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10);
+  let clock = Date.now();
+  let calls = 0;
   let prices = { BR12: 30000, CI4: 28000 };
   const opt = (fn) => ({ price: prices[fn], segments: [{ flightNumber: fn.replace(/(\d)/, ' $1') }] });
   const mails = [];
-  const w = createPriceWatch({ store: memoryStore(), search: async () => ({ options: Object.keys(prices).map(opt) }), sendEmail: async (m) => mails.push(m) });
-  const { watch } = await w.add({ origin: 'TPE', destination: 'NRT', depart: day, cabin: 'Y', flights: 'BR12', email: 'a@b.co' });
+  const w = createPriceWatch({ store: memoryStore(), now: () => clock, search: async () => { calls += 1; return { options: Object.keys(prices).map(opt) }; }, sendEmail: async (m) => mails.push(m) });
+  const { watch } = await w.add({ origin: 'TPE', destination: 'NRT', depart: day, cabin: 'Y', flights: 'BR12', email: 'a@b.co', price: 30000, lowest: 28000 });
+  assert.equal(calls, 0, 'starting a watch reuses the fare already on screen');
   assert.equal(watch.lastPrice, 30000);
-  assert.equal(watch.lastLowest, 28000);
+  await w.run();
+  assert.equal(calls, 0, 'not due again on the same day');
+  const tomorrow = () => { clock += 864e5; };
+  tomorrow();
   prices = { BR12: 29950, CI4: 20000 }; // picked flight barely moved: no mail
   let r = await w.run();
+  assert.equal(calls, 1);
   assert.equal(r.report[0].mailed, false);
+  tomorrow();
   prices = { BR12: 27000, CI4: 20000 };
   r = await w.run();
   assert.equal(r.report[0].mailed, true);
   assert.match(mails[0].subject, /27,000/);
-  r = await w.run(); // same price again: nothing new to say
+  tomorrow();
+  await w.run(); // same price again: nothing new to say
   assert.equal(mails.length, 1);
   await assert.rejects(w.add({ origin: 'TPE', destination: 'NRT', depart: '2020-01-01' }), /已經過了/);
+});
+
+test('price watch spaces checks by trip distance, caps the month and keeps a reserve', async () => {
+  const { createPriceWatch, intervalDays } = require('../lib/pricewatch');
+  const { memoryStore } = require('../lib/alerts');
+  assert.deepEqual([intervalDays(90), intervalDays(30), intervalDays(5)], [7, 3, 1]);
+  const far = new Date(Date.now() + 100 * 864e5).toISOString().slice(0, 10);
+  let clock = Date.now();
+  let calls = 0;
+  let left = 500;
+  const w = createPriceWatch({ store: memoryStore(), monthlyCap: 2, now: () => clock, quota: async () => left, search: async () => { calls += 1; return { options: [{ price: 50000, segments: [] }] }; } });
+  await w.add({ origin: 'TPE', destination: 'LHR', depart: far, cabin: 'J', price: 50000 });
+  clock += 3 * 864e5;
+  await w.run();
+  assert.equal(calls, 0, 'a trip 100 days out is checked weekly');
+  clock += 5 * 864e5;
+  await w.run();
+  assert.equal(calls, 1);
+  left = 100; // account is running low
+  clock += 8 * 864e5;
+  let r = await w.run();
+  assert.equal(r.report[0].skipped, 'reserve');
+  left = 500;
+  await w.run();
+  assert.equal(calls, 2);
+  clock += 8 * 864e5;
+  r = await w.run();
+  if (new Date(clock).toISOString().slice(0, 7) === new Date(clock - 16 * 864e5).toISOString().slice(0, 7)) assert.equal(r.report[0].skipped, 'cap');
 });
 
 test('price watch endpoint works in demo mode', async () => {

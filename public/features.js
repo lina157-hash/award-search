@@ -724,7 +724,7 @@ const watchCfg = { on: false };
 const watchSummary = (w) => `${w.origin} → ${w.destination}　${mmdd(w.depart)}${w.ret ? ` – ${mmdd(w.ret)} 來回` : ' 單程'}　${CABIN_LABEL[w.cabin]}${w.adults > 1 ? `　${w.adults} 人` : ''}`;
 function watchFormHtml() {
   return `<form class="watch-form" id="watch-form">
-    <p class="hint">每天早上 7 點（台灣時間）重查一次這組票價，比現在便宜就寄信通知你。每組每天用掉 1 次查價額度，最多同時追蹤 5 組。</p>
+    <p class="hint">比現在便宜就寄信通知你。為了省查價額度，出發前 60 天以上每週查 1 次、15 到 60 天每 3 天、最後 14 天才每天查；所有追蹤每月合計最多用 30 次，帳號剩不到 150 次時自動暫停。開始追蹤不會另外用額度。</p>
     <div class="w-add"><input type="email" name="email" placeholder="通知信箱（可留空，只在網站顯示）" autocomplete="email" value="${esc(store.get(ALERT_EMAIL_KEY, ''))}">
     <button type="submit" class="primary">開始追蹤</button><button type="button" class="outline" id="watch-cancel">取消</button></div>
   </form>`;
@@ -746,7 +746,10 @@ function bindWatchButton(box) {
         const email = f.email.value.trim();
         store.set(ALERT_EMAIL_KEY, email);
         const body = await cashApi('/api/watch', { method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ origin: r.origin, destination: r.destination, depart: r.depart, ret: r.ret, cabin: r.cabin, adults: r.adults, stops: r.stops, flights: cash.chosen.out.segments.map((x) => (x.flightNumber || '').replace(/\s/g, '')).join('+'), email }) });
+          body: JSON.stringify({ origin: r.origin, destination: r.destination, depart: r.depart, ret: r.ret, cabin: r.cabin, adults: r.adults, stops: r.stops, flights: cash.chosen.out.segments.map((x) => (x.flightNumber || '').replace(/\s/g, '')).join('+'), email,
+            // The fare on screen becomes the starting price, so starting a watch costs no lookup. For a round trip that is the
+            // outbound list's "from" price, which is what each later check measures too.
+            price: cash.chosen.out.price || null, lowest: Math.min(...cash.options.map((o) => o.price).filter(Boolean), 1e9) }) });
         host.innerHTML = `<p class="status">📉 已開始追蹤，目前 ${money(body.watch.lastPrice)}。${email ? '降價會寄信到你的信箱' : '降價時會顯示在「降價追蹤」'}。</p>`;
         loadWatches();
       } catch (err) {
@@ -771,10 +774,10 @@ async function loadWatches() {
       const diff = w.lastPrice && w.startPrice ? w.lastPrice - w.startPrice : 0;
       return `<li>
         <div><b>${esc(watchSummary(w))}</b>${w.email ? `<small>→ ${esc(w.email)}</small>` : '<small>只在網站顯示</small>'}</div>
-        <div class="hint">${w.flights ? `追蹤 ${esc(w.flights.replace(/\+/g, '、'))}` : '追蹤最便宜票價'}：現在 <b>${money(w.lastPrice)}</b>${diff ? `（比開始時${diff < 0 ? `<b class="new">便宜 NT$${fmt(-diff)}</b>` : `貴 NT$${fmt(diff)}`}）` : ''}${w.lastLowest && w.lastLowest < (w.lastPrice || Infinity) ? `；同天最低 ${money(w.lastLowest)}` : ''}${w.pickedGone ? '；原航班已查不到，改看最低價' : ''}　${w.lastRun ? `${ago(w.lastRun)}檢查` : ''}${w.lastError ? `　⚠ ${esc(w.lastError)}` : ''}</div>
+        <div class="hint">${w.flights ? `追蹤 ${esc(w.flights.replace(/\+/g, '、'))}` : '追蹤最便宜票價'}・${w.everyDays === 1 ? '每天' : `每 ${w.everyDays} 天`}查一次${w.paused ? `・<b class="warn">${w.paused === 'cap' ? '本月追蹤額度用完，下個月繼續' : 'SerpApi 額度快用完，暫停中'}</b>` : ''}：現在 <b>${money(w.lastPrice)}</b>${diff ? `（比開始時${diff < 0 ? `<b class="new">便宜 NT$${fmt(-diff)}</b>` : `貴 NT$${fmt(diff)}`}）` : ''}${w.lastLowest && w.lastLowest < (w.lastPrice || Infinity) ? `；同天最低 ${money(w.lastLowest)}` : ''}${w.pickedGone ? '；原航班已查不到，改看最低價' : ''}　${w.lastRun ? `${ago(w.lastRun)}檢查` : ''}${w.lastError ? `　⚠ ${esc(w.lastError)}` : ''}</div>
         <div class="alert-actions">${sparkline((w.history || []).map(([d, p]) => [d, p]))}<button type="button" class="outline" data-wdel="${esc(w.id)}">停止追蹤</button></div>
       </li>`;
-    }).join('')}</ul>` : '<p class="hint">還沒有追蹤。在買機票選好航班後，按「📉 追蹤降價」。</p>';
+    }).join('')}</ul><p class="hint">本月追蹤已用 ${body.used || 0} / ${body.cap} 次查價額度。</p>` : '<p class="hint">還沒有追蹤。在買機票選好航班後，按「📉 追蹤降價」。</p>';
     $$('[data-wdel]', box).forEach((b) => b.addEventListener('click', async () => {
       try { await cashApi(`/api/watch?id=${encodeURIComponent(b.dataset.wdel)}`, { method: 'DELETE' }); toast('已停止追蹤'); loadWatches(); } catch (err) { toast(err.message); }
     }));

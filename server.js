@@ -76,12 +76,20 @@ const deals = createDeals({
     return items.map(normalizeAvailability);
   },
 });
-// Cash price tracking: same Redis and mailer as the seat alerts; each daily check spends one SerpApi credit per watch.
+// Cash price tracking: same Redis and mailer as the seat alerts; each check spends one SerpApi credit, so lib/pricewatch spaces them out and caps them.
 const watchStore = CASH_MODE === 'off' ? null : REDIS_URL && REDIS_TOKEN ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'price-watch:v1' }) : CASH_MODE === 'mock' ? memoryStore() : null;
 const priceWatch = watchStore && createPriceWatch({
   store: watchStore,
   sendEmail: alertMailer,
   siteUrl: process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''),
+  // SerpApi's account endpoint is free and reports the searches left this month.
+  quota: async () => {
+    if (CASH_MODE !== 'live') return null;
+    const res = await fetch(`https://serpapi.com/account.json?api_key=${encodeURIComponent(SERPAPI_KEY)}`);
+    if (!res.ok) return null;
+    const a = await res.json();
+    return Number.isFinite(a.total_searches_left) ? a.total_searches_left : Number.isFinite(a.plan_searches_left) ? a.plan_searches_left : null;
+  },
   search: async (w) => {
     const params = { departure_id: w.origin, arrival_id: w.destination, outbound_date: w.depart, return_date: w.ret || undefined, type: w.ret ? 1 : 2, travel_class: CABIN_CLASS[w.cabin], adults: w.adults, stops: w.stops || undefined };
     return normalizeCash(CASH_MODE === 'mock' ? mock.mockCash(params) : await cashQuery(params));
@@ -92,7 +100,7 @@ async function handleWatch(req, q) {
   if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能管理降價追蹤', 401), { code: 'passcode' });
   if (req.method === 'POST') return { configured: true, ...(await priceWatch.add(await readJson(req))) };
   if (req.method === 'DELETE') { await priceWatch.remove(String(q.get('id') || '')); return { ok: true }; }
-  return { configured: true, email: Boolean(alertMailer), max: priceWatch.max, watches: await priceWatch.list() };
+  return { configured: true, email: Boolean(alertMailer), max: priceWatch.max, ...(await priceWatch.list()) };
 }
 
 let dealsPending = null;
