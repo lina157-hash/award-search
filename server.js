@@ -87,9 +87,15 @@ async function handleExplore(q) {
   }
   const cabin = param(q, 'cabin', /^[YWJF]$/, { upper: true });
   if (cabin) params.cabin = CABIN_NAMES[cabin];
+  const take = Number(param(q, 'take', /^\d{2,4}$/) || 500);
+  if (take < 10 || take > 1000) throw new BadRequest('take 需介於 10 到 1000');
+  params.take = take;
   const key = 'explore:' + JSON.stringify(params);
   const raw = await cached(key, () => (MOCK ? mock.mockAvailability(params) : client.availability(params)));
-  return { mock: MOCK, results: raw.map(normalizeAvailability) };
+  // Only ship rows with the requested cabin open, cheapest first, to keep the payload small.
+  let results = raw.map(normalizeAvailability);
+  if (cabin) results = results.filter((r) => r.cabins[cabin].available).sort((a, b) => a.cabins[cabin].miles - b.cabins[cabin].miles);
+  return { mock: MOCK, total: results.length, results: results.slice(0, 300) };
 }
 
 async function handleTrips(id) {

@@ -102,7 +102,7 @@ function renderSearch() {
       <tbody>${keys.map((k) => `<tr><td>${esc(k)}</td>${sources.map((s) => cell(grid.get(k)[s])).join('')}</tr>`).join('')}</tbody>
     </table></div>`;
   root.querySelectorAll('.cabin-toggle button').forEach((b) => b.addEventListener('click', () => { viewCabin = b.dataset.cabin; renderSearch(); }));
-  root.querySelectorAll('td.cell[data-id]').forEach((td) => td.addEventListener('click', () => openTrips(td.dataset.id, td.dataset.title)));
+  root.querySelectorAll('td.cell[data-id]').forEach((td) => td.addEventListener('click', () => openTrips(td.dataset.id, td.dataset.title, viewCabin)));
 }
 
 function cell(r) {
@@ -114,7 +114,17 @@ function cell(r) {
   return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(title)}">${fmt(c.miles)}<small>${esc(c.airlines)}${c.direct ? ' 直飛' : ''}${seats}</small></td>`;
 }
 
-async function openTrips(id, title) {
+const CABIN_API = { Y: 'economy', W: 'premium', J: 'business', F: 'first' };
+
+function tripHtml(t) {
+  return `
+      <div class="trip">
+        <div><b>${esc(t.flightNumbers)}</b> · ${esc(t.cabin)} · ${fmt(t.miles)} 哩 + ${esc(t.taxesSymbol || '')}${t.taxes != null ? fmt(t.taxes / 100) : '—'} ${esc(t.taxesCurrency || '')} · 剩 ${t.seats ?? '?'} 位 · ${t.stops ? `${t.stops} 次轉機` : '直飛'}</div>
+        ${t.segments.map((s) => `<div class="seg">${esc(s.flight)} ${esc(s.from)} ${esc((s.departsAt || '').slice(11, 16))} → ${esc(s.to)} ${esc((s.arrivesAt || '').slice(11, 16))} · ${esc(s.aircraft || '')} · 艙等代碼 ${esc(s.fareClass || '—')}</div>`).join('')}
+      </div>`;
+}
+
+async function openTrips(id, title, cabin) {
   const dlg = $('#trip-dialog');
   $('#trip-title').textContent = title;
   $('#trip-body').innerHTML = '<p class="status">載入航班中…</p>';
@@ -122,11 +132,13 @@ async function openTrips(id, title) {
   try {
     const body = await api(`/api/trips/${encodeURIComponent(id)}`);
     const links = body.bookingLinks.map((l) => `<a href="${esc(l.link)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join(' · ');
-    $('#trip-body').innerHTML = (links ? `<p>${links}</p>` : '') + (body.trips.map((t) => `
-      <div class="trip">
-        <div><b>${esc(t.flightNumbers)}</b> · ${esc(t.cabin)} · ${fmt(t.miles)} 哩 + ${esc(t.taxesSymbol || '')}${t.taxes != null ? fmt(t.taxes / 100) : '—'} ${esc(t.taxesCurrency || '')} · 剩 ${t.seats ?? '?'} 位 · ${t.stops ? `${t.stops} 次轉機` : '直飛'}</div>
-        ${t.segments.map((s) => `<div class="seg">${esc(s.flight)} ${esc(s.from)} ${esc((s.departsAt || '').slice(11, 16))} → ${esc(s.to)} ${esc((s.arrivesAt || '').slice(11, 16))} · ${esc(s.aircraft || '')} · 艙等代碼 ${esc(s.fareClass || '—')}</div>`).join('')}
-      </div>`).join('') || '<p class="hint">沒有航班明細。</p>');
+    const want = CABIN_API[cabin];
+    const byMiles = (a, b) => a.miles - b.miles || a.stops - b.stops;
+    const main = body.trips.filter((t) => !want || t.cabin === want).sort(byMiles);
+    const rest = body.trips.filter((t) => want && t.cabin !== want).sort(byMiles);
+    $('#trip-body').innerHTML = (links ? `<p>${links}</p>` : '') +
+      (main.map(tripHtml).join('') || '<p class="hint">此艙等沒有航班明細。</p>') +
+      (rest.length ? `<details><summary class="hint">其他艙等 ${rest.length} 筆</summary>${rest.map(tripHtml).join('')}</details>` : '');
   } catch (err) {
     $('#trip-body').innerHTML = `<p class="status error">${esc(err.message)}</p>`;
   }
@@ -153,7 +165,7 @@ $('#explore-form').addEventListener('submit', async (e) => {
       <tbody>${rows.slice(0, 300).map((r) => { const c = r.cabins[cabin]; return `<tr class="click" data-id="${esc(r.id)}" data-title="${esc(`${r.date} ${r.origin}→${r.destination} · ${srcName(r.source)}`)}">
         <td>${esc(r.date)}</td><td>${esc(r.origin)} → ${esc(r.destination)}</td><td>${fmt(c.miles)}</td><td>${esc(c.airlines)}</td><td>${c.direct ? '是' : ''}</td><td>${c.seats || '—'}</td></tr>`; }).join('')}</tbody>
     </table></div>`;
-    document.querySelectorAll('#explore-results tr.click').forEach((tr) => tr.addEventListener('click', () => openTrips(tr.dataset.id, tr.dataset.title)));
+    document.querySelectorAll('#explore-results tr.click').forEach((tr) => tr.addEventListener('click', () => openTrips(tr.dataset.id, tr.dataset.title, cabin)));
   } catch (err) {
     status.className = 'status error';
     status.textContent = err.message;
