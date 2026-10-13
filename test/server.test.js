@@ -28,7 +28,7 @@ test('trips and data endpoints work', async () => {
   const t = await (await fetch(`${base}/api/trips/${s.results[0].id}`)).json();
   assert.ok(t.trips.length > 0);
   assert.ok(t.trips[0].segments.length > 0);
-  for (const n of ['airlines', 'alliances', 'airports', 'programs', 'glossary']) {
+  for (const n of ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles']) {
     assert.equal((await fetch(`${base}/api/data/${n}`)).status, 200);
   }
   assert.equal((await fetch(`${base}/api/data/..%2Fserver`)).status, 404);

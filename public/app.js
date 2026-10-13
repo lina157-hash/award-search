@@ -4,7 +4,7 @@ const SOURCE_NAMES = {
   lufthansa: '漢莎 Miles&More', turkish: '土航 Miles&Smiles', singapore: '新航 KrisFlyer', eurobonus: 'SAS EuroBonus',
   ethiopian: '衣索比亞 ShebaMiles', aeromexico: '墨航 Club Premier', etihad: '阿提哈德 Guest', emirates: '阿聯酋 Skywards',
   qatar: '卡達 Privilege Club', velocity: '維珍澳洲 Velocity', smiles: 'GOL Smiles', azul: 'Azul TudoAzul',
-  connectmiles: 'Copa ConnectMiles', jetblue: 'JetBlue TrueBlue', saudia: '沙烏地 AlFursan', finnair: '芬航 Finnair Plus',
+  asiamiles_est: '亞洲萬里通（估算）', connectmiles: 'Copa ConnectMiles', jetblue: 'JetBlue TrueBlue', saudia: '沙烏地 AlFursan', finnair: '芬航 Finnair Plus',
 };
 const CABIN_LABEL = { Y: '經濟艙', W: '豪華經濟艙', J: '商務艙', F: '頭等艙' };
 const CABIN_API = { Y: 'economy', W: 'premium', J: 'business', F: 'first' };
@@ -53,16 +53,101 @@ function showTab(name) {
 }
 $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
+// ---------- Asia Miles estimate ----------
+// seats.aero has no Asia Miles source. Oneworld seats seen through partner programs are usually
+// bookable with Asia Miles too, so we price them with the published-by-media distance chart.
+const CABIN_KEY = Object.fromEntries(Object.entries(CABIN_API).map(([k, v]) => [v, k]));
+
+function amBand(dist, o, d) {
+  const am = data.asiamiles;
+  const band = am.bands.find((b) => b.max == null || dist <= b.max).id;
+  return band === 'short' && (am.shortType2Airports.includes(o) || am.shortType2Airports.includes(d)) ? 'short2' : band;
+}
+
+// kind: 'cx' (Cathay-operated) or 'partner' (one oneworld partner flown alone).
+function amPrice(kind, dist, cabin, o, d) {
+  if (!data.asiamiles || !dist) return null;
+  const band = amBand(dist, o, d);
+  const miles = data.asiamiles.charts[kind][band][cabin];
+  return miles ? { miles, kind, band } : null;
+}
+
+const oneworld = () => new Set(allianceCarriers('oneworld'));
+
+// Availability-level estimate: route distance is origin→destination, so connections may price higher.
+function amFromAvailability(r, cabin) {
+  const x = r.cabins[cabin];
+  if (!x.available) return null;
+  const carriers = x.airlines.split(/,\s*/).filter(Boolean);
+  const ow = oneworld();
+  if (carriers.includes('CX')) return amPrice('cx', r.distance, cabin, r.origin, r.destination);
+  if (carriers.some((c) => ow.has(c))) return amPrice('partner', r.distance, cabin, r.origin, r.destination);
+  return null;
+}
+
+// Trip-level estimate: Asia Miles adds sector distances for connections.
+function amFromTrip(t) {
+  const cabin = CABIN_KEY[t.cabin];
+  const ops = [...new Set(t.segments.map((s) => (s.flight || '').slice(0, 2)))];
+  const ow = oneworld();
+  if (!cabin || !ops.length || !ops.every((c) => ow.has(c))) return null;
+  const dist = t.segments.reduce((n, s) => n + (s.distance || 0), 0);
+  const o = t.segments[0].from;
+  const d = t.segments.at(-1).to;
+  if (ops.length === 1) return { ...amPrice(ops[0] === 'CX' ? 'cx' : 'partner', dist, cabin, o, d), dist };
+  return { multi: true, dist };
+}
+
+function asiaMilesRows(results) {
+  const groups = new Map();
+  for (const r of results) {
+    const k = `${r.date}|${r.origin}|${r.destination}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  const out = [];
+  for (const [k, rows] of groups) {
+    const cabins = {};
+    let any = false;
+    for (const c of Object.keys(CABIN_API)) {
+      let best = null;
+      for (const r of rows) {
+        const est = amFromAvailability(r, c);
+        if (est && (!best || est.miles < best.est.miles)) best = { est, r };
+      }
+      cabins[c] = best
+        ? { available: true, miles: best.est.miles, seats: null, airlines: best.r.cabins[c].airlines, direct: best.r.cabins[c].direct, refId: best.r.id, refSource: best.r.source, kind: best.est.kind }
+        : { available: false, miles: null, seats: null, airlines: '', direct: false };
+      any ||= Boolean(best);
+    }
+    const [date, origin, destination] = k.split('|');
+    if (any) out.push({ id: `am-${k}`, date, origin, destination, distance: rows[0].distance, source: 'asiamiles_est', estimate: true, cabins });
+  }
+  return out;
+}
+
 // ---------- search ----------
 const state = { results: [], cabin: 'J', hidden: new Set(), day: null };
+
+const ALLIANCE_HINT = {
+  oneworld: '寰宇一家的座位會透過阿拉斯加 Atmos、美航 AAdvantage、澳航、卡達等計畫查到；結果會另外估算用亞洲萬里通開票所需的哩數。',
+  star: '星空聯盟的座位會透過 Aeroplan、聯合、漢莎、土航等計畫查到；長榮會員通常能看到更多自家座位。',
+  skyteam: '天合聯盟的座位會透過 Flying Blue、達美、維珍等計畫查到；華航會員通常能看到更多自家座位。',
+};
+
+function allianceCarriers(id) {
+  const a = data.alliances.alliances.find((x) => x.id === id);
+  return a ? a.members : [];
+}
 
 function carrierHint() {
   const code = $('#search-form [name=carrier]').value;
   const a = data.airlines.airlines.find((x) => x.code === code);
+  const al = $('#search-form [name=alliance]').value;
   $('#carrier-hint').textContent = a
     ? `${a.name}的座位可透過：${a.bookableVia.map(srcName).join('、')} 查到。` +
       (a.homeProgram && !a.bookableVia.includes(a.homeProgram) ? '（自家里程計畫未收錄於 seats.aero，規則見規則庫）' : '')
-    : '';
+    : ALLIANCE_HINT[al] || '';
 }
 
 $('#swap').addEventListener('click', () => {
@@ -74,6 +159,9 @@ $$('.presets button').forEach((b) => b.addEventListener('click', () => {
   const f = $('#search-form');
   f.origin.value = b.dataset.o;
   f.destination.value = b.dataset.d;
+  f.alliance.value = b.dataset.al || '';
+  f.carrier.value = '';
+  carrierHint();
   f.requestSubmit();
 }));
 
@@ -82,6 +170,7 @@ $('#search-form').addEventListener('submit', (e) => {
   const f = new FormData(e.target);
   const share = new URLSearchParams({ o: f.get('origin'), d: f.get('destination'), s: f.get('start'), e: f.get('end'), c: f.get('cabin') || 'J' });
   if (f.get('carrier')) share.set('a', f.get('carrier'));
+  else if (f.get('alliance')) share.set('al', f.get('alliance'));
   if (f.get('direct')) share.set('direct', '1');
   history.replaceState(null, '', `?${share}#search`);
   runSearch(share);
@@ -90,6 +179,7 @@ $('#search-form').addEventListener('submit', (e) => {
 async function runSearch(share) {
   const params = new URLSearchParams({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') });
   if (share.get('a')) params.set('carriers', share.get('a'));
+  else if (share.get('al')) params.set('carriers', allianceCarriers(share.get('al')).join(','));
   if (share.get('direct')) params.set('direct', '1');
   Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, results: [], start: share.get('s'), end: share.get('e') || share.get('s') });
   const status = $('#search-status');
@@ -99,7 +189,7 @@ async function runSearch(share) {
   $('#search-results').innerHTML = skeleton();
   try {
     const body = await api(`/api/search?${params}`);
-    state.results = body.results;
+    state.results = [...body.results, ...asiaMilesRows(body.results)];
     status.innerHTML = `<span>找到 <b>${body.results.length}</b> 筆日期與計畫組合${body.mock ? '（示範資料）' : ''}</span>
       <button type="button" class="outline" id="share-btn">🔗 複製分享連結</button>`;
     $('#share-btn').addEventListener('click', copyShare);
@@ -137,7 +227,9 @@ function renderSearch() {
     const m = r.cabins[c].available && r.cabins[c].miles;
     if (m && (!bestBySource[r.source] || m < bestBySource[r.source])) bestBySource[r.source] = m;
   }
-  allSources.sort((a, b) => (bestBySource[a] || Infinity) - (bestBySource[b] || Infinity));
+  allSources.sort((a, b) => (a === 'asiamiles_est' ? -1 : b === 'asiamiles_est' ? 1 : (bestBySource[a] || Infinity) - (bestBySource[b] || Infinity)));
+  const realRows = rows.filter((r) => !r.estimate);
+  const amRows = rows.filter((r) => r.estimate).sort((a, b) => a.cabins[c].miles - b.cabins[c].miles);
 
   const cabinSeg = `<fieldset class="seg" aria-label="切換艙等">${Object.entries(CABIN_LABEL).map(([k, l]) =>
     `<label><input type="radio" name="view-cabin" value="${k}" ${k === c ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
@@ -149,7 +241,7 @@ function renderSearch() {
     return;
   }
 
-  const deals = [...rows].sort((a, b) => a.cabins[c].miles - b.cabins[c].miles).slice(0, 4);
+  const deals = [...realRows].sort((a, b) => a.cabins[c].miles - b.cabins[c].miles).slice(0, 4);
   const dealHtml = deals.map((r, i) => {
     const x = r.cabins[c];
     return `<button type="button" class="deal" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">
@@ -166,15 +258,20 @@ function renderSearch() {
 
   root.innerHTML = `
     <div class="section-title">${cabinSeg}</div>
+    ${amRows.length ? `<div class="am-callout">
+      <div><b>亞洲萬里通估算</b>　國泰／寰宇一家航班最低約 <b class="am-miles">${fmt(amRows[0].cabins[c].miles)} 哩</b>（${mmdd(amRows[0].date)} ${esc(amRows[0].origin)} → ${esc(amRows[0].destination)}，${amRows[0].cabins[c].kind === 'cx' ? '國泰航班' : '夥伴航班'}）</div>
+      <div class="hint">依 2026-05-01 起的距離哩數表推算，實際座位與價格請至國泰官網確認；轉機行程依各段距離相加，可能落在更高區間。<a href="#rules" data-goto="rules">看哩數表</a></div>
+    </div>` : ''}
     <h2 class="section-title">最划算的選擇 <small>點卡片看航班明細</small></h2>
     <div class="best">${dealHtml}</div>
     <h2 class="section-title">日曆 <small>每天最低里程，顏色越深越便宜；點日期篩選下表</small></h2>
-    ${calendarHtml(rows)}
+    ${calendarHtml(realRows.length ? realRows : rows)}
     <h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示</small></h2>
     <div class="filters">${chips}</div>
     ${matrixHtml(rows, allSources.filter((s) => !state.hidden.has(s)))}`;
 
   bindCabin(root);
+  $$('[data-goto]', root).forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); showTab(a.dataset.goto); $('#am-chart')?.scrollIntoView(); }));
   $$('.deal, td.cell[data-id]', root).forEach((el) => el.addEventListener('click', () => openTrips(el.dataset.id, el.dataset.title, state.cabin)));
   $$('.chip[data-src]', root).forEach((b) => b.addEventListener('click', () => {
     state.hidden.has(b.dataset.src) ? state.hidden.delete(b.dataset.src) : state.hidden.add(b.dataset.src);
@@ -238,11 +335,14 @@ function matrixHtml(rows, sources) {
     grid.get(keyOf(r))[r.source] = r;
   }
   let low = Infinity;
-  for (const g of grid.values()) for (const r of Object.values(g)) low = Math.min(low, r.cabins[c].miles || Infinity);
+  for (const g of grid.values()) for (const r of Object.values(g)) if (!r.estimate) low = Math.min(low, r.cabins[c].miles || Infinity);
   const keys = [...grid.keys()].sort();
   const cell = (r) => {
     const x = r && r.cabins[c];
     if (!x) return '<td class="cell none">·</td>';
+    if (r.estimate) {
+      return `<td class="cell est" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small>${esc(x.airlines)} · ${x.kind === 'cx' ? '國泰表' : '夥伴表'}</small></td>`;
+    }
     const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : ''].join(' ');
     return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">${fmt(x.miles)}<small>${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
   };
@@ -265,7 +365,18 @@ function tripHtml(t) {
     </div>
     ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}　${esc(s.aircraft || '')}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}</span></div>`).join('')}
     ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
+    ${amTripLine(t)}
   </div>`;
+}
+
+function amTripLine(t) {
+  const am = amFromTrip(t);
+  if (!am) return '';
+  const dist = am.dist ? `各段合計 ${fmt(am.dist)} 哩` : '';
+  if (am.multi) return `<div class="am-line">亞洲萬里通：多家航空公司混搭，需用寰宇一家多航司獎勵另計（${dist}）</div>`;
+  if (!am.miles) return '';
+  const bandName = (data.asiamiles.bands.find((b) => am.band.startsWith(b.id)) || {}).name || '';
+  return `<div class="am-line">亞洲萬里通估算：<b>${fmt(am.miles)} 哩</b>（${am.kind === 'cx' ? '國泰航班' : '夥伴航班'}・${bandName}${am.band === 'short2' ? '第二類' : ''}・${dist}）</div>`;
 }
 
 async function openTrips(id, title, cabin) {
@@ -291,33 +402,117 @@ $('#trip-close').addEventListener('click', () => $('#trip-dialog').close());
 $('#trip-dialog').addEventListener('click', (e) => { if (e.target.id === 'trip-dialog') e.target.close(); });
 
 // ---------- explore ----------
+const PAGE = 200;
+const ex = { rows: [], cabin: 'J', sort: { key: 'miles', dir: 1 }, f: {}, shown: PAGE };
+const airportCity = (code) => (data.airports.airports.find((a) => a.code === code) || {}).city || '';
+
 $('#explore-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const f = new FormData(e.target);
   const params = new URLSearchParams();
   for (const [k, v] of f) if (v) params.set(k, v);
-  const cabin = f.get('cabin');
   const status = $('#explore-status');
   status.className = 'status';
-  status.textContent = '正在探索…';
+  status.textContent = '正在探索，資料量大時可能需要幾秒…';
   $('#explore-results').innerHTML = skeleton(6);
   try {
     const body = await api(`/api/explore?${params}`);
-    const rows = body.results.filter((r) => r.cabins[cabin].available).sort((a, b) => a.cabins[cabin].miles - b.cabins[cabin].miles);
-    status.innerHTML = `<span>找到 <b>${body.total ?? rows.length}</b> 筆${body.mock ? '（示範資料）' : ''}，依里程由低到高排序${rows.length < (body.total || 0) ? `，顯示前 ${rows.length} 筆` : ''}。</span>`;
-    $('#explore-results').innerHTML = rows.length ? `<div class="table-wrap"><table>
-      <thead><tr><th>日期</th><th>航線</th><th>里程</th><th>航空公司</th><th>直飛</th><th>剩餘座位</th></tr></thead>
-      <tbody>${rows.map((r) => { const c = r.cabins[cabin]; return `<tr class="click" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">
-        <td><span class="d">${mmdd(r.date)}</span>（${dowOf(r.date)}）</td><td><b>${esc(r.origin)}</b> → <b>${esc(r.destination)}</b></td>
-        <td><b style="color:var(--accent)">${fmt(c.miles)}</b></td><td>${esc(c.airlines)}</td><td>${c.direct ? '✓' : ''}</td><td>${c.seats || '—'}</td></tr>`; }).join('')}</tbody>
-    </table></div>` : '<div class="empty"><div class="empty-icon">🔭</div><p>沒有找到獎勵位，換個區域或日期試試。</p></div>';
-    $$('#explore-results tr.click').forEach((tr) => tr.addEventListener('click', () => openTrips(tr.dataset.id, tr.dataset.title, cabin)));
+    Object.assign(ex, { rows: body.results, cabin: body.cabin, f: {}, shown: PAGE, sort: { key: 'miles', dir: 1 }, mock: body.mock, truncated: body.truncated });
+    renderExplore();
   } catch (err) {
     status.className = 'status error';
     status.textContent = err.message;
     $('#explore-results').innerHTML = '';
   }
 });
+
+function exploreFiltered() {
+  const { f } = ex;
+  const list = ex.rows.filter((r) =>
+    (!f.origin || r.origin === f.origin) &&
+    (!f.destination || r.destination === f.destination) &&
+    (!f.from || r.date >= f.from) &&
+    (!f.to || r.date <= f.to) &&
+    (!f.maxMiles || r.miles <= f.maxMiles) &&
+    (!f.airline || r.airlines.split(/,\s*/).includes(f.airline)) &&
+    (!f.direct || r.direct));
+  const { key, dir } = ex.sort;
+  const val = (r) => (key === 'route' ? `${r.origin}${r.destination}` : key === 'direct' ? Number(r.direct) : r[key] ?? '');
+  return list.sort((a, b) => (val(a) > val(b) ? dir : val(a) < val(b) ? -dir : a.miles - b.miles));
+}
+
+function renderExplore() {
+  const status = $('#explore-status');
+  const all = ex.rows;
+  if (!all.length) {
+    status.textContent = '';
+    $('#explore-results').innerHTML = '<div class="empty"><div class="empty-icon">🔭</div><p>沒有找到獎勵位，換個區域、日期或艙等試試。</p></div>';
+    return;
+  }
+  const uniq = (fn) => [...new Set(all.flatMap(fn))].filter(Boolean).sort();
+  const opt = (v, label, cur) => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(label)}</option>`;
+  const ap = (c) => (airportCity(c) ? `${c} ${airportCity(c)}` : c);
+  const dates = uniq((r) => [r.date]);
+
+  if (!$('#ex-filters')) {
+    $('#explore-results').innerHTML = `
+      <div class="search-card ex-filters" id="ex-filters">
+        <div class="opts-row">
+          <label class="field">出發機場<select data-f="origin"><option value="">全部</option>${uniq((r) => [r.origin]).map((c) => opt(c, ap(c))).join('')}</select></label>
+          <label class="field">抵達機場<select data-f="destination"><option value="">全部</option>${uniq((r) => [r.destination]).map((c) => opt(c, ap(c))).join('')}</select></label>
+          <label class="field">航空公司<select data-f="airline"><option value="">全部</option>${uniq((r) => r.airlines.split(/,\s*/)).map((c) => opt(c, c)).join('')}</select></label>
+        </div>
+        <div class="opts-row">
+          <label class="field">日期從<input type="date" data-f="from" min="${dates[0]}" max="${dates.at(-1)}"></label>
+          <label class="field">日期到<input type="date" data-f="to" min="${dates[0]}" max="${dates.at(-1)}"></label>
+          <label class="field">里程上限<input type="number" data-f="maxMiles" min="0" step="5000" placeholder="例：80000"></label>
+          <label class="switch"><input type="checkbox" data-f="direct"><span class="knob"></span>只看直飛</label>
+          <button type="button" class="outline" id="ex-reset">清除篩選</button>
+        </div>
+      </div>
+      <div id="ex-table"></div>`;
+    $$('#ex-filters [data-f]').forEach((el) => el.addEventListener(el.type === 'number' ? 'input' : 'change', () => {
+      const k = el.dataset.f;
+      ex.f[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) || 0 : el.value;
+      ex.shown = PAGE;
+      renderExplore();
+    }));
+    $('#ex-reset').addEventListener('click', () => {
+      ex.f = {};
+      $$('#ex-filters [data-f]').forEach((el) => (el.type === 'checkbox' ? (el.checked = false) : (el.value = '')));
+      ex.shown = PAGE;
+      renderExplore();
+    });
+  }
+
+  const rows = exploreFiltered();
+  status.className = 'status';
+  status.innerHTML = `<span>共 <b>${all.length}</b> 筆${ex.mock ? '（示範資料）' : ''}，篩選後 <b>${rows.length}</b> 筆${ex.truncated ? '。結果超過 5,000 筆，請縮小日期或區域範圍以看到全部' : ''}</span>`;
+
+  const cols = [['date', '日期'], ['route', '航線'], ['miles', '里程'], ['airlines', '航空公司'], ['direct', '直飛'], ['seats', '剩餘座位'], ['distance', '距離（哩）']];
+  const arrow = (k) => (ex.sort.key === k ? (ex.sort.dir > 0 ? ' ▲' : ' ▼') : '');
+  const shown = rows.slice(0, ex.shown);
+  $('#ex-table').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>${cols.map(([k, l]) => `<th class="sortable" data-k="${k}" aria-sort="${ex.sort.key === k ? (ex.sort.dir > 0 ? 'ascending' : 'descending') : 'none'}">${l}${arrow(k)}</th>`).join('')}</tr></thead>
+    <tbody>${shown.map((r) => `<tr class="click" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">
+      <td><span class="d">${mmdd(r.date)}</span>（${dowOf(r.date)}）</td>
+      <td><b>${esc(r.origin)}</b> → <b>${esc(r.destination)}</b></td>
+      <td><b style="color:var(--accent)">${fmt(r.miles)}</b></td>
+      <td>${esc(r.airlines)}</td><td>${r.direct ? '✓' : ''}</td><td>${r.seats || '—'}</td><td>${r.distance ? fmt(r.distance) : '—'}</td></tr>`).join('')}</tbody>
+  </table></div>
+  ${rows.length > ex.shown ? `<div class="more"><button type="button" class="outline" id="ex-more">再顯示 ${Math.min(PAGE, rows.length - ex.shown)} 筆</button><button type="button" class="outline" id="ex-all">全部顯示（${rows.length} 筆）</button></div>` : ''}`;
+
+  $$('#ex-table th.sortable').forEach((th) => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    ex.sort = { key: k, dir: ex.sort.key === k ? -ex.sort.dir : 1 };
+    renderExplore();
+  }));
+  $$('#ex-table tr.click').forEach((tr) => tr.addEventListener('click', () => openTrips(tr.dataset.id, tr.dataset.title, ex.cabin)));
+  const more = $('#ex-more');
+  if (more) more.addEventListener('click', () => { ex.shown += PAGE; renderExplore(); });
+  const allBtn = $('#ex-all');
+  if (allBtn) allBtn.addEventListener('click', () => { ex.shown = Infinity; renderExplore(); });
+}
 
 // ---------- rules ----------
 const CONFIDENCE_TAG = {
@@ -338,6 +533,7 @@ function renderRules() {
 
   $('#rules').innerHTML = `
     <h2 class="section">航空聯盟</h2><div class="cards">${allianceCards}</div>
+    ${amChartHtml()}
     <h2 class="section">里程計畫規則</h2>
     <p class="hint">${esc(programs.disclaimer)}（最後整理：${esc(programs.lastReviewed)}）</p>
     <div class="rules-bar">
@@ -359,6 +555,24 @@ function renderRules() {
   renderProgramCards();
 }
 
+function amChartHtml() {
+  const am = data.asiamiles;
+  if (!am) return '';
+  const head = `<tr><th>距離區間（單程）</th>${Object.values(CABIN_LABEL).map((l) => `<th>${l}</th>`).join('')}</tr>`;
+  const rows = (chart) => am.bands.flatMap((b, i) => {
+    const lo = i ? am.bands[i - 1].max + 1 : 1;
+    const range = b.max ? `${fmt(lo)}–${fmt(b.max)} 哩` : `${fmt(lo)} 哩以上`;
+    const keys = b.id === 'short' ? [['short', '第一類'], ['short2', '第二類']] : [[b.id, '']];
+    return keys.map(([k, sub]) => `<tr><td><b>${b.name}${sub ? `（${sub}）` : ''}</b><div class="r">${range}</div></td>${Object.keys(CABIN_LABEL).map((c) => `<td>${fmt(chart[k][c])}</td>`).join('')}</tr>`);
+  }).join('');
+  const table = (chart) => `<div><h3 class="sub">${esc(chart.name)}</h3><div class="table-wrap"><table><thead>${head}</thead><tbody>${rows(chart)}</tbody></table></div></div>`;
+  return `<h2 class="section" id="am-chart">亞洲萬里通哩數表（${esc(am.effective)} 起，單程標準獎勵）</h2>
+    <p class="hint">${esc(am.note)} ${esc(am.shortType2Note)}</p>
+    <div class="am-tables">${table(am.charts.cx)}${table(am.charts.partner)}</div>
+    <p class="hint">尚待確認：${am.uncertain.map((u) => esc(u.replace(/。$/, ''))).join('；')}</p>
+    <p class="hint">來源：${am.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>${x.official ? '（官方）' : ''}`).join('、')}</p>`;
+}
+
 function renderProgramCards() {
   const { programs } = data;
   const fieldRows = Object.entries(programs.fields);
@@ -378,14 +592,23 @@ function renderProgramCards() {
 
 // ---------- init ----------
 (async function init() {
-  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary'].map((n) => `/api/data/${n}`)].map(api));
-  [data.airlines, data.alliances, data.airports, data.programs, data.glossary] = files;
+  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles'].map((n) => `/api/data/${n}`)].map(api));
+  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles] = files;
   $('#mock-banner').hidden = !config.mock;
 
   $('#airport-list').innerHTML = data.airports.airports.map((a) => `<option value="${a.code}">${esc(a.city)}</option>`).join('');
   const carrierSel = $('#search-form [name=carrier]');
   carrierSel.insertAdjacentHTML('beforeend', data.airlines.airlines.map((a) => `<option value="${a.code}">${esc(a.name)}（${a.code}）</option>`).join(''));
-  carrierSel.addEventListener('change', carrierHint);
+  carrierSel.addEventListener('change', () => {
+    const a = data.airlines.airlines.find((x) => x.code === carrierSel.value);
+    if (a) $('#search-form').alliance.value = a.alliance;
+    carrierHint();
+  });
+  $('#search-form').alliance.addEventListener('change', (e) => {
+    const a = data.airlines.airlines.find((x) => x.code === carrierSel.value);
+    if (a && e.target.value && a.alliance !== e.target.value) carrierSel.value = '';
+    carrierHint();
+  });
 
   const sources = [...new Set(data.airlines.airlines.flatMap((a) => a.bookableVia))].sort((a, b) => srcName(a).localeCompare(srcName(b), 'zh-Hant'));
   $('#explore-form [name=program]').innerHTML = sources.map((s) => `<option value="${s}" ${s === 'aeroplan' ? 'selected' : ''}>${esc(srcName(s))}</option>`).join('');
@@ -409,6 +632,7 @@ function renderProgramCards() {
     f.destination.value = share.get('d');
     f.start.value = share.get('s');
     f.end.value = share.get('e') || share.get('s');
+    f.alliance.value = share.get('al') || '';
     f.carrier.value = share.get('a') || '';
     f.direct.checked = share.get('direct') === '1';
     const cab = $(`#search-form input[name=cabin][value="${share.get('c') || 'J'}"]`);

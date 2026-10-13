@@ -1,0 +1,45 @@
+{
+  "lastReviewed": "2026-10-13",
+  "effective": "2026-05-01",
+  "note": "國泰已不公開官方哩數表，以下數字由旅遊媒體以國泰訂位系統實際查詢整理，屬單程「標準獎勵」價格，僅供估算。轉機行程依官方條款以各段距離相加決定距離區間。",
+  "sources": [
+    { "label": "The MileLion：2026 年 5 月 Asia Miles 調整全解析", "url": "https://milelion.com/2026/05/03/full-details-cathay-pacifics-asia-miles-devaluation/", "official": false },
+    { "label": "FlyAsia：國泰哩數表整理", "url": "https://www.flyasia.co/2026/asiamiles-cathay-chart/", "official": false },
+    { "label": "國泰會員計劃條款 2026（轉機距離計算方式）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "official": true }
+  ],
+  "bands": [
+    { "id": "ultrashort", "name": "超短程", "max": 750 },
+    { "id": "short", "name": "短程", "max": 2750 },
+    { "id": "medium", "name": "中程", "max": 5000 },
+    { "id": "long", "name": "長程", "max": 7500 },
+    { "id": "ultralong", "name": "超長程", "max": null }
+  ],
+  "shortType2Note": "短程第二類：往返日本、印度、印尼、尼泊爾、斯里蘭卡、哈薩克的航線。",
+  "shortType2Airports": ["NRT", "HND", "KIX", "NGO", "FUK", "CTS", "OKA", "KOJ", "DEL", "BOM", "BLR", "MAA", "HYD", "CCU", "CGK", "DPS", "SUB", "KTM", "CMB", "ALA", "NQZ"],
+  "charts": {
+    "cx": {
+      "name": "國泰航班（標準獎勵）",
+      "ultrashort": { "Y": 7000, "W": 11000, "J": 16000, "F": 25000 },
+      "short": { "Y": 9000, "W": 18000, "J": 27000, "F": 43000 },
+      "short2": { "Y": 13000, "W": 23000, "J": 33000, "F": 50000 },
+      "medium": { "Y": 20000, "W": 39000, "J": 60000, "F": 90000 },
+      "long": { "Y": 27000, "W": 52000, "J": 91000, "F": 125000 },
+      "ultralong": { "Y": 38000, "W": 78000, "J": 119000, "F": 160000 }
+    },
+    "partner": {
+      "name": "單一寰宇一家夥伴航班（日航、英航、卡達、美航等）",
+      "ultrashort": { "Y": 10000, "W": 14000, "J": 20000, "F": 30000 },
+      "short": { "Y": 15000, "W": 25000, "J": 33000, "F": 53000 },
+      "short2": { "Y": 15000, "W": 25000, "J": 33000, "F": 53000 },
+      "medium": { "Y": 27000, "W": 43000, "J": 63000, "F": 100000 },
+      "long": { "Y": 40000, "W": 55000, "J": 93000, "F": 135000 },
+      "ultralong": { "Y": 47000, "W": 80000, "J": 120000, "F": 170000 }
+    }
+  },
+  "uncertain": [
+    "國泰超短程頭等艙 25,000 哩：部分來源標示此區間無頭等艙。",
+    "夥伴短程是否也分兩類：有來源列出第二類為 17,500／28,000／37,000／60,000。",
+    "夥伴長程頭等艙 135,000 哩：查無實際座位可驗證。",
+    "多家航空公司混搭的「寰宇一家多航司獎勵」另有價目，本站不估算。"
+  ]
+}

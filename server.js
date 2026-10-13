@@ -11,7 +11,7 @@ const MOCK = !API_KEY || process.env.MOCK === '1';
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles'];
 
 const usage = { day: '', calls: 0 };
 function countCall() {
@@ -33,7 +33,7 @@ async function cached(key, fn) {
 
 class BadRequest extends Error {}
 const IATA_LIST = /^[A-Z]{3}(,[A-Z]{3}){0,9}$/;
-const CODE_LIST = /^[A-Z0-9]{2}(,[A-Z0-9]{2}){0,19}$/;
+const CODE_LIST = /^[A-Z0-9]{2}(,[A-Z0-9]{2}){0,29}$/;
 const SOURCE_LIST = /^[a-z]+(,[a-z]+){0,29}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const CABIN_NAMES = { Y: 'economy', W: 'premium', J: 'business', F: 'first' };
@@ -86,17 +86,17 @@ async function handleExplore(q) {
   for (const r of [params.origin_region, params.destination_region]) {
     if (r && !REGIONS.has(r)) throw new BadRequest('區域參數錯誤');
   }
-  const cabin = param(q, 'cabin', /^[YWJF]$/, { upper: true });
-  if (cabin) params.cabin = CABIN_NAMES[cabin];
-  const take = Number(param(q, 'take', /^\d{2,4}$/) || 500);
-  if (take < 10 || take > 1000) throw new BadRequest('take 需介於 10 到 1000');
-  params.take = take;
+  const cabin = param(q, 'cabin', /^[YWJF]$/, { upper: true }) || 'J';
+  params.cabin = CABIN_NAMES[cabin];
   const key = 'explore:' + JSON.stringify(params);
-  const raw = await cached(key, () => (MOCK ? mock.mockAvailability(params) : client.availability(params)));
-  // Only ship rows with the requested cabin open, cheapest first, to keep the payload small.
-  let results = raw.map(normalizeAvailability);
-  if (cabin) results = results.filter((r) => r.cabins[cabin].available).sort((a, b) => a.cabins[cabin].miles - b.cabins[cabin].miles);
-  return { mock: MOCK, total: results.length, results: results.slice(0, 300) };
+  const { items, hasMore } = await cached(key, () => (MOCK ? { items: mock.mockAvailability(params), hasMore: false } : client.availability(params)));
+  // Ship one compact row per result for the requested cabin; the browser filters and sorts.
+  const results = items.map(normalizeAvailability).filter((r) => r.cabins[cabin].available).map((r) => {
+    const c = r.cabins[cabin];
+    return { id: r.id, date: r.date, origin: r.origin, destination: r.destination, source: r.source, distance: r.distance, miles: c.miles, seats: c.seats, airlines: c.airlines, direct: c.direct };
+  });
+  results.sort((a, b) => a.miles - b.miles);
+  return { mock: MOCK, cabin, total: results.length, truncated: hasMore, results };
 }
 
 async function handleTrips(id) {
