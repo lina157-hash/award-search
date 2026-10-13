@@ -206,7 +206,7 @@ function renderRules() {
   carrierSel.addEventListener('change', carrierHint);
 
   const sources = [...new Set(data.airlines.airlines.flatMap((a) => a.bookableVia))].sort();
-  $('#explore-form [name=source]').innerHTML = sources.map((s) => `<option value="${s}">${esc(srcName(s))}</option>`).join('');
+  $('#explore-form [name=program]').innerHTML = sources.map((s) => `<option value="${s}">${esc(srcName(s))}</option>`).join('');
   const regionOpts = '<option value="">全部</option>' + data.airports.regions.map((r) => `<option value="${r}">${esc(data.airports.regionNames[r])}</option>`).join('');
   $('#explore-form [name=origin_region]').innerHTML = regionOpts;
   $('#explore-form [name=destination_region]').innerHTML = regionOpts;

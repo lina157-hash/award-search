@@ -77,7 +77,8 @@ async function handleSearch(q) {
 
 async function handleExplore(q) {
   const params = {
-    source: param(q, 'source', /^[a-z]+$/, { required: true }),
+    // `program`, not `source`: Vercel's rewrite drops a `source` query param.
+    source: param(q, 'program', /^[a-z]+$/) || param(q, 'source', /^[a-z]+$/, { required: true }),
     ...dateRange(q),
     origin_region: q.get('origin_region') || undefined,
     destination_region: q.get('destination_region') || undefined,
