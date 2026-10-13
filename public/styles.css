@@ -358,9 +358,30 @@ button.primary.small { padding: 7px 14px; font-size: .85rem; }
   .spark { width: 100%; }
 }
 .status-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* chosen flights (after the last leg is picked) */
+.chosen-leg { margin-top: 12px; }
+.leg-label { display: block; font-size: .85rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.fare-final .fare-main { cursor: default; }
+.fare-final .fare-main:hover { background: none; }
+.chosen-total { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; margin-top: 14px; box-shadow: var(--shadow); }
+.chosen-total > div:first-child span { display: block; font-size: .8rem; color: var(--muted); }
+.chosen-total > div:first-child b { font-size: 1.5rem; color: var(--accent); }
+.chosen-total small { display: block; font-size: .8rem; color: var(--muted); }
+.chosen-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.booking { margin-top: 14px; }
+.booking h3.sub { margin: 0 0 8px; }
+.book-opt { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
+.book-opt small { display: block; font-size: .8rem; color: var(--muted); }
+.book-opt small.leg-tag { font-weight: 600; }
+.book-price { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.book-price b { font-size: 1.1rem; }
+.book-price form { margin: 0; }
+.chosen .cash-links { margin: 16px 0 0; }
+
 
 /* ---------- date range picker ---------- */
 .dp-field { flex: 2 1 290px; }
+.dp-btn.empty span { color: var(--muted); }
 .dp-btn { font: inherit; font-size: 1rem; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 46px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
 .dp-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
 .dp-btn small { flex: none; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 9px; font-size: .8rem; font-weight: 700; }
@@ -484,8 +505,14 @@ h3.sub { font-size: 1rem; margin: 22px 0 10px; }
 .calc-table td b { font-size: 1rem; }
 .calc-table small, .calc-table th small { display: block; color: var(--muted); font-size: .76rem; font-weight: 400; }
 .calc-table th small.note { margin-top: 4px; }
-.calc-table td.best { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.calc-table td.best { background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
 .calc-table td.best b { color: var(--accent); }
+.calc-table.simple th, .calc-table.simple td { vertical-align: middle; }
+.calc-table.simple tbody th { min-width: 9rem; }
+.calc-table.simple td { min-width: 7rem; }
+.calc-table.simple td.short span { white-space: nowrap; font-size: .82rem; }
+.calc-options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 10px 0 12px; }
+.calc-options .presets { margin: 0; }
 .calc-table td.short span { color: var(--muted); font-size: .85rem; }
 .calc-table td.none { color: var(--muted); text-align: center; }
 .calc-table td.others div + div { margin-top: 6px; }

@@ -224,10 +224,12 @@ async function handleCash(q, req) {
     stops: stops || undefined,
     include_airlines: param(q, 'carriers', CODE_LIST, { upper: true }) || ALLIANCE_PARAM[alliance],
     departure_token: param(q, 'token', /^[\w\-+/=.:]{1,4000}$/),
+    booking_token: param(q, 'booking', /^[\w\-+/=.:]{1,4000}$/),
   };
   if (params.departure_token && !ret) throw new BadRequest('只有來回票才能查回程');
+  if (params.departure_token && params.booking_token) throw new BadRequest('回程查詢和預訂選項不能同時查');
   const raw = await cached('cash:' + JSON.stringify(params), () => (CASH_MODE === 'mock' ? mock.mockCash(params) : cashQuery(params)));
-  return { configured: true, mock: CASH_MODE === 'mock', returning: Boolean(params.departure_token), ...normalizeCash(raw) };
+  return { configured: true, mock: CASH_MODE === 'mock', returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), ...normalizeCash(raw) };
 }
 
 async function handleTrips(id) {

@@ -144,6 +144,13 @@ test('cash fares: demo search, return leg and validation', async () => {
   const back = await (await fetch(`${base}/api/cash?origin=TPE,TSA&destination=NRT&depart=${day(30)}&return=${day(37)}&cabin=J&token=${body.options[0].departureToken}`)).json();
   assert.equal(back.returning, true);
   assert.equal(back.options[0].segments[0].from.code, 'NRT');
+  assert.ok(back.options.every((o) => o.bookingToken && !o.departureToken));
+  const book = await (await fetch(`${base}/api/cash?origin=TPE,TSA&destination=NRT&depart=${day(30)}&return=${day(37)}&cabin=J&booking=${back.options[0].bookingToken}`)).json();
+  assert.equal(book.booking, true);
+  assert.equal(book.selected.length, 2);
+  assert.ok(book.bookingOptions.length >= 2 && book.bookingOptions[0].request.url.startsWith('https://'));
+  assert.ok(book.bookingOptions.some((b) => b.phone && !b.request));
+  assert.equal((await fetch(`${base}/api/cash?origin=TPE&destination=NRT&depart=${day(30)}&return=${day(37)}&token=a&booking=b`)).status, 400);
   for (const q of [`depart=${day(-2)}`, `depart=${day(10)}&return=${day(5)}`, `depart=${day(10)}&alliance=foo`, `depart=${day(10)}&adults=12`, `depart=${day(10)}&token=abc`]) {
     assert.equal((await fetch(`${base}/api/cash?origin=TPE&destination=NRT&${q}`)).status, 400, q);
   }
