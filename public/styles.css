@@ -448,3 +448,10 @@ dialog.pass { width: min(380px, calc(100vw - 32px)); border-radius: 16px; }
   .alert-actions { grid-column: auto; grid-row: auto; }
 }
 
+/* ---------- points conversion table ---------- */
+h3.sub { font-size: 1rem; margin: 22px 0 10px; }
+.points-filter { margin-bottom: 10px; }
+.points-table td small { display: block; color: var(--muted); font-size: .78rem; }
+.points-table td { vertical-align: top; }
+.points-table .tag { margin-bottom: 2px; }
+

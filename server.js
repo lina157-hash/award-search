@@ -17,7 +17,7 @@ const CASH_MODE = SERPAPI_KEY ? 'live' : MOCK ? 'mock' : 'off';
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points'];
 
 const usage = { day: '', calls: 0 };
 function countCall() {

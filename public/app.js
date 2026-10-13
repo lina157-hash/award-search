@@ -1593,6 +1593,7 @@ function renderRules() {
       <input type="search" id="rules-q" placeholder="搜尋規則，例如：中停、燃油、效期">
     </div>
     <div class="cards" id="program-cards"></div>
+    ${pointsHtml()}
     ${glossary.sections.map((s) => `<h2 class="section">${esc(s.title)}</h2><div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div>`).join('')}`;
 
   $$('#alliance-filter .chip').forEach((b) => b.addEventListener('click', () => {
@@ -1602,6 +1603,33 @@ function renderRules() {
   }));
   $('#rules-q').addEventListener('input', (e) => { rulesState.q = e.target.value.trim(); renderProgramCards(); });
   renderProgramCards();
+  bindPoints();
+}
+
+// Taiwan bank points that convert into airline miles, plus co-brand cards that earn miles directly.
+function pointsHtml() {
+  const pts = data.points;
+  if (!pts || (!pts.transfers.length && !pts.cobrand.length)) return '';
+  const src = (r) => (r.source ? `<a href="${esc(r.source.url)}" target="_blank" rel="noopener">${esc(r.source.label || '來源')} ↗</a>` : '');
+  const tag = (r) => CONFIDENCE_TAG[r.confidence] || '';
+  const programs = [...new Set(pts.transfers.map((r) => r.toName))];
+  const transferRows = (filter) => pts.transfers.filter((r) => !filter || r.toName === filter).map((r) => `<tr>
+      <td><b>${esc(r.bank)}</b><small>${esc(r.program)}</small></td><td>${esc(r.toName)}</td><td><b>${esc(r.ratio)}</b>${r.min ? `<small>最低 ${esc(r.min)}</small>` : ''}${r.fee ? `<small>${esc(r.fee)}</small>` : ''}</td>
+      <td>${r.notes ? esc(r.notes) : ''}</td><td>${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
+  const cobrandRows = pts.cobrand.map((r) => `<tr>
+      <td><b>${esc(r.bank)}</b><small>${esc(r.card)}</small></td><td>${esc(r.program)}</td><td><b>${esc(r.earn)}</b></td><td>${r.notes ? esc(r.notes) : ''}</td><td>${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
+  return `<h2 class="section" id="points">台灣信用卡點數轉里程</h2>
+    <p class="hint">${esc(pts.disclaimer)}（最後整理：${esc(pts.lastReviewed)}）</p>
+    ${pts.transfers.length ? `<div class="filters points-filter"><button type="button" class="chip on" data-p="">全部計畫</button>${programs.map((p) => `<button type="button" class="chip" data-p="${esc(p)}">${esc(p)}</button>`).join('')}</div>
+    <div class="table-wrap points-table"><table id="points-table"><thead><tr><th>銀行／點數</th><th>轉到</th><th>比率</th><th>說明</th><th>來源</th></tr></thead><tbody>${transferRows('')}</tbody></table></div>` : ''}
+    ${pts.cobrand.length ? `<h3 class="sub">直接累積里程的聯名卡</h3><div class="table-wrap points-table"><table><thead><tr><th>銀行／卡片</th><th>累積到</th><th>累積率</th><th>說明</th><th>來源</th></tr></thead><tbody>${cobrandRows}</tbody></table></div>` : ''}`;
+}
+function bindPoints() {
+  $$('.points-filter .chip').forEach((b) => b.addEventListener('click', () => {
+    $$('.points-filter .chip').forEach((x) => x.classList.toggle('on', x === b));
+    const p = b.dataset.p;
+    $$('#points-table tbody tr').forEach((tr) => { tr.hidden = Boolean(p) && tr.children[1].textContent !== p; });
+  }));
 }
 
 function amChartHtml() {
@@ -1641,8 +1669,8 @@ function renderProgramCards() {
 
 // ---------- init ----------
 (async function init() {
-  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
-  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames] = files;
+  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
+  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points] = files;
   SOURCE_NAMES = data.sourceNames.names;
   $('#mock-banner').hidden = !config.mock;
   cashCfg.locked = Boolean(config.cashLocked);
