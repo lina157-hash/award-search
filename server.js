@@ -49,6 +49,7 @@ const IATA_LIST = /^[A-Z]{3}(,[A-Z]{3}){0,9}$/;
 const CODE_LIST = /^[A-Z0-9]{2}(,[A-Z0-9]{2}){0,29}$/;
 const SOURCE_LIST = /^[a-z]+(,[a-z]+){0,29}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_RANGE_DAYS = 366;
 const CABIN_NAMES = { Y: 'economy', W: 'premium', J: 'business', F: 'first' };
 const REGIONS = new Set(require('./data/airports.json').regions);
 
@@ -68,9 +69,13 @@ function dateRange(q) {
   const end = param(q, 'end', DATE) || start;
   const days = (new Date(end) - new Date(start)) / 864e5;
   if (days < 0) throw new BadRequest('結束日期不可早於開始日期');
-  if (days > 60) throw new BadRequest('日期範圍最多 60 天');
+  // seats.aero publishes award space about a year out, so a search may cover all of it.
+  if (days > MAX_RANGE_DAYS) throw new BadRequest('日期範圍最多一年');
   return { start_date: start, end_date: end };
 }
+
+// Longer date ranges return more rows, so allow more result pages (each page is one API call).
+const pagesFor = (p, base) => base + Math.floor((new Date(p.end_date) - new Date(p.start_date)) / 864e5 / 90);
 
 async function handleSearch(q) {
   const params = {
@@ -84,8 +89,8 @@ async function handleSearch(q) {
   const cabin = param(q, 'cabin', /^[YWJF]$/, { upper: true });
   if (cabin) params.cabins = CABIN_NAMES[cabin];
   const key = 'search:' + JSON.stringify(params);
-  const raw = await cached(key, () => (MOCK ? mock.mockSearch(params) : client.search(params)));
-  return { mock: MOCK, results: raw.map(normalizeAvailability) };
+  const { items, hasMore } = await cached(key, () => (MOCK ? { items: mock.mockSearch(params), hasMore: false } : client.search(params, { maxPages: pagesFor(params, 2) })));
+  return { mock: MOCK, truncated: hasMore, results: items.map(normalizeAvailability) };
 }
 
 async function handleExplore(q) {
@@ -102,7 +107,7 @@ async function handleExplore(q) {
   const cabin = param(q, 'cabin', /^[YWJF]$/, { upper: true }) || 'J';
   params.cabin = CABIN_NAMES[cabin];
   const key = 'explore:' + JSON.stringify(params);
-  const { items, hasMore } = await cached(key, () => (MOCK ? { items: mock.mockAvailability(params), hasMore: false } : client.availability(params)));
+  const { items, hasMore } = await cached(key, () => (MOCK ? { items: mock.mockAvailability(params), hasMore: false } : client.availability(params, { maxPages: pagesFor(params, 5) })));
   // Ship one compact row per result for the requested cabin; the browser filters and sorts.
   const results = items.map(normalizeAvailability).filter((r) => r.cabins[cabin].available).map((r) => {
     const c = r.cabins[cabin];

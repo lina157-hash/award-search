@@ -30,10 +30,11 @@ async function api(path) {
   return body;
 }
 
+// Calendar date in the visitor's own time zone.
 function isoDate(offsetDays) {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function isoDateFrom(iso, offsetDays) {
@@ -347,6 +348,227 @@ function createAirportPicker(form, name) {
 }
 const pickers = { origin: createAirportPicker($('#search-form'), 'origin'), destination: createAirportPicker($('#search-form'), 'destination') };
 
+// ---------- date range picker ----------
+// Pick departure dates by clicking a range on a calendar, or one date plus ± days (like seats.aero).
+// Writes the hidden `start` / `end` inputs that the form submits.
+const MAX_AHEAD_DAYS = 365; // seats.aero publishes award space about a year out
+const FLEX_DAYS = [0, 1, 3, 7, 10, 14, 28, 60, 120, 150, 180];
+const RANGE_PRESETS = [['未來 2 週', 13], ['未來 1 個月', 30], ['未來 3 個月', 91], ['未來半年', 182], ['一年內全部', MAX_AHEAD_DAYS]];
+const dayCount = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1;
+const clampIso = (iso, lo, hi) => (iso < lo ? lo : iso > hi ? hi : iso);
+const monthAdd = (ym, n) => { const d = new Date(`${ym}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 7); };
+const ymd = (iso) => `${iso.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${iso.slice(0, 4)}/` : ''}${mmdd(iso)}`;
+const dayLabel = (iso) => `${ymd(iso)}（${dowOf(iso)}）`;
+
+function createDatePicker(form, label) {
+  const field = $('.dp-field', form);
+  const btn = $('.dp-btn', field);
+  const startIn = form.elements.start;
+  const endIn = form.elements.end;
+  const st = { mode: 'range', flex: 3, center: null, anchor: null, hover: null, month: null };
+  const dlg = document.createElement('dialog');
+  dlg.className = 'dp';
+  dlg.setAttribute('aria-label', `選擇${label}`);
+  document.body.append(dlg);
+  const uid = `dp-${form.id}`;
+  const lo = () => isoDate(0);
+  const hi = () => isoDate(MAX_AHEAD_DAYS);
+  const months = () => (matchMedia('(max-width: 640px)').matches ? 1 : 2);
+
+  function flexRange(center = st.center) {
+    return [clampIso(isoDateFrom(center, -st.flex), lo(), hi()), clampIso(isoDateFrom(center, st.flex), lo(), hi())];
+  }
+  // The range to highlight: the pending pick while choosing an end date, else the current value.
+  function shown() {
+    if (st.mode === 'range' && st.anchor) {
+      const h = st.hover || st.anchor;
+      return h < st.anchor ? [h, st.anchor] : [st.anchor, h];
+    }
+    return [startIn.value, endIn.value];
+  }
+  function summary() {
+    const [s, e] = shown();
+    if (!s) return '';
+    if (st.mode === 'flex' && st.center) {
+      return st.flex ? `${dayLabel(st.center)} 前後 ${st.flex} 天：${ymd(s)} – ${ymd(e)}，共 ${dayCount(s, e)} 天` : `只查 ${dayLabel(st.center)}`;
+    }
+    if (st.anchor) return `出發 ${dayLabel(st.anchor)}，請再點最後一天（點同一天＝只查這天）`;
+    return s === e ? `只查 ${dayLabel(s)}` : `${dayLabel(s)} – ${dayLabel(e)}，共 ${dayCount(s, e)} 天`;
+  }
+  function updateButton() {
+    const s = startIn.value;
+    const e = endIn.value;
+    let main;
+    let sub = '';
+    if (st.mode === 'flex' && st.center) {
+      main = `${dayLabel(st.center)}${st.flex ? ` ±${st.flex} 天` : ''}`;
+      if (st.flex) sub = `${ymd(s)} – ${ymd(e)}`;
+    } else {
+      main = s === e ? dayLabel(s) : `${dayLabel(s)} – ${dayLabel(e)}`;
+      if (s !== e) sub = `${dayCount(s, e)} 天`;
+    }
+    btn.innerHTML = `<span>${esc(main)}</span>${sub ? `<small>${esc(sub)}</small>` : ''}`;
+    btn.setAttribute('aria-label', `${label}：${main}${sub ? `（${sub}）` : ''}，點選修改`);
+  }
+  function write(s, e) {
+    startIn.value = s;
+    endIn.value = e;
+    updateButton();
+  }
+
+  function monthHtml(ym) {
+    const first = new Date(`${ym}-01T00:00:00Z`);
+    const cells = DOW.map((d) => `<span class="dp-dow">${d}</span>`);
+    for (let i = 0; i < first.getUTCDay(); i++) cells.push('<span></span>');
+    const [l, h, t] = [lo(), hi(), isoDate(0)];
+    for (const d = new Date(first); d.toISOString().slice(0, 7) === ym; d.setUTCDate(d.getUTCDate() + 1)) {
+      const iso = d.toISOString().slice(0, 10);
+      const off = iso < l || iso > h;
+      cells.push(`<button type="button" class="dp-day${iso === t ? ' today' : ''}" data-date="${iso}" ${off ? 'disabled' : ''}>${d.getUTCDate()}</button>`);
+    }
+    return `<div class="dp-month"><div class="dp-mtitle">${ym.slice(0, 4)} 年 ${Number(ym.slice(5))} 月</div><div class="dp-grid">${cells.join('')}</div></div>`;
+  }
+  // Mark the highlighted range on the visible day buttons without re-rendering (keeps focus).
+  function paint() {
+    const [s, e] = shown();
+    for (const b of $$('.dp-day', dlg)) {
+      const d = b.dataset.date;
+      const inR = s && d >= s && d <= e;
+      b.classList.toggle('in', Boolean(inR));
+      b.classList.toggle('start', d === s);
+      b.classList.toggle('end', d === e);
+      b.classList.toggle('center', st.mode === 'flex' && d === st.center);
+      b.setAttribute('aria-pressed', String(Boolean(inR)));
+    }
+    $('.dp-sum', dlg).textContent = summary();
+  }
+  function render() {
+    const n = months();
+    const minM = lo().slice(0, 7);
+    const maxM = hi().slice(0, 7);
+    st.month = clampIso(st.month || minM, minM, monthAdd(maxM, 1 - n) < minM ? minM : monthAdd(maxM, 1 - n));
+    const opts = st.mode === 'flex'
+      ? `<div class="dp-chips" role="group" aria-label="前後天數">${FLEX_DAYS.map((n) => `<button type="button" class="dp-chip${n === st.flex ? ' on' : ''}" data-flex="${n}" aria-pressed="${n === st.flex}">${n ? `±${n} 天` : '只查這天'}</button>`).join('')}</div>
+         <p class="dp-hint">先在日曆點一個日期當中心，再選前後要多找幾天。</p>`
+      : `<div class="dp-chips" role="group" aria-label="快速選擇">${RANGE_PRESETS.map(([t, n]) => `<button type="button" class="dp-chip" data-preset="${n}">${t}</button>`).join('')}</div>
+         <p class="dp-hint">在日曆點出發的第一天，再點最後一天。</p>`;
+    dlg.innerHTML = `<div class="dp-in">
+      <div class="dp-top">
+        <fieldset class="seg dp-mode" aria-label="選擇方式">
+          <label><input type="radio" name="${uid}-mode" value="range" ${st.mode === 'range' ? 'checked' : ''}><span>選擇日期範圍</span></label>
+          <label><input type="radio" name="${uid}-mode" value="flex" ${st.mode === 'flex' ? 'checked' : ''}><span>指定日期 ± 天數</span></label>
+        </fieldset>
+        <button type="button" class="dp-x" aria-label="關閉">✕</button>
+      </div>
+      ${opts}
+      <div class="dp-cal">
+        <button type="button" class="dp-nav" data-nav="-1" aria-label="上個月" ${st.month <= minM ? 'disabled' : ''}>‹</button>
+        <div class="dp-months">${Array.from({ length: n }, (_, i) => monthHtml(monthAdd(st.month, i))).join('')}</div>
+        <button type="button" class="dp-nav" data-nav="1" aria-label="下個月" ${monthAdd(st.month, n - 1) >= maxM ? 'disabled' : ''}>›</button>
+      </div>
+      <div class="dp-foot"><span class="dp-sum" aria-live="polite"></span><button type="button" class="primary small dp-done">完成</button></div>
+    </div>`;
+    paint();
+    place();
+  }
+
+  // Drop down under the field, moving up as needed to stay on screen.
+  function place() {
+    if (!dlg.open) return;
+    if (months() === 1) { dlg.style.cssText = ''; return; } // bottom sheet on phones (CSS)
+    const r = btn.getBoundingClientRect();
+    const w = Math.min(680, innerWidth - 24);
+    dlg.style.cssText = `left:${Math.max(12, Math.min(r.left, innerWidth - w - 12))}px;top:${r.bottom + 6}px;width:${w}px`;
+    const h = dlg.offsetHeight;
+    if (r.bottom + 6 + h > innerHeight - 12) dlg.style.top = `${Math.max(12, innerHeight - 12 - h)}px`;
+  }
+  function open() {
+    st.anchor = null;
+    st.hover = null;
+    st.month = (st.mode === 'flex' && st.center ? st.center : startIn.value || lo()).slice(0, 7);
+    dlg.showModal();
+    render();
+    ($('.dp-day.start', dlg) || $('.dp-day:not([disabled])', dlg))?.focus();
+  }
+  function close() {
+    if (dlg.open) dlg.close();
+  }
+  dlg.addEventListener('close', () => {
+    // Closing after only the first click of a range means a single day.
+    if (st.anchor) write(st.anchor, st.anchor);
+    st.anchor = null;
+    btn.focus();
+  });
+
+  btn.addEventListener('click', open);
+  dlg.addEventListener('click', (e) => {
+    if (e.target === dlg) return close(); // backdrop
+    const t = e.target.closest('button, input');
+    if (!t) return;
+    if (t.matches('.dp-x, .dp-done')) return close();
+    if (t.name === `${uid}-mode`) {
+      st.mode = t.value;
+      st.anchor = null;
+      if (st.mode === 'flex') {
+        // Centre on the middle of the current range, rounded to a ± option that covers it.
+        const s = startIn.value;
+        const half = Math.floor((dayCount(s, endIn.value) - 1) / 2);
+        st.center = isoDateFrom(s, half);
+        st.flex = FLEX_DAYS.find((n) => n >= half) ?? FLEX_DAYS.at(-1);
+        write(...flexRange());
+      }
+      return render();
+    }
+    if (t.dataset.nav) {
+      st.month = monthAdd(st.month, Number(t.dataset.nav));
+      return render();
+    }
+    if (t.dataset.preset) {
+      st.mode = 'range';
+      write(lo(), isoDate(Number(t.dataset.preset)));
+      return close();
+    }
+    if (t.dataset.flex) {
+      st.flex = Number(t.dataset.flex);
+      if (st.center) write(...flexRange());
+      $$('.dp-chip', dlg).forEach((c) => { c.classList.toggle('on', c === t); c.setAttribute('aria-pressed', String(c === t)); });
+      return paint();
+    }
+    const d = t.dataset.date;
+    if (!d) return;
+    if (st.mode === 'flex') {
+      st.center = d;
+      write(...flexRange());
+      return paint();
+    }
+    if (!st.anchor) {
+      st.anchor = d;
+      st.hover = d;
+      return paint();
+    }
+    const [from, to] = d < st.anchor ? [d, st.anchor] : [st.anchor, d];
+    st.anchor = null;
+    write(from, to);
+    close();
+  });
+  const hoverDay = (e) => {
+    const d = e.target.closest?.('.dp-day:not([disabled])')?.dataset.date;
+    if (st.anchor && d && d !== st.hover) { st.hover = d; paint(); }
+  };
+  dlg.addEventListener('mouseover', hoverDay);
+  dlg.addEventListener('focusin', hoverDay);
+  addEventListener('resize', () => { if (dlg.open) render(); });
+
+  return {
+    set(s, e = s) {
+      st.mode = 'range';
+      st.center = null;
+      write(s, e < s ? s : e);
+    },
+  };
+}
+const datePickers = { search: createDatePicker($('#search-form'), '出發日期'), explore: createDatePicker($('#explore-form'), '出發日期') };
+
 $('#swap').addEventListener('click', () => {
   const [o, d] = [pickers.origin.codes(), pickers.destination.codes()];
   pickers.origin.set(d);
@@ -391,7 +613,7 @@ async function runSearch(share) {
   if (share.get('a')) params.set('carriers', share.get('a'));
   else if (share.get('al')) params.set('carriers', allianceCarriers(share.get('al')).join(','));
   if (share.get('direct')) params.set('direct', '1');
-  Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, results: [], start: share.get('s'), end: share.get('e') || share.get('s') });
+  Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, allRows: false, results: [], start: share.get('s'), end: share.get('e') || share.get('s') });
   const status = $('#search-status');
   status.className = 'status';
   status.textContent = '正在搜尋各里程計畫的獎勵位…';
@@ -400,7 +622,7 @@ async function runSearch(share) {
   try {
     const body = await api(`/api/search?${params}`);
     state.results = [...body.results, ...asiaMilesRows(body.results)];
-    status.innerHTML = `<span>找到 <b>${body.results.length}</b> 筆日期與計畫組合${body.mock ? '（示範資料）' : ''}</span>
+    status.innerHTML = `<span>找到 <b>${body.results.length}</b> 筆日期與計畫組合${body.mock ? '（示範資料）' : ''}${body.truncated ? '。結果太多，只列出一部分，縮短日期範圍可以看到完整結果' : ''}</span>
       <span class="status-actions"><button type="button" class="outline" id="to-cash">💵 比較現金票價</button><button type="button" class="outline" id="share-btn">🔗 複製分享連結</button></span>`;
     $('#share-btn').addEventListener('click', copyShare);
     $('#to-cash').addEventListener('click', () => {
@@ -507,6 +729,7 @@ function renderSearch() {
     state.day = state.day === d.dataset.date ? null : d.dataset.date;
     renderSearch();
   }));
+  $('#all-rows', root)?.addEventListener('click', () => { state.allRows = true; renderSearch(); });
   const clear = $('#clear-day', root);
   if (clear) clear.addEventListener('click', () => { state.day = null; renderSearch(); });
 }
@@ -536,21 +759,47 @@ function calendarHtml(rows) {
   const uniq = [...new Set(Object.values(lowByDay))].sort((a, b) => a - b);
   const level = (m) => (uniq.length === 1 ? 4 : 4 - Math.min(3, Math.floor((uniq.indexOf(m) / (uniq.length - 1)) * 4)));
 
-  const cells = DOW.map((d) => `<div class="dow">${d}</div>`);
-  const first = new Date(start + 'T00:00:00Z');
-  for (let i = 0; i < first.getUTCDay(); i++) cells.push('<div class="day pad"></div>');
-  for (const d = new Date(first); d <= new Date(end + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)) {
-    const iso = d.toISOString().slice(0, 10);
+  const dayCell = (iso, text) => {
     const m = lowByDay[iso];
-    cells.push(m
-      ? `<button type="button" class="day has h${level(m)} ${state.day === iso ? 'sel' : ''}" data-date="${iso}" title="${iso} 最低 ${fmt(m)} 哩">${mmdd(iso)}<b>${kfmt(m)}</b></button>`
-      : `<div class="day">${mmdd(iso)}<b>—</b></div>`);
+    return m
+      ? `<button type="button" class="day has h${level(m)} ${state.day === iso ? 'sel' : ''}" data-date="${iso}" title="${iso} 最低 ${fmt(m)} 哩">${text}<b>${kfmt(m)}</b></button>`
+      : `<div class="day">${text}<b>—</b></div>`;
+  };
+  // Lay days out under weekday headers, padding before the first day.
+  const grid = (from, to, text) => {
+    const cells = DOW.map((d) => `<div class="dow">${d}</div>`);
+    const first = new Date(from + 'T00:00:00Z');
+    for (let i = 0; i < first.getUTCDay(); i++) cells.push('<div class="day pad"></div>');
+    for (const d = new Date(first); d <= new Date(to + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)) {
+      const iso = d.toISOString().slice(0, 10);
+      cells.push(dayCell(iso, text(iso)));
+    }
+    return cells.join('');
+  };
+  let body;
+  if (dayCount(start, end) <= 42) {
+    body = `<div class="cal">${grid(start, end, mmdd)}</div>`;
+  } else {
+    // Long ranges: one small calendar per month, each with its lowest price.
+    const blocks = [];
+    for (let ym = start.slice(0, 7); ym <= end.slice(0, 7); ym = monthAdd(ym, 1)) {
+      const from = ym === start.slice(0, 7) ? start : `${ym}-01`;
+      const last = new Date(`${monthAdd(ym, 1)}-01T00:00:00Z`);
+      last.setUTCDate(0);
+      const to = ym === end.slice(0, 7) ? end : last.toISOString().slice(0, 10);
+      const lows = Object.entries(lowByDay).filter(([d]) => d >= from && d <= to).map(([, m]) => m);
+      blocks.push(`<div class="cal-month"><div class="cal-mtitle">${ym.slice(0, 4)} 年 ${Number(ym.slice(5))} 月
+        <small>${lows.length ? `最低 <b>${kfmt(Math.min(...lows))}</b> 哩 · ${lows.length} 天有位` : '沒有獎勵位'}</small></div>
+        <div class="cal mini">${grid(from, to, (iso) => Number(iso.slice(8)))}</div></div>`);
+    }
+    body = `<div class="cal-months">${blocks.join('')}</div>`;
   }
-  return `<div class="cal">${cells.join('')}</div>
+  return `${body}
     <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴
     ${state.day ? `　<button type="button" class="outline" id="clear-day">顯示全部日期（目前只看 ${mmdd(state.day)}）</button>` : ''}</div>`;
 }
 
+const MATRIX_ROWS = 120;
 function matrixHtml(rows, sources) {
   const c = state.cabin;
   const keyOf = (r) => `${r.date}|${r.origin}|${r.destination}`;
@@ -562,7 +811,9 @@ function matrixHtml(rows, sources) {
   }
   let low = Infinity;
   for (const g of grid.values()) for (const r of Object.values(g)) if (!r.estimate) low = Math.min(low, r.cabins[c].miles || Infinity);
-  const keys = [...grid.keys()].sort();
+  const allKeys = [...grid.keys()].sort();
+  // Long date ranges can have hundreds of rows; show the first ones until asked.
+  const keys = state.allRows ? allKeys : allKeys.slice(0, MATRIX_ROWS);
   const cell = (r) => {
     const x = r && r.cabins[c];
     if (!x) return '<td class="cell none">·</td>';
@@ -577,7 +828,8 @@ function matrixHtml(rows, sources) {
     <tbody>${keys.map((k) => {
       const [date, o, d] = k.split('|');
       return `<tr><td><div class="d">${mmdd(date)}（${dowOf(date)}）</div><div class="r">${esc(o)} → ${esc(d)}</div></td>${sources.map((s) => cell(grid.get(k)[s])).join('')}</tr>`;
-    }).join('')}</tbody></table></div>`;
+    }).join('')}</tbody></table></div>
+    ${keys.length < allKeys.length ? `<button type="button" class="outline more-rows" id="all-rows">顯示全部 ${allKeys.length} 列（目前 ${keys.length} 列）</button>` : ''}`;
 }
 
 // ---------- trip details ----------
@@ -982,8 +1234,7 @@ function bindCashLinks() {
     pickers.origin.set(r.origin.split(','));
     pickers.destination.set(r.destination.split(','));
     const f = $('#search-form');
-    f.start.value = r.depart;
-    f.end.value = r.depart;
+    datePickers.search.set(r.depart);
     const cab = $(`#search-form input[name=cabin][value="${r.cabin}"]`);
     if (cab) cab.checked = true;
     showTab('search');
@@ -1176,10 +1427,7 @@ function renderProgramCards() {
   $('#explore-form [name=origin_region]').value = 'Asia';
   $('#explore-form [name=destination_region]').value = 'North America';
 
-  for (const form of ['#search-form', '#explore-form']) {
-    $(`${form} [name=start]`).value = isoDate(30);
-    $(`${form} [name=end]`).value = isoDate(44);
-  }
+  for (const p of Object.values(datePickers)) p.set(isoDate(30), isoDate(44));
   cashForm.depart.value = isoDate(30);
   cashForm.return.value = isoDate(37);
   cashForm.depart.min = isoDate(0);
@@ -1192,8 +1440,7 @@ function renderProgramCards() {
     const f = $('#search-form');
     pickers.origin.set(share.get('o').split(','));
     pickers.destination.set(share.get('d').split(','));
-    f.start.value = share.get('s');
-    f.end.value = share.get('e') || share.get('s');
+    datePickers.search.set(share.get('s'), share.get('e') || share.get('s'));
     f.alliance.value = share.get('al') || '';
     f.carrier.value = share.get('a') || '';
     f.direct.checked = share.get('direct') === '1';

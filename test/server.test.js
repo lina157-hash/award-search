@@ -19,9 +19,17 @@ test('search returns normalized demo results', async () => {
 });
 
 test('search rejects bad input', async () => {
-  for (const q of ['origin=TP&destination=YVR&start=2026-11-01', 'origin=TPE&destination=YVR&start=2026-11-05&end=2026-11-01', 'origin=TPE&destination=YVR&start=2026-11-01&end=2027-03-01']) {
+  for (const q of ['origin=TP&destination=YVR&start=2026-11-01', 'origin=TPE&destination=YVR&start=2026-11-05&end=2026-11-01', 'origin=TPE&destination=YVR&start=2026-11-01&end=2027-11-03']) {
     assert.equal((await fetch(`${base}/api/search?${q}`)).status, 400, q);
   }
+});
+
+test('search accepts a date range of up to a year', async () => {
+  const res = await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=2026-11-01&end=2027-11-01`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.truncated, false);
+  assert.ok(body.results.some((r) => r.date > '2027-10-01'));
 });
 
 test('trips and data endpoints work', async () => {
@@ -86,7 +94,8 @@ test('client sends key header and follows cursor', async () => {
   ];
   const fetchImpl = async (url, opts) => { calls.push({ url: String(url), key: opts.headers['Partner-Authorization'] }); return { ok: true, status: 200, json: async () => pages[calls.length - 1] }; };
   const out = await createClient({ apiKey: 'k', fetchImpl }).search({ origin_airport: 'TPE', destination_airport: 'YVR' });
-  assert.deepEqual(out.map((x) => x.ID), ['a', 'b', 'c']);
+  assert.deepEqual(out.items.map((x) => x.ID), ['a', 'b', 'c']);
+  assert.equal(out.hasMore, false);
   assert.equal(calls[0].key, 'k');
   assert.match(calls[1].url, /cursor=123/);
   assert.match(calls[1].url, /skip=2/);

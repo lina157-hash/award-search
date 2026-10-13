@@ -60,8 +60,10 @@
               </div>
             </div>
             <div class="opts-row">
-              <label class="field">出發日起<input type="date" name="start" required></label>
-              <label class="field">出發日迄<input type="date" name="end" required></label>
+              <div class="field dp-field"><span>出發日期</span>
+                <button type="button" class="dp-btn" aria-haspopup="dialog"></button>
+                <input type="hidden" name="start"><input type="hidden" name="end">
+              </div>
               <label class="field">航空聯盟<select name="alliance">
                 <option value="">全部聯盟</option><option value="oneworld">寰宇一家（國泰、日航…）</option>
                 <option value="star">星空聯盟（長榮、加航…）</option><option value="skyteam">天合聯盟（華航、法航…）</option>
@@ -117,8 +119,10 @@
               <label class="field">抵達區域<select name="destination_region"></select></label>
             </div>
             <div class="opts-row">
-              <label class="field">出發日起<input type="date" name="start" required></label>
-              <label class="field">出發日迄<input type="date" name="end" required></label>
+              <div class="field dp-field"><span>出發日期</span>
+                <button type="button" class="dp-btn" aria-haspopup="dialog"></button>
+                <input type="hidden" name="start"><input type="hidden" name="end">
+              </div>
               <fieldset class="seg" aria-label="艙等">
                 <label><input type="radio" name="cabin" value="Y"><span>經濟</span></label>
                 <label><input type="radio" name="cabin" value="W"><span>豪經</span></label>
