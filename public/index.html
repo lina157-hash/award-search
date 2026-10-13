@@ -18,6 +18,7 @@
       <nav class="tabs" role="tablist">
         <button role="tab" data-tab="search" aria-selected="true">航線查詢</button>
         <button role="tab" data-tab="explore">區域探索</button>
+        <button role="tab" data-tab="cash">現金票</button>
         <button role="tab" data-tab="rules">規則庫</button>
       </nav>
     </div>
@@ -134,6 +135,69 @@
       </div>
     </section>
 
+    <!-- ================= 現金票 ================= -->
+    <section id="tab-cash" class="panel" hidden>
+      <div class="hero slim">
+        <div class="wrap">
+          <h1>現金票查詢</h1>
+          <p class="lead">查一般付費機票的價格，資料來自 Google 航班。可以跟里程票對照，看換票划不划算。</p>
+          <form id="cash-form" class="search-card" autocomplete="off">
+            <div class="opts-row">
+              <fieldset class="seg" aria-label="行程類型">
+                <label><input type="radio" name="trip" value="rt" checked><span>來回</span></label>
+                <label><input type="radio" name="trip" value="ow"><span>單程</span></label>
+              </fieldset>
+            </div>
+            <div class="route-row">
+              <div class="field grow ac-host">
+                <label for="c-origin">出發地</label>
+                <div class="chips-box" data-for="origin">
+                  <span class="chips"></span>
+                  <input id="c-origin" class="chips-q" placeholder="城市、機場或代碼" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-c-origin">
+                </div>
+                <input type="hidden" name="origin" value="TPE">
+                <div class="ac-list" id="ac-c-origin" role="listbox" aria-label="出發地建議" hidden></div>
+              </div>
+              <button type="button" class="swap" id="cash-swap" aria-label="對調出發與抵達">⇄</button>
+              <div class="field grow ac-host ac-end">
+                <label for="c-destination">目的地</label>
+                <div class="chips-box" data-for="destination">
+                  <span class="chips"></span>
+                  <input id="c-destination" class="chips-q" placeholder="城市、機場或代碼" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-c-destination">
+                </div>
+                <input type="hidden" name="destination" value="NRT">
+                <div class="ac-list" id="ac-c-destination" role="listbox" aria-label="目的地建議" hidden></div>
+              </div>
+            </div>
+            <div class="opts-row">
+              <label class="field">出發日期<input type="date" name="depart" required></label>
+              <label class="field" id="cash-return">回程日期<input type="date" name="return"></label>
+              <label class="field">人數<select name="adults"><option value="1">1 位成人</option><option value="2">2 位成人</option><option value="3">3 位成人</option><option value="4">4 位成人</option><option value="5">5 位成人</option><option value="6">6 位成人</option><option value="7">7 位成人</option><option value="8">8 位成人</option><option value="9">9 位成人</option></select></label>
+              <label class="field">轉機<select name="stops"><option value="0">不限</option><option value="1">只看直飛</option><option value="2">最多轉機 1 次</option></select></label>
+              <label class="field">航空聯盟<select name="alliance">
+                <option value="">全部航空公司</option><option value="oneworld">寰宇一家</option><option value="star">星空聯盟</option><option value="skyteam">天合聯盟</option>
+              </select></label>
+            </div>
+            <div class="opts-row">
+              <fieldset class="seg" aria-label="艙等">
+                <label><input type="radio" name="cabin" value="Y" checked><span>經濟</span></label>
+                <label><input type="radio" name="cabin" value="W"><span>豪經</span></label>
+                <label><input type="radio" name="cabin" value="J"><span>商務</span></label>
+                <label><input type="radio" name="cabin" value="F"><span>頭等</span></label>
+              </fieldset>
+              <button type="submit" class="primary big">搜尋票價</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="wrap">
+        <div id="cash-status" class="status" aria-live="polite"></div>
+        <div id="cash-results"></div>
+      </div>
+    </section>
+
     <!-- ================= 規則庫 ================= -->
     <section id="tab-rules" class="panel" hidden>
       <div class="hero slim">
@@ -152,7 +216,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" hidden></div>
-  <footer class="wrap foot">座位資料來自 seats.aero 快取，可能有延遲，開票前請至航空公司官網確認。規則整理僅供參考。</footer>
+  <footer class="wrap foot">座位資料來自 seats.aero 快取，現金票價來自 Google 航班，都可能有延遲，開票前請至航空公司官網確認。規則整理僅供參考。</footer>
   <script src="/app.js"></script>
 </body>
 </html>

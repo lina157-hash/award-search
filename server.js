@@ -4,10 +4,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createClient, normalizeAvailability, normalizeTrips, SeatsAeroError } = require('./lib/seats');
 const mock = require('./lib/mock');
+const { createCashClient, normalizeCash, CashError } = require('./lib/cash');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
 const MOCK = !API_KEY || process.env.MOCK === '1';
+const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
+// Cash fares: live with a SerpApi key, demo data when the whole site is in demo mode, otherwise off.
+const CASH_MODE = SERPAPI_KEY ? 'live' : MOCK ? 'mock' : 'off';
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -21,6 +25,15 @@ function countCall() {
 }
 
 const client = createClient({ apiKey: API_KEY, onCall: countCall });
+const cashUsage = { day: '', calls: 0 };
+const cashQuery = createCashClient({
+  apiKey: SERPAPI_KEY,
+  onCall: () => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (cashUsage.day !== today) Object.assign(cashUsage, { day: today, calls: 0 });
+    cashUsage.calls++;
+  },
+});
 const cache = new Map();
 async function cached(key, fn) {
   const hit = cache.get(key);
@@ -99,6 +112,40 @@ async function handleExplore(q) {
   return { mock: MOCK, cabin, total: results.length, truncated: hasMore, results };
 }
 
+const ALLIANCE_PARAM = { star: 'STAR_ALLIANCE', skyteam: 'SKYTEAM', oneworld: 'ONEWORLD' };
+const CABIN_CLASS = { Y: 1, W: 2, J: 3, F: 4 };
+
+async function handleCash(q) {
+  if (CASH_MODE === 'off') return { configured: false, options: [] };
+  const depart = param(q, 'depart', DATE, { required: true });
+  const ret = param(q, 'return', DATE);
+  const today = new Date().toISOString().slice(0, 10);
+  if (depart < today) throw new BadRequest('出發日期不可早於今天');
+  if ((new Date(depart) - new Date(today)) / 864e5 > 335) throw new BadRequest('出發日期最多只能查到約 11 個月後');
+  if (ret && ret < depart) throw new BadRequest('回程日期不可早於出發日期');
+  const alliance = q.get('alliance');
+  if (alliance && !ALLIANCE_PARAM[alliance]) throw new BadRequest('聯盟參數錯誤');
+  const adults = Number(q.get('adults') || 1);
+  if (!Number.isInteger(adults) || adults < 1 || adults > 9) throw new BadRequest('人數需為 1 到 9');
+  const stops = Number(q.get('stops') || 0);
+  if (![0, 1, 2, 3].includes(stops)) throw new BadRequest('轉機參數錯誤');
+  const params = {
+    departure_id: param(q, 'origin', IATA_LIST, { required: true, upper: true }),
+    arrival_id: param(q, 'destination', IATA_LIST, { required: true, upper: true }),
+    outbound_date: depart,
+    return_date: ret,
+    type: ret ? 1 : 2,
+    travel_class: CABIN_CLASS[param(q, 'cabin', /^[YWJF]$/, { upper: true }) || 'Y'],
+    adults,
+    stops: stops || undefined,
+    include_airlines: param(q, 'carriers', CODE_LIST, { upper: true }) || ALLIANCE_PARAM[alliance],
+    departure_token: param(q, 'token', /^[\w\-+/=.:]{1,4000}$/),
+  };
+  if (params.departure_token && !ret) throw new BadRequest('只有來回票才能查回程');
+  const raw = await cached('cash:' + JSON.stringify(params), () => (CASH_MODE === 'mock' ? mock.mockCash(params) : cashQuery(params)));
+  return { configured: true, mock: CASH_MODE === 'mock', returning: Boolean(params.departure_token), ...normalizeCash(raw) };
+}
+
 async function handleTrips(id) {
   if (!/^[\w-]{1,80}$/.test(id)) throw new BadRequest('ID 格式錯誤');
   const raw = await cached('trips:' + id, () => (MOCK ? mock.mockTrips(id) : client.trips(id)));
@@ -132,7 +179,8 @@ async function route(req, res) {
   const p = url.pathname;
   try {
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
-    if (p === '/api/config') return sendJson(res, 200, { mock: MOCK, callsToday: usage.calls, dailyLimit: 1000 });
+    if (p === '/api/config') return sendJson(res, 200, { mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE });
+    if (p === '/api/cash') return sendJson(res, 200, await handleCash(q));
     if (p === '/api/search') return sendJson(res, 200, await handleSearch(q));
     if (p === '/api/explore') return sendJson(res, 200, await handleExplore(q));
     if (p.startsWith('/api/trips/')) return sendJson(res, 200, await handleTrips(decodeURIComponent(p.slice(11))));
@@ -145,7 +193,7 @@ async function route(req, res) {
     serveStatic(res, p);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
-    if (e instanceof SeatsAeroError) return sendJson(res, e.status, { error: e.message });
+    if (e instanceof SeatsAeroError || e instanceof CashError) return sendJson(res, e.status, { error: e.message });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

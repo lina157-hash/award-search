@@ -3,6 +3,7 @@ const assert = require('node:assert');
 delete process.env.SEATS_AERO_API_KEY;
 const { server } = require('../server');
 const { normalizeAvailability, createClient } = require('../lib/seats');
+const { createCashClient, normalizeCash } = require('../lib/cash');
 
 let base;
 before(() => new Promise((r) => server.listen(0, () => { base = `http://localhost:${server.address().port}`; r(); })));
@@ -43,6 +44,33 @@ test('full airport list is served for autocomplete', async () => {
   for (const code of ['TPE', 'TSA', 'KHH', 'RMQ', 'MZG', 'KNH', 'HKG', 'NRT', 'HND', 'YVR', 'CDG', 'LHR', 'JFK', 'SYD', 'GRU', 'JNB']) assert.ok(byCode.has(code), code);
   assert.equal(byCode.get('TPE')[6], '台北桃園');
   assert.deepEqual(body.groups.find((g) => g.zh === '東京').codes, ['NRT', 'HND']);
+});
+
+test('cash fares: demo search, return leg and validation', async () => {
+  const day = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+  const body = await (await fetch(`${base}/api/cash?origin=TPE,TSA&destination=NRT&depart=${day(30)}&return=${day(37)}&cabin=J&alliance=star`)).json();
+  assert.equal(body.configured, true);
+  assert.ok(body.options.length > 0);
+  assert.ok(body.options.every((o) => o.price > 0 && o.segments.length && o.departureToken));
+  assert.ok(body.insights.lowest > 0);
+  const back = await (await fetch(`${base}/api/cash?origin=TPE,TSA&destination=NRT&depart=${day(30)}&return=${day(37)}&cabin=J&token=${body.options[0].departureToken}`)).json();
+  assert.equal(back.returning, true);
+  assert.equal(back.options[0].segments[0].from.code, 'NRT');
+  for (const q of [`depart=${day(-2)}`, `depart=${day(10)}&return=${day(5)}`, `depart=${day(10)}&alliance=foo`, `depart=${day(10)}&adults=12`, `depart=${day(10)}&token=abc`]) {
+    assert.equal((await fetch(`${base}/api/cash?origin=TPE&destination=NRT&${q}`)).status, 400, q);
+  }
+});
+
+test('cash client sends SerpApi params and maps errors', async () => {
+  let seen;
+  const ok = createCashClient({ apiKey: 'k', fetchImpl: async (url) => { seen = new URL(url); return { ok: true, status: 200, json: async () => ({ best_flights: [{ price: 100, flights: [{ departure_airport: { id: 'TPE' }, arrival_airport: { id: 'NRT' } }] }] }) }; } });
+  const out = normalizeCash(await ok({ departure_id: 'TPE', arrival_id: 'NRT', type: 2 }));
+  assert.equal(seen.searchParams.get('engine'), 'google_flights');
+  assert.equal(seen.searchParams.get('api_key'), 'k');
+  assert.equal(seen.searchParams.get('currency'), 'TWD');
+  assert.equal(out.options[0].segments[0].to.code, 'NRT');
+  const bad = createCashClient({ apiKey: 'k', fetchImpl: async () => ({ ok: false, status: 401, json: async () => ({}) }) });
+  await assert.rejects(bad({}), /金鑰無效/);
 });
 
 test('static path traversal is blocked', async () => {

@@ -42,6 +42,7 @@ const our = JSON.parse(fs.readFileSync(ourPath, 'utf8'));
 const adRows = new Map(parseCsv(fs.readFileSync(adPath, 'utf8')).filter((r) => r.iata).map((r) => [r.iata, r]));
 const altCity = new Map([...adRows].map(([code, r]) => [code, r.city]));
 
+const round = (x) => Math.round(Number(x) * 100) / 100;
 const clean = (s) => String(s || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
 const byCode = new Map();
 for (const a of our) {
@@ -57,14 +58,14 @@ const airports = [...byCode.values()].map((a) => {
   const code = a.iata_code;
   const city = clean(a.municipality) || clean(altCity.get(code));
   const alt = clean(altCity.get(code));
-  return [code, city, a.name, a.iso_country, a.continent, a.type === 'large_airport' ? 1 : 0, zh.names[code] || '', alt && alt !== city ? alt : ''];
+  return [code, city, a.name, a.iso_country, a.continent, a.type === 'large_airport' ? 1 : 0, zh.names[code] || '', alt && alt !== city ? alt : '', round(a.latitude_deg), round(a.longitude_deg)];
 });
 
 // Small or newly opened airports that OurAirports' list lacks: fill from airportsdata when we have a Chinese name.
 const continentOf = new Map(airports.map((r) => [r[3], r[4]]));
 for (const code of Object.keys(zh.names)) {
   const r = !byCode.has(code) && adRows.get(code);
-  if (r && continentOf.has(r.country)) airports.push([code, clean(r.city), r.name, r.country, continentOf.get(r.country), 0, zh.names[code], '']);
+  if (r && continentOf.has(r.country)) airports.push([code, clean(r.city), r.name, r.country, continentOf.get(r.country), 0, zh.names[code], '', round(r.lat), round(r.lon)]);
 }
 airports.sort((x, y) => x[0].localeCompare(y[0]));
 
@@ -75,7 +76,7 @@ const groups = zh.groups.map((g) => ({ ...g, codes: g.codes.filter((c) => known.
 
 const out = {
   sources: 'OurAirports (public domain); city names from airportsdata (MIT, Mike Borsetti); Chinese names curated for this site',
-  fields: ['code', 'city', 'name', 'country', 'continent', 'large', 'zh', 'altCity'],
+  fields: ['code', 'city', 'name', 'country', 'continent', 'large', 'zh', 'altCity', 'lat', 'lon'],
   airports,
   groups,
 };

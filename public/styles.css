@@ -260,3 +260,56 @@ h3.sub { font-size: .95rem; margin: 8px 0; }
 .seatmap { white-space: nowrap; font-size: .8rem; color: var(--muted); }
 .seatmap a { margin-left: 4px; text-decoration: none; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 @media (max-width: 640px) { .status { scroll-margin-top: 124px; } }
+
+/* ---------- cash fares ---------- */
+[hidden] { display: none !important; }
+a.outline.btn { display: inline-flex; align-items: center; font-size: .88rem; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; }
+a.outline.btn:hover { border-color: var(--accent); color: var(--accent); }
+button.primary.small { padding: 7px 14px; font-size: .85rem; }
+.cash-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; margin: 6px 0 4px; }
+.cash-tools .field { flex: 0 0 170px; }
+.cash-links { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.cash-off { margin-top: 8px; }
+.cash-off p { margin: 0; color: var(--muted); }
+.cash-off .cash-links { margin-left: 0; }
+.insight { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin: 6px 0 14px; box-shadow: var(--shadow); }
+.insight div { display: flex; flex-direction: column; gap: 2px; }
+.insight span { font-size: .78rem; color: var(--muted); }
+.insight b { font-size: 1.1rem; }
+.insight .good { color: var(--heat-4); }
+.insight .bad { color: var(--danger); }
+.spark { width: 160px; height: 40px; margin-left: auto; }
+.spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.fare { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; box-shadow: var(--shadow); overflow: hidden; }
+.fare.fare-best { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.fare > button.primary.small { margin: 0 16px 14px auto; display: block; }
+.fare-main { display: grid; grid-template-columns: 40px minmax(150px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; cursor: pointer; }
+.fare-main:hover { background: var(--surface-2); }
+.fare-logo { width: 36px; height: 36px; display: grid; place-items: center; font-size: 1.2rem; color: var(--accent); }
+.fare-logo img { width: 32px; height: 32px; object-fit: contain; }
+.fare-time b { font-size: 1.05rem; }
+.fare-time sup { color: var(--danger); margin-left: 2px; font-size: .7rem; }
+.fare-time span, .fare-dur span, .fare-price span { display: block; font-size: .8rem; color: var(--muted); }
+.fare-dur b { font-weight: 500; }
+.fare-stops { font-size: .86rem; color: var(--muted); }
+.fare-stops.direct { color: var(--heat-4); font-weight: 600; }
+.fare-price { text-align: right; }
+.fare-price b { font-size: 1.15rem; color: var(--accent); }
+.fare-detail { padding: 0 16px 14px 70px; }
+.layover { font-size: .8rem; color: var(--muted); margin: 6px 0 0 10px; padding: 4px 10px; background: var(--surface-2); border-radius: 8px; display: inline-block; }
+.warn { color: var(--danger); }
+.picked { display: grid; gap: 8px; margin-top: 8px; }
+.picked > span { font-size: .85rem; color: var(--muted); }
+.picked .fare { margin: 0; }
+.picked > button { justify-self: start; }
+@media (max-width: 640px) {
+  .fare-main { grid-template-columns: 32px 1fr auto; gap: 6px 10px; padding: 12px; }
+  .fare-logo { grid-row: span 2; }
+  .fare-dur, .fare-stops { grid-column: 2 / span 2; }
+  .fare-price { grid-column: 3; grid-row: 1; }
+  .fare-detail { padding: 0 12px 12px; }
+  .cash-tools .field { flex: 1 1 140px; }
+  .cash-links { margin-left: 0; }
+  .spark { width: 100%; }
+}
+.status-actions { display: flex; gap: 8px; flex-wrap: wrap; }
