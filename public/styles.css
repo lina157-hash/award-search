@@ -210,3 +210,7 @@ td.cell.est { background: repeating-linear-gradient(135deg, var(--surface-2), va
 h3.sub { font-size: .95rem; margin: 8px 0; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) td.cell.est, :root:not([data-theme="light"]) .am-callout .am-miles, :root:not([data-theme="light"]) .am-line b { color: #f08aa8; } }
 @media (max-width: 640px) { .am-tables { grid-template-columns: 1fr; } }
+.seg-line .ac { color: var(--text); }
+.seatmap { white-space: nowrap; font-size: .8rem; color: var(--muted); }
+.seatmap a { margin-left: 4px; text-decoration: none; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+@media (max-width: 640px) { .status { scroll-margin-top: 124px; } }

@@ -80,9 +80,9 @@ function amFromAvailability(r, cabin) {
   if (!x.available) return null;
   const carriers = x.airlines.split(/,\s*/).filter(Boolean);
   const ow = oneworld();
-  if (carriers.includes('CX')) return amPrice('cx', r.distance, cabin, r.origin, r.destination);
-  if (carriers.some((c) => ow.has(c))) return amPrice('partner', r.distance, cabin, r.origin, r.destination);
-  return null;
+  // Only when every carrier is oneworld; a mix with non-members can't be booked as a single-carrier award.
+  if (!carriers.length || !carriers.every((c) => ow.has(c))) return null;
+  return amPrice(carriers.includes('CX') ? 'cx' : 'partner', r.distance, cabin, r.origin, r.destination);
 }
 
 // Trip-level estimate: Asia Miles adds sector distances for connections.
@@ -355,6 +355,27 @@ function matrixHtml(rows, sources) {
 }
 
 // ---------- trip details ----------
+// Seat map sites have no public API, so we link out: SeatMaps per aircraft, AeroLOPA per airline fleet.
+const SEATMAPS_SLUG = {
+  CX: 'cx-cathay-pacific', BR: 'br-eva-air', CI: 'ci-china-airlines', AF: 'af-air-france', AC: 'ac-air-canada', KL: 'kl-klm',
+  JL: 'jl-jal', NH: 'nh-ana', SQ: 'sq-singapore-airlines', DL: 'dl-delta', BA: 'ba-british-airways', QR: 'qr-qatar-airways',
+  TK: 'tk-turkish-airlines', KE: 'ke-korean-air', AA: 'aa-american-airlines', AS: 'as-alaska-airlines', QF: 'qf-qantas',
+  LH: 'lh-lufthansa', AY: 'ay-finnair', JX: 'jx-starlux', CA: 'ca-air-china', OZ: 'oz-asiana-airlines', TG: 'tg-thai-airways',
+  EK: 'ek-emirates', IB: 'ib-iberia', MH: 'mh-malaysia-airlines', NZ: 'nz-air-new-zealand', LX: 'lx-swiss', OS: 'os-austrian-airlines',
+};
+
+function seatLinks(seg) {
+  const code = (seg.flight || '').slice(0, 2).toUpperCase();
+  const links = [];
+  const slug = SEATMAPS_SLUG[code];
+  if (slug) {
+    const ac = /^(boeing|airbus)\b/i.test(seg.aircraft || '') ? `${seg.aircraft.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}/` : '';
+    links.push(`<a href="https://seatmaps.com/airlines/${slug}/${ac}" target="_blank" rel="noopener">SeatMaps ↗</a>`);
+  }
+  if (/^[A-Z0-9]{2}$/.test(code)) links.push(`<a href="https://www.aerolopa.com/${code.toLowerCase()}" target="_blank" rel="noopener">AeroLOPA ↗</a>`);
+  return links.length ? `<span class="seatmap">座位圖 ${links.join(' ')}</span>` : '';
+}
+
 function tripHtml(t) {
   const taxes = t.taxes != null ? `${esc(t.taxesSymbol || '')}${fmt(t.taxes / 100)} ${esc(t.taxesCurrency || '')}` : '稅金未提供';
   const dur = t.durationMin ? `${Math.floor(t.durationMin / 60)} 小時 ${t.durationMin % 60} 分` : '';
@@ -363,7 +384,8 @@ function tripHtml(t) {
       <div><b>${esc(t.flightNumbers)}</b><span class="pill">${esc(CABIN_ZH[t.cabin] || t.cabin)}</span><span class="pill">${t.stops ? `轉機 ${t.stops} 次` : '直飛'}</span>${t.seats ? `<span class="pill">剩 ${t.seats} 位</span>` : ''}</div>
       <div><span class="miles">${fmt(t.miles)} 哩</span> ＋ ${taxes}</div>
     </div>
-    ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}　${esc(s.aircraft || '')}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}</span></div>`).join('')}
+    ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
+      <span></span><span class="ac">✈ ${esc(s.aircraft || '機型未提供')}${s.aircraftCode ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
     ${amTripLine(t)}
   </div>`;
