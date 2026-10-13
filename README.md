@@ -5,7 +5,7 @@
 ## 功能
 - **航線查詢**：輸入出發/抵達機場（可多個，用逗號分隔）、日期範圍、航空公司、艙等，以「日期 × 里程計畫」表格顯示最低里程與剩餘座位，點格子看航班明細與訂位連結。
 - **區域探索**：選一個里程計畫與出發/抵達區域，列出區域內所有有位子的航線，依里程排序。
-- **真金白銀買機票**（現金票）：查一般付費機票價格（來回／單程、多機場、艙等、人數、轉機、聯盟），資料來自 Google 航班（透過 SerpApi），附價格水準與走勢、航班明細，以及到 Google 航班、Skyscanner 的連結。
+- **買機票**（現金票）：查一般付費機票價格（來回／單程、多機場、艙等、人數、轉機、聯盟），資料來自 Google 航班（透過 SerpApi），附價格水準與走勢、航班明細，以及到 Google 航班、Skyscanner 的連結。
 - **規則庫**：航空聯盟成員、各里程計畫的計價方式、單程、中停、開口、燃油費、改退票、效期、家人合併，以及里程票與現金票的基本觀念。資料在 `data/*.json`，直接編輯即可更新。
 
 ## 執行
@@ -34,6 +34,6 @@ npm test
 1. 在 Vercel 選「Add New → Project」，匯入這個 GitHub repo，Framework 選 **Other**。
 2. 在 Environment Variables 新增 `SEATS_AERO_API_KEY`，值填你的 seats.aero 金鑰。
 3. 按 Deploy。之後每次推送到 main 都會自動重新部署。
-4. （選用）現金票即時價格：到 serpapi.com 註冊取得金鑰，在 Environment Variables 新增 `SERPAPI_KEY` 後重新部署。免費方案每月 250 次查詢；每次搜尋或「看回程」各用 1 次，同樣條件 30 分鐘內重查不會再扣。沒設定時「真金白銀買機票」分頁只提供 Google 航班與 Skyscanner 連結。
+4. （選用）現金票即時價格：到 serpapi.com 註冊取得金鑰，在 Environment Variables 新增 `SERPAPI_KEY` 後重新部署。免費方案每月 250 次查詢；每次搜尋或「看回程」各用 1 次，同樣條件 30 分鐘內重查不會再扣。沒設定時「買機票」分頁只提供 Google 航班與 Skyscanner 連結。
 
 前端放在 `public/`，`/api/*` 由 `api/index.js` 這支 serverless function 處理，金鑰不會出現在瀏覽器端。
