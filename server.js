@@ -18,6 +18,8 @@ const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points'];
+// Shown in the page footer; bump with `node scripts/bump-version.js`.
+const VERSION = require('./data/version.json');
 
 const usage = { day: '', calls: 0 };
 function countCall() {
@@ -266,6 +268,8 @@ async function route(req, res) {
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
+        repo: process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG ? `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}` : '',
+        version: VERSION.version, updated: VERSION.updated, history: (VERSION.history || []).slice(0, 10),
       });
     }
     if (p === '/api/cash') return sendJson(res, 200, await handleCash(q, req));

@@ -1815,12 +1815,30 @@ function renderProgramCards() {
     </div>`).join('') || '<p class="hint">沒有符合的計畫。</p>';
 }
 
+// ---------- footer version line ----------
+function renderVersion(config) {
+  if (!config.version) return;
+  $('#ver-no').textContent = `v${config.version}`;
+  $('#ver-date').textContent = config.updated || '—';
+  if (config.commit) {
+    const a = $('#ver-commit');
+    a.textContent = config.commit;
+    if (config.repo) a.href = `${config.repo}/commit/${config.commit}`; else a.removeAttribute('href');
+    $('#ver-commit-wrap').hidden = false;
+  }
+  const history = config.history || [];
+  $('#ver-list').innerHTML = history.map((h) => `<li><b>v${esc(h.version)}</b> <span class="d">${esc(h.date)}</span> ${esc(h.note)}</li>`).join('');
+  $('#ver-history').hidden = !history.length;
+  $('#version-line').hidden = false;
+}
+
 // ---------- init ----------
 (async function init() {
   const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
   [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points] = files;
   SOURCE_NAMES = data.sourceNames.names;
   $('#mock-banner').hidden = !config.mock;
+  renderVersion(config);
   cashCfg.locked = Boolean(config.cashLocked);
   cashCfg.enabled = config.cash !== 'off';
   Object.assign(alertCfg, config.alerts || {});

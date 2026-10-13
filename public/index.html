@@ -265,7 +265,15 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" hidden></div>
-  <footer class="wrap foot">座位資料來自 seats.aero 快取，現金票價來自 Google 航班，都可能有延遲，開票前請至航空公司官網確認。規則整理僅供參考。</footer>
+  <footer class="wrap foot">
+    <p>座位資料來自 seats.aero 快取，現金票價來自 Google 航班，都可能有延遲，開票前請至航空公司官網確認。規則整理僅供參考。</p>
+    <div class="version" id="version-line" hidden>
+      <span>機票搜索雷達 <b id="ver-no"></b></span>
+      <span>最後更新 <b id="ver-date"></b></span>
+      <span id="ver-commit-wrap" hidden>程式版本 <a id="ver-commit" target="_blank" rel="noopener"></a></span>
+      <details id="ver-history"><summary>更新紀錄</summary><ol id="ver-list"></ol></details>
+    </div>
+  </footer>
   <script src="/app.js"></script>
 </body>
 </html>

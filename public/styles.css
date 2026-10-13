@@ -236,6 +236,14 @@ h2.section { font-size: 1.1rem; margin: 30px 0 12px; }
 
 .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: .9rem; z-index: 50; box-shadow: var(--shadow); }
 .foot { color: var(--muted); font-size: .8rem; padding-top: 28px; padding-bottom: 36px; }
+.foot p { margin: 0 0 10px; }
+.foot .version { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; border-top: 1px dashed var(--border); padding-top: 10px; }
+.foot .version b { color: var(--text); font-weight: 600; }
+.foot .version a { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.foot details { flex-basis: 100%; }
+.foot summary { cursor: pointer; color: var(--accent); width: max-content; }
+.foot ol { margin: 6px 0 0; padding-left: 1.4em; display: grid; gap: 3px; }
+.foot ol .d { color: var(--muted); margin: 0 4px; }
 
 @media (max-width: 640px) {
   .hero { padding: 22px 0 36px; --sun-x: calc(100% - 22px); --sun-y: 20px; --sun-r: 30px; }

@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+// Bump data/version.json before committing a user-visible change.
+//   node scripts/bump-version.js patch "修正日期選擇器"   → 1.9.0 → 1.9.1
+//   node scripts/bump-version.js minor "新增 XX 功能"     → 1.9.0 → 1.10.0
+// Sets `updated` to today's date in Taipei and prepends the note to `history` (keeps 20 entries).
+const fs = require('node:fs');
+const path = require('node:path');
+
+const file = path.join(__dirname, '..', 'data', 'version.json');
+const [kind = 'patch', ...noteParts] = process.argv.slice(2);
+const note = noteParts.join(' ').trim();
+if (!['major', 'minor', 'patch'].includes(kind)) {
+  console.error('用法：node scripts/bump-version.js <major|minor|patch> "這次改了什麼"');
+  process.exit(1);
+}
+if (!note) {
+  console.error('請在版本類型後面加上一句說明，會顯示在頁尾的更新紀錄裡。');
+  process.exit(1);
+}
+
+const v = JSON.parse(fs.readFileSync(file, 'utf8'));
+let [major, minor, patch] = v.version.split('.').map(Number);
+if (kind === 'major') { major++; minor = 0; patch = 0; } else if (kind === 'minor') { minor++; patch = 0; } else patch++;
+const version = `${major}.${minor}.${patch}`;
+const date = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Taipei' }).format(new Date());
+v.version = version;
+v.updated = date;
+v.history = [{ version, date, note }, ...(v.history || [])].slice(0, 20);
+fs.writeFileSync(file, `${JSON.stringify(v, null, 2)}\n`);
+console.log(`版本 ${version}（${date}）：${note}`);

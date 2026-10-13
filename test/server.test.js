@@ -181,6 +181,15 @@ test('client sends key header and follows cursor', async () => {
   assert.match(calls[1].url, /skip=2/);
 });
 
+test('config carries a version, an update date and a history', async () => {
+  const body = await (await fetch(`${base}/api/config`)).json();
+  assert.match(body.version, /^\d+\.\d+\.\d+$/);
+  assert.match(body.updated, /^\d{4}-\d{2}-\d{2}$/);
+  assert.ok(Array.isArray(body.history) && body.history.length > 0 && body.history[0].version === body.version);
+  const file = require('../data/version.json');
+  assert.ok(file.history.every((h) => /^\d+\.\d+\.\d+$/.test(h.version) && /^\d{4}-\d{2}-\d{2}$/.test(h.date) && h.note));
+});
+
 test('normalizeAvailability maps cabin fields', () => {
   const n = normalizeAvailability({ ID: 'x', Date: '2026-11-01', Source: 'aeroplan', Route: { OriginAirport: 'TPE', DestinationAirport: 'YVR', Distance: 6000 }, JAvailable: true, JMileageCost: '75000', JRemainingSeats: 2, JAirlines: 'BR', JDirect: true });
   assert.deepEqual(n.cabins.J, { available: true, miles: 75000, seats: 2, airlines: 'BR', direct: true, taxes: null });
