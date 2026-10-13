@@ -179,7 +179,14 @@ async function route(req, res) {
   const p = url.pathname;
   try {
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
-    if (p === '/api/config') return sendJson(res, 200, { mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE });
+    if (p === '/api/config') {
+      return sendJson(res, 200, {
+        mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE,
+        // Setup diagnostics: which deployment is answering, and env var *names* (never values) that look like the SerpApi key.
+        commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7), env: process.env.VERCEL_ENV || 'local',
+        serpVarNames: Object.keys(process.env).filter((k) => /serp/i.test(k)),
+      });
+    }
     if (p === '/api/cash') return sendJson(res, 200, await handleCash(q));
     if (p === '/api/search') return sendJson(res, 200, await handleSearch(q));
     if (p === '/api/explore') return sendJson(res, 200, await handleExplore(q));
