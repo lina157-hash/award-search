@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>里程票查詢</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <h1>里程票查詢</h1>
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="search" aria-selected="true">航線查詢</button>
+        <button role="tab" data-tab="explore">區域探索</button>
+        <button role="tab" data-tab="rules">規則庫</button>
+      </nav>
+    </div>
+  </header>
+
+  <div id="mock-banner" class="banner" hidden>目前為<strong>示範資料</strong>模式：尚未設定 seats.aero API 金鑰，顯示的座位與里程都是假資料。</div>
+
+  <main class="wrap">
+    <section id="tab-search" class="panel">
+      <form id="search-form" class="form-grid">
+        <label>出發機場<input name="origin" value="TPE" placeholder="TPE,TSA" autocomplete="off" list="airport-list" required></label>
+        <label>抵達機場<input name="destination" value="YVR,YYZ" placeholder="YVR,YYZ" autocomplete="off" list="airport-list" required></label>
+        <label>出發日起<input type="date" name="start" required></label>
+        <label>出發日迄<input type="date" name="end" required></label>
+        <label>航空公司<select name="carrier"><option value="">全部</option></select></label>
+        <label>艙等<select name="cabin">
+          <option value="">全部</option><option value="Y">經濟艙</option><option value="W">豪華經濟艙</option>
+          <option value="J" selected>商務艙</option><option value="F">頭等艙</option>
+        </select></label>
+        <label class="check"><input type="checkbox" name="direct" value="1"> 只看直飛</label>
+        <button type="submit" class="primary">查詢</button>
+      </form>
+      <p id="carrier-hint" class="hint"></p>
+      <div id="search-status" class="status" aria-live="polite"></div>
+      <div id="search-results"></div>
+    </section>
+
+    <section id="tab-explore" class="panel" hidden>
+      <form id="explore-form" class="form-grid">
+        <label>里程計畫<select name="source" required></select></label>
+        <label>出發區域<select name="origin_region"></select></label>
+        <label>抵達區域<select name="destination_region"></select></label>
+        <label>出發日起<input type="date" name="start" required></label>
+        <label>出發日迄<input type="date" name="end" required></label>
+        <label>艙等<select name="cabin">
+          <option value="Y">經濟艙</option><option value="W">豪華經濟艙</option>
+          <option value="J" selected>商務艙</option><option value="F">頭等艙</option>
+        </select></label>
+        <button type="submit" class="primary">探索</button>
+      </form>
+      <div id="explore-status" class="status" aria-live="polite"></div>
+      <div id="explore-results"></div>
+    </section>
+
+    <section id="tab-rules" class="panel" hidden>
+      <div id="rules"></div>
+    </section>
+  </main>
+
+  <dialog id="trip-dialog">
+    <div class="dialog-head"><h2 id="trip-title">航班明細</h2><button class="ghost" id="trip-close" aria-label="關閉">✕</button></div>
+    <div id="trip-body"></div>
+  </dialog>
+
+  <datalist id="airport-list"></datalist>
+  <footer class="wrap foot">座位資料來自 seats.aero 快取，可能有延遲，開票前請至航空公司官網確認。規則整理僅供參考。</footer>
+  <script src="/app.js"></script>
+</body>
+</html>

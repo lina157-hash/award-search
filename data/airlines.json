@@ -1,0 +1,21 @@
+{
+  "lastReviewed": "2026-10-13",
+  "note": "bookableVia 是 seats.aero 有收錄、且通常可換到該航司座位的里程計畫，實際以查詢結果為準。homeProgram 是該航司自家計畫，若 seats.aero 沒收錄則只提供規則說明。",
+  "airlines": [
+    { "code": "CX", "name": "國泰航空", "alliance": "oneworld", "homeProgram": "asiamiles", "bookableVia": ["alaska", "american", "qantas"] },
+    { "code": "AF", "name": "法國航空", "alliance": "skyteam", "homeProgram": "flyingblue", "bookableVia": ["flyingblue", "delta", "virginatlantic", "aeromexico"] },
+    { "code": "AC", "name": "加拿大航空", "alliance": "star", "homeProgram": "aeroplan", "bookableVia": ["aeroplan", "united", "lufthansa", "turkish", "eurobonus", "ethiopian"] },
+    { "code": "BR", "name": "長榮航空", "alliance": "star", "homeProgram": "evainfinity", "bookableVia": ["aeroplan", "united", "lufthansa", "turkish"] },
+    { "code": "CI", "name": "中華航空", "alliance": "skyteam", "homeProgram": "dynastyflyer", "bookableVia": ["delta", "flyingblue", "aeromexico"] },
+    { "code": "KL", "name": "荷蘭航空", "alliance": "skyteam", "homeProgram": "flyingblue", "bookableVia": ["flyingblue", "delta", "virginatlantic"] },
+    { "code": "JL", "name": "日本航空", "alliance": "oneworld", "homeProgram": null, "bookableVia": ["alaska", "american", "qantas"] },
+    { "code": "NH", "name": "全日空", "alliance": "star", "homeProgram": null, "bookableVia": ["aeroplan", "united", "virginatlantic", "lufthansa"] },
+    { "code": "SQ", "name": "新加坡航空", "alliance": "star", "homeProgram": null, "bookableVia": ["singapore", "aeroplan", "united", "lufthansa"] },
+    { "code": "UA", "name": "聯合航空", "alliance": "star", "homeProgram": "united", "bookableVia": ["united", "aeroplan", "lufthansa", "turkish"] },
+    { "code": "DL", "name": "達美航空", "alliance": "skyteam", "homeProgram": "delta", "bookableVia": ["delta", "virginatlantic", "flyingblue"] },
+    { "code": "BA", "name": "英國航空", "alliance": "oneworld", "homeProgram": null, "bookableVia": ["american", "alaska", "qantas"] },
+    { "code": "QR", "name": "卡達航空", "alliance": "oneworld", "homeProgram": null, "bookableVia": ["qatar", "american", "alaska"] },
+    { "code": "TK", "name": "土耳其航空", "alliance": "star", "homeProgram": null, "bookableVia": ["turkish", "aeroplan", "united"] },
+    { "code": "KE", "name": "大韓航空", "alliance": "skyteam", "homeProgram": null, "bookableVia": ["delta", "flyingblue", "virginatlantic"] }
+  ]
+}

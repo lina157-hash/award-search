@@ -1,0 +1,27 @@
+{
+  "lastReviewed": "2026-10-13",
+  "note": "成員名單會變動，正式上線前請以各聯盟官網核實。",
+  "alliances": [
+    {
+      "id": "oneworld",
+      "name": "寰宇一家 oneworld",
+      "members": ["AA", "AS", "BA", "CX", "AY", "IB", "JL", "MH", "QF", "QR", "AT", "RJ", "UL", "FJ", "WY"],
+      "summary": "國泰、日航、英航、美航、阿拉斯加航空等。里程計畫多半以「距離」計價，跨航司的夥伴票通常沒有動態加價。",
+      "url": "https://www.oneworld.com/members"
+    },
+    {
+      "id": "star",
+      "name": "星空聯盟 Star Alliance",
+      "members": ["A3", "AC", "CA", "AI", "NZ", "NH", "OZ", "OS", "AV", "SN", "CM", "OU", "MS", "ET", "BR", "LO", "LH", "ZH", "SQ", "SA", "LX", "TP", "TG", "TK", "UA"],
+      "summary": "長榮、加航、全日空、聯合、新航、漢莎、土航等，是成員最多的聯盟。加航 Aeroplan、聯合 MileagePlus 常被用來換長榮與全日空的座位。",
+      "url": "https://www.staralliance.com/en/member-airlines"
+    },
+    {
+      "id": "skyteam",
+      "name": "天合聯盟 SkyTeam",
+      "members": ["AR", "AM", "UX", "AF", "CI", "MU", "DL", "GA", "KQ", "KL", "KE", "ME", "SV", "RO", "VN", "VS", "MF", "SK"],
+      "summary": "法航、荷航、華航、達美、大韓、維珍航空等。法荷航 Flying Blue 與達美 SkyMiles 皆為動態計價，價格隨需求浮動。",
+      "url": "https://www.skyteam.com/en/about/members"
+    }
+  ]
+}
