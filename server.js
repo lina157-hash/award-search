@@ -200,6 +200,8 @@ async function route(req, res) {
     serveStatic(res, p);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
+    // TEMP: debug=1 returns upstream errors with 200 so they can be read while setting up the SerpApi key.
+    if (e instanceof CashError && q.get('debug') === '1') return sendJson(res, 200, { debugError: e.message, status: e.status });
     if (e instanceof SeatsAeroError || e instanceof CashError) return sendJson(res, e.status, { error: e.message });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
