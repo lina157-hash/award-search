@@ -173,6 +173,11 @@ $('#explore-form').addEventListener('submit', async (e) => {
 });
 
 // ---------- rules ----------
+const CONFIDENCE_TAG = {
+  official: '<span class="tag">官方資料</span>',
+  secondary: '<span class="tag verify">第三方整理</span>',
+  verify: '<span class="tag verify">待核實</span>',
+};
 function renderRules() {
   const { alliances, programs, glossary, airlines } = data;
   const airlineName = Object.fromEntries(airlines.airlines.map((a) => [a.code, a.name]));
@@ -182,9 +187,11 @@ function renderRules() {
     <a href="${esc(a.url)}" target="_blank" rel="noopener">官方成員名單</a></div>`).join('');
   const fieldRows = Object.entries(programs.fields);
   const programCards = programs.programs.map((p) => `
-    <div class="card"><h3>${esc(p.name)}${p.confidence === 'verify' ? '<span class="tag verify">待核實</span>' : ''}${p.seatsAeroSource ? '<span class="tag">seats.aero 有收錄</span>' : ''}</h3>
+    <div class="card"><h3>${esc(p.name)}${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? '<span class="tag">seats.aero 有收錄</span>' : ''}</h3>
     <dl>${fieldRows.map(([k, label]) => `<dt>${esc(label)}</dt><dd>${esc(p[k])}</dd>`).join('')}</dl>
-    <p class="hint">${esc(p.notes)}</p><a href="${esc(p.officialUrl)}" target="_blank" rel="noopener">官方網站</a></div>`).join('');
+    <p class="hint">${esc(p.notes)}</p>
+    <p class="hint">資料來源（${esc(p.lastVerified || '')} 查核）：${(p.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}</p>
+    <a href="${esc(p.officialUrl)}" target="_blank" rel="noopener">官方網站</a></div>`).join('');
   const gloss = glossary.sections.map((s) => `
     <h2 class="section">${esc(s.title)}</h2><div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div>`).join('');
   $('#rules').innerHTML = `
