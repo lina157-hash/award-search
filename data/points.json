@@ -573,5 +573,632 @@
    },
    "date": "2026-10-13"
   }
- ]
+ ],
+ "calc": {
+  "note": "換算器依銀行公告的比率、最低門檻與兌換單位估算，未扣除入會費或轉換費；門檻以「點」或「哩」計都照銀行寫法，實際可換數量以銀行系統為準。",
+  "sources": [
+   {
+    "id": "amex-mr",
+    "bank": "美國運通",
+    "program": "會員酬賓 Membership Rewards",
+    "confidence": "official",
+    "note": "需先加入優遊常客計劃；每次最低 1,000 分，以 1,000 分遞增。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 1000,
+      "stepPoints": 1000
+     },
+     {
+      "to": "asiamiles",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 1000,
+      "stepPoints": 1000
+     },
+     {
+      "to": "sq",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 1000,
+      "stepPoints": 1000
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "泰航 ROP",
+      "minPoints": 1000,
+      "stepPoints": 1000
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "馬航 Enrich",
+      "minPoints": 1000,
+      "stepPoints": 1000
+     }
+    ]
+   },
+   {
+    "id": "hsbc-travel",
+    "bank": "滙豐",
+    "program": "旅人卡 旅遊積分",
+    "confidence": "official",
+    "note": "最低 3,000 分，以 500 分為單位；16 家全部 1:1。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "asiamiles",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "ci",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "sq",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "日航",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "加航",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "法荷航",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "聯合",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "卡達",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "阿聯酋",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "澳航",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "LifeMiles",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "土航",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "越南航空",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "海南",
+      "minPoints": 3000,
+      "stepPoints": 500
+     },
+     {
+      "to": "other",
+      "points": 1,
+      "miles": 1,
+      "name": "亞航",
+      "minPoints": 3000,
+      "stepPoints": 500
+     }
+    ]
+   },
+   {
+    "id": "dbs-flight",
+    "bank": "星展 DBS",
+    "program": "飛行積金",
+    "confidence": "official",
+    "note": "最低 6,000 哩，以 1,000 哩為單位。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 1,
+      "minMiles": 6000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "asiamiles",
+      "points": 1,
+      "miles": 1,
+      "minMiles": 6000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "sq",
+      "points": 1,
+      "miles": 1,
+      "minMiles": 6000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "ci",
+      "points": 2,
+      "miles": 1,
+      "minMiles": 6000,
+      "stepMiles": 1000
+     }
+    ]
+   },
+   {
+    "id": "dbs-bonus",
+    "bank": "星展 DBS",
+    "program": "活利積分",
+    "variant": "一般卡",
+    "confidence": "official",
+    "note": "最低 3,000 哩，以 1,000 哩為單位。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 5,
+      "miles": 1,
+      "minMiles": 3000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "asiamiles",
+      "points": 5,
+      "miles": 1,
+      "minMiles": 3000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "ci",
+      "points": 9,
+      "miles": 1,
+      "minMiles": 3000,
+      "stepMiles": 1000
+     }
+    ]
+   },
+   {
+    "id": "dbs-bonus-treasures",
+    "bank": "星展 DBS",
+    "program": "活利積分",
+    "variant": "極耀無限卡",
+    "confidence": "official",
+    "note": "最低 3,000 哩，以 1,000 哩為單位。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 3,
+      "miles": 1,
+      "minMiles": 3000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "asiamiles",
+      "points": 3,
+      "miles": 1,
+      "minMiles": 3000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "ci",
+      "points": 6,
+      "miles": 1,
+      "minMiles": 3000,
+      "stepMiles": 1000
+     }
+    ]
+   },
+   {
+    "id": "dbs-cash",
+    "bank": "星展 DBS",
+    "program": "現金積點／現金紅利",
+    "confidence": "official",
+    "note": "最低 100 哩，以 100 哩為單位。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 2,
+      "minMiles": 100,
+      "stepMiles": 100
+     },
+     {
+      "to": "asiamiles",
+      "points": 1,
+      "miles": 2,
+      "minMiles": 100,
+      "stepMiles": 100
+     },
+     {
+      "to": "ci",
+      "points": 9,
+      "miles": 10,
+      "minMiles": 100,
+      "stepMiles": 100
+     }
+    ]
+   },
+   {
+    "id": "cathay-tree",
+    "bank": "國泰世華",
+    "program": "小樹點",
+    "variant": "一般卡",
+    "confidence": "official",
+    "note": "每 1,000 哩為一個兌換單位；長榮、亞洲萬里通聯名卡的點數不適用。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 360,
+      "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "asiamiles",
+      "points": 360,
+      "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "ci",
+      "points": 840,
+      "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "sq",
+      "points": 620,
+      "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 340,
+      "miles": 1000,
+      "name": "法荷航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 420,
+      "miles": 1000,
+      "name": "阿提哈德",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 450,
+      "miles": 1000,
+      "name": "泰航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 450,
+      "miles": 1000,
+      "name": "英航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 480,
+      "miles": 1000,
+      "name": "日航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 480,
+      "miles": 1000,
+      "name": "卡達",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 510,
+      "miles": 1000,
+      "name": "加航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 510,
+      "miles": 1000,
+      "name": "聯合",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 550,
+      "miles": 1000,
+      "name": "阿聯酋",
+      "stepMiles": 1000
+     }
+    ]
+   },
+   {
+    "id": "cathay-tree-world",
+    "bank": "國泰世華",
+    "program": "小樹點",
+    "variant": "世界卡",
+    "confidence": "official",
+    "note": "世界卡優惠比率只公告長榮、亞洲萬里通、華航三家，其他計畫同一般卡。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 300,
+      "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "asiamiles",
+      "points": 300,
+      "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "ci",
+      "points": 720,
+      "miles": 1000,
+      "stepMiles": 1000
+     }
+    ]
+   },
+   {
+    "id": "ctbc-bonus",
+    "bank": "中國信託",
+    "program": "紅利點數（哩程酬賓計劃）",
+    "confidence": "official",
+    "note": "需先加入哩程酬賓計劃（部分卡別扣點）；首次最低 3,000 點，之後每次 1,000 點以上。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 3,
+      "miles": 1,
+      "minPoints": 1000
+     },
+     {
+      "to": "sq",
+      "points": 3,
+      "miles": 1,
+      "minPoints": 1000
+     },
+     {
+      "to": "eva",
+      "points": 5,
+      "miles": 1,
+      "minPoints": 1000
+     },
+     {
+      "to": "ci",
+      "points": 6,
+      "miles": 1,
+      "minPoints": 1000
+     }
+    ]
+   },
+   {
+    "id": "taishin-point",
+    "bank": "台新",
+    "program": "台新 Point",
+    "confidence": "official",
+    "note": "以 100 點為級距，兌換後不可取消。",
+    "rates": [
+     {
+      "to": "ci",
+      "points": 11,
+      "miles": 14,
+      "stepPoints": 100
+     },
+     {
+      "to": "eva",
+      "points": 11,
+      "miles": 13,
+      "stepPoints": 100
+     },
+     {
+      "to": "asiamiles",
+      "points": 10,
+      "miles": 18,
+      "stepPoints": 100
+     }
+    ]
+   },
+   {
+    "id": "taishin-infinite",
+    "bank": "台新",
+    "program": "環球無限卡專屬 Point",
+    "confidence": "official",
+    "note": "限該卡累積的 Point，以 2,000 點為單位。",
+    "rates": [
+     {
+      "to": "ci",
+      "points": 2000,
+      "miles": 4000,
+      "stepPoints": 2000
+     },
+     {
+      "to": "eva",
+      "points": 2000,
+      "miles": 4000,
+      "stepPoints": 2000
+     }
+    ]
+   },
+   {
+    "id": "esun-epoint",
+    "bank": "玉山",
+    "program": "e point",
+    "confidence": "official",
+    "note": "以 200 點為單位，限正卡且卡片有效。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 200,
+      "miles": 300,
+      "stepPoints": 200
+     },
+     {
+      "to": "asiamiles",
+      "points": 200,
+      "miles": 300,
+      "stepPoints": 200
+     },
+     {
+      "to": "ci",
+      "points": 200,
+      "miles": 180,
+      "stepPoints": 200
+     }
+    ]
+   },
+   {
+    "id": "kgi-miles",
+    "bank": "凱基",
+    "program": "雙幣哩程卡 哩程點",
+    "confidence": "official",
+    "note": "亞洲萬里通以 1,000 點為單位；華航、長榮比率只有第三方整理。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 1000,
+      "miles": 1000,
+      "stepPoints": 1000
+     },
+     {
+      "to": "ci",
+      "points": 1,
+      "miles": 1,
+      "secondary": true
+     },
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 1,
+      "secondary": true
+     }
+    ]
+   },
+   {
+    "id": "fubon-amiles",
+    "bank": "富邦",
+    "program": "a miles 航空卡 富邦哩程",
+    "confidence": "official",
+    "note": "以 5,000 哩為單位，需先入會；此卡已停止受理新申請。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 5000,
+      "miles": 5000,
+      "stepMiles": 5000
+     },
+     {
+      "to": "eva",
+      "points": 7000,
+      "miles": 5000,
+      "stepMiles": 5000
+     },
+     {
+      "to": "ci",
+      "points": 10350,
+      "miles": 5000,
+      "stepMiles": 5000
+     }
+    ]
+   },
+   {
+    "id": "scb-bonus",
+    "bank": "渣打",
+    "program": "紅利積點",
+    "confidence": "verify",
+    "note": "最低 5,000 點；官方文件為 2017 年版，轉點前務必向銀行確認。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 10,
+      "miles": 1,
+      "minPoints": 5000
+     },
+     {
+      "to": "ci",
+      "points": 10,
+      "miles": 1,
+      "minPoints": 5000
+     },
+     {
+      "to": "sq",
+      "points": 10,
+      "miles": 1,
+      "minPoints": 5000
+     }
+    ]
+   }
+  ]
+ }
 }

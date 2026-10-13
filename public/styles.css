@@ -459,3 +459,30 @@ h3.sub { font-size: 1rem; margin: 22px 0 10px; }
 .points-table td:last-child { min-width: 12rem; max-width: 16rem; }
 .points-table .tag { margin-bottom: 2px; }
 
+
+/* points calculator */
+.calc { margin: 4px 0 22px; }
+.calc-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.calc-bar .field { flex: 1 1 200px; max-width: 320px; }
+.calc-presets { margin: 10px 0 12px; }
+.calc-table th, .calc-table td { white-space: normal; vertical-align: top; }
+.calc-table thead th { background: var(--surface-2); }
+.calc-table tbody th { font-weight: 500; text-align: left; min-width: 11rem; max-width: 15rem; }
+.calc-table th:first-child, .calc-table td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 1; box-shadow: 1px 0 0 var(--border); }
+.calc-table thead th:first-child { background: var(--surface-2); }
+.calc-table td { min-width: 9rem; }
+.calc-table td b { font-size: 1rem; }
+.calc-table small, .calc-table th small { display: block; color: var(--muted); font-size: .76rem; font-weight: 400; }
+.calc-table th small.note { margin-top: 4px; }
+.calc-table td.best { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+.calc-table td.best b { color: var(--accent-text); }
+.calc-table td.short span { color: var(--muted); font-size: .85rem; }
+.calc-table td.none { color: var(--muted); text-align: center; }
+.calc-table td.others div + div { margin-top: 6px; }
+.calc-table td.others b { font-size: .92rem; }
+.calc-table small.warn { color: var(--danger); }
+@media (max-width: 640px) {
+  .calc-table tbody th { min-width: 8rem; max-width: 9rem; }
+  .calc-table th small.note { display: none; }
+  .calc-bar .field { max-width: none; }
+}
