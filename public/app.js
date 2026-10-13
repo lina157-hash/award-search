@@ -918,6 +918,7 @@ function renderSearch() {
       <div class="miles">${fmt(x.miles)} <small>哩起</small>${x.taxes ? `<small class="tax">＋ 稅 ${esc(taxText(x.taxes))}</small>` : ''}</div>
       <div class="meta">${mmdd(r.date)}（${dowOf(r.date)}）· ${esc(srcName(r.source))}</div>
       <div class="meta">${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}</div>
+      ${valueTag(r, c)}
     </button>`;
   }).join('');
 
@@ -1049,7 +1050,7 @@ function matrixHtml(rows, sources) {
     }
     const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : '', isStale(r.updatedAt) ? 'stale' : ''].join(' ');
     const ph = phantomWarnings(r.source, x.airlines);
-    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${ph.length ? '<i class="ph" aria-label="可能是幻影機位">⚠</i>' : ''}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}<small>${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
+    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${ph.length ? '<i class="ph" aria-label="可能是幻影機位">⚠</i>' : ''}${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}<small>${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
   };
   return `<div class="table-wrap"><table>
     <thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}</th>`).join('')}</tr></thead>
@@ -1162,6 +1163,7 @@ async function mileValue(t) {
     const fares = body.options.filter((x) => x.price);
     if (!fares.length) throw new Error(body.message || '當天找不到現金票價');
     const cheapest = fares.reduce((a, b) => (a.price <= b.price ? a : b));
+    rememberCash(o, d, date, cabin, cheapest.price);
     const cur = (t.taxesCurrency || '').toUpperCase();
     const rate = cur ? fx.rates[cur] : null;
     const taxesTwd = t.taxes != null && rate ? (t.taxes / 100) * rate : 0;
@@ -1604,10 +1606,12 @@ function renderChosen(box) {
       <div><span>${back ? '來回' : '單程'}總價${r.adults > 1 ? `・${r.adults} 位成人` : ''}${CABIN_LABEL[r.cabin] ? `・${CABIN_LABEL[r.cabin]}` : ''}</span><b>${money(total)}</b>${per ? `<small>每人約 ${money(per)}</small>` : ''}</div>
       <div class="chosen-actions">
         <button type="button" class="outline" id="cash-plan">＋ 加入我的行程</button>
+        ${watchCfg.on ? '<button type="button" class="outline" id="cash-watch">📉 追蹤降價</button>' : ''}
         ${back ? '<button type="button" class="outline" id="cash-reback">重新選回程</button>' : ''}
         <button type="button" class="outline" id="cash-back">重新選去程</button>
       </div>
     </div>
+    <div id="watch-slot"></div>
     <div class="booking" id="cash-booking"></div>
     ${cashLinks(r, cash.googleUrl)}
   </div>`;
@@ -1621,6 +1625,7 @@ function renderChosen(box) {
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
   });
   $('#cash-plan').addEventListener('click', () => addLegs(cashLegs()));
+  bindWatchButton(box);
   $('#cash-reback')?.addEventListener('click', () => { seq.booking++; cash.chosen = null; cash.booking = null; renderCash(); });
   $('#cash-back').addEventListener('click', () => { seq.booking++; Object.assign(cash, { chosen: null, booking: null, returns: null, outbound: null }); renderCash(); });
   renderBooking();
@@ -1762,6 +1767,7 @@ cashForm.addEventListener('submit', async (e) => {
       status.textContent = '';
     } else {
       Object.assign(cash, { options: body.options, insights: body.insights, googleUrl: body.googleUrl });
+      rememberCashSearch(r, body.options);
       status.textContent = body.options.length
         ? `找到 ${body.options.length} 個航班選項${body.mock ? '（示範資料）' : ''}${rt ? '，價格為來回總價，選去程後可看回程' : `，單程 ${r.adults} 人總價，選一班後可看預訂選項`}`
         : body.message || '沒有找到航班';
@@ -1902,6 +1908,7 @@ function calcHtml(pts) {
       <div class="presets calc-presets"><span class="presets-label">快速填入</span>${CALC_PRESETS.map((n) => `<button type="button" data-n="${n}">${fmt(n)}</button>`).join('')}</div>
       <label class="switch"><input type="checkbox" id="calc-detail" ${calcState.detail ? 'checked' : ''}><span class="knob"></span>顯示比率與備註</label>
     </div>
+    ${promosHtml()}
     <div class="table-wrap calc-table${calcState.detail ? '' : ' simple'}"><table id="calc-table"></table></div>
     <p class="hint" id="calc-note">${calcState.detail ? esc(pts.calc.note || '') : ''} 底色標示的是該計畫最划算的來源。</p>
   </div>`;
@@ -1957,9 +1964,15 @@ function renderCalc() {
   }
   // Best value per airline column: most miles, or fewest points needed.
   const best = {};
+  // Active transfer bonuses only change the points-to-miles direction.
+  const bonusOf = (s, col) => (mode === 'p2m' ? transferBonus(s, col) : null);
+  const convert = (s, r) => {
+    const out = calcConvert(r, amountOf(s), mode);
+    return out.value ? { ...out, value: withBonus(out.value, bonusOf(s, r.to)) } : out;
+  };
   for (const s of sources) for (const r of s.rates) {
     if (r.to === 'other') continue;
-    const v = calcConvert(r, amountOf(s), mode).value;
+    const v = convert(s, r).value;
     if (!v) continue;
     if (best[r.to] == null || (mode === 'p2m' ? v > best[r.to] : v < best[r.to])) best[r.to] = v;
   }
@@ -1968,11 +1981,12 @@ function renderCalc() {
     if (!rates.length) return '<td class="none">—</td>';
     if (col !== 'other') {
       const r = rates[0];
-      const out = calcConvert(r, amountOf(s), mode);
+      const out = convert(s, r);
+      const bonus = bonusOf(s, col);
       if (!out.value) return `<td class="short"><span>${esc(out.short)}</span>${detail ? `<small>${ratioText(r)}</small>` : ''}</td>`;
       const tags = detail && r.secondary ? '<small class="warn">第三方比率</small>' : '';
       const extra = detail ? `<small>${ratioText(r)}</small>${out.note ? `<small>${esc(out.note)}</small>` : ''}${tags}` : '';
-      return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${extra}</td>`;
+      return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${bonus ? `<small class="bonus">🎁 含加贈 ${bonus.bonusPct}%</small>` : ''}${extra}</td>`;
     }
     // Other programs: group identical rates so 12 airlines at 1:1 take one line.
     const groups = new Map();
@@ -2084,13 +2098,15 @@ function renderVersion(config) {
 
 // ---------- init ----------
 (async function init() {
-  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
-  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points, data.booking, data.charts, data.products] = files;
+  const [config, ...files] = await Promise.all(['/api/config', ...['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos'].map((n) => `/api/data/${n}`)].map((u) => api(u)));
+  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points, data.booking, data.charts, data.products, data.promos] = files;
   SOURCE_NAMES = data.sourceNames.names;
   $('#mock-banner').hidden = !config.mock;
   renderVersion(config);
   cashCfg.locked = Boolean(config.cashLocked);
   cashCfg.enabled = config.cash !== 'off';
+  watchCfg.on = Boolean(config.watch);
+  loadWatches();
   Object.assign(alertCfg, config.alerts || {});
   $('#alerts-count').textContent = alertCfg.store ? '' : '（未啟用）';
   updateLockHint();

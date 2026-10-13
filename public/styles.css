@@ -540,6 +540,12 @@ h3.sub { font-size: 1rem; margin: 22px 0 10px; }
 .ok-text { color: var(--heat-4); font-weight: 700; }
 .phantom { margin: 6px 0 0; font-size: .82rem; color: var(--few-text); background: var(--few); border-radius: 8px; padding: 4px 10px; }
 td.cell i.ph { font-style: normal; color: var(--few-text); font-size: .75rem; margin-right: 3px; }
+td.cell i.gv { font-style: normal; font-size: .66rem; font-weight: 700; color: var(--sun-text); background: var(--sun); border-radius: 6px; padding: 1px 5px; margin-right: 4px; vertical-align: 2px; }
+.deal .value-tag { margin-top: 2px; }
+.deal .value-tag.good { color: var(--accent); font-weight: 600; }
+.watch-form { margin: 10px 0; }
+.watch-form .w-add input { flex: 1 1 240px; text-align: left; }
+#watch-panel { margin-top: 14px; }
 .add-plan { margin-left: 10px; font-size: .85rem; }
 .trip .pill.prod { background: var(--accent-soft); color: var(--accent); margin: 0 6px 0 0; }
 details.release { margin: 0 0 12px; font-size: .9rem; }
@@ -557,6 +563,7 @@ details.release li { margin: 3px 0; }
 .result-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: -4px 0 14px; }
 .field.compact { flex-direction: row; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; font-size: .88rem; }
 .field.compact select { padding: 6px 10px; min-height: 0; }
+.field.compact label { white-space: nowrap; margin: 0; }
 
 /* ---------- points tab tools ---------- */
 .points-seg { margin: 22px 0 6px; }
@@ -623,3 +630,13 @@ details.release li { margin: 3px 0; }
   .deal-row { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; scroll-padding-left: 16px; }
   .deal-row .deal-mini { flex: 0 0 64%; scroll-snap-align: start; }
 }
+/* ---------- transfer bonuses / buy-miles sales ---------- */
+.promos { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px; margin: 10px 0; }
+.promos > summary { cursor: pointer; font-weight: 600; }
+.promos > summary small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.promos ul { list-style: none; padding: 0; margin: 4px 0 8px; display: grid; gap: 8px; }
+.promos li small { display: block; color: var(--muted); font-size: .8rem; }
+.promos li small a { margin-left: 4px; }
+.promos .pill { font-size: .75rem; }
+.promos-none { margin: 8px 0; }
+.calc-table small.bonus { color: var(--accent); font-weight: 600; }

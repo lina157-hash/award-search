@@ -7,6 +7,7 @@ const { createClient, normalizeAvailability, normalizeTrips, SeatsAeroError } = 
 const mock = require('./lib/mock');
 const { createCashClient, normalizeCash, CashError } = require('./lib/cash');
 const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = require('./lib/alerts');
+const { createPriceWatch } = require('./lib/pricewatch');
 const { createDeals } = require('./lib/deals');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -18,7 +19,7 @@ const CASH_MODE = SERPAPI_KEY ? 'live' : MOCK ? 'mock' : 'off';
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos'];
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
 
@@ -75,6 +76,25 @@ const deals = createDeals({
     return items.map(normalizeAvailability);
   },
 });
+// Cash price tracking: same Redis and mailer as the seat alerts; each daily check spends one SerpApi credit per watch.
+const watchStore = CASH_MODE === 'off' ? null : REDIS_URL && REDIS_TOKEN ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'price-watch:v1' }) : CASH_MODE === 'mock' ? memoryStore() : null;
+const priceWatch = watchStore && createPriceWatch({
+  store: watchStore,
+  sendEmail: alertMailer,
+  siteUrl: process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''),
+  search: async (w) => {
+    const params = { departure_id: w.origin, arrival_id: w.destination, outbound_date: w.depart, return_date: w.ret || undefined, type: w.ret ? 1 : 2, travel_class: CABIN_CLASS[w.cabin], adults: w.adults, stops: w.stops || undefined };
+    return normalizeCash(CASH_MODE === 'mock' ? mock.mockCash(params) : await cashQuery(params));
+  },
+});
+async function handleWatch(req, q) {
+  if (!priceWatch) return { configured: false, watches: [] };
+  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能管理降價追蹤', 401), { code: 'passcode' });
+  if (req.method === 'POST') return { configured: true, ...(await priceWatch.add(await readJson(req))) };
+  if (req.method === 'DELETE') { await priceWatch.remove(String(q.get('id') || '')); return { ok: true }; }
+  return { configured: true, email: Boolean(alertMailer), max: priceWatch.max, watches: await priceWatch.list() };
+}
+
 let dealsPending = null;
 async function handleDeals() {
   // Concurrent first visitors share one build instead of each spending API calls.
@@ -105,6 +125,7 @@ async function handleAlerts(req, q, sub) {
   if (sub === 'run' && !alertsAllowed(req)) throw Object.assign(new CashError('需要通關密碼才能管理提醒', 401), { code: 'passcode' });
   // The daily cron also refreshes the deals list; a failure there must not stop the alert run.
   const dealsRun = sub === 'run' ? await deals.refresh().then((d) => ({ deals: d.groups.reduce((n, g) => n + g.items.length, 0) }), (e) => ({ dealsError: e.message })) : {};
+  if (sub === 'run' && priceWatch) Object.assign(dealsRun, await priceWatch.run().then((w) => ({ watches: w }), (e) => ({ watchError: e.message })));
   if (!alerts) return { configured: false, email: false, alerts: [], ...dealsRun };
   if (!alertsAllowed(req)) throw Object.assign(new CashError('需要通關密碼才能管理提醒', 401), { code: 'passcode' });
   if (sub === 'run') return { configured: true, ...dealsRun, ...(await alerts.run()) };
@@ -287,11 +308,15 @@ async function route(req, res) {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleAlerts(req, q, p.endsWith('/run') ? 'run' : ''));
     }
+    if (p === '/api/watch') {
+      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleWatch(req, q));
+    }
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
     if (p === '/api/config') {
       return sendJson(res, 200, {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashLocked: Boolean(cashPasscode()),
-        alerts: { store: Boolean(alerts), email: Boolean(alertMailer) },
+        alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
         repo: process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG ? `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}` : '',

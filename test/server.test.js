@@ -273,3 +273,37 @@ test('feature data files are served and well formed', async () => {
   }
   assert.equal((await fetch(`${base}/api/data/charts`)).status, 200);
 });
+
+test('price watch mails only after a real drop and tracks the picked flights', async () => {
+  const { createPriceWatch } = require('../lib/pricewatch');
+  const { memoryStore } = require('../lib/alerts');
+  const day = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  let prices = { BR12: 30000, CI4: 28000 };
+  const opt = (fn) => ({ price: prices[fn], segments: [{ flightNumber: fn.replace(/(\d)/, ' $1') }] });
+  const mails = [];
+  const w = createPriceWatch({ store: memoryStore(), search: async () => ({ options: Object.keys(prices).map(opt) }), sendEmail: async (m) => mails.push(m) });
+  const { watch } = await w.add({ origin: 'TPE', destination: 'NRT', depart: day, cabin: 'Y', flights: 'BR12', email: 'a@b.co' });
+  assert.equal(watch.lastPrice, 30000);
+  assert.equal(watch.lastLowest, 28000);
+  prices = { BR12: 29950, CI4: 20000 }; // picked flight barely moved: no mail
+  let r = await w.run();
+  assert.equal(r.report[0].mailed, false);
+  prices = { BR12: 27000, CI4: 20000 };
+  r = await w.run();
+  assert.equal(r.report[0].mailed, true);
+  assert.match(mails[0].subject, /27,000/);
+  r = await w.run(); // same price again: nothing new to say
+  assert.equal(mails.length, 1);
+  await assert.rejects(w.add({ origin: 'TPE', destination: 'NRT', depart: '2020-01-01' }), /已經過了/);
+});
+
+test('price watch endpoint works in demo mode', async () => {
+  const day = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+  const add = await fetch(`${base}/api/watch`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ origin: 'TPE', destination: 'NRT', depart: day, cabin: 'J' }) });
+  assert.equal(add.status, 200);
+  const { watch } = await add.json();
+  assert.ok(watch.lastPrice > 0);
+  const list = await (await fetch(`${base}/api/watch`)).json();
+  assert.ok(list.watches.some((x) => x.id === watch.id));
+  assert.equal((await fetch(`${base}/api/watch?id=${watch.id}`, { method: 'DELETE' })).status, 200);
+});

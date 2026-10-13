@@ -30,6 +30,33 @@ function transferRates(program) {
 const ratioLabel = (r) => (r.points === r.miles ? '1:1' : `${fmt(r.points)} 點換 ${fmt(r.miles)} 哩`);
 const bankLabel = (s) => `${s.bank} ${s.program}${s.variant ? `（${s.variant}）` : ''}`;
 
+// ---------- transfer bonuses and buy-miles sales (data/promos.json, refreshed by a weekly routine) ----------
+const PROMO_COL = { singapore: 'sq' };
+const promoCol = (p) => PROMO_COL[p.program] || p.program;
+const activePromos = () => {
+  const today = isoDate(0);
+  return (data.promos?.promos || []).filter((p) => p.start <= today && today <= p.end).sort((a, b) => a.end.localeCompare(b.end));
+};
+// An active transfer bonus from this bank points program into one calculator column, if any.
+function transferBonus(source, col) {
+  return activePromos().find((p) => p.type === 'transfer' && p.bonusPct > 0 && p.bank === source.bank && promoCol(p) === col && (!p.sourceIds || p.sourceIds.includes(source.id))) || null;
+}
+const withBonus = (miles, promo) => (promo ? Math.floor((miles * (100 + promo.bonusPct)) / 100) : miles);
+function promosHtml() {
+  const list = activePromos();
+  if (!data.promos) return '';
+  const updated = data.promos.updated ? `資料更新於 ${data.promos.updated}` : '';
+  if (!list.length) return `<p class="hint promos-none">🎁 目前沒有整理到進行中的轉點加贈或買哩優惠。${updated}</p>`;
+  const row = (p) => `<li><b>${esc(p.title)}</b>${p.bonusPct ? ` <span class="pill">+${p.bonusPct}%</span>` : ''}${p.price ? ` <span class="pill">${esc(p.price)}</span>` : ''}
+    <small>${mmdd(p.start)} – ${p.end.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${p.end.slice(0, 4)}/` : ''}${mmdd(p.end)}${p.conditions ? `・${esc(p.conditions)}` : ''}　${CONFIDENCE_TAG[p.confidence] || ''}${(p.sources || []).slice(0, 1).map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('')}</small></li>`;
+  const transfer = list.filter((p) => p.type === 'transfer');
+  const buy = list.filter((p) => p.type === 'buy');
+  return `<details class="promos"><summary>🎁 進行中的優惠 ${list.length} 項 <small>${updated}</small></summary>
+    ${transfer.length ? `<h3 class="sub">轉點加贈</h3><ul>${transfer.map(row).join('')}</ul>` : ''}
+    ${buy.length ? `<h3 class="sub">買哩促銷</h3><ul>${buy.map(row).join('')}</ul>` : ''}
+    <p class="hint">轉點加贈已算進下方表格（標示「含加贈」）。活動多半要先登錄，條件以銀行或航空公司公告為準。</p></details>`;
+}
+
 // ---------- my points wallet (this browser only) ----------
 const WALLET_KEY = 'wallet:v1';
 const WALLET_PROGRAMS = ['eva', 'ci', 'asiamiles', 'singapore', 'jal', 'aeroplan', 'united', 'flyingblue', 'alaska', 'american', 'british', 'qatar', 'turkish', 'lifemiles', 'emirates', 'delta', 'starlux'];
@@ -50,7 +77,7 @@ function reach(program) {
   for (const { source, rate } of transferRates(key)) {
     const pts = wallet.banks[source.id];
     if (!pts) continue;
-    const got = calcConvert(rate, pts, 'p2m').value || 0;
+    const got = withBonus(calcConvert(rate, pts, 'p2m').value || 0, rate.to !== 'other' ? transferBonus(source, rate.to) : null);
     if (got) banks.push({ source, rate, points: pts, miles: got });
   }
   return { own, banks, total: own + banks.reduce((n, b) => n + b.miles, 0) };
@@ -86,7 +113,7 @@ function howToBookHtml(program, milesNeeded) {
     : '<li><b>台灣可轉入</b>　台灣的信用卡點數目前沒有直接轉入這個計畫，要用該計畫自己的哩程。</li>');
   if (!walletEmpty() && milesNeeded) {
     const r = reach(key);
-    lines.push(`<li><b>你的點數</b>　最多可湊到 ${fmt(r.total)} 哩，${r.total >= milesNeeded ? '<span class="ok-text">夠換這張票</span>' : `還差 ${fmt(milesNeeded - r.total)} 哩`}</li>`);
+    lines.push(`<li><b>你的點數</b>　${!r.total ? '你填的點數都不能用在這個計畫' : `最多可湊到 ${fmt(r.total)} 哩，${r.total >= milesNeeded ? '<span class="ok-text">夠換這張票</span>' : `還差 ${fmt(milesNeeded - r.total)} 哩`}`}</li>`);
   }
   if (info?.days) lines.push(`<li><b>開票</b>　${esc(info.windowNote || `約 ${info.days} 天前開放`)}</li>`);
   const src = info?.sources?.[0];
@@ -639,8 +666,124 @@ function productOfSegment(seg) {
 }
 
 // ---------- wiring ----------
+// ---------- good-value marks: cash fares this browser already looked up, no extra quota ----------
+// One-way, one-person prices in TWD keyed by route, date and cabin; kept a few days because fares move.
+const CASH_SEEN_KEY = 'cashSeen:v1';
+const CASH_SEEN_DAYS = 3;
+const GOOD_VALUE = 0.6; // NT$ per mile; same line the cash comparison box already uses for 划算
+function loadCashSeen() {
+  const raw = store.get(CASH_SEEN_KEY, {});
+  const cutoff = Date.now() - CASH_SEEN_DAYS * 864e5;
+  const today = isoDate(0);
+  return Object.fromEntries(Object.entries(raw && typeof raw === 'object' ? raw : {})
+    .filter(([k, v]) => /^[A-Z]{3}-[A-Z]{3}\|\d{4}-\d{2}-\d{2}\|[YWJF]$/.test(k) && v && v.price > 0 && v.at > cutoff && k.split('|')[1] >= today));
+}
+let cashSeen = {};
+function rememberCash(from, to, date, cabin, price) {
+  if (!from || !to || !date || !CABIN_LABEL[cabin] || !(price > 0)) return;
+  const k = `${from}-${to}|${date}|${cabin}`;
+  if (cashSeen[k] && cashSeen[k].price <= price && Date.now() - cashSeen[k].at < 864e5) return;
+  cashSeen[k] = { price: Math.round(price), at: Date.now() };
+  store.set(CASH_SEEN_KEY, cashSeen);
+  if (!fxCache) api('/api/fx').then((f) => { fxCache = f; }).catch(() => {});
+}
+// Remember every one-way fare of a cash search, per actual airport pair, per person.
+function rememberCashSearch(r, options) {
+  if (r.ret) return;
+  for (const o of options) {
+    if (!o.price || !o.segments?.length) continue;
+    rememberCash(o.segments[0].from.code, o.segments.at(-1).to.code, r.depart, r.cabin, o.price / (r.adults || 1));
+  }
+}
+// What one mile is worth on this award row, when the same day's cash fare is known.
+function mileValueOf(r, cabin) {
+  const x = r.cabins?.[cabin];
+  const seen = cashSeen[`${r.origin}-${r.destination}|${r.date}|${cabin}`];
+  if (!x?.miles || !seen) return null;
+  const rate = x.taxes?.currency ? fxCache?.rates?.[x.taxes.currency.toUpperCase()] : null;
+  const tax = x.taxes && rate ? x.taxes.amount * rate : 0;
+  const per = (seen.price - tax) / x.miles;
+  return { per, cash: seen.price, good: per >= GOOD_VALUE, taxKnown: !x.taxes || Boolean(rate) };
+}
+const valueTag = (r, cabin) => {
+  const v = mileValueOf(r, cabin);
+  if (!v) return '';
+  return `<div class="meta value-tag ${v.good ? 'good' : ''}" title="同一天現金票 NT$${fmt(v.cash)}${v.taxKnown ? '' : '，稅金未換算'}">每哩約值 NT$${Math.max(0, v.per).toFixed(2)}${v.good ? '・<b>好價</b>' : ''}</div>`;
+};
+const valueMark = (r, cabin) => {
+  const v = mileValueOf(r, cabin);
+  return v?.good ? `<i class="gv" title="每哩約值 NT$${v.per.toFixed(2)}（同一天現金票 NT$${fmt(v.cash)}）">好價</i>` : '';
+};
+
+// ---------- cash price tracking (server-side, checked every morning) ----------
+const watchCfg = { on: false };
+const watchSummary = (w) => `${w.origin} → ${w.destination}　${mmdd(w.depart)}${w.ret ? ` – ${mmdd(w.ret)} 來回` : ' 單程'}　${CABIN_LABEL[w.cabin]}${w.adults > 1 ? `　${w.adults} 人` : ''}`;
+function watchFormHtml() {
+  return `<form class="watch-form" id="watch-form">
+    <p class="hint">每天早上 7 點（台灣時間）重查一次這組票價，比現在便宜就寄信通知你。每組每天用掉 1 次查價額度，最多同時追蹤 5 組。</p>
+    <div class="w-add"><input type="email" name="email" placeholder="通知信箱（可留空，只在網站顯示）" autocomplete="email" value="${esc(store.get(ALERT_EMAIL_KEY, ''))}">
+    <button type="submit" class="primary">開始追蹤</button><button type="button" class="outline" id="watch-cancel">取消</button></div>
+  </form>`;
+}
+function bindWatchButton(box) {
+  const btn = $('#cash-watch', box);
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const host = $('#watch-slot', box);
+    host.innerHTML = watchFormHtml();
+    const f = $('#watch-form', host);
+    $('#watch-cancel', f).addEventListener('click', () => { host.innerHTML = ''; });
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const r = cash.req;
+      const sub = $('button[type=submit]', f);
+      sub.disabled = true;
+      try {
+        const email = f.email.value.trim();
+        store.set(ALERT_EMAIL_KEY, email);
+        const body = await cashApi('/api/watch', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ origin: r.origin, destination: r.destination, depart: r.depart, ret: r.ret, cabin: r.cabin, adults: r.adults, stops: r.stops, flights: cash.chosen.out.segments.map((x) => (x.flightNumber || '').replace(/\s/g, '')).join('+'), email }) });
+        host.innerHTML = `<p class="status">📉 已開始追蹤，目前 ${money(body.watch.lastPrice)}。${email ? '降價會寄信到你的信箱' : '降價時會顯示在「降價追蹤」'}。</p>`;
+        loadWatches();
+      } catch (err) {
+        toast(err.message);
+        sub.disabled = false;
+      }
+    });
+  });
+}
+async function loadWatches() {
+  const panel = $('#watch-panel');
+  const box = $('#watch-body');
+  if (!panel || !box) return;
+  panel.hidden = !watchCfg.on;
+  if (!watchCfg.on || !panel.open) return;
+  box.innerHTML = '<p class="hint">載入中…</p>';
+  try {
+    const body = await cashApi('/api/watch');
+    const list = body.watches || [];
+    $('#watch-count').textContent = list.length ? `（${list.length}）` : '';
+    box.innerHTML = list.length ? `<ul class="alert-list">${list.map((w) => {
+      const diff = w.lastPrice && w.startPrice ? w.lastPrice - w.startPrice : 0;
+      return `<li>
+        <div><b>${esc(watchSummary(w))}</b>${w.email ? `<small>→ ${esc(w.email)}</small>` : '<small>只在網站顯示</small>'}</div>
+        <div class="hint">${w.flights ? `追蹤 ${esc(w.flights.replace(/\+/g, '、'))}` : '追蹤最便宜票價'}：現在 <b>${money(w.lastPrice)}</b>${diff ? `（比開始時${diff < 0 ? `<b class="new">便宜 NT$${fmt(-diff)}</b>` : `貴 NT$${fmt(diff)}`}）` : ''}${w.lastLowest && w.lastLowest < (w.lastPrice || Infinity) ? `；同天最低 ${money(w.lastLowest)}` : ''}${w.pickedGone ? '；原航班已查不到，改看最低價' : ''}　${w.lastRun ? `${ago(w.lastRun)}檢查` : ''}${w.lastError ? `　⚠ ${esc(w.lastError)}` : ''}</div>
+        <div class="alert-actions">${sparkline((w.history || []).map(([d, p]) => [d, p]))}<button type="button" class="outline" data-wdel="${esc(w.id)}">停止追蹤</button></div>
+      </li>`;
+    }).join('')}</ul>` : '<p class="hint">還沒有追蹤。在買機票選好航班後，按「📉 追蹤降價」。</p>';
+    $$('[data-wdel]', box).forEach((b) => b.addEventListener('click', async () => {
+      try { await cashApi(`/api/watch?id=${encodeURIComponent(b.dataset.wdel)}`, { method: 'DELETE' }); toast('已停止追蹤'); loadWatches(); } catch (err) { toast(err.message); }
+    }));
+  } catch (err) {
+    box.innerHTML = `<p class="status error">${esc(err.message)}</p>`;
+  }
+}
+
 function initFeatures() {
   wallet = loadWallet();
+  cashSeen = loadCashSeen();
+  if (Object.keys(cashSeen).length && !fxCache) api('/api/fx').then((f) => { fxCache = f; }).catch(() => {});
+  $('#watch-panel')?.addEventListener('toggle', loadWatches);
   plan = cleanPlan(store.get(PLAN_KEY, null));
   readSharedPlan();
   renderPlan();
