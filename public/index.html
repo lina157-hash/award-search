@@ -25,6 +25,7 @@
         <button role="tab" data-tab="search" aria-selected="true">航線查詢</button>
         <button role="tab" data-tab="explore">區域探索</button>
         <button role="tab" data-tab="cash">買機票</button>
+        <button role="tab" data-tab="points">點數轉里程</button>
         <button role="tab" data-tab="rules">規則庫</button>
       </nav>
     </div>
@@ -213,6 +214,17 @@
         <div id="cash-status" class="status" aria-live="polite"></div>
         <div id="cash-results"></div>
       </div>
+    </section>
+
+    <!-- ================= 點數轉里程 ================= -->
+    <section id="tab-points" class="panel" hidden>
+      <div class="hero slim">
+        <div class="wrap">
+          <h1>台灣信用卡點數轉里程</h1>
+          <p class="lead">輸入手上的點數或想要的哩程，比較各家銀行能換到多少長榮、亞洲萬里通、華航、新航哩程；下方附各銀行轉點規則與直接累積里程的聯名卡，每列都有來源。</p>
+        </div>
+      </div>
+      <div class="wrap"><div id="points-page"></div></div>
     </section>
 
     <!-- ================= 規則庫 ================= -->
