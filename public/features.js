@@ -230,7 +230,7 @@ function earnHtml(program, miles) {
     parts.push(`<h4>繞路：先轉飯店點數</h4><p class="earn-detour">${esc(names.slice(0, 3).join('、'))}${names.length > 3 ? ` 等 ${names.length} 家` : ''}的點數可以轉進來，比率通常比直接轉差、也要多等幾天。${rd ? `你的點數經 ${esc(data.points.calc.hotels.programs[rd.hotel])} 繞路最多約 <b>${fmt(rd.miles)} 哩</b>。` : ''}
       <button type="button" class="linklike" data-earn-detour="${esc(key)}" data-miles="${miles}">試算繞路 →</button></p>`);
   }
-  parts.push(`<p class="hint">點數換算用的是「點數工具」的同一份比率（最低點數、轉換單位都算進去，加贈另計）。${walletEmpty() ? '<button type="button" class="linklike" data-earn-wallet>填我的點數</button>，就能看自己的點數夠不夠。' : ''}</p>`);
+  parts.push(`<p class="hint">點數換算用的是「點數換算器」的同一份比率（最低點數、轉換單位都算進去，加贈另計）。${walletEmpty() ? '<button type="button" class="linklike" data-earn-wallet>填我的點數</button>，就能看自己的點數夠不夠。' : ''}</p>`);
   return `<details class="earn"><summary><span class="earn-title">怎麼湊到這些哩</span><small class="earn-sum">${sum}</small></summary>
     <div class="earn-body"><p class="earn-goal">要換：${esc(programName(key))}　<b>${fmt(miles)} 哩</b></p>${parts.join('')}</div></details>`;
 }
@@ -249,7 +249,7 @@ function openProgramCard(id) {
   el.classList.add('flash');
   setTimeout(() => el.classList.remove('flash'), 1600);
 }
-// 試算繞路: 點數工具 › 繞路兌換 with this program and the miles filled in.
+// 試算繞路: 點數換算器 › 繞路兌換 with this program and the miles filled in.
 function openDetourFor(key, miles) {
   $$('dialog[open]').forEach((d) => d.close());
   Object.assign(detour, { air: key, mode: 'm2p', amount: miles });
@@ -348,7 +348,7 @@ function setPointsView(v) {
 function bindPointsTabs(host) {
   $$('input[name=points-view]', host).forEach((i) => i.addEventListener('change', () => { setPointsView(i.value); showTab('points'); renderPoints(); }));
 }
-// 「去填點數」 from the results: straight to 點數工具 › 我的點數.
+// 「去填點數」 from the results: straight to 點數換算器 › 我的點數.
 function openWallet() {
   setPointsView('wallet');
   const first = !tabDone.has('points');

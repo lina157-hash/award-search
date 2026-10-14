@@ -2415,7 +2415,7 @@ function pointsHtml() {
       <td><b>${esc(r.bank)}</b><small>${esc(r.card)}</small></td><td data-l="累積到">${esc(r.program)}</td><td data-l="累積率"><b>${esc(r.earn)}</b></td><td data-l="說明">${r.notes ? esc(r.notes) : ''}</td><td data-l="來源">${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
   return `<h2 class="section" id="points-rules">台灣信用卡點數轉里程</h2>
     <p class="hint">${esc(pts.disclaimer)}（最後整理：${esc(pts.lastReviewed)}）</p>
-    ${pts.calc?.sources?.length ? '<p class="hint tab-link-hint">想直接算手上的點數能換多少哩？用「<a href="#points" data-tab-link="points">點數工具</a>」分頁。</p>' : ''}
+    ${pts.calc?.sources?.length ? '<p class="hint tab-link-hint">想直接算手上的點數能換多少哩？用「<a href="#points" data-tab-link="points">點數換算器</a>」分頁。</p>' : ''}
     ${pts.transfers.length ? `<div class="filters points-filter"><button type="button" class="chip on" data-p="">全部計畫</button>${keys.map(([k, label]) => `<button type="button" class="chip" data-p="${esc(k)}">${esc(label)}</button>`).join('')}</div>
     <div class="table-wrap points-table"><table id="points-table"><thead><tr><th>銀行／點數</th><th>轉到</th><th>比率</th><th>說明</th><th>來源</th></tr></thead><tbody>${transferRows}</tbody></table></div>
     <p class="hint" id="points-empty" hidden>這個計畫目前沒有整理到的轉點管道。</p>` : ''}
