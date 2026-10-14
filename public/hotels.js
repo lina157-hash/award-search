@@ -11,6 +11,105 @@ const SL_HOTELS_URL = 'https://www.shangri-la.com/en/find-a-hotel/';
 // Typical value of one point in US cents (The Points Guy, 2026/10). A stay worth 30% more than this is marked as a good use.
 const POINT_VALUE_CENTS = { marriott: 0.75, hilton: 0.4, ihg: 0.6, hyatt: 1.7 };
 const HOTEL_GOOD = 1.3;
+// Brands of the four chains, for the brand filter and the 等級 sort. rooms.aero has no star rating, so 等級 is each chain's
+// own brand tier (4 奢華 luxury, 3 高級 premium/full service, 2 精選 select/lifestyle, 1 經濟 midscale/essentials).
+// rooms.aero's brand codes are matched first (they differ per chain and are not always the obvious ones, e.g. IHG HICP is
+// Crowne Plaza), then the hotel name. Order matters: longer names before the ones they contain.
+const HOTEL_TIERS = { 4: '奢華', 3: '高級', 2: '精選', 1: '經濟' };
+const HOTEL_BRANDS = [
+  // [chain, English, 中文, tier, rooms.aero codes, name pattern]
+  ['marriott', 'Ritz-Carlton', '麗思卡爾頓', 4, ['RZ'], /ritz-carlton/i],
+  ['marriott', 'St. Regis', '瑞吉', 4, ['XR'], /st\.? regis/i],
+  ['marriott', 'Luxury Collection', '豪華精選', 4, ['LC'], /luxury collection/i],
+  ['marriott', 'EDITION', 'EDITION', 4, ['EB'], /\bedition\b/i],
+  ['marriott', 'Bulgari', '寶格麗', 4, ['BG'], /bulgari/i],
+  ['marriott', 'JW Marriott', 'JW 萬豪', 4, ['JW'], /\bjw marriott/i],
+  ['marriott', 'W Hotels', 'W 酒店', 4, ['WH'], /^w /i],
+  ['marriott', 'Autograph Collection', '傲途格精選', 3, ['AK'], /autograph collection/i],
+  ['marriott', 'Tribute Portfolio', '臻品之選', 3, ['TX'], /tribute portfolio/i],
+  ['marriott', 'Design Hotels', 'Design Hotels', 3, ['DS'], /design hotels/i],
+  ['marriott', 'Four Points Flex', '福朋 Flex', 1, ['XF'], /four points flex/i],
+  ['marriott', 'Four Points', '福朋喜來登', 2, ['FP'], /four points/i],
+  ['marriott', 'Sheraton', '喜來登', 3, ['SI'], /sheraton/i],
+  ['marriott', 'Westin', '威斯汀', 3, ['WI'], /westin/i],
+  ['marriott', 'Le Méridien', '艾美', 3, ['MD'], /m[ée]ridien/i],
+  ['marriott', 'Renaissance', '萬麗', 3, ['BR'], /renaissance/i],
+  ['marriott', 'Delta', '德爾塔', 3, ['DE'], /^delta hotels/i],
+  ['marriott', 'Marriott Executive Apartments', '萬豪行政公寓', 3, ['ER'], /executive apartments/i],
+  ['marriott', 'Courtyard', '萬怡', 2, ['CY'], /courtyard/i],
+  ['marriott', 'AC Hotels', 'AC 酒店', 2, ['AR'], /^ac hotel/i],
+  ['marriott', 'Aloft', '雅樂軒', 2, ['AL'], /aloft/i],
+  ['marriott', 'Moxy', 'Moxy', 2, ['OX'], /moxy/i],
+  ['marriott', 'Element', '源宿', 2, ['EL'], /^element /i],
+  ['marriott', 'Residence Inn', '萬豪居家', 2, ['RI'], /residence inn/i],
+  ['marriott', 'SpringHill Suites', 'SpringHill Suites', 2, ['SH'], /springhill/i],
+  ['marriott', 'Fairfield', '萬楓', 2, ['FI'], /fairfield/i],
+  ['marriott', 'TownePlace Suites', 'TownePlace Suites', 2, ['TS'], /towneplace/i],
+  ['marriott', 'City Express', 'City Express', 1, ['CE'], /city express/i],
+  ['marriott', 'Marriott', '萬豪酒店', 3, ['MC'], /marriott/i],
+  ['ihg', 'Six Senses', '六善', 4, ['SIXS'], /six senses/i],
+  ['ihg', 'Regent', '麗晶', 4, ['RGNT'], /^regent /i],
+  ['ihg', 'InterContinental', '洲際酒店', 4, ['ICON', 'ICAN'], /intercontinental/i],
+  ['ihg', 'Vignette Collection', 'Vignette Collection', 3, ['LXLX'], /vignette/i],
+  ['ihg', 'Kimpton', '金普頓', 3, ['KIKI'], /kimpton/i],
+  ['ihg', 'Hotel Indigo', '英迪格', 3, ['INDG'], /hotel indigo/i],
+  ['ihg', 'HUALUXE', '華邑', 3, ['HULX'], /hualuxe/i],
+  ['ihg', 'voco', 'voco', 3, ['VXVX'], /^voco /i],
+  ['ihg', 'Crowne Plaza', '皇冠假日', 3, ['CRWN', 'CPAN', 'HICP'], /crowne plaza/i],
+  ['ihg', 'EVEN Hotels', 'EVEN', 2, ['EVEN'], /^even hotel/i],
+  ['ihg', 'Holiday Inn Express', '智選假日', 1, ['HIEX', 'HEXS'], /holiday inn express/i],
+  ['ihg', 'Staybridge Suites', 'Staybridge Suites', 2, ['STAY'], /staybridge/i],
+  ['ihg', 'Candlewood Suites', 'Candlewood Suites', 1, ['CWSU'], /candlewood/i],
+  ['ihg', 'Holiday Inn', '假日', 2, ['HOLI', 'HIAN', 'RESO'], /holiday inn/i],
+  ['ihg', 'avid', 'avid', 1, ['AVID'], /^avid /i],
+  ['ihg', 'Garner', 'Garner', 1, ['GRNR'], /^garner /i],
+  ['hilton', 'Waldorf Astoria', '華爾道夫', 4, ['WA'], /waldorf/i],
+  ['hilton', 'LXR', 'LXR', 4, ['OL'], /\blxr\b/i],
+  ['hilton', 'Conrad', '康萊德', 4, ['CH'], /conrad/i],
+  ['hilton', 'SLH', 'SLH 小型奢華酒店', 4, ['LX'], /\bslh\b|small luxury/i],
+  ['hilton', 'Curio Collection', 'Curio Collection', 3, ['QQ'], /curio collection/i],
+  ['hilton', 'Tapestry Collection', 'Tapestry Collection', 3, ['UP'], /tapestry collection/i],
+  ['hilton', 'Canopy', 'Canopy', 3, ['PY'], /^canopy /i],
+  ['hilton', 'Signia', 'Signia', 3, ['SA'], /signia/i],
+  ['hilton', 'DoubleTree', '希爾頓逸林', 3, ['DT'], /doubletree/i],
+  ['hilton', 'Embassy Suites', 'Embassy Suites', 3, ['ES'], /embassy suites/i],
+  ['hilton', 'Hilton Garden Inn', '希爾頓花園', 2, ['GI'], /hilton garden inn/i],
+  ['hilton', 'Homewood Suites', 'Homewood Suites', 2, ['HW'], /homewood/i],
+  ['hilton', 'Home2 Suites', 'Home2 Suites', 2, ['HT'], /home2/i],
+  ['hilton', 'Motto', 'Motto', 2, ['UA'], /^motto /i],
+  ['hilton', 'Tempo', 'Tempo', 2, ['TE'], /^tempo /i],
+  ['hilton', 'Hampton', '歡朋', 1, ['HP'], /hampton/i],
+  ['hilton', 'Tru', 'Tru', 1, ['RU'], /^tru by hilton/i],
+  ['hilton', 'Spark', 'Spark', 1, ['SP'], /^spark by hilton/i],
+  ['hilton', 'Hilton', '希爾頓酒店', 3, ['HI'], /hilton/i],
+  ['hyatt', 'Park Hyatt', '柏悅', 4, ['park'], /park hyatt/i],
+  ['hyatt', 'Alila', '阿麗拉', 4, ['alila'], /^alila /i],
+  ['hyatt', 'Andaz', '安達仕', 4, ['andaz'], /^andaz /i],
+  ['hyatt', 'Thompson', 'Thompson', 4, ['thompson'], /^thompson /i],
+  ['hyatt', 'Miraval', 'Miraval', 4, ['miraval'], /miraval/i],
+  ['hyatt', 'Grand Hyatt', '君悅', 3, ['grand'], /grand hyatt/i],
+  ['hyatt', 'Hyatt Regency', '凱悅酒店', 3, ['regency'], /hyatt regency/i],
+  ['hyatt', 'Hyatt Centric', '凱悅尚萃', 3, ['centric'], /hyatt centric/i],
+  ['hyatt', 'Unbound Collection', 'Unbound Collection', 3, ['unbound'], /unbound collection/i],
+  ['hyatt', 'JdV by Hyatt', 'JdV', 3, ['jdv'], /jdv by hyatt/i],
+  ['hyatt', 'Dream', 'Dream', 3, ['dream'], /^dream /i],
+  ['hyatt', 'Hyatt Vivid', 'Hyatt Vivid', 3, ['vivid'], /hyatt vivid/i],
+  ['hyatt', 'Destination by Hyatt', 'Destination by Hyatt', 3, ['destination'], /destination by hyatt/i],
+  ['hyatt', 'Hyatt Place', '凱悅嘉軒', 2, ['place'], /hyatt place/i],
+  ['hyatt', 'Hyatt House', '凱悅嘉寓', 2, ['house'], /hyatt house/i],
+  ['hyatt', 'Caption', 'Caption', 2, ['caption'], /caption by hyatt/i],
+  ['hyatt', 'Unscripted', 'Unscripted', 2, ['unscripted'], /unscripted/i],
+  ['hyatt', 'Hyatt Studios', 'Hyatt Studios', 1, ['studios'], /hyatt studios/i],
+  ['hyatt', 'Hyatt Select', 'Hyatt Select', 1, ['select'], /hyatt select/i],
+  ['hyatt', 'UrCove', '逸扉', 1, ['urcove'], /urcove/i],
+  ['hyatt', 'Hyatt', '凱悅', 3, ['hyatt'], /hyatt/i],
+].map(([source, en, zh, tier, codes, re]) => ({ source, en, zh, tier, codes, re }));
+// The brand of one rooms.aero hotel: its code, else its name, else the chain itself (other brand, tier unknown).
+function hotelBrand(h) {
+  const mine = HOTEL_BRANDS.filter((b) => b.source === h.source);
+  return mine.find((b) => b.codes.includes(h.brand)) || mine.find((b) => b.re.test(h.name || ''))
+    || { source: h.source, en: `${HOTEL_SHORT[h.source] || h.program} 其他品牌`, zh: '', tier: 0 };
+}
 const HOTEL_KEY = 'hotelSearch:v1';
 seq.hotels = 0;
 const hotelState = { where: '', date: '', flex: 7, nights: 1, programs: ['marriott', 'hilton', 'ihg', 'hyatt'], sort: 'points', affordOnly: false, results: null, params: null };
@@ -112,6 +211,7 @@ async function searchHotels() {
     if (!fresh()) return;
     done();
     hotelState.results = body;
+    Object.assign(hotelState, { brands: new Set(), minTier: 0 });
     hotelState.params = { ...params, date, flex };
     status.textContent = '';
     renderHotels();
@@ -284,27 +384,57 @@ function hotelAffordHtml(source, points) {
 }
 const hotelAfford = (h) => !walletEmpty() && hotelPrograms()[h.source] && h.standard && reachHotel(h.source).total >= h.standard.points;
 
+// Filters and order for the points list: brands (several), lowest brand tier, and the sort. All on screen, no new search.
+const brandKey = (b) => `${b.source}:${b.en}`;
+const brandLabel = (b) => (b.zh && b.zh !== b.en ? `${b.zh} ${b.en}` : b.en);
+const stayOf = (h) => h.standard || h.suite;
+const HOTEL_SORTS = {
+  points: ['點數最少', (a, b) => stayOf(a).points - stayOf(b).points],
+  'points-desc': ['點數最多', (a, b) => stayOf(b).points - stayOf(a).points],
+  value: ['每點最值錢', (a, b) => (b.cpp || 0) - (a.cpp || 0)],
+  tier: ['等級高到低', (a, b) => b.b.tier - a.b.tier || stayOf(a).points - stayOf(b).points],
+  'tier-asc': ['等級低到高', (a, b) => a.b.tier - b.b.tier || stayOf(a).points - stayOf(b).points],
+  brand: ['依品牌', (a, b) => a.source.localeCompare(b.source) || b.b.tier - a.b.tier || a.b.en.localeCompare(b.b.en) || stayOf(a).points - stayOf(b).points],
+};
+function hotelFilterBar(all) {
+  const count = new Map();
+  for (const h of all) { const k = brandKey(h.b); count.set(k, { b: h.b, n: (count.get(k)?.n || 0) + 1 }); }
+  const picked = hotelState.brands || new Set();
+  const chains = ROOMS_PROGRAMS.map((src) => [src, [...count.values()].filter((x) => x.b.source === src).sort((x, y) => y.b.tier - x.b.tier || y.n - x.n)]).filter(([, v]) => v.length);
+  const chip = ({ b, n }) => `<label class="h-chip"><input type="checkbox" name="h-brand" value="${esc(brandKey(b))}" ${picked.has(brandKey(b)) ? 'checked' : ''}><span>${esc(b.zh || b.en)}<small>${n}</small></span></label>`;
+  const tiers = [[0, '全部等級'], [4, '只看奢華'], [3, '高級以上'], [2, '精選以上']];
+  return `<div class="h-filters">
+      <label class="field compact">排序<select id="h-sort">${Object.entries(HOTEL_SORTS).map(([v, [t]]) => `<option value="${v}" ${hotelState.sort === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label class="field compact" title="依各集團自己的品牌分級：奢華、高級、精選、經濟（rooms.aero 沒有星級資料）">等級<select id="h-tier">${tiers.map(([v, t]) => `<option value="${v}" ${(hotelState.minTier || 0) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <details class="h-brandbox"${hotelState.brandsOpen ? ' open' : ''}><summary>品牌${picked.size ? `（已選 ${picked.size} 個）` : `（${count.size} 個）`}</summary>
+        ${chains.map(([src, v]) => `<div class="h-brandrow"><b>${esc(HOTEL_SHORT[src])}</b><div class="h-progs">${v.map(chip).join('')}</div></div>`).join('')}
+        ${picked.size ? '<button type="button" class="linklike" data-h-brands-clear>清除品牌篩選</button>' : ''}
+      </details>
+    </div>`;
+}
 function renderHotels() {
   const out = $('#h-rooms-out');
   const body = hotelState.results;
   if (!body) return;
-  let list = [...body.hotels].filter((h) => h.standard || h.suite);
+  const all = body.hotels.filter((h) => h.standard || h.suite).map((h) => ({ ...h, b: hotelBrand(h) }));
+  const brands = hotelState.brands || new Set();
+  let list = all.filter((h) => (!brands.size || brands.has(brandKey(h.b))) && (!hotelState.minTier || h.b.tier >= hotelState.minTier));
   if (hotelState.affordOnly) list = list.filter(hotelAfford);
-  if (hotelState.sort === 'value') list.sort((a, b) => (b.cpp || 0) - (a.cpp || 0));
+  list.sort(HOTEL_SORTS[hotelState.sort]?.[1] || HOTEL_SORTS.points[1]);
   const p = hotelState.params;
   const n = p.nights;
   const head = `<div class="h-bar">
-    <span>${body.mock ? '<b>示範資料</b>・' : ''}找到 ${fmt(list.length)} 家有點數房的飯店${body.hasMore ? '（只列前 100 家）' : ''}${p.flex ? `，每家列出 ${dayLabel(p.date)} 前後 ${p.flex} 天最便宜的一晚` : ''}</span>
-    <label class="field compact">排序<select id="h-sort"><option value="points" ${hotelState.sort === 'points' ? 'selected' : ''}>點數最少</option><option value="value" ${hotelState.sort === 'value' ? 'selected' : ''}>每點最值錢</option></select></label>
+    <span>${body.mock ? '<b>示範資料</b>・' : ''}${list.length < all.length ? `${fmt(all.length)} 家裡符合篩選的有 ${fmt(list.length)} 家` : `找到 ${fmt(list.length)} 家有點數房的飯店`}${body.hasMore ? '（只列前 100 家）' : ''}${p.flex ? `，每家列出 ${dayLabel(p.date)} 前後 ${p.flex} 天最便宜的一晚` : ''}</span>
     ${walletEmpty() ? '' : `<label class="switch"><input type="checkbox" id="h-afford" ${hotelState.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>`}
-  </div>`;
+  </div>
+  ${hotelFilterBar(all)}`;
   const card = (h) => {
     const s = h.standard || h.suite;
     const cash = toTwd(s.cash);
     const where = [cityZh(h.city), countryName(h.country)].filter(Boolean).join('，');
     return `<article class="hotel" data-hotel="${esc(h.id)}">
       <div class="hotel-main">
-        <div><span class="pill h-${esc(h.source)}">${esc(HOTEL_SHORT[h.source] || h.program)}</span>${h.category ? ` <small>第 ${esc(h.category)} 類</small>` : ''}</div>
+        <div><span class="pill h-${esc(h.source)}">${esc(HOTEL_SHORT[h.source] || h.program)}</span> <small class="inline">${esc(brandLabel(h.b))}</small>${h.b.tier ? ` <small class="inline h-tier t${h.b.tier}">${HOTEL_TIERS[h.b.tier]}</small>` : ''}${h.category ? ` <small>第 ${esc(h.category)} 類</small>` : ''}</div>
         <h3>${esc(h.name)}</h3>
         <small class="muted">${esc(where)}${h.availabilityPct != null ? `・近 90 天約 ${h.availabilityPct}% 的日子有點數房` : ''}</small>
       </div>
@@ -325,9 +455,18 @@ function renderHotels() {
     </article>`;
   };
   if (!out) return;
-  out.innerHTML = head + (list.length ? `<div class="hotel-list">${list.map(card).join('')}</div>` : `<p class="hint">${hotelState.affordOnly ? '用你的點數換得起的飯店都沒有空房，關掉「只看我換得起的」看看全部。' : '這段日期沒有找到點數房。可以放寬日期彈性、換晚數，或換個城市。'}</p>`)
+  out.innerHTML = head + (list.length ? `<div class="hotel-list">${list.map(card).join('')}</div>` : `<p class="hint">${hotelState.affordOnly ? '用你的點數換得起的飯店都沒有空房，關掉「只看我換得起的」看看全部。' : all.length ? '沒有符合篩選條件的飯店，換個品牌或等級看看。' : '這段日期沒有找到點數房。可以放寬日期彈性、換晚數，或換個城市。'}</p>`)
     + `<p class="hint">點數價是整段住宿合計；「每點約」是同一晚現金價除以點數，好價代表高於 The Points Guy 估值的 1.3 倍。點數房會變動，訂房前以飯店官網為準。資料約每 1 到 3 週更新一次，太久沒更新的會以灰字標示。</p>`;
   $('#h-sort', out)?.addEventListener('change', (e) => { hotelState.sort = e.target.value; renderHotels(); });
+  $('#h-tier', out)?.addEventListener('change', (e) => { hotelState.minTier = Number(e.target.value); renderHotels(); });
+  $('.h-brandbox', out)?.addEventListener('toggle', (e) => { hotelState.brandsOpen = e.target.open; });
+  $('[data-h-brands-clear]', out)?.addEventListener('click', () => { hotelState.brands = new Set(); renderHotels(); });
+  $$('input[name="h-brand"]', out).forEach((c) => c.addEventListener('change', () => {
+    const set = new Set(hotelState.brands);
+    if (c.checked) set.add(c.value); else set.delete(c.value);
+    hotelState.brands = set;
+    renderHotels();
+  }));
   $('#h-afford', out)?.addEventListener('change', (e) => { hotelState.affordOnly = e.target.checked; renderHotels(); });
 }
 

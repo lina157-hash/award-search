@@ -682,6 +682,17 @@ details.release li { margin: 3px 0; }
   .hotel { grid-template-columns: minmax(0, 1fr); }
   .hotel-actions { flex-direction: row; align-items: center; justify-content: space-between; }
 }
+/* Points-list filters: sort and tier selects, then a fold-out of brand chips per chain */
+.h-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; }
+.h-brandbox { flex: 1 1 100%; }
+.h-brandbox summary { cursor: pointer; font-weight: 600; font-size: .92rem; padding: 4px 0; }
+.h-brandrow { display: flex; align-items: flex-start; gap: 10px; margin: 6px 0; }
+.h-brandrow > b { flex: 0 0 3.2em; padding-top: 8px; font-size: .88rem; }
+.h-brandrow .h-progs { flex: 1 1 auto; }
+.hotel .h-tier { border-radius: 999px; padding: 1px 8px; font-size: .75rem; background: var(--surface-2); color: var(--muted); }
+.hotel .h-tier.t4 { color: #8a5a00; background: #fff1cc; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hotel .h-tier.t4 { color: #ffd98a; background: #4a3a10; } }
+:root[data-theme="dark"] .hotel .h-tier.t4 { color: #ffd98a; background: #4a3a10; }
 /* 雅高 filters: brand chips, star select and the refetch button on one wrapping row */
 .accor-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; margin: 6px 0 12px; }
 .accor-filters .h-progs { flex: 1 1 100%; }
