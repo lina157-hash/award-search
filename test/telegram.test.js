@@ -5,7 +5,7 @@ delete process.env.SEATS_AERO_API_KEY;
 delete process.env.CASH_PASSCODE;
 delete process.env.TELEGRAM_BOT_TOKEN;
 const { server } = require('../server');
-const { telegramClient, createTelegram, pickChat, LINKED_TEXT, TelegramError } = require('../lib/telegram');
+const { telegramClient, createTelegram, pickChat, LINKED_TEXT, TEST_TEXT, TelegramError } = require('../lib/telegram');
 const { memoryKv } = require('../lib/kv');
 const { memoryStore } = require('../lib/alerts');
 
@@ -48,6 +48,11 @@ test('linking picks the newest private chat that sent /start and says hello', as
   assert.ok(bot.calls.every((c) => c.path === '/bot123:SECRET/' + c.method));
   assert.equal(bot.calls.at(-1).body.offset, 13, 'old messages are marked read');
   assert.equal((await kv.get('telegram:v1')).chatId, 42);
+  // 「傳送測試訊息」 goes to the linked chat.
+  assert.deepEqual(await t.test(), { sent: true, name: 'Lina C' });
+  assert.deepEqual([bot.calls.at(-1).body.chat_id, bot.calls.at(-1).body.text], [42, TEST_TEXT]);
+  await assert.rejects(createTelegram({ client: bot.client, kv: memoryKv() }).test(), (e) => e.code === 'not-linked');
+  await assert.rejects(createTelegram({ client: fakeBot({ fail: true }).client, kv }).test(), (e) => e.code === 'blocked');
   // A fresh instance reads the link from the shared store.
   assert.equal((await createTelegram({ client: bot.client, kv }).status()).linked, true);
   await t.unlink();
@@ -114,6 +119,7 @@ test('telegram endpoints: demo bot, passcode gate, config flags', async () => {
   const st = await (await fetch(`${base}/api/telegram`)).json();
   assert.equal(st.linked, true);
   assert.equal((await fetch(`${base}/api/telegram/link`)).status, 400, 'link is a POST');
+  assert.equal((await (await fetch(`${base}/api/telegram/test`, { method: 'POST' })).json()).sent, true);
   process.env.CASH_PASSCODE = 'pw';
   try {
     assert.equal((await fetch(`${base}/api/telegram`)).status, 401);

@@ -327,7 +327,8 @@ async function handleAlerts(req, q, sub) {
   return { configured: true, email: Boolean(alertMailer), alerts: await alerts.list() };
 }
 
-// /api/telegram: GET status, POST /api/telegram/link links the newest chat that sent /start to the bot, DELETE unlinks.
+// /api/telegram: GET status, POST /api/telegram/link links the newest chat that sent /start to the bot,
+// POST /api/telegram/test sends a test message to the linked chat, DELETE unlinks.
 // Linking decides where the owner's alerts go, so it needs the passcode to be set (except in the demo).
 async function handleTelegram(req, sub) {
   const ok = cashPasscode() ? await cashOk(req) : TELEGRAM_MOCK;
@@ -336,6 +337,10 @@ async function handleTelegram(req, sub) {
   if (sub === 'link') {
     if (req.method !== 'POST') throw new BadRequest('請用 POST');
     return { ...(await telegram.link()), ...mock };
+  }
+  if (sub === 'test') {
+    if (req.method !== 'POST') throw new BadRequest('請用 POST');
+    return { ...(await telegram.test()), ...mock };
   }
   if (sub) throw new BadRequest('未知的 Telegram 操作');
   if (req.method === 'DELETE') return { ...(await telegram.unlink()), ...mock };
@@ -865,9 +870,9 @@ async function route(req, res) {
       if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return await handleAccount(req, res, am[1] || '');
     }
-    if (p === '/api/telegram' || p === '/api/telegram/link') {
+    if (p === '/api/telegram' || p === '/api/telegram/link' || p === '/api/telegram/test') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
-      return sendJson(res, 200, await handleTelegram(req, p.endsWith('/link') ? 'link' : ''));
+      return sendJson(res, 200, await handleTelegram(req, p.endsWith('/link') ? 'link' : p.endsWith('/test') ? 'test' : ''));
     }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
