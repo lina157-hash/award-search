@@ -161,3 +161,20 @@ test('/api/hotels/accor: demo list, validation, passcode, config flag', async ()
     assert.equal((await fetch(`${base}/api/hotels/accor?city=Tokyo&checkin=${isoIn(30)}&checkout=${isoIn(31)}`)).status, 401);
   } finally { delete process.env.CASH_PASSCODE; }
 });
+
+test('brand filter: when the city filter list cannot be read, the known Accor brand ids are used', async () => {
+  const seen = [];
+  const fetchImpl = async (url) => {
+    const u = new URL(String(url));
+    seen.push(u.pathname);
+    if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: Buffer.from(JSON.stringify({ dest_id: '-246227', dest_type: 'city' })).toString('base64'), name: 'Tokyo' }] });
+    if (u.pathname === '/stays/get-filters') return Response.json({ status: true, data: { something: 'else' } });
+    assert.equal(u.searchParams.get('categoriesFilter'), 'chaincode::1050,chaincode::1053');
+    return Response.json({ status: true, data: [{ id: 1, name: 'Novotel Tokyo Shinjuku', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } }] });
+  };
+  const lookup = bookingHotels({ apiKey: 'r', kv: memoryKv(), fetchImpl });
+  const r = await lookup.city({ city: 'Tokyo', checkin: '2026-11-22', checkout: '2026-11-24', adults: 2, lat: null, lon: null }, { brands: isAccorTitle, brandIds: ['chaincode::1050', 'chaincode::1053'] });
+  assert.deepEqual(seen, ['/stays/auto-complete', '/stays/get-filters', '/stays/search']);
+  assert.equal(r.hotels.length, 1);
+  assert.match(r.debug.filters.shape, /something/);
+});
