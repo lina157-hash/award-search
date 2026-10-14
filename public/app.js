@@ -1276,6 +1276,7 @@ function renderSearch() {
       <div><b>亞洲萬里通估算</b>　國泰／寰宇一家航班最低約 <b class="am-miles">${fmt(amRows[0].cabins[c].miles)} 哩</b>（${mmdd(amRows[0].date)} ${esc(amRows[0].origin)} → ${esc(amRows[0].destination)}，${amRows[0].cabins[c].kind === 'cx' ? '國泰航班' : '夥伴航班'}）</div>
       <div class="hint">依 2026-05-01 起的距離哩數表推算，實際座位與價格請至國泰官網確認；轉機行程依各段距離相加，可能落在更高區間。<a href="#rules" data-goto="rules">看哩數表</a></div>
     </div>` : ''}
+    ${typeof cxBadgeHtml === 'function' ? cxBadgeHtml(c) : ''}
     <h2 class="section-title">最划算的選擇 <small>${byCost ? '依台幣成本（哩數 × 每哩成本 ＋ 稅金）；' : allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
     <div class="best${folded ? ' folded' : ''}">${dealHtml}</div>
     ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}
