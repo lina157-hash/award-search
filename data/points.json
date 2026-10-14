@@ -1549,7 +1549,1360 @@
       }
      ]
     }
-   ]
+   ],
+   "toAir": {
+    "researched": "2026-10-14",
+    "note": "飯店轉航空的比率：萬豪、雅高來自官網；洲際、希爾頓、香格里拉的夥伴與比率來自第三方整理，轉之前請到飯店官網確認。",
+    "airlines": {
+     "eva": "長榮 無限萬哩遊",
+     "asiamiles": "國泰 亞洲萬里通",
+     "singapore": "新加坡航空 KrisFlyer",
+     "jal": "日本航空 JMB",
+     "ana": "全日空 ANA 哩程俱樂部",
+     "aeroplan": "加拿大航空 Aeroplan",
+     "alaska": "阿拉斯加 Atmos",
+     "american": "美國航空 AAdvantage",
+     "united": "聯合航空 MileagePlus",
+     "delta": "達美 SkyMiles",
+     "flyingblue": "法荷航 Flying Blue",
+     "british": "英國航空 Avios",
+     "qatar": "卡達航空 Avios",
+     "turkish": "土耳其航空 Miles&Smiles",
+     "emirates": "阿聯酋 Skywards",
+     "etihad": "阿提哈德 Etihad Guest",
+     "lifemiles": "哥倫比亞航空 LifeMiles",
+     "iberia": "西班牙國家航空 Avios",
+     "aerlingus": "愛爾蘭航空 AerClub",
+     "virginatlantic": "維珍航空 Flying Club",
+     "qantas": "澳洲航空 Qantas",
+     "korean": "大韓航空 SKYPASS",
+     "thai": "泰國航空 Royal Orchid Plus",
+     "hainan": "海南航空 金鵬俱樂部",
+     "chinaeastern": "東方航空 東方萬里行",
+     "chinasouthern": "南方航空 明珠俱樂部",
+     "airchina": "中國國航 鳳凰知音",
+     "saudia": "沙烏地航空 Alfursan",
+     "aeromexico": "墨西哥航空 Aeromexico Rewards",
+     "aegean": "愛琴海航空 Miles+Bonus",
+     "copa": "巴拿馬航空 ConnectMiles",
+     "ethiopian": "衣索比亞航空 ShebaMiles",
+     "frontier": "邊疆航空 FRONTIER Miles",
+     "latam": "南美航空 LATAM Pass",
+     "latambr": "南美航空 LATAM Pass 巴西",
+     "southwest": "西南航空 Rapid Rewards",
+     "tap": "葡萄牙航空 Miles&Go",
+     "velocity": "維珍澳洲 Velocity",
+     "vueling": "伏林航空 Vueling Club",
+     "finnair": "芬蘭航空 Finnair Plus",
+     "gulfair": "海灣航空 Falconflyer",
+     "airindia": "印度航空 Maharaja Club",
+     "indigo": "靛藍航空 BluChip",
+     "vietnam": "越南航空 Lotusmiles",
+     "oman": "阿曼航空 Sindbad",
+     "juneyao": "吉祥航空 吉祥會員",
+     "aireuropa": "歐羅巴航空 SUMA",
+     "azul": "藍色巴西航空 Azul Fidelidade",
+     "ita": "義大利航空 Volare",
+     "jetblue": "捷藍航空 TrueBlue",
+     "malaysia": "馬來西亞航空 Enrich",
+     "saa": "南非航空 Voyager",
+     "intermiles": "InterMiles",
+     "airasia": "亞洲航空 AirAsia Rewards"
+    },
+    "hotels": {
+     "marriott": {
+      "minPoints": 3000,
+      "dailyCap": 240000,
+      "increment": 1000,
+      "transferDays": "多數 1–3 天；United 通常近即時，ANA/Aeroplan/新航等可達 4–7 天",
+      "bonus": {
+       "every": 60000,
+       "miles": 5000,
+       "note": "每轉 6 萬點加贈 5,000 哩；聯合航空加贈 10,000；美航、達美、LifeMiles 沒有加贈"
+      },
+      "note": "多數 3:1，每次轉 6 萬點另送 5,000 哩",
+      "sources": [
+       {
+        "label": "Marriott Bonvoy 點數轉哩程（官方）",
+        "url": "https://www.marriott.com/loyalty/redeem/travel/points-to-miles.mi",
+        "official": true
+       },
+       {
+        "label": "Frequent Miler：各夥伴轉點時間",
+        "url": "https://frequentmiler.com/marriott-bonvoy-airline-transfer-partners/",
+        "official": false
+       },
+       {
+        "label": "LoyaltyLobby：衣索比亞航空加入（2026/3）",
+        "url": "https://loyaltylobby.com/2026/03/25/marriott-bonvoy-ethiopian-airlines-shebamiles-launch-two-way-conversions/",
+        "official": false
+       },
+       {
+        "label": "Doctor of Credit：韓亞航移除（2025/6/30）",
+        "url": "https://www.doctorofcredit.com/marriott-removes-asiana-airlines-as-transfer-partner/",
+        "official": false
+       },
+       {
+        "label": "YMMV：夏威夷航空移除（2025/8/20）",
+        "url": "https://yourmileagemayvary.com/2025/08/07/marriott-pulling-the-plug-on-hawaiianmiles-transfers/",
+        "official": false
+       },
+       {
+        "label": "AwardWallet：大韓航空移除（2024/6/17）",
+        "url": "https://awardwallet.com/news/marriott-bonvoy/korean-air-partnership/",
+        "official": false
+       }
+      ],
+      "removed": [
+       {
+        "from": "korean",
+        "date": "2024-06-17",
+        "note": "大韓航空 SKYPASS 停止轉入"
+       },
+       {
+        "from": "asiana",
+        "date": "2025-06-30",
+        "note": "韓亞航 Asiana Club 停止轉入"
+       },
+       {
+        "from": "hawaiian",
+        "date": "2025-08-20",
+        "note": "夏威夷航空併入 Atmos，改轉阿拉斯加"
+       },
+       {
+        "from": "intermiles",
+        "date": "",
+        "note": "官網表列已無，確切停止日期未查得"
+       }
+      ],
+      "partners": [
+       {
+        "to": "aegean",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "aerlingus",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "aeromexico",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "aeroplan",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "airchina",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "flyingblue",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "ana",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "alaska",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "note": "原 Mileage Plan，已更名 Atmos",
+        "confidence": "official"
+       },
+       {
+        "to": "british",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "asiamiles",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "chinasouthern",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "copa",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "emirates",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "ethiopian",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "note": "2026年3月新增（雙向轉換）",
+        "confidence": "official"
+       },
+       {
+        "to": "etihad",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "frontier",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "hainan",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "iberia",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "jal",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "latam",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "latambr",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "note": "巴西 LATAM Pass 帳戶，與一般版分列",
+        "confidence": "official"
+       },
+       {
+        "to": "qantas",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "qatar",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "note": "卡達 Avios 可再 1:1 轉英航 Avios",
+        "confidence": "official"
+       },
+       {
+        "to": "saudia",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "singapore",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "southwest",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "tap",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "thai",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "turkish",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "virginatlantic",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "velocity",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "vueling",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "confidence": "official"
+       },
+       {
+        "to": "united",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": true,
+        "note": "每 6 萬點加贈 1 萬哩（非 5 千）",
+        "confidence": "official",
+        "bonusMiles": 10000
+       },
+       {
+        "to": "american",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": false,
+        "note": "不適用每 6 萬點加贈 5 千哩",
+        "confidence": "official"
+       },
+       {
+        "to": "delta",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": false,
+        "note": "不適用每 6 萬點加贈 5 千哩",
+        "confidence": "official"
+       },
+       {
+        "to": "lifemiles",
+        "hotelPoints": 3,
+        "miles": 1,
+        "bonus": false,
+        "note": "不適用每 6 萬點加贈 5 千哩",
+        "confidence": "official"
+       }
+      ]
+     },
+     "accor": {
+      "minPoints": 2000,
+      "transferDays": "官方稱最長 6 週；實務多為數天至 1 週以上",
+      "note": "多數 2:1（4,000→2,000）；伊比利、維珍澳洲 1:1，卡達 4:3",
+      "sources": [
+       {
+        "label": "ALL 航空夥伴轉換條款（官方）",
+        "url": "https://all.accor.com/a/en/loyalty-program/partners/conditions/airlines.html",
+        "official": true
+       },
+       {
+        "label": "ALL x 卡達航空頁面（官方）",
+        "url": "https://all.accor.com/loyalty-program/partners/qatarairways/index.en.shtml",
+        "official": true
+       },
+       {
+        "label": "ALL x Qantas 頁面（官方）",
+        "url": "https://all.accor.com/loyalty-program/partners/qantas/index.en.shtml",
+        "official": true
+       },
+       {
+        "label": "ALL x Flying Blue 條款（官方，法文）",
+        "url": "https://all.accor.com/a/fr/loyalty-program/partners/conditions/airfranceklm.html",
+        "official": true
+       },
+       {
+        "label": "LoyaltyLobby：卡達比例調升（2025/11）",
+        "url": "https://loyaltylobby.com/2025/11/20/all-accor-qatar-airways-privilege-club-enhance-conversion-ratios/",
+        "official": false
+       }
+      ],
+      "partners": [
+       {
+        "to": "aeroplan",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "asiamiles",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "aeromexico",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "etihad",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "british",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "4,000 點換 2,000 Avios",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "gulfair",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "jal",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "latam",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "lifemiles",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "tap",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "turkish",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "thai",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "korean",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "emirates",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "以 4,000 點換 2,000 哩為單位",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "delta",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "4,000 換 2,000；每人每年上限 25 萬點",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "singapore",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "2,000 點換 1,000 哩",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "united",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "2,000 點換 1,000 哩",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "hainan",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "最低 2,000 點；每人每年上限 20 萬點",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "airindia",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "2,000 點換 1,000 Flying Returns",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "flyingblue",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "note": "需先綁定 ALL x Flying Blue；最低 2,000",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "qatar",
+        "hotelPoints": 4,
+        "miles": 3,
+        "bonus": false,
+        "note": "2,000 點換 1,500 Avios（2025/11 調升）",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "qantas",
+        "hotelPoints": 4,
+        "miles": 5,
+        "bonus": false,
+        "note": "2,000 點換 2,500 Qantas 點",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "iberia",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "note": "3,000 點換 3,000 Avios",
+        "confidence": "official",
+        "minPoints": 3000,
+        "step": 3000
+       },
+       {
+        "to": "velocity",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "note": "4,000 點換 4,000 點",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "ita",
+        "hotelPoints": 4,
+        "miles": 5,
+        "bonus": false,
+        "note": "4,000 點換 5,000 Volare 點",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "finnair",
+        "hotelPoints": 20,
+        "miles": 13,
+        "bonus": false,
+        "note": "2,000 點換 1,300 Avios",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "airchina",
+        "hotelPoints": 5,
+        "miles": 4,
+        "bonus": false,
+        "note": "4,000 換 3,200；條款另處寫 4,000:4,000",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "vietnam",
+        "hotelPoints": 3,
+        "miles": 2,
+        "bonus": false,
+        "note": "3,000 點換 2,000 哩",
+        "confidence": "official",
+        "minPoints": 3000,
+        "step": 3000
+       },
+       {
+        "to": "indigo",
+        "hotelPoints": 3,
+        "miles": 2,
+        "bonus": false,
+        "note": "3,000 點換 2,000 BluChip",
+        "confidence": "official",
+        "minPoints": 3000,
+        "step": 3000
+       },
+       {
+        "to": "oman",
+        "hotelPoints": 8,
+        "miles": 3,
+        "bonus": false,
+        "note": "4,000 點換 1,500 哩",
+        "confidence": "official",
+        "minPoints": 4000,
+        "step": 4000
+       },
+       {
+        "to": "aireuropa",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "note": "2,000 點換 2,000 哩",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "azul",
+        "hotelPoints": 2,
+        "miles": 1,
+        "bonus": false,
+        "note": "2,000 點換 1,000 點",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       },
+       {
+        "to": "juneyao",
+        "hotelPoints": 40,
+        "miles": 3,
+        "bonus": false,
+        "note": "2,000 點換 150 點",
+        "confidence": "official",
+        "minPoints": 2000,
+        "step": 2000
+       }
+      ]
+     },
+     "ihg": {
+      "minPoints": 10000,
+      "transferDays": "約 2–3 週（14–21 天），部分可能更久",
+      "note": "多數 5:1（10,000 點換 2,000 哩），最低 10,000 點",
+      "sources": [
+       {
+        "label": "IHG One Rewards 兌換航空哩程（官方）",
+        "url": "https://www.ihg.com/onerewards/content/us/en/redeem-points/airline-miles",
+        "official": true
+       },
+       {
+        "label": "Upgraded Points：IHG 轉點夥伴（2026/10/1 更新）",
+        "url": "https://upgradedpoints.com/travel/hotels/ihg-rewards-transfer-partners/",
+        "official": false
+       },
+       {
+        "label": "The Point Calculator：IHG 轉點夥伴（2026/9/29）",
+        "url": "https://www.thepointcalculator.com/us/ihg-one-rewards-points/ihg-transfer-partners/",
+        "official": false
+       }
+      ],
+      "partners": [
+       {
+        "to": "aeromexico",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "aeroplan",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "airchina",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "flyingblue",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "alaska",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "american",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "ana",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "lifemiles",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "british",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "asiamiles",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "chinasouthern",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "iberia",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "delta",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "emirates",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "etihad",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "gulfair",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "hainan",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "jal",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "korean",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "malaysia",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "qantas",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "qatar",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "saudia",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "singapore",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "saa",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "tap",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "thai",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "united",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "virginatlantic",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "velocity",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "jetblue",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "note": "另有來源列 10,000→3,947",
+        "confidence": "secondary"
+       },
+       {
+        "to": "intermiles",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "note": "另有來源列為 Air India Maharaja Club",
+        "confidence": "secondary"
+       }
+      ]
+     },
+     "hilton": {
+      "minPoints": 10000,
+      "annualCap": 500000,
+      "transferDays": "最長約 30 天",
+      "note": "多數 10:1，以 1,000 點為單位；每年最多 50 萬點、6 次",
+      "sources": [
+       {
+        "label": "Hilton Honors 點數（官方）",
+        "url": "https://www.hilton.com/en/hilton-honors/points/",
+        "official": true
+       },
+       {
+        "label": "Upgraded Points：Hilton 轉點夥伴（2026/9/4 更新）",
+        "url": "https://upgradedpoints.com/travel/hotels/hilton-honors-transfer-partners/",
+        "official": false
+       },
+       {
+        "label": "LoyaltyLobby：韓亞航移除（2025/5/31）",
+        "url": "https://loyaltylobby.com/2025/05/14/hilton-honors-ends-points-transfer-partnership-with-asiana-from-may-31-2025/",
+        "official": false
+       }
+      ],
+      "removed": [
+       {
+        "from": "asiana",
+        "date": "2025-05-31",
+        "note": "韓亞航 Asiana Club 停止轉入"
+       }
+      ],
+      "partners": [
+       {
+        "to": "aeroplan",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "ana",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "british",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "asiamiles",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "chinaeastern",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "delta",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "emirates",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "ethiopian",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "etihad",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "eva",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "note": "台灣可用；10,000 點換 1,000 哩",
+        "confidence": "secondary"
+       },
+       {
+        "to": "intermiles",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "jal",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "qatar",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "saudia",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "turkish",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "united",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "flyingblue",
+        "hotelPoints": 10,
+        "miles": 1,
+        "bonus": false,
+        "note": "最低 20,000 點",
+        "confidence": "secondary",
+        "minPoints": 20000
+       },
+       {
+        "to": "singapore",
+        "hotelPoints": 8,
+        "miles": 1,
+        "bonus": false,
+        "note": "最低 4,000 點",
+        "confidence": "secondary",
+        "minPoints": 4000
+       },
+       {
+        "to": "malaysia",
+        "hotelPoints": 25,
+        "miles": 3,
+        "bonus": false,
+        "note": "10:1.2",
+        "confidence": "secondary"
+       },
+       {
+        "to": "qantas",
+        "hotelPoints": 20,
+        "miles": 3,
+        "bonus": false,
+        "note": "10:1.5",
+        "confidence": "secondary"
+       },
+       {
+        "to": "virginatlantic",
+        "hotelPoints": 20,
+        "miles": 3,
+        "bonus": false,
+        "note": "10:1.5",
+        "confidence": "secondary"
+       },
+       {
+        "to": "velocity",
+        "hotelPoints": 20,
+        "miles": 3,
+        "bonus": false,
+        "note": "10:1.5",
+        "confidence": "secondary"
+       },
+       {
+        "to": "hainan",
+        "hotelPoints": 5,
+        "miles": 2,
+        "bonus": false,
+        "note": "2.5:1，最低 25,000 點；比例待官方確認",
+        "confidence": "secondary",
+        "minPoints": 25000
+       },
+       {
+        "to": "aeromexico",
+        "hotelPoints": 50,
+        "miles": 13,
+        "bonus": false,
+        "note": "25:6.5，最低 25,000 點",
+        "confidence": "secondary",
+        "minPoints": 25000
+       },
+       {
+        "to": "airasia",
+        "hotelPoints": 5,
+        "miles": 1,
+        "bonus": false,
+        "note": "10:2",
+        "confidence": "secondary"
+       }
+      ],
+      "increment": 1000
+     },
+     "shangrila": {
+      "minPoints": 1000,
+      "increment": 500,
+      "transferDays": "約 4–6 週",
+      "note": "官方稱一般 1 點換 1 哩，部分夥伴不同；夥伴清單為次級來源",
+      "sources": [
+       {
+        "label": "香格里拉 Circle 常見問題：兌換航空哩程（官方）",
+        "url": "https://www.shangri-la.com/en/corporate/shangrilacircle/faq/earning-converting-airline-miles/",
+        "official": true
+       },
+       {
+        "label": "Prince of Travel：Shangri-La Circle（2026/2/9）",
+        "url": "https://princeoftravel.com/points-programs/shangri-la-circle/",
+        "official": false
+       },
+       {
+        "label": "Point Hacks：Shangri-La Circle（2025/7/28）",
+        "url": "https://www.pointhacks.com.au/shangri-la-circle/",
+        "official": false
+       }
+      ],
+      "partners": [
+       {
+        "to": "aeroplan",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "asiamiles",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "american",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "united",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "qatar",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "etihad",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "qantas",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "velocity",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "ana",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "delta",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "malaysia",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "confidence": "secondary"
+       },
+       {
+        "to": "singapore",
+        "hotelPoints": 4,
+        "miles": 5,
+        "bonus": false,
+        "note": "Infinite Journeys 合作 1:1.25",
+        "confidence": "secondary"
+       },
+       {
+        "to": "korean",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "note": "僅一來源列出，待確認",
+        "confidence": "secondary"
+       },
+       {
+        "to": "finnair",
+        "hotelPoints": 1,
+        "miles": 1,
+        "bonus": false,
+        "note": "僅部分來源列出，待確認",
+        "confidence": "secondary"
+       }
+      ]
+     }
+    }
+   }
   }
  }
 }
