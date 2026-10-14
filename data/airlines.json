@@ -1,6 +1,6 @@
 {
-  "lastReviewed": "2026-10-13",
-  "note": "bookableVia 是 seats.aero 有收錄、且通常可換到該航司座位的里程計畫，實際以查詢結果為準。seats.aero 已收錄亞洲萬里通（asiamiles），但長榮、華航自家計畫仍未收錄。",
+  "lastReviewed": "2026-10-14",
+  "note": "bookableVia 是 seats.aero 有收錄、且通常可換到該航司座位的里程計畫，實際以查詢結果為準。seats.aero 已收錄亞洲萬里通（asiamiles），但長榮、華航、日航、全日空自家計畫仍未收錄。homeProgram 是該航司自家里程計畫的代碼：有 seats.aero 收錄的用來源代碼（如 singapore、british），沒有的用 programs.json 的 id（evainfinity、dynastyflyer、jal、ana）；各檔案代碼對照見 programs.json 的 idMap。",
   "airlines": [
     {
       "code": "CX",
@@ -78,7 +78,7 @@
       "code": "JL",
       "name": "日本航空",
       "alliance": "oneworld",
-      "homeProgram": null,
+      "homeProgram": "jal",
       "bookableVia": [
         "alaska",
         "american",
@@ -90,7 +90,7 @@
       "code": "NH",
       "name": "全日空",
       "alliance": "star",
-      "homeProgram": null,
+      "homeProgram": "ana",
       "bookableVia": [
         "aeroplan",
         "united",
@@ -102,7 +102,7 @@
       "code": "SQ",
       "name": "新加坡航空",
       "alliance": "star",
-      "homeProgram": null,
+      "homeProgram": "singapore",
       "bookableVia": [
         "singapore",
         "aeroplan",
@@ -137,7 +137,7 @@
       "code": "BA",
       "name": "英國航空",
       "alliance": "oneworld",
-      "homeProgram": null,
+      "homeProgram": "british",
       "bookableVia": [
         "british",
         "american",
@@ -150,7 +150,7 @@
       "code": "QR",
       "name": "卡達航空",
       "alliance": "oneworld",
-      "homeProgram": null,
+      "homeProgram": "qatar",
       "bookableVia": [
         "qatar",
         "american",
@@ -162,7 +162,7 @@
       "code": "TK",
       "name": "土耳其航空",
       "alliance": "star",
-      "homeProgram": null,
+      "homeProgram": "turkish",
       "bookableVia": [
         "turkish",
         "aeroplan",
@@ -178,6 +178,29 @@
         "delta",
         "flyingblue",
         "virginatlantic"
+      ]
+    },
+    {
+      "code": "AZ",
+      "name": "ITA 航空",
+      "alliance": "star",
+      "homeProgram": "lufthansa",
+      "bookableVia": [
+        "lufthansa",
+        "aeroplan",
+        "united",
+        "turkish"
+      ]
+    },
+    {
+      "code": "HA",
+      "name": "夏威夷航空",
+      "alliance": "oneworld",
+      "homeProgram": "alaska",
+      "bookableVia": [
+        "alaska",
+        "american",
+        "qantas"
       ]
     }
   ]

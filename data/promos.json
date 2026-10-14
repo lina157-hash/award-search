@@ -1,13 +1,13 @@
 {
-  "note": "Active Taiwan bank transfer bonuses and airline buy-miles sales; refreshed weekly. type transfer|buy. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only).",
-  "updated": "2026-10-13",
+  "note": "Active Taiwan bank transfer bonuses and airline buy-miles sales; refreshed weekly. type transfer|buy. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only). bonusPct 0 = fixed or capped bonus that the calculator cannot apply; listed only.",
+  "updated": "2026-10-14",
   "promos": [
     {
       "id": "cx-80th-card-conversion-tw-202610",
       "type": "transfer",
       "bank": null,
       "program": "asiamiles",
-      "title": "國泰80周年 卡點換里每萬里加贈800里",
+      "title": "國泰80周年 卡點換哩每萬哩加贈800哩",
       "bonusPct": 8,
       "price": null,
       "start": "2026-10-01",
@@ -39,7 +39,7 @@
       "price": null,
       "start": "2026-10-01",
       "end": "2026-10-31",
-      "conditions": "須登錄，限2,000名正卡戶；換滿1萬里送800、2萬里送1,600；滿3萬里起每萬里再送800無上限",
+      "conditions": "須登錄，限2,000名正卡戶；換滿1萬哩送800、2萬哩送1,600；滿3萬哩起每萬哩再送800無上限",
       "confidence": "official",
       "sources": [
         {
@@ -125,6 +125,27 @@
         }
       ],
       "rebate": true
+    },
+    {
+      "id": "kgi-asiamiles-5th-202610",
+      "type": "transfer",
+      "bank": "凱基",
+      "program": "asiamiles",
+      "title": "凱基雙幣卡每月5日換亞萬 加贈500哩",
+      "bonusPct": 0,
+      "price": null,
+      "start": "2026-10-01",
+      "end": "2026-12-31",
+      "conditions": "限每月5日把哩程點1,000點換成1,000哩；每月前100名正卡人、每戶每月一次，每月加贈上限500哩",
+      "cap": { "miles": 500, "per": "月" },
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "凱基銀行 雙幣哩程卡",
+          "url": "https://www.kgibank.com.tw/zh-tw/personal/credit-card/list/dual-currency-mileage-credit-card",
+          "official": true
+        }
+      ]
     },
     {
       "id": "turkish-buy-miles-202609",

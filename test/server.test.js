@@ -477,7 +477,7 @@ test('trip-info endpoint validates the airport', async () => {
 
 test('nonstop carriers: AeroDataBox route stats, name lookup, caching and quota', async () => {
   const { createDirects } = require('../lib/aerodatabox');
-  const { memoryStore } = require('../lib/alerts');
+  const { memoryKv } = require('../lib/kv');
   let calls = 0;
   const body = { routes: [
     { destination: { iata: 'NRT', name: 'Narita' }, averageDailyFlights: 9.57, operators: [{ name: 'EVA Air' }, { name: 'China Airlines', iata: 'CI' }, { name: 'Some New Airline' }] },
@@ -491,8 +491,8 @@ test('nonstop carriers: AeroDataBox route stats, name lookup, caching and quota'
     return new Response(JSON.stringify(body), { status: 200, headers: { 'x-ratelimit-api-units-remaining': '394', 'x-ratelimit-api-units-limit': '400' } });
   };
   let quota;
-  const store = memoryStore();
-  const d = createDirects({ apiKey: 'k', fetchImpl, store, onQuota: (q) => { quota = q; } });
+  const kv = memoryKv();
+  const d = createDirects({ apiKey: 'k', fetchImpl, kv, onQuota: (q) => { quota = q; } });
   const [a, b] = await Promise.all([d.between(['TPE'], ['NRT', 'HND']), d.between(['TPE'], ['NRT', 'HND'])]);
   assert.equal(calls, 1, 'concurrent lookups share one call');
   assert.deepEqual(a, b);
@@ -500,7 +500,7 @@ test('nonstop carriers: AeroDataBox route stats, name lookup, caching and quota'
   assert.equal(a.perDay, 13.7);
   assert.deepEqual(quota, { left: 394, limit: 400 });
   // A fresh instance reads the shared store instead of spending units again.
-  const d2 = createDirects({ apiKey: 'k', fetchImpl, store });
+  const d2 = createDirects({ apiKey: 'k', fetchImpl, kv });
   assert.equal((await d2.between(['TPE'], ['LHR'])).airlines[0].code, 'BR');
   assert.equal(calls, 1);
   assert.equal((await d2.between(['TPE'], ['JFK'])).airlines.length, 0);
@@ -548,7 +548,8 @@ test('hotel cash: SerpApi picks the right property and lists the official price;
     return new Response(JSON.stringify({ result: [{ hotel_id: 123, hotel_name: 'Tokyo Marriott Hotel', min_total_price: 600, currencycode: 'USD', url: 'https://www.booking.com/hotel/jp/tokyo-marriott.html' }] }), { headers: { 'x-ratelimit-requests-remaining': '520' } });
   } });
   const b = await booking({ name: 'Tokyo Marriott Hotel', checkin: '2026-11-01', checkout: '2026-11-03', adults: 2, lat: 35.6206, lon: 139.7373 });
-  assert.deepEqual([b.found, b.total, b.currency, b.url], [true, 600, 'USD', 'https://www.booking.com/hotel/jp/tokyo-marriott.html']);
+  // min_total_price is already in the requested TWD; `currencycode` is the hotel's local currency.
+  assert.deepEqual([b.found, b.total, b.currency, b.url], [true, 600, 'TWD', 'https://www.booking.com/hotel/jp/tokyo-marriott.html']);
   assert.deepEqual(hosts, ['booking-com.p.rapidapi.com/v1/hotels/locations', 'booking-com.p.rapidapi.com/v1/hotels/search']);
   const dcHosts = [];
   const dc = bookingHotels({ apiKey: 'r', fetchImpl: async (url) => {

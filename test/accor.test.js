@@ -1,0 +1,112 @@
+// Accor hotels priced in ALL points: brand filter, points rule, the Booking.com city search and its caching.
+const { test, before, after } = require('node:test');
+const assert = require('node:assert');
+delete process.env.SEATS_AERO_API_KEY;
+delete process.env.CASH_PASSCODE;
+const { server } = require('../server');
+const { brandOf, pointsFor, accorAnswer, RULE } = require('../lib/accor');
+const { bookingHotels } = require('../lib/hotelcash');
+const { memoryKv, sharedCache } = require('../lib/kv');
+
+let base;
+before(() => new Promise((r) => server.listen(0, () => { base = `http://localhost:${server.address().port}`; r(); })));
+after(() => server.close());
+const isoIn = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+
+test('Accor brands are recognised from Booking.com names, look-alikes are not', () => {
+  const yes = {
+    'Sofitel Legend Metropole Hanoi': 'Sofitel Legend', 'Sofitel Bangkok Sukhumvit': 'Sofitel', 'SO/ Bangkok': 'SO/', 'Raffles Singapore': 'Raffles',
+    'Fairmont Tokyo': 'Fairmont', 'Pullman Tokyo Tamachi': 'Pullman', 'Swissôtel Bangkok Ratchada': 'Swissôtel', 'Movenpick Hotel Sukhumvit 15': 'Mövenpick',
+    'Mövenpick BDMS Wellness Resort': 'Mövenpick', 'Grand Mercure Bangkok Atrium': 'Grand Mercure', 'Mercure Tokyo Ginza': 'Mercure', 'Novotel Living Bangkok': 'Novotel',
+    'ibis Styles Tokyo Bay': 'ibis Styles', 'ibis budget Singapore Ruby': 'ibis budget', 'ibis Tokyo Shinjuku': 'ibis', 'Hotel Molitor Paris - MGallery': 'MGallery',
+    'Aparthotel Adagio Paris Centre Tour Eiffel': 'Adagio', 'Peppers Soul Surfers Paradise': 'Peppers', 'The Sebel Sydney Chatswood': 'The Sebel', 'Mantra on Russell': 'Mantra',
+    '25hours Hotel Paris Terminus Nord': '25hours', 'TRIBE Perth': 'Tribe', 'Mama Shelter Paris East': 'Mama Shelter', 'Banyan Tree Bangkok': 'Banyan Tree', 'greet hotel Beaune': 'greet',
+  };
+  for (const [name, brand] of Object.entries(yes)) assert.equal(brandOf(name), brand, name);
+  for (const name of ['Hotel Indigo Tokyo Shibuya', 'Tokyo Marriott Hotel', 'Hyde Park Hotel London', 'Hotel Adagio Rome', 'IntercityHotel Berlin Hauptbahnhof', 'Steigenberger Hotel Herrenhof', 'Zleep Hotel Copenhagen', 'Hotel Gracery Shinjuku', 'Peninsula Bangkok', '']) {
+    assert.equal(brandOf(name), null, name);
+  }
+});
+
+test('ALL points: 50 per euro, 1,000 minimum, then 2,000-point steps never above the total', () => {
+  assert.deepEqual([RULE.pointsPerEuro, RULE.minPoints, RULE.step], [50, 1000, 2000]);
+  assert.match(RULE.source, /^https:\/\/all\.accor\.com\//);
+  assert.deepEqual(pointsFor(40), { points: 2000, usablePoints: 2000, usableEur: 40 });
+  assert.deepEqual(pointsFor(119.5), { points: 5975, usablePoints: 4000, usableEur: 80 });
+  assert.deepEqual(pointsFor(25), { points: 1250, usablePoints: 1000, usableEur: 20 });
+  assert.deepEqual(pointsFor(15), { points: 750, usablePoints: 0, usableEur: 0 });
+  assert.equal(pointsFor(null).points, null);
+  const a = accorAnswer({ found: true, city: 'Tokyo', hotels: [
+    { id: '1', name: 'Hotel Indigo Tokyo Shibuya', total: 9000, currency: 'TWD' },
+    { id: '2', name: 'Pullman Tokyo Tamachi', total: 7162, currency: 'TWD', stars: 4 },
+    { id: '3', name: 'ibis Tokyo Shinjuku', total: null, currency: 'TWD', soldOut: true },
+    { id: '4', name: 'Mercure Tokyo Ginza', total: 3581, currency: 'TWD' },
+  ] }, { eurRate: 35.81, nights: 2 });
+  assert.deepEqual(a.hotels.map((h) => [h.brand, h.total, h.totalEur, h.points, h.usablePoints, h.cashLeftTwd, h.soldOut]), [
+    ['Mercure', 3581, 100, 5000, 4000, 716, false],
+    ['Pullman', 7162, 200, 10000, 10000, 0, false],
+    ['ibis', null, null, null, 0, null, true],
+  ]);
+  assert.equal(a.pointValueTwd, 0.72);
+});
+
+test('Booking.com city search: two requests at most, city id cached, a cache hit costs nothing', async () => {
+  const calls = [];
+  const kv = memoryKv();
+  let quota;
+  const fetchImpl = async (url) => {
+    const u = new URL(String(url));
+    calls.push(u.pathname + (u.searchParams.get('page_number') ? `#${u.searchParams.get('page_number')}` : ''));
+    const headers = { 'x-ratelimit-requests-remaining': String(500 - calls.length), 'x-ratelimit-requests-limit': '530' };
+    if (u.pathname === '/v1/hotels/locations') {
+      return new Response(JSON.stringify([{ dest_id: '-1', dest_type: 'city', name: 'Tokyo (Japan)', latitude: 35.68, longitude: 139.76 }, { dest_id: '-9', dest_type: 'city', name: 'Tokyo, Ohio', latitude: 39, longitude: -84 }, { dest_id: '5', dest_type: 'hotel', name: 'Tokyo Hotel' }]), { headers });
+    }
+    assert.equal(u.searchParams.get('dest_id'), '-1', 'the city nearest to the given position');
+    assert.equal(u.searchParams.get('filter_by_currency'), 'TWD');
+    const page = Number(u.searchParams.get('page_number'));
+    return new Response(JSON.stringify({ result: page === 0
+      ? [{ hotel_id: 1, hotel_name: 'Pullman Tokyo Tamachi', min_total_price: 20000, currencycode: 'JPY', class: 4, latitude: 35.64, longitude: 139.75, url: 'https://www.booking.com/hotel/jp/pullman.html' }, { hotel_id: 2, hotel_name: 'Tokyo Marriott Hotel', min_total_price: 25000 }]
+      : [{ hotel_id: 3, hotel_name: 'ibis Tokyo Shinjuku', composite_price_breakdown: { gross_amount: { value: 8000, currency: 'TWD' } } }] }), { headers });
+  };
+  const lookup = bookingHotels({ apiKey: 'r', kv, fetchImpl, onQuota: (q) => { quota = q; } });
+  const want = { city: 'Tokyo', checkin: '2026-12-01', checkout: '2026-12-03', adults: 2, lat: 35.68, lon: 139.76 };
+  const first = await lookup.city(want);
+  assert.deepEqual(calls, ['/v1/hotels/locations', '/v1/hotels/search#0']);
+  assert.equal(first.requests, 2);
+  assert.deepEqual(quota, { left: 498, limit: 530 });
+  const again = await lookup.city(want);
+  assert.deepEqual(calls.slice(2), ['/v1/hotels/search#0', '/v1/hotels/search#1'], 'with the city id cached, both requests are result pages');
+  assert.equal(again.hotels.length, 3);
+  const answer = accorAnswer(again, { eurRate: 36, nights: 2 });
+  assert.deepEqual(answer.hotels.map((h) => [h.name, h.total, h.stars]), [['ibis Tokyo Shinjuku', 8000, null], ['Pullman Tokyo Tamachi', 20000, 4]]);
+  // The whole answer is shared: the same query again spends nothing.
+  let spent = 0;
+  const run = () => sharedCache(kv, 'accor:v1:' + JSON.stringify(want), 6 * 3600, async () => { spent++; return accorAnswer(await lookup.city(want), { eurRate: 36, nights: 2 }); });
+  await run();
+  const n = calls.length;
+  await run();
+  assert.deepEqual([spent, calls.length], [1, n]);
+});
+
+test('/api/hotels/accor: demo list, validation, passcode, config flag', async () => {
+  const cfg = await (await fetch(`${base}/api/config`)).json();
+  assert.equal(cfg.hotels.accor, true);
+  const res = await fetch(`${base}/api/hotels/accor?city=Bangkok&checkin=${isoIn(30)}&checkout=${isoIn(32)}&adults=2`);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+  const body = await res.json();
+  assert.equal(body.mock, true);
+  assert.equal(body.nights, 2);
+  assert.ok(body.hotels.length >= 6);
+  assert.ok(body.hotels.every((h) => h.brand && !/Indigo|Marriott/.test(h.name)));
+  const priced = body.hotels.filter((h) => !h.soldOut);
+  assert.ok(priced.every((h) => h.total > 0 && h.totalEur > 0 && h.points === Math.ceil(h.totalEur * 50) && h.pointValueTwd > 0));
+  assert.match(body.rule.text, /2,000 點折 €40/);
+  for (const q of [`city=&checkin=${isoIn(30)}&checkout=${isoIn(32)}`, `city=Tokyo&checkin=${isoIn(30)}&checkout=${isoIn(60)}`, `city=Tokyo&checkin=2026-02-30&checkout=2026-03-02`]) {
+    assert.equal((await fetch(`${base}/api/hotels/accor?${q}`)).status, 400, q);
+  }
+  process.env.CASH_PASSCODE = 'pw';
+  try {
+    assert.equal((await fetch(`${base}/api/hotels/accor?city=Tokyo&checkin=${isoIn(30)}&checkout=${isoIn(31)}`)).status, 401);
+  } finally { delete process.env.CASH_PASSCODE; }
+});
