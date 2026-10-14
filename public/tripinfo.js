@@ -92,7 +92,7 @@ function tripInfoHtml(info, q) {
       ${weatherHtml(info.weather, info.errors?.weather)}
       ${holidaysHtml(info, q.start, q.end)}
     </ul>
-    <p class="ti-src">資料來源：簽證整理自${esc(info.sources?.visa?.name || '外交部領事事務局')}${info.sources?.visa?.asOf ? `（${esc(info.sources.visa.asOf)}）` : ''}，出發前請再到<a href="https://www.boca.gov.tw/" target="_blank" rel="noopener">領事事務局</a>確認；旅遊警示來自<a href="https://www.boca.gov.tw/sp-trwa-list-1.html" target="_blank" rel="noopener">外交部</a>；天氣 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>；台灣行事曆來自行政院人事行政總處（政府資料開放平臺）；各國假日 Nager.Date<span class="ti-src-ad" hidden>；航線資料 <a href="https://aerodatabox.com/" target="_blank" rel="noopener">AeroDataBox</a></span>。</p>
+    <p class="ti-src">資料來源：簽證整理自${esc(info.sources?.visa?.name || '外交部領事事務局')}${info.sources?.visa?.asOf ? `（${esc(info.sources.visa.asOf)}）` : ''}，出發前請再到<a href="https://www.boca.gov.tw/" target="_blank" rel="noopener">領事事務局</a>確認；旅遊警示來自<a href="https://www.boca.gov.tw/sp-trwa-list-1.html" target="_blank" rel="noopener">外交部</a>${info.sources?.warning?.asOf ? `（${esc(info.sources.warning.asOf)}）` : ''}；天氣 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>；台灣行事曆來自行政院人事行政總處（政府資料開放平臺）；各國假日 Nager.Date<span class="ti-src-ad" hidden>；航線資料 <a href="https://aerodatabox.com/" target="_blank" rel="noopener">AeroDataBox</a></span>。</p>
   </details>`;
 }
 
