@@ -16,6 +16,7 @@ const { createDirects, DirectsError } = require('./lib/aerodatabox');
 const hotelCash = require('./lib/hotelcash');
 const { redisKv, memoryKv, takeLock, sharedCache, KvError } = require('./lib/kv');
 const { todayTW, monthTW, validDate } = require('./lib/day');
+const tg = require('./lib/telegram');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -172,9 +173,15 @@ const alertStore = HAS_REDIS ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN }
 const alertMailer = process.env.RESEND_API_KEY ? resendMailer({ apiKey: process.env.RESEND_API_KEY, from: process.env.ALERT_FROM }) : null;
 const SITE_URL = process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '');
 const SOURCE_NAMES = require('./data/source-names.json').names;
+// Telegram: the owner's own bot (TELEGRAM_BOT_TOKEN from @BotFather), linked to their chat from the site. The demo
+// without a token gets a stand-in bot so the linking flow can be tried.
+const TELEGRAM_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
+const telegram = tg.createTelegram({ client: TELEGRAM_TOKEN ? tg.telegramClient({ token: TELEGRAM_TOKEN }) : MOCK ? tg.mockTelegramClient() : null, kv });
+const TELEGRAM_MOCK = !TELEGRAM_TOKEN && MOCK;
 const alerts = alertStore && createAlerts({
   store: alertStore,
   sendEmail: alertMailer,
+  notify: (html) => telegram.notify(html),
   siteUrl: SITE_URL,
   programNames: SOURCE_NAMES,
   // Cheapest seats first, one page of 1,000 (two for ranges over four months): what an alert mail lists anyway.
@@ -201,6 +208,7 @@ const watchStore = CASH_MODE === 'off' ? null : HAS_REDIS ? redisStore({ url: RE
 const priceWatch = watchStore && createPriceWatch({
   store: watchStore,
   sendEmail: alertMailer,
+  notify: (html) => telegram.notify(html),
   siteUrl: SITE_URL,
   // Checks run on RapidAPI; the SerpApi reserve only matters when there is no RapidAPI key.
   quota: async () => (CASH_MODE !== 'live' || RAPIDAPI_KEY ? null : serpLeft()),
@@ -294,6 +302,22 @@ async function handleAlerts(req, q, sub) {
   if (req.method === 'POST') return { configured: true, ...(await alerts.add(await readJson(req))) };
   if (req.method === 'DELETE') { await alerts.remove(String(q.get('id') || '')); return { ok: true }; }
   return { configured: true, email: Boolean(alertMailer), alerts: await alerts.list() };
+}
+
+// /api/telegram: GET status, POST /api/telegram/link links the newest chat that sent /start to the bot, DELETE unlinks.
+// Linking decides where the owner's alerts go, so it needs the passcode to be set (except in the demo).
+async function handleTelegram(req, sub) {
+  const ok = cashPasscode() ? cashUnlocked(req) : TELEGRAM_MOCK;
+  if (!ok) throw Object.assign(new CashError(cashPasscode() ? '需要通關密碼才能設定 Telegram' : '要先在 Vercel 設定 CASH_PASSCODE，才能連結 Telegram', 401), { code: 'passcode' });
+  const mock = TELEGRAM_MOCK ? { mock: true } : {};
+  if (sub === 'link') {
+    if (req.method !== 'POST') throw new BadRequest('請用 POST');
+    return { ...(await telegram.link()), ...mock };
+  }
+  if (sub) throw new BadRequest('未知的 Telegram 操作');
+  if (req.method === 'DELETE') return { ...(await telegram.unlink()), ...mock };
+  if (req.method !== 'GET') throw new BadRequest('請用 GET 或 DELETE');
+  return { ...(await telegram.status()), ...mock };
 }
 
 // Optional passcode that gates the cash-fare lookups (each one spends a SerpApi credit). Read per request so tests can set it.
@@ -697,6 +721,10 @@ async function route(req, res) {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleAlerts(req, q, p.endsWith('/run') ? 'run' : ''));
     }
+    if (p === '/api/telegram' || p === '/api/telegram/link') {
+      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleTelegram(req, p.endsWith('/link') ? 'link' : ''));
+    }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleWatch(req, q));
@@ -708,6 +736,7 @@ async function route(req, res) {
       return sendJson(res, 200, {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
+        telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true },
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000 },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
@@ -756,7 +785,7 @@ async function route(req, res) {
     serveStatic(req, res, url);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
-    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

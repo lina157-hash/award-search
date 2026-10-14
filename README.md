@@ -56,5 +56,6 @@ npm test
 6. （選用）機位提醒：在 Vercel 專案的 **Storage** 分頁，透過 Marketplace 建立一個 **Upstash Redis**（免費方案），連線設定會自動加入；再到 resend.com 註冊、建立 API 金鑰，新增環境變數 `RESEND_API_KEY`（沒驗證網域時，只能寄到你註冊 Resend 的信箱）。請設定 `CRON_SECRET`（任意長字串）：Vercel 的排程會帶著它呼叫，沒有它、也沒有通關密碼時，排程端點一律拒絕。可另設 `ALERT_FROM` 自訂寄件人。重新部署後，`vercel.json` 裡的 cron 每天 00:10 UTC（台灣 08:10，seats.aero 每日額度剛重置）呼叫 `/api/alerts/run`，依序更新今日好康、降價追蹤、機位提醒；01:10 UTC 再跑一次 `/api/cron/daily` 補做前一次沒做完的部分（已做過的會跳過，不會重扣額度或重複寄信）。Hobby 方案的排程可能在該小時內任何時間觸發。也可以在網站的「機位提醒」面板按「立即檢查全部」。設定了 `CASH_PASSCODE` 的話，管理提醒也要輸入同一組密碼。
 
 7. （選用）「誰飛直航」用同一把 `RAPIDAPI_KEY` 的 AeroDataBox（每月約 400 單位，每個出發機場 6 單位，存兩週）。台灣各機場與香港、東京、大阪、首爾、曼谷、新加坡任何人都能查；其他出發機場要通關密碼。每月剩 40 單位時自動停止查新機場；如果你的方案額度不同，可設 `DIRECTS_MONTHLY_UNITS`。
+8. （選用）Telegram 通知：在 Telegram 找 @BotFather，傳 `/newbot` 建立自己的機器人，複製它給的金鑰，在 Vercel 新增環境變數 `TELEGRAM_BOT_TOKEN` 後重新部署（需要已設定 `CASH_PASSCODE` 和 Upstash Redis）。接著在 Telegram 打開你的機器人按「開始」（傳送 `/start`），再回網站按「連結 Telegram」；收到「機票搜索雷達已連結」就完成了。之後新機位提醒和降價通知除了 Email 也會傳到 Telegram。
 
 前端放在 `public/`，`/api/*` 由 `api/index.js` 這支 serverless function 處理，金鑰不會出現在瀏覽器端。
