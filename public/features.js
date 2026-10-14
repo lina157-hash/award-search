@@ -1024,10 +1024,9 @@ function loadLeaflet() {
 }
 // Map background: CARTO tiles; if they will not load (blocked network, an ad blocker, CARTO down), OpenStreetMap's own
 // tiles; if those fail too, a plain outline of the continents shipped with the site (Natural Earth, public domain).
+// CARTO now serves an "API KEY REQUIRED" watermark tile without a key, so it is no longer used.
 const BASEMAPS = [
-  () => ({ url: `https://{s}.basemaps.cartocdn.com/${isDark() ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, subdomains: 'abcd',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' }),
-  () => ({ url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', subdomains: 'abc', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }),
+  () => ({ url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', cls: 'map-osm', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }),
 ];
 let landJson = null;
 function addBaseMap(map, i = 0) {
@@ -1042,13 +1041,15 @@ function addBaseMap(map, i = 0) {
     return;
   }
   const b = BASEMAPS[i]();
-  const layer = L.tileLayer(b.url, { maxZoom: 12, subdomains: b.subdomains, attribution: b.attribution }).addTo(map);
+  const layer = L.tileLayer(b.url, { maxZoom: 12, attribution: b.attribution }).addTo(map);
+  if (b.cls) map.getContainer().classList.add(b.cls);
   let loaded = 0;
   let failed = 0;
   layer.on('tileload', () => { loaded++; });
   layer.on('tileerror', () => {
     if (loaded || ++failed < 4) return;
     map.removeLayer(layer);
+    if (b.cls) map.getContainer().classList.remove(b.cls);
     addBaseMap(map, i + 1);
   });
 }
