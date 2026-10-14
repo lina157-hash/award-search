@@ -12,7 +12,9 @@ const PROGRAM_TRANSFER = {
   british: { name: '英航' }, turkish: { name: '土航' }, qantas: { name: '澳航' }, emirates: { name: '阿聯酋' },
   etihad: { name: '阿提哈德' }, lifemiles: { name: 'LifeMiles' }, jal: { name: '日航' },
 };
-const programKeyOf = (source) => (source === 'asiamiles_est' ? 'asiamiles' : source);
+// 日航寰宇一家 (jal_partner, a chart in charts.json) is paid with JAL miles.
+const PROGRAM_KEY = { asiamiles_est: 'asiamiles', jal_partner: 'jal' };
+const programKeyOf = (source) => PROGRAM_KEY[source] || source;
 
 // Best rate from each bank points program into one airline program.
 function transferRates(program) {
@@ -455,8 +457,10 @@ function bindWallet(host) {
   };
   $('#w-add-btn', host).addEventListener('click', add);
   $('#w-amt', host).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
-  host.addEventListener('input', (e) => { if (e.target.dataset.w) { setWallet(e.target.dataset.w, e.target.value); renderWalletSum(); } });
-  host.addEventListener('click', (e) => {
+  // On the freshly drawn wallet, not on #points-page (which stays): binding there piled up a listener per redraw.
+  const box = $('.wallet', host);
+  box.addEventListener('input', (e) => { if (e.target.dataset.w) { setWallet(e.target.dataset.w, e.target.value); renderWalletSum(); } });
+  box.addEventListener('click', (e) => {
     const del = e.target.closest('[data-w-del]');
     if (del) { setWallet(del.dataset.wDel, 0); refresh(); return; }
     if (e.target.id === 'wallet-clear') {
@@ -629,7 +633,7 @@ function bindDetour(host) {
 }
 
 // ---------- miles needed (fixed award charts, no seat search) ----------
-const need = { origin: '', destination: '', cabin: 'J' };
+const need = { origin: '', destination: '', cabin: 'J', trip: 'ow' };
 function haversineMiles(a, b) {
   const rad = Math.PI / 180;
   const h = Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;
@@ -699,7 +703,7 @@ function chartPrices(p, from, to, cabin, dist) {
 }
 function needHtml() {
   return `<form id="need-form" class="need" autocomplete="off">
-    <p class="hint">不查座位，只依各計畫公布的固定哩程表，估算單程一個人要多少哩。動態定價的計畫（聯合、達美、法荷航等）沒有固定表，請用航線查詢看實際價格。</p>
+    <p class="hint">不查座位，只依各計畫公布的固定哩程表，估算一個人要多少哩。動態定價的計畫（聯合、達美、法荷航等）沒有固定表，請用航線查詢看實際價格。</p>
     <div class="route-row">
       <div class="field grow ac-host">
         <label for="n-origin">出發地</label>
@@ -717,6 +721,7 @@ function needHtml() {
       </div>
     </div>
     <div class="opts-row">
+      <fieldset class="seg" aria-label="單程或來回">${[['ow', '單程'], ['rt', '來回']].map(([k, l]) => `<label><input type="radio" name="trip" value="${k}" ${need.trip === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
       <fieldset class="seg" aria-label="艙等">${Object.entries({ Y: '經濟', W: '豪經', J: '商務', F: '頭等' }).map(([k, l]) => `<label><input type="radio" name="cabin" value="${k}" ${need.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
       <button type="submit" class="primary">試算</button>
     </div>
@@ -736,6 +741,7 @@ function bindNeed(host) {
     need.origin = pk.origin.codes()[0];
     need.destination = pk.destination.codes()[0];
     need.cabin = new FormData(form).get('cabin') || 'J';
+    need.trip = new FormData(form).get('trip') === 'rt' ? 'rt' : 'ow';
     renderNeed();
   });
   if (need.origin && need.destination) loadAirports().then(renderNeed);
@@ -747,17 +753,20 @@ function renderNeed() {
   if (!host || !a || !b || a.lat == null || b.lat == null) return;
   const dist = haversineMiles(a, b);
   const c = need.cabin;
+  // Round trip, as on 兌換地圖: two one-ways, except charts that only sell round trips (used as they are, and left out
+  // of a one-way table).
+  const rt = need.trip === 'rt';
   const rows = [];
   // Asia Miles from the chart the site already carries.
   for (const kind of ['cx', 'partner']) {
     const am = amPrice(kind, dist, c, need.origin, need.destination);
-    if (am?.miles) rows.push({ key: 'asiamiles', label: kind === 'cx' ? '國泰航班' : '夥伴航班', miles: am.miles, note: `${fmt(dist)} 哩`, confidence: 'official' });
+    if (am?.miles) rows.push({ key: 'asiamiles', label: kind === 'cx' ? '國泰航班' : '夥伴航班', miles: am.miles * (rt ? 2 : 1), note: `${fmt(dist)} 哩`, confidence: 'official' });
   }
   for (const p of data.charts?.programs || []) {
-    // Round-trip-only charts don't compare with one-way prices, so they stay out of this table.
-    if (!['distance', 'zone', 'regionMatrix', 'routeSpecific'].includes(p.kind) || p.oneWay === false) continue;
+    if (!['distance', 'zone', 'regionMatrix', 'routeSpecific'].includes(p.kind) || (p.oneWay === false && !rt)) continue;
+    const mult = rt && p.oneWay !== false ? 2 : 1;
     // One row per program: its cheapest table, plus the top of the range when partners price differently.
-    const prices = chartPrices(p, a, b, c, dist).sort((x, y) => x.miles - y.miles);
+    const prices = chartPrices(p, a, b, c, dist).map((x) => ({ ...x, miles: x.miles * mult })).sort((x, y) => x.miles - y.miles);
     if (!prices.length) continue;
     const [x] = prices;
     const top = prices[prices.length - 1].miles;
@@ -765,13 +774,13 @@ function renderNeed() {
   }
   rows.sort((x, y) => x.miles - y.miles);
   const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic' || (p.kind === 'routeSpecific' && !p.routes?.length)).map((p) => p.name || programName(p.id));
-  host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${CABIN_LABEL[c]}・直線距離 ${fmt(dist)} 哩</h3>
-    ${rows.length ? `<div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>單程哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
+  host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${rt ? '來回・' : ''}${CABIN_LABEL[c]}・直線距離 ${fmt(dist)} 哩</h3>
+    ${rows.length ? `<div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>${rt ? '來回' : '單程'}哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(r.name || programName(r.key))}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b></td>
         <td><small>${esc(r.note)}${r.perSegment ? '；每段航班分開計價，轉機會更貴' : ''}</small></td>
         <td>${CONFIDENCE_TAG[r.confidence] || ''}${r.src ? `<small><a href="${esc(r.src.url)}" target="_blank" rel="noopener">${esc(r.src.label)} ↗</a></small>` : ''}</td></tr>`).join('')}
     </tbody></table></div>` : '<p class="hint">這條航線找不到適用的固定哩程表。</p>'}
-    <p class="hint">以直線距離或區域估算，最低（Saver）價格；實際轉機路線、旺季與燃油附加費可能讓價格不同。${dyn.length ? `${esc(dyn.join('、'))} 為動態定價，不列入。` : ''}</p>
+    <p class="hint">${rt ? '來回是兩張單程相加；只賣來回的表照表上的來回價。' : ''}以直線距離或區域估算，最低（Saver）價格；實際轉機路線、旺季與燃油附加費可能讓價格不同。${dyn.length ? `${esc(dyn.join('、'))} 為動態定價，不列入。` : ''}</p>
     <button type="button" class="outline" id="need-search">用航線查詢找實際座位</button>`;
   $('#need-search').addEventListener('click', () => {
     pickers.origin.set([need.origin]);
@@ -784,7 +793,7 @@ function renderNeed() {
 }
 
 // ---------- 兌換地圖 tab: where the fixed award charts can take you from one airport (no seat search, no quota) ----------
-const rmap = { origin: 'TPE', cabin: 'J', trip: 'ow', program: '', budget: 0, mine: false };
+const rmap = { origins: ['TPE'], cabin: 'J', trip: 'ow', program: '', budget: 0, mine: false, drawnWallet: '' };
 let rmapMap = null;
 // Every program with a fixed chart, one-way prices; 日航寰宇一家 only prices round trips.
 const rmapPrograms = () => ['asiamiles', ...(data.charts?.programs || []).filter((p) => ['distance', 'zone', 'regionMatrix', 'routeSpecific'].includes(p.kind) && (p.routes?.length || p.tables?.length)).map((p) => p.id)];
@@ -813,24 +822,31 @@ function rmapPrices(a, b, cabin, trip, only) {
   for (const x of out.sort((m, n) => m.miles - n.miles)) if (!best.has(x.id)) best.set(x.id, x);
   return { dist, prices: [...best.values()] };
 }
-// Destinations: the big airports that have a Chinese name, one per city (the cheaper airport wins).
+const rmapFroms = () => rmap.origins.map((c) => AP.byCode.get(c)).filter((a) => a && a.lat != null);
+// Destinations: the big airports that have a Chinese name, one per city (the cheaper airport wins). With several
+// origins, each program is priced from whichever origin is cheapest, and `from` says which one that was.
 function rmapDestinations() {
-  const from = AP.byCode.get(rmap.origin);
-  if (!from || from.lat == null) return [];
+  const froms = rmapFroms();
+  if (!froms.length) return [];
   const byCity = new Map();
   const groupOf = new Map(AP.groups.flatMap((g) => g.codes.map((c) => [c, g.zh])));
   const codesOf = new Map(AP.groups.map((g) => [g.zh, g.codes]));
+  const homeCities = new Set(froms.map((f) => groupOf.get(f.code)).filter(Boolean));
   for (const ap of AP.list) {
-    if (!ap.large || !ap.zh || ap.lat == null || ap.code === from.code) continue;
+    if (!ap.large || !ap.zh || ap.lat == null || froms.some((f) => f.code === ap.code)) continue;
     // Multi-airport cities (東京 = NRT, HND) become one pin.
     const city = groupOf.get(ap.code) || ap.zh.replace(/（.*）$/, '');
-    if (haversineMiles(from, ap) < 100 || city === groupOf.get(from.code)) continue; // the origin's own city
-    const { dist, prices } = rmapPrices(from, ap, rmap.cabin, rmap.trip, rmap.program);
-    let shown = prices;
-    if (rmap.mine && !walletEmpty()) shown = prices.filter((x) => reach(x.id).total >= x.miles);
+    if (homeCities.has(city) || froms.some((f) => haversineMiles(f, ap) < 100)) continue; // an origin's own city
+    const best = new Map();
+    for (const from of froms) {
+      const { dist, prices } = rmapPrices(from, ap, rmap.cabin, rmap.trip, rmap.program);
+      for (const x of prices) if (!best.has(x.id) || x.miles < best.get(x.id).miles) best.set(x.id, { ...x, from: from.code, dist });
+    }
+    let shown = [...best.values()].sort((m, n) => m.miles - n.miles);
+    if (rmap.mine && !walletEmpty()) shown = shown.filter((x) => reach(x.id).total >= x.miles);
     if (rmap.budget) shown = shown.filter((x) => x.miles <= rmap.budget);
     if (!shown.length) continue;
-    const d = { ap, city, codes: codesOf.get(city) || [ap.code], dist, prices: shown, min: shown[0].miles };
+    const d = { ap, city, codes: codesOf.get(city) || [ap.code], from: shown[0].from, dist: shown[0].dist, prices: shown, min: shown[0].miles };
     const old = byCity.get(city);
     if (!old || d.min < old.min) byCity.set(city, d);
   }
@@ -844,7 +860,7 @@ function rmapHtml() {
         <label for="rm-origin">出發地</label>
         <div class="chips-box" data-for="origin"><span class="chips"></span>
           <input id="rm-origin" class="chips-q" placeholder="城市、機場或代碼" autocapitalize="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-rm-origin"></div>
-        <input type="hidden" name="origin" value="${esc(rmap.origin)}">
+        <input type="hidden" name="origin" value="${esc(rmap.origins.join(','))}">
         <div class="ac-list" id="ac-rm-origin" role="listbox" aria-label="出發地建議" hidden></div>
       </div>
       <label class="field">計畫<select name="program"><option value="">全部有固定表的計畫</option>${progs.map((id) => `<option value="${esc(id)}" ${rmap.program === id ? 'selected' : ''}>${esc(rmapProgramName(id))}</option>`).join('')}</select></label>
@@ -853,7 +869,7 @@ function rmapHtml() {
     <div class="opts-row">
       <fieldset class="seg" aria-label="單程或來回">${[['ow', '單程'], ['rt', '來回']].map(([k, l]) => `<label><input type="radio" name="trip" value="${k}" ${rmap.trip === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
       <fieldset class="seg" aria-label="艙等">${Object.entries({ Y: '經濟', W: '豪經', J: '商務', F: '頭等' }).map(([k, l]) => `<label><input type="radio" name="cabin" value="${k}" ${rmap.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
-      ${walletEmpty() ? '' : `<label class="switch"><input type="checkbox" name="mine" ${rmap.mine ? 'checked' : ''}><span class="knob"></span>只看我的點數換得到的</label>`}
+      <label class="switch" id="rmap-mine" ${walletEmpty() ? 'hidden' : ''}><input type="checkbox" name="mine" ${rmap.mine ? 'checked' : ''}><span class="knob"></span>只看我的點數換得到的</label>
       <button type="submit" class="primary">看地圖</button>
     </div>
   </form>`;
@@ -876,7 +892,7 @@ function bindRmap(host) {
     await loadAirports();
     const unknown = pk.commit();
     if (unknown.length || !pk.codes().length) { toast(unknown.length ? `找不到「${unknown.join('、')}」` : '請輸入出發地'); pk.focus(); return; }
-    rmap.origin = pk.codes()[0];
+    rmap.origins = pk.codes();
     read();
     renderRmap();
   });
@@ -884,17 +900,27 @@ function bindRmap(host) {
   $$('input[name=cabin], input[name=trip], select[name=program], input[name=mine]', form).forEach((i) => i.addEventListener('change', () => { read(); renderRmap(); }));
   loadAirports().then(renderRmap);
 }
+// The wallet can change while this tab is away (or by account sync): show the switch only when there are points, and
+// redraw pins that were filtered by the old balances. Also re-measure the map, which cannot size itself while hidden.
+function syncRmap() {
+  if (!$('#rmap-form')) return;
+  $('#rmap-mine').hidden = walletEmpty();
+  if (rmap.mine && JSON.stringify(wallet) !== rmap.drawnWallet) renderRmap();
+  else fitMap(rmapMap);
+}
 async function renderRmap() {
   const out = $('#rmap-out');
   if (!out) return;
-  const from = AP.byCode.get(rmap.origin);
-  if (!from) return;
+  const froms = rmapFroms();
+  if (!froms.length) return;
+  rmap.drawnWallet = JSON.stringify(wallet);
+  const multi = froms.length > 1;
   const dests = rmapDestinations();
   const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic').map((p) => p.name);
-  const label = `${rmap.origin} ${airportCity(rmap.origin)} 出發・${rmap.trip === 'rt' ? '來回' : '單程'}・${CABIN_LABEL[rmap.cabin]}${rmap.program ? `・${rmapProgramName(rmap.program)}` : ''}`;
+  const label = `${froms.map((f) => `${f.code} ${airportCity(f.code)}`).join('、')} 出發・${rmap.trip === 'rt' ? '來回' : '單程'}・${CABIN_LABEL[rmap.cabin]}${rmap.program ? `・${rmapProgramName(rmap.program)}` : ''}`;
   out.innerHTML = `<h3 class="sub">${esc(label)}　${dests.length ? `${fmt(dests.length)} 個城市` : ''}</h3>
     ${dests.length ? '<div id="rmap" class="ex-map rmap"><p class="hint">地圖載入中…</p></div>' : `<p class="hint">${rmap.budget || rmap.mine ? '這個哩數換不到任何城市，放寬條件看看。' : '這個出發地和艙等找不到適用的固定哩程表。'}</p>`}
-    <p class="hint">標的是最低價（Saver），以兩地直線距離或區域估算；實際轉機路線、旺季與燃油附加費可能讓價格不同。長榮、華航、全日空等依區域計價的表只適用台灣出發。${dyn.length ? `${esc(dyn.join('、'))} 是動態定價，不列入。` : ''}</p>`;
+    <p class="hint">${multi ? '有多個出發地時，每個計畫取最便宜的出發地。' : ''}標的是最低價（Saver），以兩地直線距離或區域估算；實際轉機路線、旺季與燃油附加費可能讓價格不同。長榮、華航、全日空等依區域計價的表只適用台灣出發。${dyn.length ? `${esc(dyn.join('、'))} 是動態定價，不列入。` : ''}</p>`;
   if (!dests.length) return;
   try { await loadLeaflet(); } catch (err) { $('#rmap').innerHTML = `<p class="status error">${esc(err.message)}</p>`; return; }
   const el = $('#rmap');
@@ -904,21 +930,28 @@ async function renderRmap() {
   const L = window.L;
   rmapMap = L.map(el, { worldCopyJump: true, scrollWheelZoom: false });
   addBaseMap(rmapMap);
+  keepMapSized(rmapMap);
   const mins = dests.map((d) => d.min).sort((a, b) => a - b);
   const tier = (m) => (mins.length < 2 ? 0 : Math.min(3, Math.floor((mins.indexOf(m) / (mins.length - 1)) * 4)));
-  L.circleMarker([from.lat, from.lon], { radius: 7, color: '#fff', weight: 2, fillColor: '#2a9d4b', fillOpacity: 1 }).bindTooltip(`${rmap.origin} 出發`).addTo(rmapMap);
+  for (const f of froms) L.circleMarker([f.lat, f.lon], { radius: 7, color: '#fff', weight: 2, fillColor: '#2a9d4b', fillOpacity: 1 }).bindTooltip(`${f.code} 出發`).addTo(rmapMap);
   // Popular places first, then the cheaper ones: they keep their labels when pins crowd.
   const rank = (d) => { const i = RMAP_POPULAR.indexOf(d.city); return i < 0 ? 1000 + d.min / 1000 : i; };
   dests.sort((a, b) => rank(a) - rank(b));
+  // On a phone the map is short: fewer rows, and never taller than the map (Leaflet scrolls the rest).
+  const narrow = matchMedia('(max-width: 640px)').matches;
+  const rows = narrow ? 5 : 8;
   const marks = [];
   dests.forEach((d, i) => {
     const icon = L.divIcon({ className: `rm-pin t${tier(d.min)}`, html: `<span class="rm-k">${Math.round(d.min / 1000)}</span><span class="rm-label"><b>${esc(d.city)}</b>${fmt(d.min)} 哩起</span>`, iconSize: null, iconAnchor: [14, 14] });
-    const m = L.marker([d.ap.lat, d.ap.lon], { icon, title: `${d.city} ${fmt(d.min)} 哩起`, zIndexOffset: (dests.length - i) * 10 }).addTo(rmapMap);
+    const m = L.marker([d.ap.lat, d.ap.lon], { icon, title: `${d.city} ${fmt(d.min)} 哩起${multi ? `（${d.from} 出發）` : ''}`, zIndexOffset: (dests.length - i) * 10 }).addTo(rmapMap);
     marks.push({ m, d, w: 40 + Math.max(d.city.length * 13, fmt(d.min).length * 8 + 30) });
-    m.bindPopup(`<b>${esc(d.city)}</b> <small>${esc(d.ap.code)}・直線 ${fmt(d.dist)} 哩</small>
-      <table class="rm-pop">${d.prices.slice(0, 8).map((x) => `<tr><td>${esc(rmapProgramName(x.id))}<small>${esc(x.label)}</small></td><td><b>${fmt(x.miles)}</b></td></tr>`).join('')}</table>
-      ${d.prices.length > 8 ? `<small>還有 ${d.prices.length - 8} 個計畫</small>` : ''}
-      <div class="map-actions"><button type="button" data-rm-search="${esc(d.codes.join(','))}">到航線查詢找座位</button><button type="button" data-rm-need="${esc(d.ap.code)}">看計算依據</button></div>`, { minWidth: 240, maxWidth: 320 });
+    // Each row names its origin only when the rows came from different ones.
+    const mixed = new Set(d.prices.map((x) => x.from)).size > 1;
+    m.bindPopup(`<b>${esc(d.city)}</b> <small>${esc(d.ap.code)}・${multi ? `距 ${esc(d.from)} ` : ''}直線 ${fmt(d.dist)} 哩</small>
+      <table class="rm-pop">${d.prices.slice(0, rows).map((x) => `<tr><td>${esc(rmapProgramName(x.id))}<small>${esc(x.label)}${mixed ? `・${esc(x.from)} 出發` : ''}</small></td><td><b>${fmt(x.miles)}</b></td></tr>`).join('')}</table>
+      ${d.prices.length > rows ? `<small>還有 ${d.prices.length - rows} 個計畫</small>` : ''}
+      <div class="map-actions"><button type="button" data-rm-search="${esc(d.codes.join(','))}">到航線查詢找座位</button><button type="button" data-rm-need="${esc(d.ap.code)}" data-rm-from="${esc(d.from)}">看計算依據</button></div>`,
+    { minWidth: narrow ? 220 : 240, maxWidth: 320, ...(narrow ? { maxHeight: Math.max(200, el.clientHeight - 70) } : {}) });
   });
   // Declutter on every move: in rank order, a pin gets its label when the label has room, only its dot when the dot
   // has room, and hides otherwise (zoom in to see it).
@@ -938,8 +971,10 @@ async function renderRmap() {
     }
   };
   rmapMap.on('zoomend moveend', declutter);
-  // Start on the origin's part of the world; everything else is a drag or a zoom away.
-  rmapMap.setView([from.lat, from.lon], 4);
+  // Start on the origins' part of the world; everything else is a drag or a zoom away.
+  const pts = froms.map((f) => [f.lat, f.lon]);
+  const fit = multi && el.clientWidth ? rmapMap.getBoundsZoom(L.latLngBounds(pts), false, L.point(80, 80)) : 4;
+  rmapMap.setView(multi ? L.latLngBounds(pts).getCenter() : pts[0], Math.min(4, fit));
   declutter();
 }
 // Places most people fly to from Taiwan; they win the label space.
@@ -947,13 +982,14 @@ const RMAP_POPULAR = ['東京', '大阪', '首爾', '曼谷', '香港', '新加�
 document.addEventListener('click', (e) => {
   const s = e.target.closest?.('[data-rm-search]');
   if (s) {
-    // Straight into a route search for the next month; the dates can be changed there.
-    applyShare(new URLSearchParams({ o: rmap.origin, d: s.dataset.rmSearch, s: isoDate(1), e: isoDate(30), c: rmap.cabin }));
+    // Straight into a route search for the next month from every chosen origin; the dates can be changed there.
+    applyShare(new URLSearchParams({ o: rmap.origins.join(','), d: s.dataset.rmSearch, s: isoDate(1), e: isoDate(30), c: rmap.cabin }));
     return;
   }
   const n = e.target.closest?.('[data-rm-need]');
   if (n) {
-    Object.assign(need, { origin: rmap.origin, destination: n.dataset.rmNeed, cabin: rmap.cabin });
+    // The basis for the prices in the popup: from the origin they came from, one-way or round trip as on the map.
+    Object.assign(need, { origin: n.dataset.rmFrom || rmap.origins[0], destination: n.dataset.rmNeed, cabin: rmap.cabin, trip: rmap.trip });
     setPointsView('need');
     showTab('points');
     renderPoints();
@@ -1053,6 +1089,20 @@ function addBaseMap(map, i = 0) {
     addBaseMap(map, i + 1);
   });
 }
+// Leaflet measures its box only on window resizes, and a map in a hidden tab measures 0 × 0 and keeps that: re-measure
+// when the tab is shown (tabShown) and whenever the box itself changes size while it is on screen.
+function fitMap(map) {
+  const el = map?.getContainer();
+  if (el?.isConnected && el.clientWidth && el.clientHeight) map.invalidateSize();
+}
+function keepMapSized(map) {
+  if (!window.ResizeObserver) return;
+  const ro = new ResizeObserver(() => fitMap(map));
+  ro.observe(map.getContainer());
+  map.on('unload', () => ro.disconnect());
+}
+tabShown.map = () => syncRmap();
+tabShown.explore = () => fitMap(exMap);
 const isDark = () => document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
 let exMap = null;
 async function renderExploreMap(rows) {
@@ -1078,6 +1128,7 @@ async function renderExploreMap(rows) {
   const L = window.L;
   exMap = L.map('ex-map', { worldCopyJump: true, scrollWheelZoom: false });
   addBaseMap(exMap);
+  keepMapSized(exMap);
   const pts = [];
   const mins = [...byDest.values()].map((g) => g.min).sort((a, b) => a - b);
   const tier = (m) => (mins.length < 2 ? 0 : Math.min(3, Math.floor((mins.indexOf(m) / (mins.length - 1)) * 4)));
