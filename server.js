@@ -17,6 +17,7 @@ const hotelCash = require('./lib/hotelcash');
 const { redisKv, memoryKv, takeLock, sharedCache, KvError } = require('./lib/kv');
 const { todayTW, monthTW, validDate } = require('./lib/day');
 const tg = require('./lib/telegram');
+const accor = require('./lib/accor');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -631,6 +632,30 @@ async function handleHotelCash(q, req) {
   return { ...body, cached: !spent, total: total ? Math.round(total) : null, currency: 'TWD', fallback, bookingLeft: bookingQuota.left, bookingLimit: bookingQuota.limit };
 }
 
+// Accor hotels in a city, priced in ALL points (lib/accor.js): one Booking.com city search (2 RapidAPI requests at most,
+// usually 1 page + a cached city id), Accor brands kept, the price turned into points. Never SerpApi. Answers are
+// shared for 6 hours. Behind the passcode because it spends the Booking.com quota.
+async function handleAccor(q, req) {
+  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查雅高飯店', 401), { code: 'passcode' });
+  const city = (q.get('city') || '').trim().replace(/\s+/g, ' ');
+  if (!city || city.length > 60 || /[<>{}\\]/.test(city)) throw new BadRequest('請輸入城市');
+  const checkin = param(q, 'checkin', DATE, { required: true });
+  const checkout = param(q, 'checkout', DATE, { required: true });
+  const nights = (Date.parse(checkout) - Date.parse(checkin)) / 864e5;
+  if (nights < 1 || nights > 14) throw new BadRequest('住宿晚數需為 1 到 14 晚');
+  if (checkin < todayTW()) throw new BadRequest('入住日期不可早於今天');
+  const adults = Number(q.get('adults') || 2);
+  if (!Number.isInteger(adults) || adults < 1 || adults > 6) throw new BadRequest('人數需為 1 到 6');
+  const lat = Number(q.get('lat')); const lon = Number(q.get('lon'));
+  const want = { city, checkin, checkout, adults, lat: q.get('lat') && Number.isFinite(lat) ? Math.round(lat * 100) / 100 : null, lon: q.get('lon') && Number.isFinite(lon) ? Math.round(lon * 100) / 100 : null };
+  const answer = async (search) => accor.accorAnswer(search, { eurRate: (await handleFx()).rates.EUR || FX_FALLBACK.EUR, nights });
+  if (MOCK && !RAPIDAPI_KEY) return { mock: true, cached: false, ...(await answer(mock.mockCityHotels(want))), bookingLeft: 512, bookingLimit: 530 };
+  if (!bookingLookup) throw new hotelCash.HotelCashError('雅高飯店價格要用 RapidAPI 的 Booking.com API，網站還沒設定 RAPIDAPI_KEY', 503);
+  let spent = false;
+  const body = await shared('accor:v1:' + JSON.stringify(want), 6 * 3600, async () => { spent = true; return answer(await bookingLookup.city(want)); });
+  return { ...body, cached: !spent, bookingLeft: bookingQuota.left, bookingLimit: bookingQuota.limit };
+}
+
 async function handleTrips(id) {
   if (!/^[\w-]{1,80}$/.test(id)) throw new BadRequest('ID 格式錯誤');
   return cached('trips:' + id, async () => ({ mock: MOCK, ...normalizeTrips(MOCK ? mock.mockTrips(id) : await client.trips(id)) }));
@@ -737,7 +762,7 @@ async function route(req, res) {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true },
-        hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000 },
+        hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
         repo: process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG ? `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}` : '',
@@ -750,6 +775,7 @@ async function route(req, res) {
     if (p === '/api/cash/link') return sendJson(res, 200, await handleCashLink(q, req));
     if (p === '/api/cash/quota') return sendJson(res, 200, await handleCashQuota());
     if (p === '/api/hotels/cash') return sendJson(res, 200, await handleHotelCash(q, req));
+    if (p === '/api/hotels/accor') return sendJson(res, 200, await handleAccor(q, req));
     // Public.
     if (p === '/api/directs') {
       const { body, open } = await handleDirects(q, req);
