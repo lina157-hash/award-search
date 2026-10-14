@@ -35,7 +35,7 @@ const kv = HAS_REDIS ? redisKv({ url: REDIS_URL, token: REDIS_TOKEN }) : memoryK
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames'];
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
 
@@ -781,7 +781,8 @@ function sendBody(req, res, { body, type, etag, cache, modified }) {
 
 // The data files, read once: one by one at /api/data/<name>, or all together at /api/data/all (one request at start-up
 // instead of twelve). /api/data/all?v=<current version> never changes, so the browser may keep it for good.
-const dataFile = (name) => path.join(DATA_DIR, (name === 'sourcenames' ? 'source-names' : name) + '.json');
+const DATA_FILE_NAMES = { sourcenames: 'source-names', airlinenames: 'airline-names' };
+const dataFile = (name) => path.join(DATA_DIR, (DATA_FILE_NAMES[name] || name) + '.json');
 const DATA = Object.fromEntries(DATA_FILES.map((n) => {
   const body = fs.readFileSync(dataFile(n));
   return [n, { body, etag: etagOf(body) }];
