@@ -334,11 +334,11 @@ function releaseTableHtml() {
 
 // ---------- points tab: converter / my points / miles needed ----------
 // The tool shown is part of the address (#points/wallet), so a reload or a link opens the same one.
-const POINTS_VIEWS = ['calc', 'wallet', 'detour', 'need', 'map'];
+const POINTS_VIEWS = ['calc', 'wallet', 'detour', 'need'];
 const pointsView = { view: POINTS_VIEWS.includes(tabSub.points) ? tabSub.points : 'calc' };
 function pointsTabsHtml() {
   const v = pointsView.view;
-  return `<fieldset class="seg points-seg" aria-label="工具">${[['calc', '點數換算'], ['wallet', '我的點數'], ['detour', '繞路兌換'], ['need', '哩程試算'], ['map', '兌換地圖']].map(([k, l]) =>
+  return `<fieldset class="seg points-seg" aria-label="工具">${[['calc', '點數換算'], ['wallet', '我的點數'], ['detour', '繞路兌換'], ['need', '哩程試算']].map(([k, l]) =>
     `<label><input type="radio" name="points-view" value="${k}" ${k === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
 }
 function setPointsView(v) {
@@ -783,7 +783,7 @@ function renderNeed() {
   });
 }
 
-// ---------- 兌換地圖: where the fixed award charts can take you from one airport (no seat search, no quota) ----------
+// ---------- 兌換地圖 tab: where the fixed award charts can take you from one airport (no seat search, no quota) ----------
 const rmap = { origin: 'TPE', cabin: 'J', trip: 'ow', program: '', budget: 0, mine: false };
 let rmapMap = null;
 // Every program with a fixed chart, one-way prices; 日航寰宇一家 only prices round trips.
@@ -819,6 +819,7 @@ function rmapDestinations() {
   if (!from || from.lat == null) return [];
   const byCity = new Map();
   const groupOf = new Map(AP.groups.flatMap((g) => g.codes.map((c) => [c, g.zh])));
+  const codesOf = new Map(AP.groups.map((g) => [g.zh, g.codes]));
   for (const ap of AP.list) {
     if (!ap.large || !ap.zh || ap.lat == null || ap.code === from.code) continue;
     // Multi-airport cities (東京 = NRT, HND) become one pin.
@@ -829,7 +830,7 @@ function rmapDestinations() {
     if (rmap.mine && !walletEmpty()) shown = prices.filter((x) => reach(x.id).total >= x.miles);
     if (rmap.budget) shown = shown.filter((x) => x.miles <= rmap.budget);
     if (!shown.length) continue;
-    const d = { ap, city, dist, prices: shown, min: shown[0].miles };
+    const d = { ap, city, codes: codesOf.get(city) || [ap.code], dist, prices: shown, min: shown[0].miles };
     const old = byCity.get(city);
     if (!old || d.min < old.min) byCity.set(city, d);
   }
@@ -837,8 +838,7 @@ function rmapDestinations() {
 }
 function rmapHtml() {
   const progs = rmapPrograms();
-  return `<form id="rmap-form" class="need" autocomplete="off">
-    <p class="hint">點數可以飛去哪？依各計畫公布的固定哩程表，標出從出發地到世界各大城市最少要多少哩。不查座位、不花額度；有沒有位子請用航線查詢確認。</p>
+  return `<form id="rmap-form" class="search-card" autocomplete="off">
     <div class="rmap-row">
       <div class="field grow ac-host">
         <label for="rm-origin">出發地</label>
@@ -856,8 +856,13 @@ function rmapHtml() {
       ${walletEmpty() ? '' : `<label class="switch"><input type="checkbox" name="mine" ${rmap.mine ? 'checked' : ''}><span class="knob"></span>只看我的點數換得到的</label>`}
       <button type="submit" class="primary">看地圖</button>
     </div>
-  </form>
-  <div id="rmap-out"></div>`;
+  </form>`;
+}
+function initRmap() {
+  const host = $('#map-page');
+  if (!host) return;
+  host.innerHTML = rmapHtml();
+  bindRmap(host);
 }
 function bindRmap(host) {
   const form = $('#rmap-form', host);
@@ -916,7 +921,7 @@ async function renderRmap() {
     m.bindPopup(`<b>${esc(d.city)}</b> <small>${esc(d.ap.code)}・直線 ${fmt(d.dist)} 哩</small>
       <table class="rm-pop">${d.prices.slice(0, 8).map((x) => `<tr><td>${esc(rmapProgramName(x.id))}<small>${esc(x.label)}</small></td><td><b>${fmt(x.miles)}</b></td></tr>`).join('')}</table>
       ${d.prices.length > 8 ? `<small>還有 ${d.prices.length - 8} 個計畫</small>` : ''}
-      <div class="map-actions"><button type="button" data-rm-search="${esc(d.ap.code)}">查實際座位</button><button type="button" data-rm-need="${esc(d.ap.code)}">看計算依據</button></div>`, { minWidth: 240, maxWidth: 320 });
+      <div class="map-actions"><button type="button" data-rm-search="${esc(d.codes.join(','))}">到航線查詢找座位</button><button type="button" data-rm-need="${esc(d.ap.code)}">看計算依據</button></div>`, { minWidth: 240, maxWidth: 320 });
   });
   // Declutter on every move: in rank order, a pin gets its label when the label has room, only its dot when the dot
   // has room, and hides otherwise (zoom in to see it).
@@ -945,12 +950,8 @@ const RMAP_POPULAR = ['東京', '大阪', '首爾', '曼谷', '香港', '新加�
 document.addEventListener('click', (e) => {
   const s = e.target.closest?.('[data-rm-search]');
   if (s) {
-    pickers.origin.set([rmap.origin]);
-    pickers.destination.set([s.dataset.rmSearch]);
-    setCabin(rmap.cabin);
-    showTab('search');
-    $('#search-form .dp-btn').focus();
-    toast('選好出發日期後按「搜尋機位」；不選日期會查未來 1 個月');
+    // Straight into a route search for the next month; the dates can be changed there.
+    applyShare(new URLSearchParams({ o: rmap.origin, d: s.dataset.rmSearch, s: isoDate(1), e: isoDate(30), c: rmap.cabin }));
     return;
   }
   const n = e.target.closest?.('[data-rm-need]');
