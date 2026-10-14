@@ -11,7 +11,7 @@
   <!-- Web font loads after first paint; system fonts show meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=1.15.0">
   <link rel="icon" href="/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="/icon-180.png">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -28,7 +28,7 @@
         <button role="tab" data-tab="explore">區域探索</button>
         <button role="tab" data-tab="cash">查現金票</button>
         <button role="tab" data-tab="hotels">查飯店</button>
-        <button role="tab" data-tab="points">點數換算器</button>
+        <button role="tab" data-tab="points">點數工具</button>
         <button role="tab" data-tab="rules">規則庫</button>
       </nav>
     </div>
@@ -92,6 +92,7 @@
             </div>
             <p id="carrier-hint" class="hint"></p>
           </form>
+          <div id="mine" class="mine"></div>
 
           <div class="presets" aria-label="熱門航線">
             <span class="presets-label">熱門航線</span>
@@ -103,7 +104,6 @@
             <button type="button" data-o="TPE" data-d="HKG" data-al="oneworld">台北 → 香港（寰宇一家）</button>
             <button type="button" data-o="HKG" data-d="LHR,JFK,YVR" data-al="oneworld">香港 → 歐美（寰宇一家）</button>
           </div>
-          <div id="mine" class="mine"></div>
           <details class="alerts-panel" id="alerts-panel">
             <summary>🔔 機位提醒 <span id="alerts-count"></span></summary>
             <div id="alerts-body" class="alerts-body"><p class="hint">載入中…</p></div>
@@ -117,8 +117,8 @@
 
       <div class="wrap">
         <div id="search-status" class="status" aria-live="polite"></div>
-        <div id="search-trip"></div>
         <div id="search-results"></div>
+        <div id="search-trip"></div>
         <div id="search-empty">
           <div id="deals" class="deals"></div>
           <p class="empty-hint">輸入航線或點選熱門航線開始搜尋。可以一次輸入多個機場，例如 <code>TPE,TSA</code>。</p>
@@ -197,12 +197,18 @@
               </div>
             </div>
             <div class="opts-row">
-              <label class="field">出發日期<input type="date" name="depart" required></label>
-              <label class="field" id="cash-return">回程日期<input type="date" name="return"></label>
+              <div class="field dp-field single" id="cash-depart"><span>出發日期</span>
+                <button type="button" class="dp-btn" aria-haspopup="dialog"></button>
+                <input type="hidden" name="depart">
+              </div>
+              <div class="field dp-field single" id="cash-return"><span>回程日期</span>
+                <button type="button" class="dp-btn" aria-haspopup="dialog"></button>
+                <input type="hidden" name="return">
+              </div>
               <label class="field">人數<select name="adults"><option value="1">1 位成人</option><option value="2">2 位成人</option><option value="3">3 位成人</option><option value="4">4 位成人</option><option value="5">5 位成人</option><option value="6">6 位成人</option><option value="7">7 位成人</option><option value="8">8 位成人</option><option value="9">9 位成人</option></select></label>
               <label class="field">轉機<select name="stops"><option value="0">不限</option><option value="1">只看直飛</option><option value="2">最多轉機 1 次</option></select></label>
               <label class="field">航空聯盟<select name="alliance">
-                <option value="">全部航空公司</option><option value="oneworld">寰宇一家</option><option value="star">星空聯盟</option><option value="skyteam">天合聯盟</option>
+                <option value="">全部聯盟</option><option value="oneworld">寰宇一家</option><option value="star">星空聯盟</option><option value="skyteam">天合聯盟</option>
               </select></label>
             </div>
             <div class="opts-row">
@@ -214,8 +220,9 @@
               </fieldset>
               <button type="submit" class="primary big">搜尋票價</button>
             </div>
+            <p id="cash-multi" class="hint warn-hint" hidden>出發地或目的地選了多個機場，這次會用 SerpApi 額度（每月 250 次，比較少）。只留一個機場可以省額度。</p>
             <p id="cash-lock" class="hint" hidden></p>
-            <p id="cash-quota" class="hint" hidden></p>
+            <div id="cash-quota" class="hint" hidden></div>
           </form>
           <details class="alerts-panel" id="watch-panel" hidden>
             <summary>📉 降價追蹤 <span id="watch-count"></span></summary>
@@ -225,8 +232,9 @@
       </div>
       <div class="wrap">
         <div id="cash-status" class="status" aria-live="polite"></div>
-        <div id="cash-trip"></div>
+        <div id="cash-from"></div>
         <div id="cash-results"></div>
+        <div id="cash-trip"></div>
       </div>
     </section>
 
@@ -249,8 +257,8 @@
     <section id="tab-points" class="panel" hidden>
       <div class="hero slim">
         <div class="wrap">
-          <h1>信用卡點數換算器</h1>
-          <p class="lead">輸入點數或想要的哩程，看各家銀行能換到多少。</p>
+          <h1>點數工具</h1>
+          <p class="lead">信用卡點數能換多少哩、記下我的點數、經飯店繞路轉航空、估算一張票要多少哩。</p>
         </div>
       </div>
       <div class="wrap"><div id="points-page"></div></div>
@@ -303,9 +311,9 @@
       <details id="ver-history"><summary>更新紀錄</summary><ol id="ver-list"></ol></details>
     </div>
   </footer>
-  <script src="/tripinfo.js"></script>
-  <script src="/app.js"></script>
-  <script src="/features.js"></script>
-  <script src="/hotels.js"></script>
+  <script src="/tripinfo.js?v=1.15.0"></script>
+  <script src="/app.js?v=1.15.0"></script>
+  <script src="/features.js?v=1.15.0"></script>
+  <script src="/hotels.js?v=1.15.0"></script>
 </body>
 </html>
