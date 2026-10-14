@@ -643,7 +643,7 @@ const TG_STEPS = `<ol class="tg-steps">
   <li>在 Telegram 找 <b>@BotFather</b>，傳 <code>/newbot</code> 建立你自己的機器人。</li>
   <li>把它給的金鑰放進 Vercel 的 <code>TELEGRAM_BOT_TOKEN</code>（Settings → Environment Variables），存好後重新部署。</li>
   <li>打開你的機器人按「開始」，再回來按「連結 Telegram」。</li></ol>`;
-const TG_ERR = { 'no-start': '機器人還沒收到你的訊息：請先照第 1 步打開機器人按「開始」（或隨便傳一句話給它），再按一次連結。', token: 'Telegram 不接受網站設定的機器人金鑰（TELEGRAM_BOT_TOKEN），請到 @BotFather 重新複製後更新到 Vercel 並重新部署。', 'not-configured': '網站還沒設定 Telegram 機器人，請照上面的步驟設定。', blocked: '機器人被封鎖了：請在 Telegram 解除封鎖、按「開始」後再試一次。' };
+const TG_ERR = { 'no-start': '機器人還沒收到你的訊息：請先照第 1 步打開機器人按「開始」（或隨便傳一句話給它），再按一次連結。', token: 'Telegram 不接受網站設定的機器人金鑰（TELEGRAM_BOT_TOKEN），請到 @BotFather 重新複製後更新到 Vercel 並重新部署。', 'not-configured': '網站還沒設定 Telegram 機器人，請照上面的步驟設定。', blocked: '機器人被封鎖了：請在 Telegram 解除封鎖、按「開始」後再試一次。', 'not-linked': '還沒連結 Telegram，請先按「連結 Telegram」。' };
 // Can the gated status be read without asking for the passcode?
 const tgOpen = () => !cashCfg.locked || Boolean(store.get(PASS_KEY, ''));
 async function tgRender(host, note = '') {
@@ -659,7 +659,7 @@ async function tgRender(host, note = '') {
     ? `<p class="hint">機位提醒、降價通知可以同時傳到你的 Telegram。網站還沒設定機器人，需要網站主人做三件事：</p>${TG_STEPS}`
     : st.linked
       ? `<p class="tg-on">✅ 已連結${st.name ? `：<b>${esc(st.name)}</b>` : ''}${st.linkedAt ? `<small>（${esc(st.linkedAt.slice(0, 10))}）</small>` : ''}</p><p class="hint">機位提醒和降價通知會同時傳到這個 Telegram。</p>${mock}
-        <div class="pass-actions"><button type="button" class="outline" data-tg="test">重新連結</button><button type="button" class="outline" data-tg="unlink">取消連結</button></div>`
+        <div class="pass-actions"><button type="button" class="primary small" data-tg="send">傳送測試訊息</button><button type="button" class="outline" data-tg="test">重新連結</button><button type="button" class="outline" data-tg="unlink">取消連結</button></div>`
       : st.tokenOk === false
         ? `<p class="acct-err">Telegram 不接受 Vercel 裡的 <code>TELEGRAM_BOT_TOKEN</code>：請到 @BotFather 傳 <code>/mybots</code> → 選你的機器人 → API Token，重新複製整串金鑰（不要有空白或引號），更新後重新部署。</p>`
         : `<p class="hint">機位提醒、降價通知可以同時傳到你的 Telegram，兩個步驟：</p>
@@ -670,8 +670,15 @@ async function tgRender(host, note = '') {
   $$('[data-tg]', host).forEach((b) => b.addEventListener('click', async () => {
     const act = b.dataset.tg;
     if (act === 'unlink' && !confirm('取消連結後，通知就不會再傳到 Telegram。確定嗎？')) return;
-    const done = busy(b, act === 'unlink' ? '取消中…' : '連結中…');
+    const done = busy(b, act === 'unlink' ? '取消中…' : act === 'send' ? '傳送中…' : '連結中…');
     try {
+      if (act === 'send') {
+        await cashApi('/api/telegram/test', { method: 'POST' });
+        done();
+        $('.acct-err', host).hidden = true;
+        toast('已傳送測試訊息，請到 Telegram 查看');
+        return;
+      }
       const r = act === 'unlink' ? await cashApi('/api/telegram', { method: 'DELETE' }) : await cashApi('/api/telegram/link', { method: 'POST' });
       toast(r.linked ? `已連結 Telegram${r.name ? `：${r.name}` : ''}` : '已取消連結 Telegram');
       tgSummaries(r.linked);
