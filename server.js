@@ -14,7 +14,7 @@ const rapid = require('./lib/rapidflights');
 const { createTravelInfo } = require('./lib/travelinfo');
 const { createDirects, DirectsError } = require('./lib/aerodatabox');
 const hotelCash = require('./lib/hotelcash');
-const { redisKv, memoryKv, takeLock, sharedCache, KvError } = require('./lib/kv');
+const { redisKv, memoryKv, takeLock, sharedCache, hashKey, KvError } = require('./lib/kv');
 const { todayTW, monthTW, validDate } = require('./lib/day');
 const tg = require('./lib/telegram');
 const accor = require('./lib/accor');
@@ -157,7 +157,17 @@ const lockFor = (name, seconds) => () => takeLock(kv, name, seconds);
 class BadRequest extends Error {}
 
 // Airport → country and coordinates, for the pre-trip notes.
-const AIRPORTS = new Map(require('./public/airports.min.json').airports.map(([code, , , country, , , , , lat, lon]) => [code, { country, lat, lon }]));
+const AIRPORT_FILE = require('./public/airports.min.json');
+const AIRPORTS = new Map(AIRPORT_FILE.airports.map(([code, , , country, , , , , lat, lon]) => [code, { country, lat, lon }]));
+// A Chinese city name in English, for sources that only know English names (Booking.com's city search):
+// the multi-airport groups first (東京 → Tokyo), then a major airport whose Chinese name starts with it (曼谷 → Bangkok).
+function cityInEnglish(name) {
+  if (!/[\u3400-\u9fff]/.test(name)) return name;
+  const g = (AIRPORT_FILE.groups || []).find((x) => x.zh === name);
+  if (g) return g.en;
+  const hits = AIRPORT_FILE.airports.filter((a) => a[6] && a[6].startsWith(name)).sort((a, b) => (b[5] || 0) - (a[5] || 0));
+  return hits.length ? hits[0][7] || hits[0][1] : name;
+}
 const VISA = require('./data/visa.json');
 const WARNINGS = require('./data/warnings.json');
 const travelInfo = createTravelInfo({ visa: VISA.countries, warnings: WARNINGS.countries });
@@ -740,12 +750,22 @@ async function handleAccor(q, req) {
   const adults = Number(q.get('adults') || 2);
   if (!Number.isInteger(adults) || adults < 1 || adults > 6) throw new BadRequest('人數需為 1 到 6');
   const lat = Number(q.get('lat')); const lon = Number(q.get('lon'));
-  const want = { city, checkin, checkout, adults, lat: q.get('lat') && Number.isFinite(lat) ? Math.round(lat * 100) / 100 : null, lon: q.get('lon') && Number.isFinite(lon) ? Math.round(lon * 100) / 100 : null };
+  const want = { city: cityInEnglish(city), checkin, checkout, adults, lat: q.get('lat') && Number.isFinite(lat) ? Math.round(lat * 100) / 100 : null, lon: q.get('lon') && Number.isFinite(lon) ? Math.round(lon * 100) / 100 : null };
   const answer = async (search) => accor.accorAnswer(search, { eurRate: (await handleFx()).rates.EUR || FX_FALLBACK.EUR, nights });
   if (MOCK && !RAPIDAPI_KEY) return { mock: true, cached: false, ...(await answer(mock.mockCityHotels(want))), bookingLeft: 512, bookingLimit: 530 };
   if (!bookingLookup) throw new hotelCash.HotelCashError('雅高飯店價格要用 RapidAPI 的 Booking.com API，網站還沒設定 RAPIDAPI_KEY', 503);
   let spent = false;
-  const body = await shared('accor:v1:' + JSON.stringify(want), 6 * 3600, async () => { spent = true; return answer(await bookingLookup.city(want)); });
+  const key = 'accor:v2:' + JSON.stringify(want);
+  const body = await shared(key, 6 * 3600, async () => {
+    spent = true;
+    const search = await bookingLookup.city(want);
+    // The last search's outline (city match, how many hotels, a few names; no prices or personal data) for /api/hotels/accor/debug.
+    await kv.set('accor:debug', { at: new Date().toISOString(), asked: city, query: want.city, nights, ...(search.debug || {}) }, { ex: 7 * 86400 }).catch(() => {});
+    const { debug, ...rest } = search;
+    return answer(rest);
+  });
+  // An empty answer is not kept, so the next try asks Booking.com again (and shows what it found, see the debug outline).
+  if (spent && !body.hotels.length) { uncache(key); await kv.del('cache:v1:' + hashKey(key)).catch(() => {}); }
   return { ...body, cached: !spent, bookingLeft: bookingQuota.left, bookingLimit: bookingQuota.limit };
 }
 
@@ -877,6 +897,7 @@ async function route(req, res) {
     if (p === '/api/cash/quota') return sendJson(res, 200, await handleCashQuota());
     if (p === '/api/hotels/cash') return sendJson(res, 200, await handleHotelCash(q, req));
     if (p === '/api/hotels/accor') return sendJson(res, 200, await handleAccor(q, req));
+    if (p === '/api/hotels/accor/debug') return sendJson(res, 200, (await kv.get('accor:debug').catch(() => null)) || {});
     // Public.
     if (p === '/api/directs') {
       const { body, open } = await handleDirects(q, req);
