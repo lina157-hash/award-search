@@ -21,7 +21,7 @@
     /* Warm summer night: deep sea with sunset accents. */
     --bg: #0e1620; --surface: #16212c; --surface-2: #1c2936; --text: #eef2f5; --muted: #a9b4bf; --border: #2a3846;
     --accent: #4fd1e0; --accent-text: #052a31; --accent-soft: #123a44;
-    --sun: #ffc233; --sun-2: #ff9a52; --sun-text: #2f1f00;
+    --sun: #ffc233; --sun-2: #ff9a52; --sun-text: #2f1f00; --danger: #ff8d9c;
     --heat-1: #10303a; --heat-2: #155060; --heat-3: #176a7a; --heat-4: #34b3c6; --heat-text-strong: #04161b;
     --few: #3a2e12; --few-text: #f2c66d; --none: #18222d;
     --top-from: #07263a; --top-to: #0b3a55;
