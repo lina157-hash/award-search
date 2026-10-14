@@ -279,21 +279,22 @@ test('B13: a calendar that rejects round trips is asked one-way from then on', a
 test('B15/B18: Booking.com never shows another hotel\'s price, and remembers hotel ids', async () => {
   const { bookingHotels } = require('../lib/hotelcash');
   const paths = [];
-  let result = [{ hotel_id: 999, hotel_name: 'Some Other Hotel', min_total_price: 3000, currencycode: 'JPY' }];
+  let detail = { hotel_name: 'Tokyo Marriott Hotel', soldout: 1 };
   const kv = memoryKv();
   const lookup = bookingHotels({ apiKey: 'r', kv, fetchImpl: async (url) => {
     const u = new URL(String(url));
     paths.push(u.pathname);
-    if (u.pathname === '/v1/hotels/locations') return new Response(JSON.stringify([{ dest_id: '123', dest_type: 'hotel', name: 'Tokyo Marriott Hotel', latitude: 35.6205, longitude: 139.7372 }]));
-    return new Response(JSON.stringify({ result }));
+    if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: Buffer.from(JSON.stringify({ dest_id: '123', dest_type: 'hotel' })).toString('base64'), name: 'Tokyo Marriott Hotel', latitude: 35.6205, longitude: 139.7372 }] });
+    assert.equal(u.searchParams.get('hotelId'), '123');
+    return Response.json({ status: true, data: detail });
   } });
   const want = { name: 'Tokyo Marriott Hotel', checkin: '2026-11-01', checkout: '2026-11-03', adults: 2, lat: 35.6206, lon: 139.7373 };
   const sold = await lookup(want);
   assert.deepEqual([sold.found, sold.soldOut, sold.total, sold.name], [true, true, null, 'Tokyo Marriott Hotel']);
-  result = [{ hotel_id: 123, hotel_name: 'Tokyo Marriott Hotel', min_total_price: 21000, currencycode: 'JPY' }];
+  detail = { hotel_name: 'Tokyo Marriott Hotel', composite_price_breakdown: { gross_amount: { value: 21000, currency: 'TWD' } } };
   const ok = await lookup(want);
-  assert.deepEqual([ok.total, ok.currency, ok.requests], [21000, 'TWD', 1], 'a TWD price is not converted from yen; the id came from the cache');
-  assert.deepEqual(paths, ['/v1/hotels/locations', '/v1/hotels/search', '/v1/hotels/search']);
+  assert.deepEqual([ok.total, ok.currency, ok.requests], [21000, 'TWD', 1], 'the id came from the cache');
+  assert.deepEqual(paths, ['/stays/auto-complete', '/stays/detail', '/stays/detail']);
 });
 
 test('B17: rooms.aero minor units follow each currency\'s ISO 4217 exponent', () => {

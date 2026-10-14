@@ -50,33 +50,38 @@ test('ALL points: 50 per euro, 1,000 minimum, then 2,000-point steps never above
   assert.equal(a.pointValueTwd, 0.72);
 });
 
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64');
 test('Booking.com city search: two requests at most, city id cached, a cache hit costs nothing', async () => {
   const calls = [];
   const kv = memoryKv();
   let quota;
+  const tokyo = b64({ city_name: 'Tokyo', country: 'Japan', dest_id: '-246227', dest_type: 'city' });
   const fetchImpl = async (url) => {
     const u = new URL(String(url));
-    calls.push(u.pathname + (u.searchParams.get('page_number') ? `#${u.searchParams.get('page_number')}` : ''));
-    const headers = { 'x-ratelimit-requests-remaining': String(500 - calls.length), 'x-ratelimit-requests-limit': '530' };
-    if (u.pathname === '/v1/hotels/locations') {
-      return new Response(JSON.stringify([{ dest_id: '-1', dest_type: 'city', name: 'Tokyo (Japan)', latitude: 35.68, longitude: 139.76 }, { dest_id: '-9', dest_type: 'city', name: 'Tokyo, Ohio', latitude: 39, longitude: -84 }, { dest_id: '5', dest_type: 'hotel', name: 'Tokyo Hotel' }]), { headers });
+    assert.equal(u.host, 'booking-com18.p.rapidapi.com');
+    calls.push(u.pathname + (u.searchParams.get('page') ? `#${u.searchParams.get('page')}` : ''));
+    const headers = { 'x-ratelimit-requests-remaining': String(530 - calls.length), 'x-ratelimit-requests-limit': '530' };
+    if (u.pathname === '/stays/auto-complete') {
+      return Response.json({ status: true, data: [{ id: tokyo, name: 'Tokyo', latitude: 35.68, longitude: 139.76 }, { id: b64({ city_name: 'Tokyo', dest_id: '-9', dest_type: 'city' }), name: 'Tokyo, Ohio', latitude: 39, longitude: -84 }, { id: b64({ dest_id: '5', dest_type: 'hotel' }), name: 'Tokyo Hotel' }] }, { headers });
     }
-    assert.equal(u.searchParams.get('dest_id'), '-1', 'the city nearest to the given position');
-    assert.equal(u.searchParams.get('filter_by_currency'), 'TWD');
-    const page = Number(u.searchParams.get('page_number'));
-    return new Response(JSON.stringify({ result: page === 0
-      ? [{ hotel_id: 1, hotel_name: 'Pullman Tokyo Tamachi', min_total_price: 20000, currencycode: 'JPY', class: 4, latitude: 35.64, longitude: 139.75, url: 'https://www.booking.com/hotel/jp/pullman.html' }, { hotel_id: 2, hotel_name: 'Tokyo Marriott Hotel', min_total_price: 25000 }]
-      : [{ hotel_id: 3, hotel_name: 'ibis Tokyo Shinjuku', composite_price_breakdown: { gross_amount: { value: 8000, currency: 'TWD' } } }] }), { headers });
+    assert.equal(u.searchParams.get('locationId'), tokyo, 'the city nearest to the given position');
+    assert.equal(u.searchParams.get('currencyCode'), 'TWD');
+    const page = Number(u.searchParams.get('page'));
+    return Response.json({ status: true, data: page === 1
+      ? [{ id: 1, name: 'Pullman Tokyo Tamachi', priceBreakdown: { grossPrice: { value: 20000, currency: 'TWD' } }, propertyClass: 4, latitude: 35.64, longitude: 139.75 }, { id: 2, name: 'Tokyo Marriott Hotel', priceBreakdown: { grossPrice: { value: 25000, currency: 'TWD' } } }]
+      : [{ id: 3, name: 'ibis Tokyo Shinjuku', priceBreakdown: { grossPrice: { value: 8000, currency: 'TWD' } } }] }, { headers });
   };
   const lookup = bookingHotels({ apiKey: 'r', kv, fetchImpl, onQuota: (q) => { quota = q; } });
   const want = { city: 'Tokyo', checkin: '2026-12-01', checkout: '2026-12-03', adults: 2, lat: 35.68, lon: 139.76 };
   const first = await lookup.city(want);
-  assert.deepEqual(calls, ['/v1/hotels/locations', '/v1/hotels/search#0']);
+  assert.deepEqual(calls, ['/stays/auto-complete', '/stays/search#1']);
   assert.equal(first.requests, 2);
-  assert.deepEqual(quota, { left: 498, limit: 530 });
+  assert.deepEqual(quota, { left: 528, limit: 530 });
+  assert.match(first.url, /dest_id=-246227&dest_type=city/);
   const again = await lookup.city(want);
-  assert.deepEqual(calls.slice(2), ['/v1/hotels/search#0', '/v1/hotels/search#1'], 'with the city id cached, both requests are result pages');
+  assert.deepEqual(calls.slice(2), ['/stays/search#1', '/stays/search#2'], 'with the city id cached, both requests are result pages');
   assert.equal(again.hotels.length, 3);
+  assert.match(again.url, /dest_id=-246227/);
   const answer = accorAnswer(again, { eurRate: 36, nights: 2 });
   assert.deepEqual(answer.hotels.map((h) => [h.name, h.total, h.stars]), [['ibis Tokyo Shinjuku', 8000, null], ['Pullman Tokyo Tamachi', 20000, 4]]);
   // The whole answer is shared: the same query again spends nothing.
@@ -94,7 +99,7 @@ test('Booking.com city search with a brand filter: Accor brands asked for by fil
   const fetchImpl = async (url) => {
     const u = new URL(String(url));
     calls.push(u.pathname);
-    if (u.hostname === 'booking-com.p.rapidapi.com') return new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 });
+    if (u.hostname === 'booking-com18.p.rapidapi.com') return new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 });
     if (u.pathname === '/api/v1/hotels/searchDestination') return Response.json({ status: true, data: [{ dest_id: '-3414440', search_type: 'city', name: 'Bangkok' }] });
     if (u.pathname === '/api/v1/hotels/getFilter') {
       return Response.json({ status: true, data: { filters: [
@@ -116,6 +121,22 @@ test('Booking.com city search with a brand filter: Accor brands asked for by fil
   const again = await lookup.city({ ...want, checkin: '2026-12-01', checkout: '2026-12-03' }, { brands: isAccorTitle });
   assert.deepEqual(calls, ['/api/v1/hotels/searchHotels'], 'same city: city id and filters cached, one filtered page');
   assert.equal(again.requests, 1);
+});
+
+test('Things4u brand filter: get-filters genericIds go back as categoriesFilter', async () => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    const u = new URL(String(url));
+    calls.push(u.pathname);
+    if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: b64({ city_name: 'Bangkok', dest_id: '-3414440', dest_type: 'city' }), name: 'Bangkok' }] });
+    if (u.pathname === '/stays/get-filters') return Response.json({ status: true, data: { filters: [{ field: 'chaincode', title: 'Brands', options: [{ title: 'Novotel', genericId: 'chaincode::1050' }, { title: 'Hilton Hotels & Resorts', genericId: 'chaincode::1000' }, { title: 'Pullman Hotels and Resorts', genericId: 'chaincode::1049' }] }] } });
+    assert.equal(u.searchParams.get('categoriesFilter'), 'chaincode::1050,chaincode::1049');
+    return Response.json({ status: true, data: [{ id: 7, name: 'Novotel Bangkok Sukhumvit 20', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } }] });
+  };
+  const lookup = bookingHotels({ apiKey: 'r', kv: memoryKv(), fetchImpl });
+  const r = await lookup.city({ city: 'Bangkok', checkin: '2026-11-26', checkout: '2026-11-28', adults: 2, lat: null, lon: null }, { brands: isAccorTitle });
+  assert.deepEqual(calls, ['/stays/auto-complete', '/stays/get-filters', '/stays/search']);
+  assert.deepEqual([r.requests, r.hotels[0].total, r.url.includes('dest_id=-3414440')], [3, 9000, true]);
 });
 
 test('/api/hotels/accor: demo list, validation, passcode, config flag', async () => {

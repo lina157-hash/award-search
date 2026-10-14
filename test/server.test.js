@@ -538,31 +538,31 @@ test('hotel cash: SerpApi picks the right property and lists the official price;
   const miss = serpHotels({ apiKey: 's', fetchImpl: async () => new Response(JSON.stringify({ properties: [{ type: 'hotel', name: 'Other Inn', gps_coordinates: { latitude: 1, longitude: 1 } }] })) });
   assert.equal((await miss({ name: 'Tokyo Marriott Hotel', checkin: '2026-11-01', checkout: '2026-11-02', adults: 2, lat: 35.62, lon: 139.73 })).found, false);
 
-  // Booking.com: Tipsters' API first (the owner's subscription), DataCrawler's when the key only has that one.
+  // Booking.com: Things4u's API first (the owner's subscription), DataCrawler's when the key only has that one.
   const hosts = [];
+  const hotelId = Buffer.from(JSON.stringify({ dest_id: '123', dest_type: 'hotel' })).toString('base64');
   const booking = bookingHotels({ apiKey: 'r', fetchImpl: async (url) => {
     const u = new URL(String(url));
     hosts.push(u.host + u.pathname);
     if (u.host === 'booking-com15.p.rapidapi.com') return new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 });
-    if (u.pathname === '/v1/hotels/locations') return new Response(JSON.stringify([{ dest_id: '123', dest_type: 'hotel', name: 'Tokyo Marriott Hotel', latitude: 35.6205, longitude: 139.7372 }]));
-    return new Response(JSON.stringify({ result: [{ hotel_id: 123, hotel_name: 'Tokyo Marriott Hotel', min_total_price: 600, currencycode: 'USD', url: 'https://www.booking.com/hotel/jp/tokyo-marriott.html' }] }), { headers: { 'x-ratelimit-requests-remaining': '520' } });
+    if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: hotelId, name: 'Tokyo Marriott Hotel', latitude: 35.6205, longitude: 139.7372 }] });
+    return Response.json({ status: true, data: { hotel_name: 'Tokyo Marriott Hotel', url: 'https://www.booking.com/hotel/jp/tokyo-marriott.html', composite_price_breakdown: { gross_amount: { value: 600, currency: 'TWD' } } } }, { headers: { 'x-ratelimit-requests-remaining': '520' } });
   } });
   const b = await booking({ name: 'Tokyo Marriott Hotel', checkin: '2026-11-01', checkout: '2026-11-03', adults: 2, lat: 35.6206, lon: 139.7373 });
-  // min_total_price is already in the requested TWD; `currencycode` is the hotel's local currency.
   assert.deepEqual([b.found, b.total, b.currency, b.url], [true, 600, 'TWD', 'https://www.booking.com/hotel/jp/tokyo-marriott.html']);
-  assert.deepEqual(hosts, ['booking-com.p.rapidapi.com/v1/hotels/locations', 'booking-com.p.rapidapi.com/v1/hotels/search']);
+  assert.deepEqual(hosts, ['booking-com18.p.rapidapi.com/stays/auto-complete', 'booking-com18.p.rapidapi.com/stays/detail']);
   const dcHosts = [];
   const dc = bookingHotels({ apiKey: 'r', fetchImpl: async (url) => {
     const u = new URL(String(url));
     dcHosts.push(u.host);
-    if (u.host === 'booking-com.p.rapidapi.com') return new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 });
+    if (u.host === 'booking-com18.p.rapidapi.com') return new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 });
     if (u.pathname.endsWith('searchDestination')) return new Response(JSON.stringify({ status: true, data: [{ dest_id: '9', dest_type: 'hotel', name: 'Tokyo Marriott Hotel', latitude: 35.6205, longitude: 139.7372 }] }));
     return new Response(JSON.stringify({ status: true, data: { hotel_name: 'Tokyo Marriott Hotel', url: 'https://www.booking.com/hotel/jp/x.html', composite_price_breakdown: { gross_amount: { value: 21000, currency: 'TWD' } } } }));
   } });
   const want = { name: 'Tokyo Marriott Hotel', checkin: '2026-11-01', checkout: '2026-11-03', adults: 2, lat: 35.6206, lon: 139.7373 };
   assert.equal((await dc(want)).total, 21000);
   await dc(want);
-  assert.deepEqual(dcHosts, ['booking-com.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com'], 'remembers which API the key has');
+  assert.deepEqual(dcHosts, ['booking-com18.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com'], 'remembers which API the key has');
 
   const demo = await (await fetch(`${base}/api/hotels/cash?name=Tokyo%20Marriott&checkin=${isoIn(20)}&checkout=${isoIn(22)}`)).json();
   assert.ok(demo.mock && demo.prices.some((p) => p.official));
