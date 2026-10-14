@@ -4,16 +4,16 @@
 const HOTEL_NAMES = { marriott: '萬豪 Bonvoy', hilton: '希爾頓 Honors', ihg: '洲際 IHG', hyatt: '凱悅 World of Hyatt', choice: 'Choice', wyndham: '溫德姆 Wyndham', iprefer: 'I Prefer' };
 const HOTEL_SHORT = { marriott: '萬豪', hilton: '希爾頓', ihg: '洲際', hyatt: '凱悅', choice: 'Choice', wyndham: '溫德姆', iprefer: 'I Prefer', accor: '雅高', shangrila: '香格里拉' };
 // rooms.aero chains; 雅高 is priced from Booking.com cash rates (quota, passcode), 香格里拉 only links to its own site.
-const ROOMS_PROGRAMS = ['marriott', 'hilton', 'ihg', 'hyatt'];
+const ROOMS_PROGRAMS = ['marriott', 'hilton', 'ihg', 'hyatt', 'wyndham', 'choice'];
 // Shangri-La publishes no search URL that takes a city and dates (checked 2026-10), so these are the stable pages.
 const SL_REDEEM_URL = 'https://www.shangri-la.com/en/corporate/shangrilacircle/redeem-points/';
 const SL_HOTELS_URL = 'https://www.shangri-la.com/en/find-a-hotel/';
 // Typical value of one point in US cents (The Points Guy, 2026/10). A stay worth 30% more than this is marked as a good use.
-const POINT_VALUE_CENTS = { marriott: 0.75, hilton: 0.4, ihg: 0.6, hyatt: 1.7 };
+const POINT_VALUE_CENTS = { marriott: 0.75, hilton: 0.4, ihg: 0.6, hyatt: 1.7, wyndham: 1.1, choice: 0.6 };
 const HOTEL_GOOD = 1.3;
 const HOTEL_KEY = 'hotelSearch:v1';
 seq.hotels = 0;
-const hotelState = { where: '', date: '', flex: 7, nights: 1, programs: ['marriott', 'hilton', 'ihg', 'hyatt'], sort: 'points', affordOnly: false, results: null, params: null };
+const hotelState = { where: '', date: '', flex: 7, nights: 1, programs: ['marriott', 'hilton', 'ihg', 'hyatt', 'wyndham', 'choice'], sort: 'points', affordOnly: false, results: null, params: null };
 let hotelDate = null; // the form's date picker
 
 // Chinese city names → the English place name rooms.aero geocodes (multi-airport cities and airports with a Chinese name).
@@ -59,7 +59,7 @@ function hotelsHtml() {
       <fieldset class="h-progs" aria-label="飯店集團（可複選）"><legend class="sr-only">飯店集團（可複選）</legend>${ROOMS_PROGRAMS.map((k) => chk(k)).join('')}${extra}</fieldset>
       <button type="submit" class="primary big">搜尋點數房</button>
     </div>
-    <p class="hint">萬豪、希爾頓、洲際、凱悅的點數房價來自 rooms.aero。雅高沒有點數房：ALL 點數固定 2,000 點折 €40，${cashCfg.accor ? '勾「雅高」會用 Booking.com 的房價換算成點數（要通關密碼、會用查價額度）' : '可以直接用現金價換算'}。香格里拉的點數價不公開，勾選後會給你官網的連結。</p>
+    <p class="hint">萬豪、希爾頓、洲際、凱悅、溫德姆、Choice 的點數房價來自 rooms.aero。雅高沒有點數房：ALL 點數固定 2,000 點折 €40，${cashCfg.accor ? '勾「雅高」會用 Booking.com 的房價換算成點數（要通關密碼、會用查價額度）' : '可以直接用現金價換算'}。香格里拉的點數價不公開，勾選後會給你官網的連結。</p>
   </form>`;
 }
 
@@ -125,53 +125,123 @@ async function searchHotels() {
 }
 
 // ---------- 雅高 ALL: Booking.com cash rates turned into points (GET /api/hotels/accor, passcode, ≤2 Booking requests) ----------
-async function searchAccor(fresh) {
+async function searchAccor(fresh, brands = []) {
   const box = $('#h-accor-out');
   const { where, date, nights } = hotelState;
   const head = `<h2 class="section">雅高 ALL <small>${esc(where)}・${dayLabel(date)} 入住 ${nights} 晚・2 人</small></h2>`;
-  box.innerHTML = `${head}<p class="hint">正在查 Booking.com 上的雅高飯店…</p>${skeleton(2)}`;
+  box.innerHTML = `${head}<p class="hint">正在查 Booking.com 上的雅高飯店${brands.length ? `（${esc(brands.join('、'))}）` : ''}…</p>${skeleton(2)}`;
   try {
     const q = new URLSearchParams({ city: placeQuery(where), checkin: date, checkout: isoDateFrom(date, nights), adults: '2' });
+    if (brands.length) q.set('brands', brands.join(','));
     const [body] = await Promise.all([cashApi(`/api/hotels/accor?${q}`), loadFx()]);
     if (!fresh()) return;
+    accorFilter = { ...accorFilter, brands: new Set(body.brandsOnly || []), minStars: 0 };
     box.innerHTML = head + accorHtml(body, nights);
+    bindAccorFilters(box, body, nights, fresh);
     loadCashQuota();
   } catch (e) {
     if (!fresh()) return;
     const msg = e.code === 'passcode' || /通關密碼/.test(e.message) ? '需要通關密碼才能查雅高飯店（會用 Booking.com 查價額度）。' : e.message;
     box.innerHTML = `${head}<p class="status error"><span>${esc(msg)}</span><button type="button" class="outline" data-accor-retry>重試</button></p>`;
-    $('[data-accor-retry]', box).addEventListener('click', () => searchAccor(fresh));
+    $('[data-accor-retry]', box).addEventListener('click', () => searchAccor(fresh, brands));
   }
 }
-function accorHtml(body, nights) {
-  const rule = body.rule || {};
-  const list = body.hotels || [];
-  const ptsLine = (h) => {
+// The filters on the 雅高 list: brands (several) and lowest star rating. They only narrow what is on screen; when the
+// list was cut at 100 hotels, 「只查這些品牌」 asks Booking.com again for the chosen brands alone.
+let accorFilter = { brands: new Set(), minStars: 0, sort: 'price' };
+// Sold-out hotels stay last whatever the order; ties fall back to the cheaper one.
+const ACCOR_SORTS = [['price', '價格低到高'], ['price-desc', '價格高到低'], ['stars', '星級高到低'], ['stars-asc', '星級低到高']];
+const accorOrder = {
+  price: (a, b) => (a.total ?? Infinity) - (b.total ?? Infinity),
+  'price-desc': (a, b) => (b.total ?? -Infinity) - (a.total ?? -Infinity),
+  stars: (a, b) => (b.stars || 0) - (a.stars || 0) || accorOrder.price(a, b),
+  'stars-asc': (a, b) => (a.stars || 0) - (b.stars || 0) || accorOrder.price(a, b),
+};
+const accorShown = (list) => list
+  .filter((h) => (!accorFilter.brands.size || accorFilter.brands.has(h.brand)) && (!accorFilter.minStars || (h.stars || 0) >= accorFilter.minStars))
+  .sort((a, b) => Number(a.soldOut) - Number(b.soldOut) || (accorOrder[accorFilter.sort] || accorOrder.price)(a, b));
+function accorCard(h, rule, nights) {
+  const ptsLine = () => {
     if (!h.points) return '';
     const left = h.usablePoints < h.points && h.cashLeftTwd > 0
       ? `<small>${h.usablePoints ? `一次最多折 ${fmt(h.usablePoints)} 點，剩 NT$${fmt(h.cashLeftTwd)} 刷卡` : `不到最低 ${fmt(rule.minPoints || 1000)} 點，不能用點數折`}</small>` : '';
     return `<small class="h-pts">約 <b>${fmt(h.points)} 點</b>（ALL 每 2,000 點折 €40）</small>${left}${hotelAffordHtml('accor', h.usablePoints || h.points)}`;
   };
-  const card = (h) => `<article class="hotel h-accor${h.soldOut ? ' sold-out' : ''}">
+  return `<article class="hotel h-accor${h.soldOut ? ' sold-out' : ''}">
       <div class="hotel-main">
         <div><span class="pill h-accor">雅高</span> <small class="inline">${esc(h.brand)}${h.brandZh ? ` ${esc(h.brandZh)}` : ''}</small>${h.stars ? ` <small class="inline stars" title="${h.stars} 星">${'★'.repeat(Math.round(h.stars))}</small>` : ''}</div>
         <h3>${esc(h.name)}</h3>${h.nameZh ? `<small class="h-zh">${esc(h.nameZh)}</small>` : ''}
       </div>
       <div class="hotel-price">
-        ${h.soldOut ? '<b class="muted">這幾晚已售完</b><small>或 Booking.com 沒有報價</small>' : `<b>NT$${fmt(h.total)}</b><small>${nights} 晚含稅總價</small>${ptsLine(h)}`}
+        ${h.soldOut ? '<b class="muted">這幾晚已售完</b><small>或 Booking.com 沒有報價</small>' : `<b>NT$${fmt(h.total)}</b><small>${nights} 晚含稅總價</small>${ptsLine()}`}
       </div>
       <div class="hotel-actions">${h.url ? `<a class="outline btn" href="${esc(h.url)}" target="_blank" rel="noopener">Booking.com ↗</a>` : ''}</div>
     </article>`;
+}
+function accorFilterBar(body) {
+  const list = body.hotels || [];
+  const count = new Map();
+  for (const h of list) count.set(h.brand, (count.get(h.brand) || 0) + 1);
+  // Brands on the list, most hotels first; when the list was cut, also the brands that can be asked for alone.
+  const names = [...count.keys()].sort((a, b) => count.get(b) - count.get(a));
+  if (body.more) for (const b of body.brandsSearchable || []) if (!count.has(b)) names.push(b);
+  const chip = (b) => `<label class="h-chip"><input type="checkbox" name="accor-brand" value="${esc(b)}" ${accorFilter.brands.has(b) ? 'checked' : ''}><span>${esc(b)}${count.has(b) ? `<small>${count.get(b)}</small>` : '<small>沒列出</small>'}</span></label>`;
+  const stars = [[0, '全部星級'], [3, '3 星以上'], [4, '4 星以上'], [5, '5 星']];
+  return `<div class="accor-filters">
+      <fieldset class="h-progs" aria-label="篩選品牌（可複選）"><legend class="sr-only">篩選品牌</legend>${names.map(chip).join('')}</fieldset>
+      <label class="field compact">星級<select name="accor-stars">${stars.map(([v, t]) => `<option value="${v}" ${accorFilter.minStars === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <label class="field compact">排序<select name="accor-sort">${ACCOR_SORTS.map(([v, t]) => `<option value="${v}" ${accorFilter.sort === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      <span class="accor-refetch"></span>
+    </div>`;
+}
+function accorListHtml(body, nights) {
+  const shown = accorShown(body.hotels || []);
+  const rule = body.rule || {};
+  return shown.length
+    ? `<div class="hotel-list">${shown.map((h) => accorCard(h, rule, nights)).join('')}</div>`
+    : '<p class="hint">沒有符合篩選條件的飯店。</p>';
+}
+function bindAccorFilters(box, body, nights, fresh) {
+  $('[data-accor-all-empty]', box)?.addEventListener('click', () => searchAccor(fresh, []));
+  const out = $('#h-accor-list', box);
+  if (!out) return;
+  const refetch = $('.accor-refetch', box);
+  const update = () => {
+    out.innerHTML = accorListHtml(body, nights);
+    const picked = [...accorFilter.brands];
+    const searchable = picked.length && picked.every((b) => (body.brandsSearchable || []).includes(b));
+    // A cut list may be missing hotels of the chosen brands: offer to ask Booking.com for those brands alone.
+    refetch.innerHTML = body.more && searchable
+      ? `<button type="button" class="outline small" data-accor-only>只查這些品牌（用額度）</button>`
+      : body.brandsOnly?.length ? '<button type="button" class="linklike" data-accor-all>改查全部品牌（用額度）</button>' : '';
+    $('[data-accor-only]', refetch)?.addEventListener('click', () => searchAccor(fresh, picked));
+    $('[data-accor-all]', refetch)?.addEventListener('click', () => searchAccor(fresh, []));
+  };
+  $$('input[name="accor-brand"]', box).forEach((c) => c.addEventListener('change', () => {
+    if (c.checked) accorFilter.brands.add(c.value); else accorFilter.brands.delete(c.value);
+    update();
+  }));
+  $('select[name="accor-stars"]', box)?.addEventListener('change', (e) => { accorFilter.minStars = Number(e.target.value); update(); });
+  $('select[name="accor-sort"]', box)?.addEventListener('change', (e) => { accorFilter.sort = e.target.value; update(); });
+  update();
+}
+function accorHtml(body, nights) {
+  const rule = body.rule || {};
+  const list = body.hotels || [];
   const quota = `${body.mock ? '示範資料。' : ''}${body.cached ? '剛有人查過同一個城市和日期，這次沒有用到額度。' : body.requests ? `用了 ${body.requests} 次 Booking.com 查價。` : ''}${body.bookingLeft != null ? `本月 Booking.com 剩 ${fmt(body.bookingLeft)} 次。` : ''}`;
   const src = [rule.source && `<a href="${esc(rule.source)}" target="_blank" rel="noopener">ALL 會員條款 ↗</a>`, rule.sourceOnline && `<a href="${esc(rule.sourceOnline)}" target="_blank" rel="noopener">線上折抵說明 ↗</a>`].filter(Boolean).join('　');
+  const only = body.brandsOnly?.length ? `只查了 ${esc(body.brandsOnly.join('、'))}：` : '';
   return (!body.found || !list.length
     ? `<p class="hint">${!body.found
       ? `Booking.com 認不出「${esc(hotelState.where)}」這個城市，換個寫法（例如英文）試試。`
-      : body.scanned
-        ? `Booking.com 的「${esc(body.city || hotelState.where)}」最熱門的 ${body.scanned} 家飯店裡，沒有雅高旗下的飯店。`
-        : `Booking.com 這次沒有回傳「${esc(body.city || hotelState.where)}」的飯店，可能這幾晚沒有空房或資料來源暫時有問題。`}${body.cityUrl ? ` <a href="${esc(body.cityUrl)}" target="_blank" rel="noopener">在 Booking.com 看這個城市 ↗</a>` : ''}</p>`
-    : `<p class="hint">Booking.com 上的雅高飯店${body.more ? `太多了，只列最便宜的 ${list.length} 家` : `共 ${list.length} 家`}，便宜的在前。雅高沒有點數房，點數是用房價換算的${body.pointValueTwd ? `，每點約 NT$${body.pointValueTwd}` : ''}。</p>
-      <div class="hotel-list">${list.map(card).join('')}</div>`)
+      : only
+        ? `${only}Booking.com 在「${esc(body.city || hotelState.where)}」這幾晚沒有這些品牌的飯店。`
+        : body.scanned
+          ? `Booking.com 的「${esc(body.city || hotelState.where)}」最熱門的 ${body.scanned} 家飯店裡，沒有雅高旗下的飯店。`
+          : `Booking.com 這次沒有回傳「${esc(body.city || hotelState.where)}」的飯店，可能這幾晚沒有空房或資料來源暫時有問題。`}${body.cityUrl ? ` <a href="${esc(body.cityUrl)}" target="_blank" rel="noopener">在 Booking.com 看這個城市 ↗</a>` : ''}</p>${only ? '<p><button type="button" class="linklike" data-accor-all-empty>改查全部品牌（用額度）</button></p>' : ''}`
+    : `<p class="hint">${only}Booking.com 上的雅高飯店${body.more ? `太多了，只列最便宜的 ${list.length} 家` : `共 ${list.length} 家`}，可以用下面的品牌、星級篩選和排序。雅高沒有點數房，點數是用房價換算的${body.pointValueTwd ? `，每點約 NT$${body.pointValueTwd}` : ''}。</p>
+      ${accorFilterBar(body)}
+      <div id="h-accor-list"></div>`)
     + `${rule.text ? `<p class="hint h-rule">📘 ${esc(rule.text)} ${src}</p>` : ''}<p class="hint">${quota}</p>`;
 }
 

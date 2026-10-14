@@ -4,7 +4,7 @@ const assert = require('node:assert');
 delete process.env.SEATS_AERO_API_KEY;
 delete process.env.CASH_PASSCODE;
 const { server } = require('../server');
-const { brandOf, pointsFor, accorAnswer, RULE, isAccorTitle } = require('../lib/accor');
+const { brandOf, pointsFor, accorAnswer, RULE, isAccorTitle, BOOKING_CHAINS, BOOKING_MUST, BOOKING_BRAND_IDS } = require('../lib/accor');
 const { bookingHotels } = require('../lib/hotelcash');
 const { memoryKv, sharedCache } = require('../lib/kv');
 
@@ -194,4 +194,29 @@ test('brand filter: when the city filter list cannot be read, the known Accor br
   assert.deepEqual(seen, ['/stays/get-filters', '/stays/search'], 'Chinese names are remembered per city, so other dates need no Chinese request (the unreadable filter list is asked again)');
   assert.equal(again.hotels[0].nameZh, '東京新宿諾富特酒店');
   assert.match(r.debug.filters.shape, /something/);
+});
+
+test('only chosen brands: their ids go straight to categoriesFilter, no brand list or teaching', async () => {
+  const seen = [];
+  const fetchImpl = async (url) => {
+    const u = new URL(String(url));
+    seen.push(u.pathname);
+    if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: Buffer.from(JSON.stringify({ dest_id: '-1456928', dest_type: 'city' })).toString('base64'), name: 'Paris' }] });
+    assert.equal(u.pathname, '/stays/search');
+    assert.equal(u.searchParams.get('categoriesFilter'), 'chaincode::1854,chaincode::1049');
+    return Response.json({ status: true, data: [{ id: 3, name: 'Pullman Paris Tour Eiffel', priceBreakdown: { grossPrice: { value: 20000, currency: 'TWD' } } }] });
+  };
+  const lookup = bookingHotels({ apiKey: 'r', kv: memoryKv(), fetchImpl });
+  const r = await lookup.city({ city: 'Paris', checkin: '2026-11-22', checkout: '2026-11-24', adults: 2, lat: null, lon: null }, { brands: isAccorTitle, brandIds: BOOKING_CHAINS, mustIds: BOOKING_MUST, onlyIds: [...BOOKING_BRAND_IDS.Pullman, ...BOOKING_BRAND_IDS.Sofitel] });
+  assert.deepEqual(seen, ['/stays/auto-complete', '/stays/search']);
+  assert.equal(r.hotels[0].name, 'Pullman Paris Tour Eiffel');
+});
+
+test('/api/hotels/accor?brands=: only known brands are kept and the list is narrowed to them', async () => {
+  const res = await fetch(`${base}/api/hotels/accor?city=Bangkok&checkin=${isoIn(30)}&checkout=${isoIn(32)}&adults=2&brands=${encodeURIComponent('Novotel,Hilton,ibis')}`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.deepEqual(body.brandsOnly, ['Novotel', 'ibis']);
+  assert.ok(body.brandsSearchable.includes('Pullman') && body.brandsSearchable.includes('Sofitel'));
+  assert.ok(body.hotels.length && body.hotels.every((h) => ['Novotel', 'ibis'].includes(h.brand)), body.hotels.map((h) => h.brand).join());
 });

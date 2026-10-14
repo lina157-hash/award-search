@@ -756,22 +756,30 @@ async function handleAccor(q, req) {
   if (!Number.isInteger(adults) || adults < 1 || adults > 6) throw new BadRequest('人數需為 1 到 6');
   const lat = Number(q.get('lat')); const lon = Number(q.get('lon'));
   const want = { city: cityInEnglish(city), checkin, checkout, adults, lat: q.get('lat') && Number.isFinite(lat) ? Math.round(lat * 100) / 100 : null, lon: q.get('lon') && Number.isFinite(lon) ? Math.round(lon * 100) / 100 : null };
+  // Chosen brands only (「只查這些品牌」): their Booking.com brand ids, without reading the city's brand list.
+  const only = [...new Set(String(q.get('brands') || '').split(',').map((b) => b.trim()).filter((b) => accor.BOOKING_BRAND_IDS[b]))].sort();
+  if (only.length) want.brands = only;
   const answer = async (search) => accor.accorAnswer(search, { eurRate: (await handleFx()).rates.EUR || FX_FALLBACK.EUR, nights });
-  if (MOCK && !RAPIDAPI_KEY) return { mock: true, cached: false, ...(await answer(mock.mockCityHotels(want))), bookingLeft: 512, bookingLimit: 530 };
+  if (MOCK && !RAPIDAPI_KEY) {
+    const demo = mock.mockCityHotels(want);
+    if (only.length) demo.hotels = demo.hotels.filter((h) => only.includes(accor.brandOf(h.name)));
+    return { mock: true, cached: false, ...(await answer(demo)), brandsOnly: only, brandsSearchable: Object.keys(accor.BOOKING_BRAND_IDS), bookingLeft: 512, bookingLimit: 530 };
+  }
   if (!bookingLookup) throw new hotelCash.HotelCashError('雅高飯店價格要用 RapidAPI 的 Booking.com API，網站還沒設定 RAPIDAPI_KEY', 503);
   let spent = false;
   const key = 'accor:v8:' + JSON.stringify(want);
   const body = await shared(key, 6 * 3600, async () => {
     spent = true;
-    const search = await bookingLookup.city(want, { brands: accor.isAccorTitle, brandIds: accor.BOOKING_CHAINS, mustIds: accor.BOOKING_MUST, zhNames: true });
+    const search = await bookingLookup.city(want, { brands: accor.isAccorTitle, brandIds: accor.BOOKING_CHAINS, mustIds: accor.BOOKING_MUST, zhNames: true, onlyIds: only.flatMap((b) => accor.BOOKING_BRAND_IDS[b]) });
     // The last search's outline (city match, how many hotels, a few names; no prices or personal data) for /api/hotels/accor/debug.
     await kv.set('accor:debug', { at: new Date().toISOString(), asked: city, query: want.city, nights, ...(search.debug || {}) }, { ex: 7 * 86400 }).catch(() => {});
     const { debug, ...rest } = search;
+    if (only.length) rest.hotels = (rest.hotels || []).filter((h) => only.includes(accor.brandOf(h.name)));
     return answer(rest);
   });
   // An empty answer is not kept, so the next try asks Booking.com again (and shows what it found, see the debug outline).
   if (spent && !body.hotels.length) { uncache(key); await kv.del('cache:v1:' + hashKey(key)).catch(() => {}); }
-  return { ...body, cached: !spent, bookingLeft: bookingQuota.left, bookingLimit: bookingQuota.limit };
+  return { ...body, brandsOnly: only, brandsSearchable: Object.keys(accor.BOOKING_BRAND_IDS), cached: !spent, bookingLeft: bookingQuota.left, bookingLimit: bookingQuota.limit };
 }
 
 async function handleTrips(id) {

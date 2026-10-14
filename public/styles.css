@@ -668,20 +668,30 @@ details.release li { margin: 3px 0; }
 .pill.h-hilton { background: #dfeafc; color: #1d3f78; }
 .pill.h-ihg { background: #e6f4e6; color: #22572a; }
 .pill.h-hyatt { background: #efe6f8; color: #4d2a78; }
+.pill.h-wyndham { background: #dff3f5; color: #135a63; }
+.pill.h-choice { background: #fff0d6; color: #7a4b00; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .pill.h-marriott { background: #4a2020; color: #ffd6d6; }
   :root:not([data-theme="light"]) .pill.h-hilton { background: #1e2f4d; color: #d2e2ff; }
   :root:not([data-theme="light"]) .pill.h-ihg { background: #1f3a23; color: #d4f0d6; }
   :root:not([data-theme="light"]) .pill.h-hyatt { background: #36264a; color: #ead9ff; }
+:root:not([data-theme="light"]) .pill.h-wyndham { background: #183d42; color: #cdf1f5; }
+:root:not([data-theme="light"]) .pill.h-choice { background: #45330f; color: #ffe2a8; }
 }
 :root[data-theme="dark"] .pill.h-marriott { background: #4a2020; color: #ffd6d6; }
 :root[data-theme="dark"] .pill.h-hilton { background: #1e2f4d; color: #d2e2ff; }
 :root[data-theme="dark"] .pill.h-ihg { background: #1f3a23; color: #d4f0d6; }
 :root[data-theme="dark"] .pill.h-hyatt { background: #36264a; color: #ead9ff; }
+:root[data-theme="dark"] .pill.h-wyndham { background: #183d42; color: #cdf1f5; }
+:root[data-theme="dark"] .pill.h-choice { background: #45330f; color: #ffe2a8; }
 @media (max-width: 640px) {
   .hotel { grid-template-columns: minmax(0, 1fr); }
   .hotel-actions { flex-direction: row; align-items: center; justify-content: space-between; }
 }
+/* 雅高 filters: brand chips, star select and the refetch button on one wrapping row */
+.accor-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; margin: 6px 0 12px; }
+.accor-filters .h-progs { flex: 1 1 100%; }
+.accor-refetch:empty { display: none; }
 .hotel .value-tag, .hotel-days .value-tag { font-size: .8rem; color: var(--muted); }
 .hotel .value-tag.good, .hotel-days .value-tag.good { color: var(--accent); font-weight: 600; }
 .hotel > * { min-width: 0; }
