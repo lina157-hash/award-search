@@ -1,6 +1,6 @@
 {
  "note": "Fixed award charts for the miles-needed estimate.",
- "researched": "2026-10-13",
+ "researched": "2026-10-14",
  "programs": [
   {
    "id": "british",
@@ -1928,7 +1928,6 @@
         "LA",
         "MY",
         "MM",
-        "PH",
         "SG",
         "TH",
         "TL",
@@ -2233,7 +2232,7 @@
    "perSegment": false,
    "oneWay": true,
    "symmetric": true,
-   "note": "官方表為來回價，單程為一半；台灣屬「北亞1」；星盟夥伴不能兌豪經",
+   "note": "以下為單程價（官方來回表的一半）；台灣屬「北亞1」；星盟夥伴不能兌豪經",
    "effective": "2025-11",
    "confidence": "official",
    "sources": [

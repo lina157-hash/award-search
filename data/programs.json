@@ -1,5 +1,5 @@
 {
-  "lastReviewed": "2026-10-13",
+  "lastReviewed": "2026-10-14",
   "disclaimer": "以下為重點整理，用自己的話改寫，不代表官方條款。每個計畫都附上資料來源；標示「第三方整理」的內容來自旅遊媒體或部落格，開票前請以官網為準。",
   "fields": {
     "pricing": "計價方式",
@@ -54,12 +54,12 @@
       "airline": "AF",
       "alliance": "skyteam",
       "seatsAeroSource": "flyingblue",
-      "pricing": "動態計價，價格隨日期與需求浮動；每月會公布「Promo Rewards」特定航線折扣。",
+      "pricing": "動態計價，價格隨日期與需求浮動；每月會公布「Promo Rewards」特定航線折扣。2026-09-08 起法航、荷航自家航班的獎勵票分 Light、Standard、Flex 三種價格（頭等艙除外），例如巴黎—紐約商務艙約 6 萬／7.5 萬／11 萬哩。",
       "oneWay": "可開單程，價格約為來回的一半。",
-      "stopover": "可中停，但需電話訂位、且每段都要有最低艙位才能維持入門價，中停本身不加里程。來回與單程是否都可、次數上限，各方說法不一；2026 年 9 月新推出的 Light／Standard／Flex 票種可能改變規則。",
+      "stopover": "可中停，但需電話訂位、且每段都要有最低艙位才能維持入門價，中停本身不加里程。來回與單程是否都可、次數上限，各方說法不一。",
       "openJaw": "可以；但若中停點使行程往回走，會被拆成兩段計價（歐洲境內除外），建議改開兩張單程。",
       "surcharges": "法航、荷航獎勵票需以現金支付附加費，夥伴獎勵票的稅費也以現金支付。",
-      "changes": "改票與取消各 70 歐元（至報到前），改票需補差額；2026 年 9 月新票種可能調整費用。",
+      "changes": "2026-09-08 起開票的法航、荷航獎勵：Light 不能改也不能退，經濟艙不含托運行李；Standard 改票或退票各 70 歐元；Flex 改退免費（退票須在首段起飛前）。白金以上會員任何票種都可免費改退。夥伴航班獎勵不分票種，規則不變；法荷航與夥伴混搭的行程只能選 Standard。改票需補差額。",
       "expiry": "2026-05-04 起全帳戶共用一個到期日，任何累積都會延長 24 個月（兌換不算）；菁英會員、聯名卡持卡人、Flying Blue Extra 訂閱者與未滿 18 歲會員的里程不會過期。",
       "pooling": "家庭帳戶最多 8 人（2 位成人加 6 位兒童），由管理者用合併里程訂票。",
       "notes": "Promo Rewards 通常提前公布在官網，適合搭配 seats.aero 查詢日期彈性。",
@@ -80,9 +80,14 @@
           "label": "Frequent Miler：各計畫改退票費用",
           "url": "https://frequentmiler.com/award-ticket-change-and-cancellation-fees-by-transfer-partner/",
           "official": false
+        },
+        {
+          "label": "Prince of Travel：Flying Blue 新票種 Light／Standard／Flex（2026）",
+          "url": "https://princeoftravel.com/news/flying-blue-award-fare-changes/",
+          "official": false
         }
       ],
-      "lastVerified": "2026-10-13"
+      "lastVerified": "2026-10-14"
     },
     {
       "id": "aeroplan",
@@ -92,16 +97,21 @@
       "seatsAeroSource": "aeroplan",
       "pricing": "加航自家航班動態計價；星空聯盟夥伴航班依區域與飛行距離的固定獎勵表計價。",
       "oneWay": "可開單程，夥伴票價格通常是單程獎勵表價格。",
-      "stopover": "單程獎勵票可付 5,000 點加一次中停（最長 45 天）；北美境內行程不適用。",
-      "openJaw": "一般資料指可以，官方細則待確認。",
+      "stopover": "官方：每個方向可中停 1 次（單程票也可），最長 45 天；加拿大、美國與中國境內不可中停。中停要另付點數（第三方：每次 5,000 點）。",
+      "openJaw": "官方：可開單程、來回、開口與多城市行程，每個方向最多 6 段、全程 12 段；開口不能落在中停點。",
       "surcharges": "加航與夥伴航班都不收航空公司附加費，只收稅金與政府規費。",
-      "changes": "夥伴航班每張票收 39 加幣開票手續費；訂位 24 小時內可免費取消。之後的改退費用各方說法不一（約 75 到 175 加幣，依管道與時間而定）。",
+      "changes": "官方：夥伴航班每張票收 39 加幣開票手續費，電話訂位另收 30 加幣。最低價位的票（夥伴票一般屬此類）改票每個方向官網 75、客服 100 加幣，取消每張 150／175 加幣；Flex、Latitude 與 Flexible 票改票免費。起飛前 2 小時仍可改退，菁英會員可能減免。訂位 24 小時內免費取消（第三方）。",
       "expiry": "18 個月內沒有任何累積或兌換，點數就會失效。",
       "pooling": "家庭共享最多 8 人，兌換時按比例從成員帳戶扣點，加入後至少需待 3 個月。",
-      "notes": "換長榮、全日空商務艙的熱門選擇，且多數航班不收燃油費。",
-      "confidence": "secondary",
+      "notes": "換長榮、全日空商務艙的熱門選擇，且多數航班不收燃油費。中停、開口與改退費用依加航官方獎勵政策；效期與家庭共享來自第三方整理。",
+      "confidence": "official",
       "officialUrl": "https://www.aircanada.com/aeroplan",
       "sources": [
+        {
+          "label": "Aeroplan 獎勵機票政策（官方）",
+          "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/legal/aeroplan-flight-reward-policy.html",
+          "official": true
+        },
         {
           "label": "Milesopedia：Aeroplan 兌換規則（2026-09）",
           "url": "https://milesopedia.com/en/rewards/air-canada-aeroplan-flight-rewards/",
@@ -113,7 +123,7 @@
           "official": false
         }
       ],
-      "lastVerified": "2026-10-13"
+      "lastVerified": "2026-10-14"
     },
     {
       "id": "evainfinity",
@@ -201,7 +211,7 @@
       "expiry": "官方：哩程自搭機日或異業合作實際消費日起 36 個月有效，到期的哩程在台北時間每月 1 日凌晨 12 時自動失效（官方範例：2024 年 8 月累積，2027-09-01 失效）；沒有帳戶活動展延的條款，而且 3 年內基本資料與哩程紀錄都沒有異動時，會籍會自動失效。退票或未使用獎項退回的哩程，效期以原獎項到期日為準再延長 1 年（官方）。到期後 6 個月內可付費申請恢復（第三方）；華航 2025-09-04 新聞稿也提到可用優惠價重新啟用近期失效的哩程（官方）。",
       "pooling": "可轉讓里程給其他會員：每次至少 1 萬哩、以千哩為單位，2026-04-27 起每日上限 16 萬哩，轉出後不可撤回且保留原效期；第三方資料指每年受讓人數有上限。",
       "notes": "seats.aero 沒有直接收錄華航里程計畫，本站以達美、Flying Blue 看到的華航座位作為參考。燃油附加費、效期、三級距定義與 2026-09-15 前的費用都來自官方頁面或官方 PDF；2026-09-16 後的退改規定、訂位服務費金額與北美哩程數範例來自媒體轉述，官方公告本文無法讀取，以官網為準。另 2025 年底起改為單一「會籍積分」制，到 2027 年前會籍只升不降；2026-05-06 起可兌換捷藍 JetBlue 機票（美國國內線來回 35,000 哩起）。",
-      "confidence": "official",
+      "confidence": "secondary",
       "officialUrl": "https://www.china-airlines.com/tw/zh/member",
       "sources": [
         {
@@ -295,10 +305,10 @@
       "seatsAeroSource": "alaska",
       "pricing": "依單程總距離計價，分美洲、歐非中東、亞太三張表；阿拉斯加與夏威夷航空自家北美航班的價格是起價，可能更高；夥伴在有優惠位時照表計價（例如國泰跨太平洋商務艙約 7.5 萬點）。",
       "oneWay": "所有航班都可開單程，且以單程計價。",
-      "stopover": "國際夥伴獎勵每個單程可免費中停 1 次（最多 14 天），但多出的距離可能讓價格跳到下一級。",
+      "stopover": "國際夥伴獎勵的單程票在跨區旅行時可免費中停 1 次（第三方指最多 14 天），但多出的距離可能讓價格跳到下一級。",
       "openJaw": "沒有明文規則；因為以單程計價，可用兩張單程票組合。",
       "surcharges": "國泰航班不收燃油附加費（例如西雅圖到香港 4.25 萬點加約 26 美元稅金）；英航、冰島航空、海南航空會收。",
-      "changes": "改票、取消免手續費並退回點數；但夥伴開票費不退，2026-07-01 起每人每段 20 美元（Summit 卡持卡人免），電話開票另收 15 美元（菁英會員免）。",
+      "changes": "改票、取消免手續費並退回點數；但夥伴開票費不退，2026-07-01 起每人每個方向 20 美元（Summit 卡持卡人免），電話開票另收 15 美元（金卡以上菁英免）。",
       "expiry": "點數不會過期；兩年以上無活動的帳戶可能需驗證身分才能使用。",
       "pooling": "沒有真正的合併功能，但可分享點數：持 Atmos Summit 卡可免費分享給最多 10 人，否則每 1,000 點收 10 美元。",
       "notes": "換國泰、日航商務艙與頭等艙的常見選擇。官網內容無法直接讀取，以上整理自 2026 年的第三方資料。",
@@ -308,6 +318,11 @@
         {
           "label": "One Mile at a Time：Atmos Rewards 兌換攻略",
           "url": "https://onemileatatime.com/guides/redeem-alaska-atmos-rewards-points/",
+          "official": false
+        },
+        {
+          "label": "One Mile at a Time：夥伴開票費調為 20 美元",
+          "url": "https://onemileatatime.com/?p=365770",
           "official": false
         },
         {
@@ -321,7 +336,7 @@
           "official": false
         }
       ],
-      "lastVerified": "2026-10-13"
+      "lastVerified": "2026-10-14"
     },
     {
       "id": "american",
@@ -410,6 +425,445 @@
         }
       ],
       "lastVerified": "2026-10-13"
+    },
+    {
+      "id": "singapore",
+      "name": "新加坡航空 KrisFlyer",
+      "airline": "SQ",
+      "alliance": "star",
+      "seatsAeroSource": "singapore",
+      "pricing": "固定獎勵表。新航自家航班依區域分 Saver 與 Advantage 等級（費用表另列 Access 等級）；星空聯盟夥伴用另一張區域表（2025-11-01 起調整，台灣屬「北亞1」）。行程只要含一段星盟夥伴，整張票就改用較貴的夥伴表（第三方）。",
+      "oneWay": "新航與星盟夥伴都可開單程，價格約為來回的一半。",
+      "stopover": "新航自家：Saver 來回可中停 1 次、單程不可；Advantage 來回 2 次、單程 1 次。星盟夥伴：來回可中停 1 次，單程、純國內、歐洲境內與美加之間的行程不可。每次最長 30 天，已不能再付費加購中停（第三方）。",
+      "openJaw": "來回票可在出發地或折返點有 1 個開口（第三方）。",
+      "surcharges": "新航自家獎勵票不收燃油附加費，只付機場稅；星盟夥伴若收附加費會照轉給會員（例如土航），開票前看稅費明細（第三方）。",
+      "changes": "官方費用表：新航航班改日期或航班 Saver 25 美元、Advantage 免費，改航線、艙等或加中停 25 美元；夥伴航班 Saver 改期 50 美元。退票退回里程 Saver 75 美元、Advantage 50 美元。No-show 另收經濟 100、豪經 200、商務與頭等 300 美元。透過客服或櫃檯辦理每次另收 25 美元或 2,500 哩（PPS 會員等免收）。",
+      "expiry": "里程在累積後第 36 個月的月底到期，有活動也不延長（第三方）。可在到期前付費延長：每 1 萬哩 12 美元或 1,200 哩，一般會員延 6 個月、銀卡與金卡延 12 個月（官方費用表）。PPS Club 會員在會籍期間里程不過期。",
+      "pooling": "不能合併家人里程；可登記最多 5 位「兌換受益人」，由會員用自己的里程替他們開票，新增免費，更換或刪除要等 6 個月並付費（第三方）。",
+      "notes": "台灣可由美國運通、滙豐（旅人卡、卓越理財、運籌與白金卡）、星展、國泰世華、中信等點數轉入（見點數換算）。seats.aero 有收錄 KrisFlyer，可直接查新航與星盟座位。改退費用與延長效期來自新航官方費用表；中停、開口、受益人與夥伴附加費為第三方整理。",
+      "confidence": "secondary",
+      "officialUrl": "https://www.singaporeair.com/en_UK/us/ppsclub-krisflyer/use-miles/redeem-miles/award-tickets-on-star-alliance-airlines/",
+      "sources": [
+        {
+          "label": "新航 KrisFlyer 服務費用表（官方）",
+          "url": "https://www.singaporeair.com/en_UK/au/ppsclub-krisflyer/forms-and-fees/service-fees/",
+          "official": true
+        },
+        {
+          "label": "KrisFlyer 星盟獎勵表 PDF（2025-11-01，官方）",
+          "url": "https://www.singaporeair.com/content/dam/sia/web-assets/pdfs/ppsclub-krisflyer/krisflyer/progupdates/awardcharts/StarAllianceRound-TripAwardChartupdated1Nov25.pdf",
+          "official": true
+        },
+        {
+          "label": "AwardWallet：KrisFlyer 中停規則（2026-05）",
+          "url": "https://awardwallet.com/airlines/singapore-stopover-award-rules/",
+          "official": false
+        },
+        {
+          "label": "AwardWallet：KrisFlyer 里程效期（2026-04）",
+          "url": "https://awardwallet.com/airlines/do-singapore-krisflyer-miles-expire/",
+          "official": false
+        },
+        {
+          "label": "The MileLion：KrisFlyer 兌換基本規則與受益人",
+          "url": "https://milelion.com/2019/06/26/the-milelions-krisflyer-guide-basics-of-award-flight-redemptions/",
+          "official": false
+        },
+        {
+          "label": "The MileLion：KrisFlyer 夥伴獎勵與附加費",
+          "url": "https://milelion.com/2019/10/13/the-milelions-krisflyer-guide-redeeming-miles-for-partner-awards/",
+          "official": false
+        }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "ana",
+      "name": "全日空 ANA Mileage Club",
+      "airline": "NH",
+      "alliance": "star",
+      "seatsAeroSource": null,
+      "pricing": "固定區域表。全日空自家國際線依區域、淡旺季與艙等計價；星空聯盟夥伴另用一張區域表，台灣屬第 3 區（亞洲1），例如台灣—日本單程經濟 1 萬、商務 2 萬、頭等 3 萬哩。",
+      "oneWay": "2025-06-24 起開票的獎勵可開單程（約為來回一半），單程不可中停，可在日本轉機一次。",
+      "stopover": "來回票除目的地外可再中停 1 次（停留超過 24 小時），中停也算一次轉機；全日空自家航班的行程須從日本以外出發才可中停。",
+      "openJaw": "可以：出發地與最後回程地不同時須在同一國家；去程終點與回程起點不同時須在同一大區（北美・夏威夷、歐洲・中東・非洲、亞洲・大洋洲等）。",
+      "surcharges": "哩程之外要用信用卡付稅金與燃油附加費，金額依航線、艙等與匯率而定（官方頁寫至少約 70 美元，為 2015 年資料）。",
+      "changes": "開票後可在同一航段改搭其他航班，不收改票費，須在原訂航班起飛前、且新航班起飛 24 小時前辦理；航段、艙等、航空公司與乘客都不能改，來回與單程也不能互換。全程未使用才能退票：2025-06-24 起開的票可付 3,000 日圓（或等值當地貨幣），或扣 3,000 哩（歐洲、印度、墨西哥只能扣哩），須在首段起飛前申請。官網開票免服務費，客服開票每張收費（例如美國 25 美元）。",
+      "expiry": "一般哩程（搭機與日常消費累積，第 1 組）在累積月份後第 36 個月的月底到期；活動贈送的限期哩程（第 2 至 4 組）效期與用途依活動而定，同日到期時先扣限期哩程。鑽石會員在會籍期間不過期。",
+      "pooling": "可登記最多 10 位「獎勵使用者」，由會員用自己的哩程替他們開票，可能要證明親屬關係；要合併家人哩程需使用 ANA 卡家族哩程服務。",
+      "notes": "seats.aero 沒有收錄全日空計畫，本站以 Aeroplan、聯合、維珍、漢莎看到的全日空座位作為參考。訂位在出發前 355 天日本時間 09:00 開放，至首段起飛前 96 小時。台灣可用中信 ANA 聯名卡累積，或由華南銀行紅利轉入（見點數換算）。",
+      "confidence": "official",
+      "officialUrl": "https://www.ana.co.jp/en/us/amc/international-flight-awards/",
+      "sources": [
+        {
+          "label": "ANA 國際線獎勵機票規定（官方）",
+          "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/",
+          "official": true
+        },
+        {
+          "label": "ANA 台灣官網夥伴獎勵機票（官方）",
+          "url": "https://www.ana.co.jp/en/tw/amc/partner-flight-awards/",
+          "official": true
+        },
+        {
+          "label": "ANA 哩程帳戶分組與效期（官方）",
+          "url": "https://www.ana.co.jp/en/ca/amc/mileage-account-group/",
+          "official": true
+        }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "jal",
+      "name": "日航 JAL Mileage Bank",
+      "airline": "JL",
+      "alliance": "oneworld",
+      "seatsAeroSource": null,
+      "pricing": "日航自家國際線依航線定基本哩數（例如台北—成田單程經濟 9,000、商務 24,000 哩），基本位滿了可改用較貴、隨日期浮動的 PLUS 價（頭等艙除外）；寰宇一家與其他夥伴獎勵依整趟行程總飛行距離計價。",
+      "oneWay": "日航自家國際線可開單程或來回，起點或終點須在日本，去回程各最多 1 段國際線加 1 段日本國內線；寰宇一家夥伴票以整趟距離計價，不是單程價。",
+      "stopover": "日航自家國際線不能在日本停留超過 24 小時。夥伴獎勵（第三方）：單一夥伴最多中停 3 次，各夥伴另有段數限制；寰宇一家多航司獎勵最多 7 次。",
+      "openJaw": "日航自家國際線可以：出發與最終返回城市可不同，去程終點與回程起點也可不同，整趟可有一段地面段（官方）。",
+      "surcharges": "機場稅、燃油附加費與保險附加費由會員或使用者支付；夥伴航班的附加費依各航空公司而定。",
+      "changes": "日航國際線獎勵票開票後不能更改，要退票再重訂。退票每張 3,100 日圓（海外以當地貨幣計，國內線 1,000 日圓），須全程未使用、開票一年內且在首段起飛前辦理，線上最晚起飛前 3 小時。沒搭的票作廢、里程不退。夥伴獎勵可免費改日期或時間（第三方）。",
+      "expiry": "哩程在累積月份起第 36 個月的月底到期，不能延長，過期也不能恢復。",
+      "pooling": "里程不能和家人或朋友合併兌換；獎勵可給本人、配偶、二親等內親屬（及配偶兄弟姊妹的配偶）使用，姓氏不同可能要證明。JAL 卡家族方案與 JAL Family Club 會員可合併家人哩程。",
+      "notes": "seats.aero 沒有收錄日航計畫，本站以阿拉斯加、美航、澳航、亞洲萬里通看到的日航座位作為參考。訂位在出發前 360 天開放。台灣可由滙豐旅人卡、國泰世華小樹點、華南銀行紅利轉入（見點數換算）。夥伴中停次數與夥伴改期為第三方整理。",
+      "confidence": "official",
+      "officialUrl": "https://www.jal.co.jp/tw/zhtw/jalmile/use/ticket.html",
+      "sources": [
+        {
+          "label": "日航：兌換哩程提醒事項（官方）",
+          "url": "https://www.jal.co.jp/tw/zhtw/jalmile/use/ticket.html",
+          "official": true
+        },
+        {
+          "label": "日航：國際線酬賓獎勵機票規定（官方）",
+          "url": "https://www.jal.co.jp/tw/zhtw/jalmile/use/jal/inter/roundtrip2.html",
+          "official": true
+        },
+        {
+          "label": "日航：國際線獎勵機票取消（官方）",
+          "url": "https://www.jal.co.jp/en/jalmile/use/jal/inter/cancel.html",
+          "official": true
+        },
+        {
+          "label": "日航：退票注意事項（官方）",
+          "url": "https://www.jal.co.jp/jp/en/jalmile/use/ticket_cancel.html",
+          "official": true
+        },
+        {
+          "label": "日航台灣官網獎勵機票哩程表（官方）",
+          "url": "https://www.jal.co.jp/tw/zhtw/jalmile/use/jal/inter/routemiles.html",
+          "official": true
+        },
+        {
+          "label": "AwardWallet：JAL 哩程效期",
+          "url": "https://awardwallet.com/airlines/do-japan-airlines-jal-miles-expire/",
+          "official": false
+        },
+        {
+          "label": "One Mile at a Time：各計畫中停規則（2026-09）",
+          "url": "https://onemileatatime.com/stopover-rules-on-award-tickets/",
+          "official": false
+        }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "starlux",
+      "name": "星宇 COSMILE",
+      "airline": "JX",
+      "alliance": null,
+      "seatsAeroSource": null,
+      "pricing": "固定區域表，依航線區域與艙等計價（第三方整理，單程）：台灣—港澳經濟 1 萬、商務 2 萬哩；亞洲區內 1.75 萬／3 萬；亞洲—北美或歐洲 5 萬／9 萬，頭等 12 萬。",
+      "oneWay": "可開單程，上列價格即單程。",
+      "stopover": "2024-03-01 起來回票去回程各可中停 1 次、每次最多 7 天，折返點與中停點須在不同區域（東北亞、東南亞、中國大陸、美洲，台灣不算）（第三方轉述官方公告）。",
+      "openJaw": "未查到明確規定，以官網為準。",
+      "surcharges": "哩程之外要付稅金與相關費用（第三方：日本單程約 40 美元起），燃油附加費是否另計未查到明確說明。2026-07-01 起每張獎勵票（含夥伴獎勵）開票或改票加收 30 美元訂位服務費、不退，香港出發免收。",
+      "changes": "2026-07-01 起開的票：更改日期或航點每次 60 美元，第三方另指長程 100 美元；ADVENTURER 以上會員改自己的票免費。退票（第三方）：頭等亞洲 120、長程 200 美元，其他艙等 50 美元；INSIGHTER 免改退費。訂位服務費不退。獎勵票自開票日起一年內有效，開票後不能補差額升等。",
+      "expiry": "可讀取的官方頁面與第三方資料都沒有明確寫出哩程效期，以官網會員條款為準。",
+      "pooling": "可開家庭帳戶合併獎勵哩程；2 歲至未滿 18 歲子女須加入以法定代理人為主會員的家庭帳戶，配偶也可加入（第三方；人數上限以官網為準，2019 年資料為 5 人）。",
+      "notes": "哩程升等（每航段單程，第三方 2026-09）：亞洲兩艙機型經濟→商務 1.8 萬；四艙機型豪經→商務 1.5 萬；長程豪經→商務 4.5 萬、商務→頭等 6.5 萬，限 C、J 票價。其他管道：阿拉斯加 Atmos 可線上兌換星宇（依距離計價），阿提哈德 Guest 2026-08 起也可兌換星宇經濟與商務艙（阿提哈德官方新聞稿）。星宇尚未加入航空聯盟。seats.aero 沒有收錄 COSMILE。官網規定頁需登入或動態載入，本卡內容多為第三方整理，請以官網為準。",
+      "confidence": "verify",
+      "officialUrl": "https://www.starlux-airlines.com/en-US/cosmile/cosmile-plan/redeem-award-ticket-Asia",
+      "sources": [
+        {
+          "label": "阿提哈德：Etihad Guest 與 COSMILE 合作（2026-08-11，官方）",
+          "url": "https://www.etihad.com/en/news/etihad-guest-launches-frequent-flyer-partnership-with-starlux-airlines-cosmile",
+          "official": true
+        },
+        {
+          "label": "星宇：線上兌換阿拉斯加航空酬賓機票（官方）",
+          "url": "https://latestnews.starlux-airlines.com/zh-TW/about-us/travel-advisories/advisories/latest-news/Redeem_Award_Ticket_AS",
+          "official": true
+        },
+        {
+          "label": "鉅亨網：星宇 7 月起加收改票費與訂位服務費（2026-06-02）",
+          "url": "https://news.cnyes.com/news/id/6480288",
+          "official": false
+        },
+        {
+          "label": "旅途中的景深隨想：星宇哩程兌換教學（2026-08）",
+          "url": "https://huitinchou.tw/starlux/",
+          "official": false
+        },
+        {
+          "label": "Meilenoptimieren：星宇獎勵機票價格與管道（2026-08-13）",
+          "url": "https://meilenoptimieren.com/starlux-mit-meilen-buchen/",
+          "official": false
+        },
+        {
+          "label": "LoyaltyLobby：COSMILE 2024-03-01 中停新規",
+          "url": "https://loyaltylobby.com/2024/02/05/starlux-airlines-cosmile-program-amends-award-ticket-rules-effective-march-1-2024/",
+          "official": false
+        },
+        {
+          "label": "Money101：星宇商務艙與升等哩程（2026-09）",
+          "url": "https://www.money101.com.tw/blog/星宇商務艙",
+          "official": false
+        },
+        {
+          "label": "Pokem：COSMILE 會員計劃（2026）",
+          "url": "https://pokem.tw/starluxairlines-cosmile-intro01/",
+          "official": false
+        }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "turkish",
+      "name": "土耳其航空 Miles&Smiles",
+      "airline": "TK",
+      "alliance": "star",
+      "seatsAeroSource": "turkish",
+      "pricing": "固定區域表（單程）。土航自家航班分 Promotion（名額有限、較便宜）與一般獎勵兩級；星空聯盟夥伴另用一張區域表，同一國家境內的夥伴航班另有固定價。土航航班有轉機時，各段價格相加（第三方）。",
+      "oneWay": "可開單程，但不可中停，轉機不得超過 24 小時。",
+      "stopover": "官方：土航自營航班的來回票，去程或回程可中停 1 次；單程不可。第三方：要電話辦理（線上開票不行）；星盟夥伴來回票只有達一定哩數（經濟 6 萬、商務 9 萬、頭等 13.5 萬）才可中停。",
+      "openJaw": "每張獎勵票可有 1 個開口；同一機場不能在去程或回程中出現兩次（官方）。",
+      "surcharges": "機場稅與規費以信用卡或現金另付（官方）；土航航班另有航空公司附加費，第三方觀察跨大西洋單程約 200 至 250 美元；夥伴航班的附加費依航司而定。",
+      "changes": "官方：開票一年內可改日期或航線、也可退票退回里程，國際線每次 70 美元、土耳其國內線 450 里拉；No-show 後改票或退哩 170 美元（國內線 1,050 里拉）。改航線須同區域、同艙等；任一段飛過後不退哩。",
+      "expiry": "第三方：里程在入帳後第三個完整日曆年的年底到期；快到期的可付每千哩 20 美元延長 3 年，過期一年內也可用同價恢復。",
+      "pooling": "可替家人或親友開票，一次最多 5 人（官方）。Classic Plus 以上會員可用家庭會籍合併配偶與 25 歲以下未婚子女的里程（第三方）。",
+      "notes": "星盟夥伴可在官網線上開票；Azul、GOL 等非星盟夥伴只能透過客服或櫃檯。印度航空艙位常搜得到但開不了票。台灣可由滙豐旅人卡 1:1 轉入。seats.aero 有收錄土航計畫。中停、開口、改退費用與訂位管道依土航官方條款；計價細節與效期為第三方整理。",
+      "confidence": "official",
+      "officialUrl": "https://www.turkishairlines.com/en-us/miles-and-smiles/redeem-miles/redeem-miles-on-flights/turkish-airlines-award-tickets/",
+      "sources": [
+        {
+          "label": "土航：獎勵機票條款（官方）",
+          "url": "https://www.turkishairlines.com/en-us/miles-and-smiles/redeem-miles/redeem-miles-on-flights/award-travel-terms-conditions/",
+          "official": true
+        },
+        {
+          "label": "AwardFares：Miles&Smiles 指南（2026-07-14 更新）",
+          "url": "https://awardfares.com/blog/miles-and-smiles-guide/",
+          "official": false
+        },
+        {
+          "label": "One Mile at a Time：各計畫中停規則（2026-09）",
+          "url": "https://onemileatatime.com/stopover-rules-on-award-tickets/",
+          "official": false
+        }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "emirates",
+      "name": "阿聯酋航空 Skywards",
+      "airline": "EK",
+      "alliance": null,
+      "seatsAeroSource": "emirates",
+      "pricing": "阿聯酋自家航班沒有公開完整獎勵表，依航線分 Saver 與 Flex Plus 兩級（頭等艙都屬 Flex Plus）；2026-05-20 起部分航線與高艙等所需哩數上調，以官網報價為準。",
+      "oneWay": "可開單程。",
+      "stopover": "Saver 可中停 1 次、整趟最長 3 個月；Flex Plus 可中停 2 次、最長 12 個月；單程票只有 Flex Plus 可在杜拜中停。",
+      "openJaw": "未查到明確規定，以官網為準。",
+      "surcharges": "要另付稅金與航空公司附加費；經杜拜轉機的頭等、商務艙附加費常達數百美元（例如紐約—杜拜頭等約 835 美元，2025-07）。",
+      "changes": "Saver：改期 25 美元（另有資料指改目的地 75 美元），出發前退票 75 美元；Flex Plus 出發前改期與退票免費。",
+      "expiry": "現行規則：里程約 3 年有效，到期日落在第 3 年的會員生日月份月底；白金會員與有效聯名卡正卡持卡人里程不過期，可付費延長或在過期 6 個月內付費恢復。2027-06-01 起新累積的里程改為累積月份起滿 3 年的月底到期（媒體報導）。",
+      "pooling": "「My Family」家庭帳戶最多 8 人（家長加 7 位成員），成員選擇貢獻 0% 到 100% 的里程，只有家長能兌換，貢獻後不能退回個人帳戶；銀行轉入的點數不能合併。",
+      "notes": "澳航等部分夥伴可在官網兌換，其他夥伴要透過客服或線上客服；里程升等不適用夥伴航班。台灣可由滙豐旅人卡 1:1、國泰世華小樹點（550 點 = 1,000 哩）轉入。阿聯酋不屬於任何航空聯盟。seats.aero 有收錄阿聯酋計畫。本卡全部來自第三方整理。",
+      "confidence": "secondary",
+      "officialUrl": "https://www.emirates.com/english/skywards/",
+      "sources": [
+        {
+          "label": "Wego：Skywards 指南（2026-05-08 更新）",
+          "url": "https://blog.wego.com/emirates-airlines-loyalty-program/",
+          "official": false
+        },
+        {
+          "label": "Flightsdummy：阿聯酋獎勵機票指南（2026-09-09）",
+          "url": "https://blog.flightsdummy.com/emirates-award-travel-guide-skywards-booking-tips/",
+          "official": false
+        },
+        {
+          "label": "Khaleej Times：Skywards 里程效期新制（2026-08-25）",
+          "url": "https://www.khaleejtimes.com/business/emirates-airline-revises-skywards-miles-expiry-policy-from-next-year",
+          "official": false
+        },
+        {
+          "label": "One Mile at a Time：阿聯酋獎勵附加費（2025-07）",
+          "url": "https://onemileatatime.com/news/emirates-skywards-hikes-fees-award-flights/",
+          "official": false
+        },
+        {
+          "label": "One Mile at a Time：各計畫中停規則（2026-09）",
+          "url": "https://onemileatatime.com/stopover-rules-on-award-tickets/",
+          "official": false
+        },
+        {
+          "label": "AwardWallet：Skywards 2026 調整",
+          "url": "https://awardwallet.com/news/airlines/emirates-skywards-2026-devaluation/",
+          "official": false
+        }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "british",
+      "name": "英國航空 Avios（British Airways Club，原 Executive Club）",
+      "airline": "BA",
+      "alliance": "oneworld",
+      "seatsAeroSource": "british",
+      "pricing": "英航自家航班依日期（尖峰／離峰）、目的地與艙等收固定 Avios 加固定現金；夥伴與多航司行程依每一航段的距離分區計價再相加（2025-12-15 起約上調一成，第三方）。",
+      "oneWay": "可開單程或來回。",
+      "stopover": "因為每段分開計價，可在轉機點停留，但價格是各段相加；含兩家以上寰宇一家航司的行程最多 8 段、每個城市都可停留，不可走回頭路（第三方）。",
+      "openJaw": "官方條款：來回票可去程到一地、從另一城市回到原出發地（或反過來），兩段須一起訂；去回程可用同一區的不同機場；每張獎勵只能有一次地面段。",
+      "surcharges": "獎勵票要付全部稅金與附加費，含燃油附加費（官方條款）。英航自家航班的現金部分固定，長程經濟來回約 150 英鎊起、商務約 350 英鎊起；夥伴航班的現金部分依航司而定，美航、日航通常較低。",
+      "changes": "官方條款：只能改日期、時間、艙等與航線，改後所需 Avios 要相同，須在起飛 24 小時前辦理，每次收費，不能改名。起飛 24 小時前取消可退回 Avios、扣 35 英鎊服務費；24 小時內取消或沒搭機，Avios 不退。若當初付的稅費低於服務費，會改為放棄稅費（第三方）。",
+      "expiry": "連續 36 個月沒有累積、使用、購買或轉移 Avios，全部 Avios 失效（官方條款 14.5）。",
+      "pooling": "家庭帳戶最多 7 人（未滿 18 歲最多 6 人），合併 Avios 共同兌換（官方條款 18.1）。",
+      "notes": "Avios 可在英航、卡達、西班牙國家航空、愛爾蘭航空、芬蘭航空之間 1:1 互轉。台灣可由國泰世華小樹點（450 點 = 1,000 Avios）轉入。訂位在出發前 355 天開放，起飛前 24 小時內不可訂。seats.aero 有收錄英航計畫。",
+      "confidence": "official",
+      "officialUrl": "https://www.britishairways.com/content/the-british-airways-club/avios/spending-avios/reward-flights",
+      "sources": [
+        {
+          "label": "British Airways Club 條款（官方）",
+          "url": "https://www.britishairways.com/content/the-british-airways-club/about-the-club/terms-and-conditions",
+          "official": true
+        },
+        {
+          "label": "英航官網：Avios 兌換機票（官方）",
+          "url": "https://www.britishairways.com/content/the-british-airways-club/avios/spending-avios/reward-flights",
+          "official": true
+        },
+        {
+          "label": "The MileLion：英航 Avios 2025-12 調整",
+          "url": "https://milelion.com/2025/12/16/details-british-airways-avios-award-devaluation/",
+          "official": false
+        },
+        {
+          "label": "Award Travel Finder：英航取消費用（2026-10）",
+          "url": "https://awardtravelfinder.com/cancellation-fees/british-airways",
+          "official": false
+        },
+        {
+          "label": "One Mile at a Time：各計畫中停規則（2026-09）",
+          "url": "https://onemileatatime.com/stopover-rules-on-award-tickets/",
+          "official": false
+        }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "qatar",
+      "name": "卡達航空 Privilege Club（Avios）",
+      "airline": "QR",
+      "alliance": "oneworld",
+      "seatsAeroSource": "qatar",
+      "pricing": "卡達自營航班不公布獎勵表，依航線、艙等與日期浮動（例如紐約—杜哈 Qsuites 離峰 7 萬、尖峰 9.45 萬 Avios）；夥伴航班用固定的單程距離表，美航與阿拉斯加另用較貴的一張（第三方）。",
+      "oneWay": "可開單程。",
+      "stopover": "官方票價規定：獎勵票可中停 2 次；行程含海灣國家時，杜哈往返該國的航段另扣 Avios。卡達的免費杜哈中停住宿方案不適用獎勵票。",
+      "openJaw": "未查到明確規定，以官網為準。",
+      "surcharges": "卡達自營航班獎勵票不收燃油附加費，稅費多在 30 至 100 美元；英航航班會收附加費，國泰部分航段也有（第三方）。",
+      "changes": "官方：起飛 24 小時前改票或取消每位乘客 25 美元，3 到 24 小時前 100 美元，金卡、白金卡會員本人免收；起飛前 3 小時內視同 No-show，Avios 不退、只退機場與政府稅。取消時 Avios 退回帳戶。未使用的票自開票日起 12 個月有效。",
+      "expiry": "帳戶連續 36 個月沒有累積、使用或轉移，Avios 失效；白金會員在會籍期間不過期（第三方）。",
+      "pooling": "沒有合併帳戶，但可替「親友名單」最多 6 人與「My List」最多 4 位會員開票，2026-06 起規則收緊（第三方）。Avios 可經英航帳戶與英航、西班牙國家航空、芬蘭航空 1:1 互轉。",
+      "notes": "官網可訂寰宇一家與其他夥伴航班。台灣可由滙豐旅人卡 1:1、國泰世華小樹點（480 點 = 1,000 Avios）轉入。seats.aero 有收錄卡達計畫。改退費用、中停與票期依卡達官方規定；計價、附加費、效期與代訂名單為第三方整理。",
+      "confidence": "secondary",
+      "officialUrl": "https://www.qatarairways.com/en-us/Privilege-Club/fly-with-avios.html",
+      "sources": [
+        {
+          "label": "卡達：獎勵機票費用（官方）",
+          "url": "https://www.qatarairways.com/en/Privilege-Club/redeem-avios/award-ticket-fees.html",
+          "official": true
+        },
+        {
+          "label": "卡達：票價規定（官方）",
+          "url": "https://www.qatarairways.com/en/Privilege-Club/fare-conditions.html",
+          "official": true
+        },
+        {
+          "label": "AwardFares：卡達 Privilege Club 指南（2026-07-07 更新）",
+          "url": "https://awardfares.com/blog/qatar-airways-privilege-club-guide/",
+          "official": false
+        }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "qantas",
+      "name": "澳洲航空 Qantas Frequent Flyer",
+      "airline": "QF",
+      "alliance": "oneworld",
+      "seatsAeroSource": "qantas",
+      "pricing": "Classic Reward 依距離分區，每個單程「行程」固定價格再相加，澳航、捷星與夥伴各有一張表；含兩家以上非澳航的寰宇一家航司時改用寰宇一家表、以來回距離計價（官方條款 14.3、14.4）。另有隨現金票價浮動的 Classic Plus。",
+      "oneWay": "可開單程，以單程行程計價。",
+      "stopover": "一般 Classic Reward 以單程行程計價，中停會讓行程拆成兩段分別計價；寰宇一家獎勵最多 5 次免費中停、每個城市 1 次（官方條款 14.4.4）。國際行程停留超過 24 小時即算中停。",
+      "openJaw": "以單程行程相加計價，可自行組合不同城市；每張獎勵只能從第一個出發城市或國家出發一次（官方條款 14.2.6）。",
+      "surcharges": "要付稅金、規費與航空公司附加費（官方）；2025-08 起商務與頭等 Classic Reward 的附加費與 Classic Plus 相同，例如雪梨—倫敦單程商務約 648 澳幣（第三方）。",
+      "changes": "官方條款：開票後改票每位乘客收改票費、退票收取消退款費，電話辦理另收服務費，金額見官方費用表（第三方：改票 5,000 點、取消 6,000 點）。起飛 24 小時內只能改澳航航段的日期或航班；行程開始後未用的航段不退點，No-show 該段點數不退。",
+      "expiry": "連續 18 個月沒有累積或兌換就會失效；家人轉點不算活動（官方條款 9.2）。",
+      "pooling": "沒有合併帳戶，但可「家人轉點」：轉出者入會滿 3 個月，每次至少 1,500 點，轉出後不能撤回（官方條款 11）。",
+      "notes": "官網可訂多數寰宇一家夥伴，以及阿聯酋、華航、法荷航等；少數夥伴要電話訂（約 77 澳幣服務費，第三方）。日航高艙等空位常是幻影位。台灣可由滙豐旅人卡 1:1 轉入。seats.aero 有收錄澳航計畫。",
+      "confidence": "official",
+      "officialUrl": "https://www.qantas.com/us/en/frequent-flyer/discover-and-join/terms-and-conditions.html",
+      "sources": [
+        {
+          "label": "Qantas 常客計畫條款（官方）",
+          "url": "https://www.qantas.com/us/en/frequent-flyer/discover-and-join/terms-and-conditions.html",
+          "official": true
+        },
+        {
+          "label": "Qantas Classic Flight Reward 票價規則（官方）",
+          "url": "https://qantas.com/fi/en/book-a-trip/flights/fare-types/fare-guide-information-classic-flight-rewards.html",
+          "official": true
+        },
+        {
+          "label": "AwardFares：Qantas 常客計畫指南（2026-09-07 更新）",
+          "url": "https://awardfares.com/blog/qantas-frequent-flyer-guide/",
+          "official": false
+        },
+        {
+          "label": "Frequent Miler：各計畫改退票費用（2026-07）",
+          "url": "https://frequentmiler.com/award-ticket-change-and-cancellation-fees-by-transfer-partner/",
+          "official": false
+        }
+      ],
+      "lastVerified": "2026-10-14"
     }
-  ]
+  ],
+  "idMap": {
+    "note": "各檔案的計畫代碼對照。programs.json 的 id 多半就是 seats.aero 來源代碼，也是 booking、charts、promos 與 features.js 使用的鍵；下列例外以 programs.json id 為準查對應鍵。points.json 的換算欄位 eva、asiamiles、ci、sq 以外的計畫都在 other 欄，以 name 區分。",
+    "evainfinity": {
+      "booking": "eva",
+      "charts": "eva",
+      "promos": "eva",
+      "points": "eva"
+    },
+    "dynastyflyer": {
+      "booking": "ci",
+      "charts": "ci",
+      "promos": "ci",
+      "points": "ci"
+    },
+    "singapore": {
+      "points": "sq"
+    },
+    "asiamiles": {
+      "points": "asiamiles",
+      "seatsAero": [
+        "asiamiles",
+        "asiamiles_est"
+      ]
+    }
+  }
 }
