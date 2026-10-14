@@ -134,8 +134,10 @@ function renderHotels() {
       </div>
       <div class="hotel-actions">
         <button type="button" class="outline" data-h-cal="${esc(h.id)}">看每天點數</button>
+        ${cashCfg.enabled ? `<button type="button" class="outline" data-h-cash="${esc(h.id)}" title="${mmdd(s.date)} 入住 ${n} 晚，查各訂房網站和飯店官網的現金價">💵 現金價比一比</button>` : ''}
         ${h.lastChecked ? `<small class="${isStale(h.lastChecked) ? 'stale' : 'muted'}">${ago(h.lastChecked)}更新</small>` : ''}
       </div>
+      <div class="hotel-cash" hidden></div>
       <div class="hotel-cal" hidden></div>
     </article>`;
   };
@@ -183,7 +185,58 @@ async function openHotelRooms(id, btn) {
   }
 }
 
+// Cash prices for the stay on the card: every booking site and the hotel's own site (SerpApi), or Booking.com (RapidAPI).
+function hotelCashHtml(h, body) {
+  const s = h.standard || h.suite;
+  const value = (twd) => hotelValueHtml(h.source, { amount: twd, currency: 'TWD' }, s.points);
+  const other = body.provider === 'serpapi'
+    ? !cashCfg.calendar ? '' : '<button type="button" class="linklike" data-h-cash-src="booking">改查 Booking.com 價（RapidAPI，用 2 次）</button>'
+    : cashCfg.serp !== false ? '<button type="button" class="linklike" data-h-cash-src="serpapi">查各網站與官網價（SerpApi，用 1–2 次）</button>' : '';
+  const fell = body.fallback ? `<p class="hint">${esc(body.fallback)}，這次改查 Booking.com。</p>` : '';
+  if (!body.found) return `${fell}<p class="hint">${body.provider === 'booking' ? 'Booking.com' : 'Google 飯店'}找不到這家飯店，可能名稱不同。${other}</p>`;
+  if (body.provider === 'booking') {
+    return `${fell}<div class="h-cash-line"><b>Booking.com</b>${body.soldOut || !body.total ? '<span>這幾晚已售完或沒有報價</span>' : `<span><b>NT$${fmt(body.total)}</b>（${s.nights || hotelState.params.nights} 晚含稅總價）${value(body.total)}</span>`}
+      ${body.url ? `<a href="${esc(body.url)}" target="_blank" rel="noopener">前往 Booking.com ↗</a>` : ''}</div>
+      <p class="hint">${body.mock ? '示範資料。' : ''}${body.bookingLeft != null ? `Booking.com API 本月剩 ${fmt(body.bookingLeft)}${body.bookingLimit ? `／${fmt(body.bookingLimit)}` : ''} 次。` : ''}${other}</p>`;
+  }
+  const official = body.prices.find((p) => p.official);
+  const low = body.prices[0];
+  return `${fell}<div class="h-cash-sum">
+      ${low ? `<div><span>最低</span><b>NT$${fmt(low.total)}</b><small>${esc(low.source)}${low.official ? '（官網）' : ''}</small>${value(low.total)}</div>` : ''}
+      ${official ? `<div><span>飯店官網</span><b>NT$${fmt(official.total)}</b><small>${official === low ? '官網就是最低價' : `比最低貴 NT$${fmt(official.total - low.total)}`}</small></div>` : '<div><span>飯店官網</span><small>Google 這次沒有列出官網價</small></div>'}
+      ${body.typical?.[0] ? `<div><span>平常每晚</span><b>NT$${fmt(body.typical[0])}–${fmt(body.typical[1])}</b></div>` : ''}
+    </div>
+    ${body.prices.length ? `<div class="table-wrap"><table class="h-cash-table"><thead><tr><th>網站</th><th>每晚</th><th>總價</th><th></th></tr></thead><tbody>
+      ${body.prices.map((p) => `<tr${p.official ? ' class="official"' : ''}><td>${esc(p.source)}${p.official ? ' <span class="pill">官網</span>' : ''}${p.freeCancel ? ' <small class="ok-text">可免費取消</small>' : ''}</td>
+        <td data-l="每晚">${p.perNight ? `NT$${fmt(p.perNight)}` : '—'}</td><td data-l="總價"><b>${p.total ? `NT$${fmt(p.total)}` : '—'}</b></td>
+        <td>${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">前往 ↗</a>` : ''}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="hint">這幾晚 Google 沒有報價，可能已售完。</p>'}
+    <p class="hint">${body.mock ? '示範資料。' : ''}價格含稅、${s.nights || hotelState.params.nights} 晚總價，來自 Google 飯店；用了 ${body.credits || 1} 次 SerpApi 額度${body.serpLeft != null ? `，本月剩 ${fmt(body.serpLeft)} 次` : ''}。${other}</p>`;
+}
+async function openHotelCash(id, card, src = 'serpapi', force = false) {
+  const box = $('.hotel-cash', card);
+  if (!force && !box.hidden && box.innerHTML) { box.hidden = true; return; }
+  const h = hotelState.results.hotels.find((x) => x.id === id);
+  if (!h) return;
+  const s = h.standard || h.suite;
+  const nights = s.nights || hotelState.params.nights;
+  box.hidden = false;
+  box.innerHTML = `<p class="hint">正在查 ${mmdd(s.date)} 入住 ${nights} 晚的現金價…</p>`;
+  const p = new URLSearchParams({ name: h.name, city: h.city || '', checkin: s.date, checkout: isoDateFrom(s.date, nights), adults: '2', src });
+  if (h.lat != null && h.lon != null) { p.set('lat', h.lat); p.set('lon', h.lon); }
+  try {
+    const body = await cashApi(`/api/hotels/cash?${p}`);
+    box.innerHTML = hotelCashHtml(h, body);
+    $$('[data-h-cash-src]', box).forEach((b) => b.addEventListener('click', () => openHotelCash(id, card, b.dataset.hCashSrc, true)));
+    loadCashQuota();
+  } catch (e) {
+    box.innerHTML = `<p class="error">${esc(e.message)}</p>`;
+  }
+}
+
 document.addEventListener('click', (e) => {
+  const hc = e.target.closest?.('[data-h-cash]');
+  if (hc) { openHotelCash(hc.dataset.hCash, hc.closest('.hotel')); return; }
   const cal = e.target.closest?.('[data-h-cal]');
   if (cal) { openHotelCalendar(cal.dataset.hCal, cal.closest('.hotel')); return; }
   const rooms = e.target.closest?.('[data-h-rooms]');

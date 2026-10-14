@@ -418,7 +418,7 @@
   "GU": {
    "type": "free",
    "days": 45,
-   "note": "免簽 45 天；持 ESTA 可停留 90 天"
+   "note": "持 ESTA 可停留 90 天"
   },
   "GW": {
    "type": "arrival",
@@ -793,7 +793,7 @@
   "OM": {
    "type": "free",
    "days": 14,
-   "note": "免簽 14 天；30 天可辦落地簽或電子簽證"
+   "note": "30 天可辦落地簽或電子簽證"
   },
   "PA": {
    "type": "free",
@@ -818,7 +818,7 @@
   "PH": {
    "type": "free",
    "days": 14,
-   "note": "免簽 14 天試行至 2027/6/30；或申請 ETA 停留 30 天"
+   "note": "試行至 2027/6/30；或申請 ETA 停留 30 天"
   },
   "PK": {
    "type": "required",
@@ -1008,7 +1008,7 @@
   "TH": {
    "type": "free",
    "days": 30,
-   "note": "免簽 30 天；入境前需線上填寫 TDAC"
+   "note": "入境前需線上填寫 TDAC"
   },
   "TJ": {
    "type": "evisa",

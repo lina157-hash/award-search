@@ -1597,7 +1597,7 @@ function cashMonthRange(r) {
   return { start, end: isoDateFrom(start, 59) };
 }
 // Fits a price into a small calendar cell: 9,200 → 9.2千, 12,400 → 1.24萬.
-const shortTwd = (p) => (p >= 1e5 ? `${Math.round(p / 1e4)}萬` : p >= 1e4 ? `${+(p / 1e4).toFixed(2)}萬` : p >= 1e3 ? `${+(p / 1e3).toFixed(1)}千` : String(p));
+const shortTwd = (p) => (p >= 1e5 ? `${Math.round(p / 1e4)}萬` : p >= 9950 && p < 1e4 ? '1萬' : p >= 1e4 ? `${+(p / 1e4).toFixed(2)}萬` : p >= 1e3 ? `${+(p / 1e3).toFixed(1)}千` : String(p));
 const tripDays = (r) => (r.ret ? Math.round((Date.parse(r.ret) - Date.parse(r.depart)) / 864e5) : 0);
 function cashMonthHtml() {
   const r = cash.req;
@@ -2270,6 +2270,7 @@ function renderVersion(config) {
   cashCfg.locked = Boolean(config.cashLocked);
   cashCfg.enabled = config.cash !== 'off';
   cashCfg.calendar = config.cash === 'mock' || Boolean(config.cashSources?.rapid);
+  cashCfg.serp = config.cash === 'mock' || Boolean(config.cashSources?.serpapi);
   watchCfg.on = Boolean(config.watch);
   loadWatches();
   loadCashQuota();

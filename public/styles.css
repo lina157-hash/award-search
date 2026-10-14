@@ -766,3 +766,23 @@ details.release li { margin: 3px 0; }
 .cash-month .section small { font-weight: 400; color: var(--muted); font-size: .78rem; }
 .cash-month .cal.mini .day b { font-size: .66rem; white-space: nowrap; letter-spacing: -.02em; }
 .cash-month .day.low { outline: 2px solid var(--sun-2); outline-offset: -2px; }
+
+/* 現金價比一比 (hotel cash prices) */
+.hotel-cash { grid-column: 1 / -1; border-top: 1px dashed var(--border); padding-top: 10px; display: grid; gap: 8px; }
+.h-cash-sum { display: flex; flex-wrap: wrap; gap: 10px 26px; }
+.h-cash-sum > div { display: flex; flex-direction: column; gap: 1px; }
+.h-cash-sum span { font-size: .76rem; color: var(--muted); }
+.h-cash-sum b { font-size: 1.05rem; }
+.h-cash-sum small { font-size: .76rem; color: var(--muted); }
+.h-cash-line { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.h-cash-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.h-cash-table th, .h-cash-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.h-cash-table tr.official { background: var(--accent-soft); }
+.h-cash-table tr.official td { background: transparent; }
+.h-cash-table .pill { display: inline-block; font-size: .7rem; padding: 0 7px; border-radius: 999px; background: var(--accent); color: var(--accent-text); }
+@media (max-width: 560px) {
+  .h-cash-table thead { display: none; }
+  .h-cash-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .h-cash-table td { border: 0; padding: 2px 6px; }
+  .h-cash-table td[data-l]::before { content: attr(data-l) " "; color: var(--muted); font-size: .74rem; }
+}
