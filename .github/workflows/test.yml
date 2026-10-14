@@ -1,0 +1,24 @@
+# Runs the test suite on every push and pull request, so a broken change shows a red mark on GitHub before it reaches the live site.
+name: 測試
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check data files parse
+        run: for f in data/*.json public/*.json; do node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" || exit 1; done
+      - name: Check scripts parse
+        run: for f in server.js api/*.js lib/*.js public/*.js scripts/*.js; do node --check "$f" || exit 1; done
+      - run: npm test
