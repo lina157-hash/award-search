@@ -147,6 +147,8 @@ function setTabUrl(tab, query) {
 }
 const tabParams = (tab) => new URLSearchParams(tabQuery[tab] || '');
 $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+// The hash as the page was opened (account.js reads mail links like #verify=… after showTab has replaced it).
+const BOOT_HASH = location.hash;
 // Open the linked tab right away (before the data loads) and hand the incoming query to the tab it belongs to.
 {
   const q = new URLSearchParams(location.search);
