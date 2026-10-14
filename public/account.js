@@ -4,7 +4,7 @@
 // Classic script loaded last; uses the globals of app.js, features.js and hotels.js (store, toast, cashApi, $…).
 
 // localStorage keys carried by the account. The passcode (cashPass) never leaves the device.
-const SYNC_KEYS = ['favSearches', 'recentSearches', 'wallet:v1', 'plan:v1', 'cashSeen:v1', 'hotelSearch:v1', 'alertEmail'];
+const SYNC_KEYS = ['favSearches', 'recentSearches', 'wallet:v1', 'plan:v1', 'cashSeen:v1', 'hotelSearch:v1', 'alertEmail', 'mileCost:v1'];
 // What this device last agreed with the server: { email, joined, rev, base, syncedAt }.
 const ACCT_SYNC = 'acct:sync';
 const acct = { configured: false, emailEnabled: false, status: null, syncing: false, syncErr: '', timer: 0, conflicts: 0, lockFlipped: false, lastPull: 0, pending: false };

@@ -1,0 +1,63 @@
+{
+  "lastReviewed": "2026-10-14",
+  "note": "保留座位（先訂位、晚點才付哩程開票）與台灣銀行轉點入帳時間，給航班明細的「先保留還是先轉點」提醒用。台灣銀行轉點多半要 1 至 6 週，美國那種即時轉點很少；不能保留座位的計畫，看到座位才轉點，等哩程入帳時座位可能已被訂走。保留規定多來自第三方整理，常依客服而定，不保證成功。",
+  "fields": {
+    "programs": "鍵是 seats.aero 來源代碼或 booking.json 的鍵（eva、ci、jal、ana、starlux）。hold：true 可保留、false 不能、null 未確認；days 最多保留天數；how 管道；fee 保留費用；confidence：official 官方、secondary 第三方整理、verify 來源互相矛盾或較舊。",
+    "transfers": "銀行轉點到入帳的時間，依序比對、第一筆符合的為準。bank 對 points.json calc.sources 的 bank；sources 限定 calc.sources 的 id；cols 限定 eva、asiamiles、ci、sq 欄；names 限定「其他計畫」欄的航空名稱（cols 與 names 任一符合即可）。days 為日曆天的 [最快, 最慢]，工作天約乘 1.4；instant 表示可即時入帳。confidence：official 銀行官方（多數抄自 points.json 的說明）、verify 來源較舊或只有部分管道、typical 查無官方時間，用台灣銀行常見的 1 至 3 週。"
+  },
+  "sources": [
+    { "label": "point.me：Award holds, which airlines allow them（2025-02-06）", "url": "https://www.point.me/insights/award-holds/", "official": false },
+    { "label": "One Mile at a Time：Which airlines allow award ticket holds（2025-08-19）", "url": "https://onemileatatime.com/guides/airline-award-ticket-holds/", "official": false }
+  ],
+  "programs": {
+    "asiamiles": { "hold": true, "days": 3, "how": "電話", "fee": "不收保留費", "note": "國泰自家與夥伴航班都可，依客服而定", "confidence": "secondary" },
+    "flyingblue": { "hold": true, "days": 3, "how": "電話", "fee": "不收保留費（有讀者回報收 US$30）", "confidence": "secondary" },
+    "american": { "hold": true, "days": 1, "how": "官網", "fee": "免費", "note": "舊資料指出發 15 天以上可保留 5 天，2025 年的整理只剩約 1 天", "confidence": "verify" },
+    "emirates": { "hold": true, "days": 1, "how": "電話", "fee": "免費", "note": "只限阿聯酋自家航班", "confidence": "secondary" },
+    "lufthansa": { "hold": true, "days": 5, "how": "電話", "fee": "電話訂位費約 US$20", "confidence": "secondary" },
+    "singapore": { "hold": true, "days": 1, "how": "電話", "fee": "電話訂位 US$25 或 2,500 哩", "note": "只限新航自家航班，由客服決定，不一定能保留", "confidence": "verify" },
+    "turkish": { "hold": true, "days": 2, "how": "電話", "fee": "電話訂位手續費", "confidence": "secondary" },
+    "virginatlantic": { "hold": true, "days": 1, "how": "電話", "fee": "免費", "note": "point.me 寫最多 48 小時", "confidence": "secondary" },
+    "eva": { "hold": true, "days": 1, "how": "官網或電話", "note": "台灣官網規定未查到，以訂位時顯示的開票期限為準", "confidence": "verify" },
+    "ana": { "hold": true, "days": 2, "how": "電話", "confidence": "secondary" },
+    "united": { "hold": false, "note": "付費 FareLock 只適用聯合自家航班", "confidence": "secondary" },
+    "aeroplan": { "hold": false, "note": "第三方指訂位後 24 小時內可免費取消", "confidence": "secondary" },
+    "alaska": { "hold": false, "note": "改退免費，哩程夠就先訂", "confidence": "secondary" },
+    "delta": { "hold": false, "confidence": "secondary" },
+    "british": { "hold": false, "note": "起飛 24 小時前取消只扣 £35", "confidence": "secondary" },
+    "qatar": { "hold": false, "confidence": "verify" },
+    "qantas": { "hold": false, "note": "有讀者回報全程澳航航班可保留，非公開規定", "confidence": "verify" },
+    "lifemiles": { "hold": false, "confidence": "secondary" },
+    "jal": { "hold": false, "confidence": "verify" },
+    "ci": { "hold": null, "note": "官方未說明能否先訂位、晚點開票", "confidence": "verify" },
+    "starlux": { "hold": null, "confidence": "verify" },
+    "etihad": { "hold": null, "confidence": "verify" }
+  },
+  "transfers": [
+    { "bank": "美國運通", "days": [14, 21], "text": "約 2 至 3 週", "confidence": "official" },
+    { "bank": "滙豐", "names": ["日航"], "days": [10, 30], "text": "7 至 21 個工作天", "confidence": "official" },
+    { "bank": "滙豐", "cols": ["ci", "sq"], "names": ["海南"], "days": [10, 20], "text": "7 至 14 個工作天", "confidence": "official" },
+    { "bank": "滙豐", "sources": ["hsbc-travel", "hsbc-premier"], "days": [0, 0], "instant": true, "text": "網銀或 App 兌換可即時入帳", "confidence": "official" },
+    { "bank": "滙豐", "days": [10, 20], "text": "約 7 至 14 個工作天", "confidence": "verify" },
+    { "bank": "星展 DBS", "sources": ["dbs-flight"], "days": [7, 7], "text": "約 5 個工作天", "confidence": "official" },
+    { "bank": "星展 DBS", "days": [7, 14], "text": "約 5 個工作天以上", "confidence": "verify" },
+    { "bank": "國泰世華", "cols": ["eva"], "days": [28, 42], "text": "約 4 至 6 週", "confidence": "official" },
+    { "bank": "國泰世華", "days": [28, 42], "text": "約 4 至 6 週", "confidence": "verify" },
+    { "bank": "中國信託", "days": [14, 21], "text": "約 2 至 3 週", "confidence": "official" },
+    { "bank": "台新", "days": [7, 21], "text": "約 1 至 3 週", "confidence": "typical" },
+    { "bank": "玉山", "days": [7, 21], "text": "約 1 至 3 週", "confidence": "typical" },
+    { "bank": "凱基", "days": [7, 21], "text": "約 1 至 3 週", "confidence": "typical" },
+    { "bank": "富邦", "days": [7, 21], "text": "約 1 至 3 週", "confidence": "typical" },
+    { "bank": "華南", "names": ["日航"], "days": [56, 56], "text": "約 8 週", "confidence": "official" },
+    { "bank": "華南", "names": ["全日空"], "days": [28, 42], "text": "約 4 至 6 週（每月分兩批送出）", "confidence": "official" },
+    { "bank": "華南", "days": [28, 42], "text": "約 4 至 6 週", "confidence": "official" },
+    { "bank": "第一銀行", "cols": ["asiamiles"], "days": [14, 28], "text": "約 2 至 4 週", "confidence": "official" },
+    { "bank": "第一銀行", "days": [14, 28], "text": "約 2 至 4 週", "confidence": "verify" },
+    { "bank": "上海商銀", "days": [14, 28], "text": "約 2 至 4 週", "confidence": "official" },
+    { "bank": "台灣樂天", "cols": ["eva"], "days": [0, 30], "text": "最快可即時，一般 12 至 21 個工作天", "confidence": "verify" },
+    { "bank": "台灣樂天", "days": [17, 30], "text": "12 至 21 個工作天", "confidence": "verify" },
+    { "bank": "渣打", "cols": ["asiamiles"], "days": [56, 56], "text": "約 8 週", "confidence": "verify" },
+    { "bank": "渣打", "cols": ["ci"], "days": [14, 28], "text": "約 2 至 4 週", "confidence": "verify" },
+    { "bank": "渣打", "cols": ["sq"], "days": [42, 56], "text": "約 6 至 8 週", "confidence": "verify" }
+  ]
+}

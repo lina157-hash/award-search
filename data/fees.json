@@ -1,0 +1,35 @@
+{
+  "lastReviewed": "2026-10-14",
+  "note": "獎勵機票改票、取消（退回哩程）手續費的簡短版，給搜尋結果與航班明細的小標籤用；完整規定看規則庫各計畫的「改票與退票」（programs.json changes）。金額以一般會員、出發前辦理為準，菁英會員常可減免；改票另需補哩程或稅金差額。confidence：official 官方、secondary 第三方整理。from：programs.json 表示從規則庫摘要，其他為第三方整理。",
+  "sources": [
+    { "label": "Frequent Miler：各計畫獎勵票改退費（2026-07-27 更新）", "url": "https://frequentmiler.com/award-ticket-change-and-cancellation-fees-by-transfer-partner/", "official": false }
+  ],
+  "programs": {
+    "asiamiles": { "change": "US$50（線上）", "cancel": "US$120", "note": "其他管道改期另加 US$40", "confidence": "official", "from": "programs.json" },
+    "flyingblue": { "change": "€70（Standard 票）", "cancel": "€70（Standard 票）", "note": "法荷航 Light 票不能改退，Flex 免費", "confidence": "official", "from": "programs.json" },
+    "aeroplan": { "change": "CA$75／方向（官網）", "cancel": "CA$150", "note": "Flex、Latitude 票改票免費", "confidence": "official", "from": "programs.json" },
+    "eva": { "change": "改日期多半免費", "cancel": "US$50", "note": "訂位服務費不退；銀卡以上免手續費", "confidence": "secondary", "from": "programs.json" },
+    "ci": { "change": "官網退票再重訂", "cancel": "官網免費", "note": "2026-09-16 起開票；分公司辦理 NT$1,500", "confidence": "secondary", "from": "programs.json" },
+    "alaska": { "change": "免費", "cancel": "免費", "note": "夥伴開票費 US$20 不退", "confidence": "official", "from": "programs.json" },
+    "american": { "change": "免費", "cancel": "免費", "confidence": "official", "from": "programs.json" },
+    "united": { "change": "免費", "cancel": "免費", "note": "No-show 後退哩 US$125", "confidence": "official", "from": "programs.json" },
+    "delta": { "change": "免費（主艙以上）", "cancel": "美加出發免費", "note": "北美以外出發退哩 US$150；基本經濟艙不能改", "confidence": "official", "from": "programs.json" },
+    "singapore": { "change": "US$25（新航航班 Saver）", "cancel": "US$75（Saver）", "note": "夥伴航班改期 US$50；No-show 另收費", "confidence": "official", "from": "programs.json" },
+    "ana": { "change": "同航段改班次免費", "cancel": "¥3,000 或 3,000 哩", "confidence": "official", "from": "programs.json" },
+    "jal": { "change": "不能改，要退票重訂", "cancel": "¥3,100", "confidence": "official", "from": "programs.json" },
+    "starlux": { "change": "US$60", "cancel": "US$50 起（長程 US$200）", "note": "退票金額為第三方整理", "confidence": "secondary", "from": "programs.json" },
+    "turkish": { "change": "US$70", "cancel": "US$70", "note": "No-show 後 US$170", "confidence": "official", "from": "programs.json" },
+    "emirates": { "change": "US$25（Saver 改日期）", "cancel": "US$75（Saver）", "note": "Flex Plus 免費", "confidence": "secondary", "from": "programs.json" },
+    "british": { "change": "每次收費", "cancel": "£35（起飛 24 小時前）", "note": "24 小時內取消 Avios 不退", "confidence": "official", "from": "programs.json" },
+    "qatar": { "change": "US$25（24 小時前）", "cancel": "US$25（24 小時前）", "note": "3 至 24 小時前 US$100", "confidence": "official", "from": "programs.json" },
+    "qantas": { "change": "5,000 點", "cancel": "6,000 點", "confidence": "secondary", "from": "programs.json" },
+    "lifemiles": { "change": "US$150", "cancel": "US$50～200", "note": "取消費在訂位時顯示", "confidence": "secondary", "from": "Frequent Miler" },
+    "virginatlantic": { "change": "US$100（英國出發 £70）", "cancel": "US$100（英國出發 £70）", "confidence": "secondary", "from": "Frequent Miler" },
+    "etihad": { "change": "Value 票約 AED600", "cancel": "Value 票不能退", "note": "起飛 72 小時內不能改退；Deluxe 免費", "confidence": "secondary", "from": "Frequent Miler" },
+    "lufthansa": { "change": "€50（只改日期時間）", "cancel": "€50", "confidence": "secondary", "from": "Frequent Miler" },
+    "eurobonus": { "change": "US$75（亞洲、北美）", "cancel": "US$75（亞洲、北美）", "note": "歐洲線 €25", "confidence": "secondary", "from": "Frequent Miler" },
+    "aeromexico": { "change": "MX$5,400（國際線）", "cancel": "MX$2,900（國際線）", "confidence": "secondary", "from": "Frequent Miler" },
+    "finnair": { "change": "€50", "cancel": "€50", "confidence": "secondary", "from": "Frequent Miler" },
+    "jetblue": { "change": "免費", "cancel": "免費", "note": "Blue Basic 票 US$100～200", "confidence": "secondary", "from": "Frequent Miler" }
+  }
+}

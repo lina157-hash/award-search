@@ -1121,6 +1121,7 @@ function resultToolsHtml() {
     <label class="switch"><input type="checkbox" id="afford-only" ${state.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>
     ${prods.length ? `<label class="field compact">艙位產品<select id="product-filter"><option value="">全部</option>${prods.map((p) => `<option value="${esc(p.id)}" ${state.product === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
     ${prodNote}
+    ${resultSortHtml()}
   </div>`;
 }
 
@@ -1240,7 +1241,8 @@ function renderSearch() {
   }
 
   // One card per program, headed by the program; a tie at the top is said once instead of starring one card.
-  const picks = dealPicks(realRows, c);
+  const byCost = costSortOn();
+  const picks = costPicks(realRows, c) || dealPicks(realRows, c);
   const lowMiles = Math.min(...picks.map((r) => r.cabins[c].miles));
   const allSame = picks.length > 1 && picks.every((r) => r.cabins[c].miles === lowMiles);
   // Identical prices: one card that says how many programs tie, the others behind a link.
@@ -1248,12 +1250,12 @@ function renderSearch() {
   const dealHtml = (folded ? picks.slice(0, 1) : picks).map((r) => {
     const x = r.cabins[c];
     return `<button type="button" class="deal" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">
-      ${!allSame && x.miles === lowMiles ? '<span class="rank">★ 最低</span>' : folded ? `<span class="rank same">${picks.length} 個計畫同價</span>` : ''}
+      ${(byCost ? r === picks[0] : !allSame && x.miles === lowMiles) ? '<span class="rank">★ 最低</span>' : folded ? `<span class="rank same">${picks.length} 個計畫同價</span>` : ''}
       <div class="route">${esc(srcName(r.source))}</div>
       <div class="miles">${fmt(x.miles)} <small>哩起</small>${x.taxes ? `<small class="tax">＋ 稅 ${esc(taxText(x.taxes))}</small>` : ''}</div>
       <div class="meta">${dayLabel(r.date)} · ${esc(r.origin)} → ${esc(r.destination)}</div>
       <div class="meta">${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}</div>
-      ${valueTag(r, c)}
+      ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}
     </button>`;
   }).join('');
 
@@ -1274,7 +1276,7 @@ function renderSearch() {
       <div><b>亞洲萬里通估算</b>　國泰／寰宇一家航班最低約 <b class="am-miles">${fmt(amRows[0].cabins[c].miles)} 哩</b>（${mmdd(amRows[0].date)} ${esc(amRows[0].origin)} → ${esc(amRows[0].destination)}，${amRows[0].cabins[c].kind === 'cx' ? '國泰航班' : '夥伴航班'}）</div>
       <div class="hint">依 2026-05-01 起的距離哩數表推算，實際座位與價格請至國泰官網確認；轉機行程依各段距離相加，可能落在更高區間。<a href="#rules" data-goto="rules">看哩數表</a></div>
     </div>` : ''}
-    <h2 class="section-title">最划算的選擇 <small>${allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
+    <h2 class="section-title">最划算的選擇 <small>${byCost ? '依台幣成本（哩數 × 每哩成本 ＋ 稅金）；' : allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
     <div class="best${folded ? ' folded' : ''}">${dealHtml}</div>
     ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}
     <h2 class="section-title">日曆 <small>每天最低哩數（顏色對照下方的便宜／較貴）；點日期篩選下表</small></h2>
@@ -1398,7 +1400,7 @@ function matrixHtml(rows, sources) {
   }
   let low = Infinity;
   for (const g of grid.values()) for (const r of Object.values(g)) if (!r.estimate) low = Math.min(low, r.cabins[c].miles || Infinity);
-  const allKeys = [...grid.keys()].sort();
+  const allKeys = costSortKeys([...grid.keys()].sort(), grid, c, sources);
   // Long date ranges can have hundreds of rows; show the first ones until asked.
   const keys = state.allRows ? allKeys : allKeys.slice(0, MATRIX_ROWS);
   const cell = (r) => {
@@ -1409,10 +1411,10 @@ function matrixHtml(rows, sources) {
     }
     const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : '', isOld(r.updatedAt) ? 'old' : ''].join(' ');
     const ph = phantomWarnings(r.source, x.airlines);
-    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}<small>${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
+    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}${costCellHtml(r, c)}<small>${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
   };
   return `<div class="table-wrap"><table>
-    <thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}</th>`).join('')}</tr></thead>
+    <thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}${feeHeadHtml(s)}</th>`).join('')}</tr></thead>
     <tbody>${keys.map((k) => {
       const [date, o, d] = k.split('|');
       return `<tr><td><div class="d">${dayLabel(date)}</div><div class="r">${esc(o)} → ${esc(d)}</div></td>${sources.map((s) => cell(grid.get(k)[s])).join('')}</tr>`;
@@ -1505,7 +1507,7 @@ async function openTrips(id, title, cabin) {
       (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map((t, i) => tripHtml(t, main.length + i)).join('')}</details>` : '') +
       (main.length && cashCfg.enabled ? `<div class="value-box" id="value-box"><button type="button" class="outline" id="value-btn">💵 和當天現金票比一比，算每哩價值（用 1 次查價）</button></div>` : '') +
       (links ? `<div class="links">${links}</div>` : '') +
-      (first ? homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
+      (first ? bookingNotesHtml(first.source, first.miles * pax) + homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
     $$('[data-plan]', $('#trip-body')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
   } catch (err) {
@@ -2530,12 +2532,13 @@ function renderPoints() {
   const calc = pts && calcHtml(pts);
   if (!calc) { host.innerHTML = '<p class="hint">點數資料載入失敗，請重新整理。</p>'; return; }
   const view = pointsView.view;
-  host.innerHTML = pointsTabsHtml() + (view === 'wallet' ? walletHtml() : view === 'need' ? needHtml() : view === 'detour' ? detourHtml()
+  host.innerHTML = pointsTabsHtml() + (view === 'wallet' ? walletHtml() : view === 'need' ? needHtml() : view === 'detour' ? detourHtml() : view === 'upgrade' ? upgradeHtml()
     : `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積哩程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉哩程」</a>。</p>`);
   bindPointsTabs(host);
   if (view === 'wallet') bindWallet(host);
   else if (view === 'need') bindNeed(host);
   else if (view === 'detour') bindDetour(host);
+  else if (view === 'upgrade') bindUpgrade(host);
   else bindCalc();
   bindTabLinks(host);
 }
@@ -2807,11 +2810,11 @@ function renderVersion(config) {
 // The data comes in two bundles, each cached per release (?v=): `core` for the first screen (index.html preloads it)
 // and `more` (points, charts, rules, booking notes) once a search, a flight's details or a tab that needs it opens.
 const DATA_CORE = ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'];
-const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes'];
+const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades'];
 const DATA_KEY = { sourcenames: 'sourceNames', airlinenames: 'airlineNames', airportnames: 'airportNames' };
 // Niceties the page works without: Chinese airline and airport names (codes show as they are), expiry rules,
-// buy-miles prices and dated rule changes.
-const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes'];
+// buy-miles prices, dated rule changes, and the fee, hold, cost-per-mile and upgrade notes.
+const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades'];
 async function loadPart(part, names) {
   try {
     const all = await api(`/api/data/${part}${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);
