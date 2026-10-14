@@ -334,11 +334,11 @@ function releaseTableHtml() {
 
 // ---------- points tab: converter / my points / miles needed ----------
 // The tool shown is part of the address (#points/wallet), so a reload or a link opens the same one.
-const POINTS_VIEWS = ['calc', 'wallet', 'detour', 'need'];
+const POINTS_VIEWS = ['calc', 'wallet', 'detour', 'need', 'upgrade'];
 const pointsView = { view: POINTS_VIEWS.includes(tabSub.points) ? tabSub.points : 'calc' };
 function pointsTabsHtml() {
   const v = pointsView.view;
-  return `<fieldset class="seg points-seg" aria-label="工具">${[['calc', '點數換算'], ['wallet', '我的點數'], ['detour', '繞路兌換'], ['need', '哩程試算']].map(([k, l]) =>
+  return `<fieldset class="seg points-seg" aria-label="工具">${[['calc', '點數換算'], ['wallet', '我的點數'], ['detour', '繞路兌換'], ['need', '哩程試算'], ['upgrade', '升等試算']].map(([k, l]) =>
     `<label><input type="radio" name="points-view" value="${k}" ${k === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
 }
 function setPointsView(v) {

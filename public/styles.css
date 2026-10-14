@@ -1086,3 +1086,40 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .map-osm .leaflet-tile-pane { filter: saturate(0.75) brightness(1.03); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); } }
 :root[data-theme="dark"] .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
+
+/* ===== eresults: fee chips, hold vs transfer time, NT$ cost sort, upgrade calculator (award-tools.js) ===== */
+.deal .fee-chip { display: inline-block; margin: 6px 0 2px; font-size: .74rem; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 1px 9px; }
+th .fee-mini { display: block; font-size: .68rem; font-weight: 400; color: var(--muted); opacity: .85; white-space: nowrap; }
+.deal .cost-line { font-size: .95rem; font-weight: 700; color: var(--text); margin: 2px 0 0; }
+.deal .cost-line small { display: block; font-size: .74rem; font-weight: 400; color: var(--muted); }
+td.cell i.cost { display: block; font-style: normal; font-size: .74rem; font-weight: 600; color: var(--text); }
+.cost-link { font-size: .86rem; }
+.bk-notes { display: grid; gap: 8px; margin: 12px 0 4px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; }
+.bk-line { margin: 0; font-size: .88rem; }
+.bk-line small { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
+.bk-line small a { color: var(--accent); }
+.bk-line.warn b { color: var(--few-text); }
+.bk-line.ok b { color: var(--accent); }
+.bk-line .tag { margin-left: 4px; }
+dialog.cost-pop { position: fixed; inset: auto; margin: 0; padding: 12px 14px; border-radius: var(--radius); max-height: calc(100vh - 24px); overflow: auto; box-shadow: 0 14px 44px rgb(40 24 0 / .28); }
+dialog.cost-pop::backdrop { background: rgb(8 30 45 / .14); backdrop-filter: none; }
+.cost-head { display: flex; justify-content: space-between; align-items: center; }
+.cost-head h2 { font-size: 1rem; margin: 0; }
+.cost-head h2 small { font-weight: 400; color: var(--muted); font-size: .8rem; }
+.cost-head button { min-width: 36px; min-height: 36px; }
+dialog.cost-pop .hint { margin: 4px 0 10px; font-size: .8rem; }
+.cost-rows { display: grid; gap: 6px; }
+.cost-rows label { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: .88rem; }
+.cost-rows input { width: 84px; padding: 6px 8px; text-align: right; }
+.cost-rows input::placeholder { color: var(--muted); opacity: .75; }
+.cost-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); }
+.upg-card { margin: 10px 0 12px; }
+.upg-zone { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 6px; }
+.upg-zone b { font-size: .92rem; }
+.upg-zone small { color: var(--muted); font-size: .8rem; }
+.upg-src { font-size: .8rem; line-height: 1.8; }
+.upg-zone .pill { font-size: .75rem; padding: 1px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.upg-table td:last-child, .upg-table th:last-child { text-align: right; white-space: nowrap; }
+.upg-table td b { color: var(--accent); }
+.upg-table .muted { color: var(--muted); }
+.upg-rules { margin: 8px 0; padding-left: 18px; color: var(--muted); font-size: .84rem; display: grid; gap: 3px; }

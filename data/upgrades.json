@@ -1,0 +1,192 @@
+{
+  "lastReviewed": "2026-10-14",
+  "note": "用哩程把買好的現金票升等：所需哩程都是單程、每一個航段。要先開好可升等票價的機票，而且要有升等機位（付費座位有空不代表能升等）；稅金、差額另計。區域依出發地與目的地判斷，同一條航線換機型價格不變（星宇除外，看兩艙或四艙機型）。",
+  "fields": {
+    "areas": "區域定義：countries 國家代碼、airports 機場、excludeAirports 排除的機場；機場清單優先。亞洲、歐洲列出常見國家，沒列到的國家要自己加。",
+    "airlines": "每家航空：fares 依原艙等列出可升等的票價（id 對應 rows 的 miles 鍵）；charts 每張表一種升等（from → to，Y 經濟、W 豪經、J 商務、F 頭等），rows 依序比對 between 兩端區域，第一筆符合的為準；miles 為 null 表示不適用。distance 類（全日空）依航段距離 bands 計價，fares 的 codesFromJapan 是從日本出發時的可升等艙等。"
+  },
+  "areas": {
+    "TW": { "countries": ["TW"] },
+    "HK": { "countries": ["HK"] },
+    "HKMO": { "countries": ["HK", "MO"] },
+    "CN": { "countries": ["CN"] },
+    "NEA": { "countries": ["JP", "KR"] },
+    "SEA": { "countries": ["TH", "VN", "SG", "MY", "PH", "ID", "KH", "MM", "LA", "BN"] },
+    "OC": { "countries": ["AU", "NZ"] },
+    "AU": { "countries": ["AU"] },
+    "NZ": { "countries": ["NZ"] },
+    "DEL": { "airports": ["DEL"] },
+    "ASIA": { "countries": ["TW", "HK", "MO", "CN", "JP", "KR", "MN", "TH", "VN", "SG", "MY", "PH", "ID", "KH", "MM", "LA", "BN", "IN", "NP", "BD", "LK", "MV", "PK"] },
+    "ASIA_GU": { "countries": ["TW", "HK", "MO", "CN", "JP", "KR", "MN", "TH", "VN", "SG", "MY", "PH", "ID", "KH", "MM", "LA", "BN", "IN", "NP", "BD", "LK", "MV", "PK", "GU"] },
+    "EU": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR"] },
+    "NY": { "airports": ["JFK", "EWR", "LGA"] },
+    "EVA_US_EAST": { "airports": ["ORD", "JFK", "EWR", "LGA", "IAH", "YYZ"] },
+    "EVA_AMERICA": { "countries": ["US", "CA"], "excludeAirports": ["ORD", "JFK", "EWR", "LGA", "IAH", "YYZ"] },
+    "EVA_EU_AMERICA": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR", "US", "CA"], "excludeAirports": ["ORD", "JFK", "EWR", "LGA", "IAH", "YYZ"] },
+    "NAM_EU": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR", "US", "CA"] },
+    "NAM_EU_OC": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR", "US", "CA", "AU", "NZ"] }
+  },
+  "airlines": [
+    {
+      "id": "eva",
+      "name": "長榮航空",
+      "program": "無限萬哩遊",
+      "kind": "zone",
+      "confidence": "official",
+      "fares": {
+        "Y": [{ "id": "up", "label": "經濟艙 Up", "codes": ["B", "Y"] }, { "id": "std", "label": "經濟艙 Standard", "codes": ["Q", "H", "M"] }],
+        "W": [{ "id": "up", "label": "豪經 Up", "codes": ["K"] }, { "id": "std", "label": "豪經 Standard", "codes": ["L", "T"] }]
+      },
+      "notEligible": { "Y": "經濟艙 Basic（V、W、S）與 Discount（A）票價不能升等（第三方整理）" },
+      "charts": [
+        { "from": "Y", "to": "W", "label": "", "rows": [
+          { "between": ["TW", "CN"], "name": "台灣—中國大陸", "miles": { "std": 8000, "up": 6000 } },
+          { "between": ["TW", "SEA"], "name": "台灣—東南亞", "miles": { "std": 10000, "up": 7500 } },
+          { "between": ["TW", "EVA_US_EAST"], "name": "台灣—芝加哥、紐約、休士頓、多倫多", "miles": { "std": 30000, "up": 22500 } },
+          { "between": ["ASIA", "EVA_EU_AMERICA"], "name": "亞洲—歐洲、美洲（不含芝加哥、紐約、休士頓、多倫多）", "miles": { "std": 25000, "up": 18500 } }
+        ] },
+        { "from": "W", "to": "J", "label": "", "rows": [
+          { "between": ["TW", "CN"], "name": "台灣—中國大陸", "miles": { "std": 10000, "up": 8000 } },
+          { "between": ["TW", "SEA"], "name": "台灣—東南亞", "miles": { "std": 15000, "up": 13500 } },
+          { "between": ["TW", "EVA_US_EAST"], "name": "台灣—芝加哥、紐約、休士頓、多倫多", "miles": { "std": 40000, "up": 36000 } },
+          { "between": ["ASIA", "EVA_EU_AMERICA"], "name": "亞洲—歐洲、美洲（不含芝加哥、紐約、休士頓、多倫多）", "miles": { "std": 35000, "up": 31500 } }
+        ] },
+        { "from": "Y", "to": "J", "label": "有豪經的航班", "rows": [
+          { "between": ["TW", "CN"], "name": "台灣—中國大陸", "miles": { "std": 18000, "up": 14000 } },
+          { "between": ["TW", "SEA"], "name": "台灣—東南亞", "miles": { "std": 25000, "up": 21000 } },
+          { "between": ["TW", "EVA_US_EAST"], "name": "台灣—芝加哥、紐約、休士頓、多倫多", "miles": { "std": 70000, "up": 58500 } },
+          { "between": ["ASIA", "EVA_EU_AMERICA"], "name": "亞洲—歐洲、美洲（不含芝加哥、紐約、休士頓、多倫多）", "miles": { "std": 60000, "up": 50000 } }
+        ] },
+        { "from": "Y", "to": "J", "label": "沒有豪經的航班", "rows": [
+          { "between": ["TW", "HKMO"], "name": "台灣—港澳", "miles": { "std": 12500, "up": 10000 } },
+          { "between": ["TW", "CN"], "name": "台灣—中國大陸", "miles": { "std": 15000, "up": 11000 } },
+          { "between": ["TW", "NEA"], "name": "台灣—東北亞", "miles": { "std": 15000, "up": 12000 } },
+          { "between": ["TW", "SEA"], "name": "台灣—東南亞", "miles": { "std": 15000, "up": 12000 } },
+          { "between": ["TW", "OC"], "name": "台北—大洋洲", "miles": { "std": 35000, "up": 26000 } },
+          { "between": ["ASIA", "EU"], "name": "亞洲—歐洲", "miles": { "std": 45000, "up": 35000 } },
+          { "between": ["TW", "EVA_AMERICA"], "name": "台北—美洲（不含芝加哥、紐約、休士頓、多倫多）", "miles": { "std": 60000, "up": 50000 } }
+        ] }
+      ],
+      "rules": [
+        "要先開好可升等艙等的機票，起飛前訂妥升等機位（代碼商務 Z、豪經 U）；機場不受理升等。",
+        "升等哩程要在同一個無限萬哩遊帳戶，效期要到出發日；出發前取消會自動退回哩程。",
+        "包機與部分共掛航班不能升等；兒童票要補差額。"
+      ],
+      "sources": [
+        { "label": "長榮：哩程升等規定與哩程表（官方）", "url": "https://www.evaair.com/en-sg/infinity-mileagelands/mileage-award-program/mileage-redemption/upgrade-award/eva-uni-air/", "official": true },
+        { "label": "長榮：洛杉磯升等 7 折活動（列出一般升等哩程，官方）", "url": "https://www.evaair.com/zh-tw/plan-and-book/special-offers/promotions/ff-promotion/202603_LAX_Upgrade_Promo.html", "official": true },
+        { "label": "Money101：長榮哩程升等與可升等艙等（2026-09）", "url": "https://www.money101.com.tw/blog/長榮商務艙", "official": false }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "ci",
+      "name": "中華航空",
+      "program": "華夏會員",
+      "kind": "zone",
+      "confidence": "official",
+      "fares": {
+        "Y": [{ "id": "flex", "label": "經濟艙 靈活", "codes": ["Y", "B", "M"] }, { "id": "std", "label": "經濟艙 標準", "codes": ["K", "V", "T"] }],
+        "W": [{ "id": "flex", "label": "豪經 靈活", "codes": ["W", "U"] }, { "id": "std", "label": "豪經 標準", "codes": ["A"] }]
+      },
+      "notEligible": { "Y": "表上沒列的經濟艙票價代碼不能升等" },
+      "charts": [
+        { "from": "Y", "to": "W", "label": "", "rows": [
+          { "between": ["AU", "NZ"], "name": "澳洲—紐西蘭", "miles": { "flex": 7000, "std": 10000 } },
+          { "between": ["TW", "NY"], "name": "台北—紐約", "miles": { "flex": 22000, "std": 28000 } },
+          { "between": ["TW", "NAM_EU_OC"], "name": "台北—美加、歐洲、紐澳（不含紐約）", "miles": { "flex": 18000, "std": 25000 } },
+          { "between": ["TW", "ASIA_GU"], "name": "台灣—亞洲（含關島、德里）", "miles": { "flex": 7000, "std": 10000 } }
+        ] },
+        { "from": "W", "to": "J", "label": "升豪華商務艙", "rows": [
+          { "between": ["AU", "NZ"], "name": "澳洲—紐西蘭", "miles": { "flex": 8000, "std": 12000 } },
+          { "between": ["TW", "NY"], "name": "台北—紐約", "miles": { "flex": 34000, "std": 40000 } },
+          { "between": ["TW", "NAM_EU_OC"], "name": "台北—美加、歐洲、紐澳（不含紐約）", "miles": { "flex": 30000, "std": 35000 } },
+          { "between": ["TW", "ASIA_GU"], "name": "台灣—亞洲（含關島、德里）", "miles": { "flex": 8000, "std": 12000 } }
+        ] },
+        { "from": "Y", "to": "J", "label": "", "rows": [
+          { "between": ["AU", "NZ"], "name": "澳洲—紐西蘭", "miles": { "flex": 15000, "std": 20000 } },
+          { "between": ["TW", "HK"], "name": "台灣—香港", "miles": { "flex": 10000, "std": 13000 } },
+          { "between": ["TW", "DEL"], "name": "台北—德里", "miles": { "flex": 20000, "std": 25000 } },
+          { "between": ["TW", "OC"], "name": "台北—紐澳", "miles": { "flex": 45000, "std": null } },
+          { "between": ["TW", "NAM_EU"], "name": "台北—美加、歐洲", "miles": { "flex": 60000, "std": null } },
+          { "between": ["TW", "ASIA_GU"], "name": "台灣—亞洲（含關島，不含香港、德里）", "miles": { "flex": 15000, "std": 20000 } }
+        ] }
+      ],
+      "rules": [
+        "限華航、華信國際線定期自營航班，機票號碼 297 或 803 開頭，原艙等座位已確認。",
+        "要有升等機位才能升（付費商務艙有空位不代表可升等）；起飛 72 小時前可在華夏會員專區申請，72 小時內洽客服。",
+        "豪經、豪華商務艙的價格只適用有這些艙等的航班；航線價格不因機型改變。累積哩程仍依原票艙等。"
+      ],
+      "sources": [
+        { "label": "華航：座艙升等（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/cabin-upgrade", "official": true },
+        { "label": "Money101：華航哩程升等整理（2026-10）", "url": "https://www.money101.com.tw/blog/華航商務艙", "official": false }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "starlux",
+      "name": "星宇航空",
+      "program": "COSMILE",
+      "kind": "zone",
+      "confidence": "secondary",
+      "fares": {
+        "Y": [{ "id": "all", "label": "「基本」或「全額」票價", "codes": [] }],
+        "W": [{ "id": "all", "label": "「基本」或「全額」票價", "codes": [] }],
+        "J": [{ "id": "all", "label": "「基本」或「全額」票價", "codes": [] }]
+      },
+      "notEligible": { "*": "「超值」與「限量」票價不能升等" },
+      "charts": [
+        { "from": "Y", "to": "W", "label": "亞洲線四艙機型（A350）", "rows": [
+          { "between": ["ASIA_GU", "ASIA_GU"], "name": "亞洲區域內", "miles": { "all": 10000 } }
+        ] },
+        { "from": "Y", "to": "J", "label": "亞洲線兩艙機型（A321neo、A330neo）", "rows": [
+          { "between": ["ASIA_GU", "ASIA_GU"], "name": "亞洲區域內", "miles": { "all": 18000 } }
+        ] },
+        { "from": "W", "to": "J", "label": "", "rows": [
+          { "between": ["ASIA_GU", "NAM_EU"], "name": "亞洲—美洲、歐洲", "miles": { "all": 45000 } },
+          { "between": ["ASIA_GU", "ASIA_GU"], "name": "亞洲區域內（四艙機型）", "miles": { "all": 15000 } }
+        ] },
+        { "from": "J", "to": "F", "label": "", "rows": [
+          { "between": ["ASIA_GU", "NAM_EU"], "name": "亞洲—美洲、歐洲", "miles": { "all": 65000 } },
+          { "between": ["ASIA_GU", "ASIA_GU"], "name": "亞洲區域內（四艙機型）", "miles": { "all": 25000 } }
+        ] }
+      ],
+      "rules": [
+        "每次只能升到下一個艙等；四艙的 A350 不能從經濟直升商務。",
+        "要有可兌換的升等機位，最晚起飛前 3 小時完成並扣哩，機場櫃檯不受理。",
+        "星宇官網規定頁需登入才看得到，這張表來自第三方整理，請以官網為準。"
+      ],
+      "sources": [
+        { "label": "Money101：星宇商務艙與哩程升等（2026-09-09）", "url": "https://www.money101.com.tw/blog/星宇商務艙", "official": false }
+      ],
+      "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "ana",
+      "name": "全日空",
+      "program": "ANA Mileage Club",
+      "kind": "distance",
+      "confidence": "official",
+      "charts": [
+        { "from": "Y", "to": "W", "label": "", "fares": [{ "label": "經濟艙", "codes": ["Y", "B", "M", "U", "H", "Q", "V"] }],
+          "bands": [{ "upTo": 2000, "miles": 9000 }, { "upTo": 3500, "miles": 15000 }, { "upTo": 4500, "miles": 15000 }, { "upTo": 5500, "miles": 20000 }, { "upTo": null, "miles": 20000 }] },
+        { "from": "Y", "to": "J", "label": "", "fares": [{ "label": "經濟艙", "codes": ["Y", "B", "M", "U", "H"], "codesFromJapan": ["Y", "B", "M", "U"] }],
+          "bands": [{ "upTo": 2000, "miles": 12000 }, { "upTo": 3500, "miles": 18000 }, { "upTo": 4500, "miles": 20000 }, { "upTo": 5500, "miles": 25000 }, { "upTo": null, "miles": 28000 }] },
+        { "from": "W", "to": "J", "label": "", "fares": [{ "label": "豪經", "codes": ["G", "E"] }],
+          "bands": [{ "upTo": 2000, "miles": 12000 }, { "upTo": 3500, "miles": 18000 }, { "upTo": 4500, "miles": 20000 }, { "upTo": 5500, "miles": 25000 }, { "upTo": null, "miles": 28000 }] },
+        { "from": "J", "to": "F", "label": "", "fares": [{ "label": "商務艙", "codes": ["J", "C", "D", "Z"] }],
+          "bands": [{ "upTo": 2000, "miles": 20000 }, { "upTo": 3500, "miles": 30000 }, { "upTo": 4500, "miles": 35000 }, { "upTo": 5500, "miles": 40000 }, { "upTo": null, "miles": 45000 }] }
+      ],
+      "rules": [
+        "依航段基本哩程（本站用直線距離估算）計價，每段單程；所有航段都要先買好機票。",
+        "起飛前 355 天到 24 小時前申請，沒有升等機位可候補到出發日；經濟艙不能直升頭等。",
+        "可升等艙等依整趟行程第一段國際線的出發地（日本出發或日本以外出發）而定。"
+      ],
+      "sources": [
+        { "label": "ANA：International Upgrade Awards（官方）", "url": "https://www.ana.co.jp/en/us/amc/ana-upgrade-awards/", "official": true },
+        { "label": "ANA：升等所需哩程表（官方）", "url": "https://www.ana.co.jp/en/jp/guide/amc/upgrade/international/terms/", "official": true }
+      ],
+      "lastVerified": "2026-10-14"
+    }
+  ]
+}
