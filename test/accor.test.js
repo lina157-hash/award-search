@@ -129,7 +129,7 @@ test('Things4u brand filter: get-filters genericIds go back as categoriesFilter'
     const u = new URL(String(url));
     calls.push(u.pathname);
     if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: b64({ city_name: 'Bangkok', dest_id: '-3414440', dest_type: 'city' }), name: 'Bangkok' }] });
-    if (u.pathname === '/stays/get-filters') return Response.json({ status: true, data: { filters: [{ field: 'chaincode', title: 'Brands', options: [{ title: 'Novotel', genericId: 'chaincode::1050' }, { title: 'Hilton Hotels & Resorts', genericId: 'chaincode::1000' }, { title: 'Pullman Hotels and Resorts', genericId: 'chaincode::1049' }] }] } });
+    if (u.pathname === '/stays/get-filters') return Response.json({ status: true, data: { filters: [{ field: 'chaincode', title: 'Brands', options: [{ value: { text: 'Novotel', __typename: 'TranslatedString' }, genericId: 'chaincode::1050' }, { value: { text: 'Hilton Hotels & Resorts' }, genericId: 'chaincode::1000' }, { value: { text: 'Pullman Hotels and Resorts' }, genericId: 'chaincode::1049' }] }] } });
     assert.equal(u.searchParams.get('categoriesFilter'), 'chaincode::1050,chaincode::1049');
     return Response.json({ status: true, data: [{ id: 7, name: 'Novotel Bangkok Sukhumvit 20', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } }] });
   };
