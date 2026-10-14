@@ -451,10 +451,13 @@ function renderDeals() {
   const host = $('#deals');
   const body = dealsState.body;
   if (!host || !body) return;
-  const groups = body.groups.filter((g) => g.cabin === dealsState.cabin && g.items.length);
   if (!body.groups.some((g) => g.items.length)) { host.innerHTML = ''; return; }
+  // Only offer the cabin switch when both cabins found something.
+  const cabins = ['J', 'F'].filter((c) => body.groups.some((g) => g.cabin === c && g.items.length));
+  if (!cabins.includes(dealsState.cabin)) dealsState.cabin = cabins[0];
+  const groups = body.groups.filter((g) => g.cabin === dealsState.cabin && g.items.length);
   host.innerHTML = `<div class="deals-head"><h2 class="section-title">今日好康 <small>台北出發最便宜的獎勵位・${body.generatedAt ? `${ago(body.generatedAt)}整理` : ''}${body.mock ? '（示範資料）' : ''}</small></h2>
-    <fieldset class="seg" aria-label="艙等">${[['J', '商務'], ['F', '頭等']].map(([k, l]) => `<label><input type="radio" name="deal-cabin" value="${k}" ${dealsState.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset></div>
+    ${cabins.length > 1 ? `<fieldset class="seg" aria-label="艙等">${[['J', '商務'], ['F', '頭等']].map(([k, l]) => `<label><input type="radio" name="deal-cabin" value="${k}" ${dealsState.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>` : `<span class="hint">${dealsState.cabin === 'F' ? '頭等艙' : '商務艙'}</span>`}</div>
     ${groups.map((g) => `<div class="deal-group"><h3 class="sub">${esc(g.name)}</h3><div class="deal-row">${g.items.slice(0, 4).map((d) => `
       <button type="button" class="deal-mini" data-deal="${esc(d.origin)}|${esc(d.destination)}|${esc(d.date)}">
         <span class="dm-route">${esc(d.origin)} → ${esc(d.destination)} <small>${esc(airportCity(d.destination))}</small></span>
