@@ -833,6 +833,9 @@ const DATA = Object.fromEntries(DATA_FILES.map((n) => {
 }));
 const DATA_ALL_BODY = JSON.stringify(Object.fromEntries(DATA_FILES.map((n) => [n, JSON.parse(DATA[n].body)])));
 const DATA_ALL = { body: DATA_ALL_BODY, etag: etagOf(DATA_ALL_BODY) };
+// Stopover/open-jaw rules and positioning hubs (etrips.js), fetched only when those tools open, so not in /api/data/all.
+const ROUTING_BODY = fs.readFileSync(path.join(DATA_DIR, 'routing.json'));
+const ROUTING = { body: ROUTING_BODY, etag: etagOf(ROUTING_BODY) };
 
 function staticPolicy(rel, q) {
   if (rel.endsWith('.html')) return 'no-cache';
@@ -940,6 +943,7 @@ async function route(req, res) {
     if (p === '/api/data/all') {
       return sendBody(req, res, { ...DATA_ALL, type: MIME['.json'], cache: q.get('v') === VERSION.version ? CACHE.immutable : CACHE.data });
     }
+    if (p === '/api/data/routing') return sendBody(req, res, { ...ROUTING, type: MIME['.json'], cache: CACHE.data });
     const m = p.match(/^\/api\/data\/(\w+)$/);
     if (m && DATA_FILES.includes(m[1])) return sendBody(req, res, { ...DATA[m[1]], type: MIME['.json'], cache: CACHE.data });
     if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'not found' });

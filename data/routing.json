@@ -1,0 +1,226 @@
+{
+  "note": "中停、開口行程組合（E9）與外站出發建議（E10）用的規則。stopovers：單程／來回最多可中停幾次，perDirection 是每個方向的上限（null＝不另限）；openJaws：來回票最多幾個開口（99＝以單程計價、可自由組合）；pricing：direction＝每個方向依固定表計價（中停另加 stopoverMiles），segment＝每段分開計價，wholeTrip＝整趟總距離計價（只收來回），none＝浮動定價不估算；chart 是 charts.json 的 id（asiamiles 用亞萬哩數表）。文字規則來自 programs.json 的同一批來源，改規則時兩邊一起看。",
+  "lastReviewed": "2026-10-14",
+  "programs": [
+    {
+      "id": "aeroplan",
+      "name": "加航 Aeroplan",
+      "chart": "aeroplan",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 1, "roundTrip": 2, "perDirection": 1 },
+      "stopoverMiles": 5000,
+      "openJaws": 1,
+      "conditions": ["每次中停最長 45 天", "加拿大、美國與中國境內的行程不可中停", "開口不能落在中停點", "依整段實際飛行距離分級，繞路可能跳到下一級"],
+      "confidence": "official",
+      "sources": [
+        { "label": "Aeroplan 獎勵機票政策（官方）", "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/legal/aeroplan-flight-reward-policy.html", "official": true },
+        { "label": "Milesopedia：Aeroplan 兌換規則", "url": "https://milesopedia.com/en/rewards/air-canada-aeroplan-flight-rewards/", "official": false }
+      ]
+    },
+    {
+      "id": "asiamiles",
+      "name": "國泰 亞洲萬里通",
+      "chart": "asiamiles",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 0, "roundTrip": 1, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "maxLegs": 4,
+      "conditions": ["來回票全程 4 段內", "開口須在出發地同一國家或在折返點", "寰宇一家多航司獎勵另有規則（最多 5 次中停）"],
+      "confidence": "official",
+      "sources": [
+        { "label": "國泰會員計劃條款 2026（官方）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "official": true }
+      ]
+    },
+    {
+      "id": "ana",
+      "name": "全日空 ANA 星盟夥伴",
+      "chart": "ana",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 0, "roundTrip": 1, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "conditions": ["中停也算一次轉機", "全日空自家航班的行程須從日本以外出發才可中停", "開口：出發與回程地不同須同一國家；去程終點與回程起點不同須同一大區"],
+      "confidence": "official",
+      "sources": [
+        { "label": "ANA 國際線獎勵機票規則（官方）", "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/", "official": true },
+        { "label": "ANA 台灣官網夥伴獎勵機票", "url": "https://www.ana.co.jp/en/tw/amc/partner-flight-awards/", "official": true }
+      ]
+    },
+    {
+      "id": "singapore",
+      "name": "新加坡航空 KrisFlyer（星盟夥伴 Saver）",
+      "chart": "singapore",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 0, "roundTrip": 1, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "conditions": ["每次中停最長 30 天，已不能付費加購", "純國內、歐洲境內與美加之間的行程不可中停", "新航自家 Saver 規則相同；Advantage 來回可 2 次"],
+      "confidence": "secondary",
+      "sources": [
+        { "label": "KrisFlyer 星盟獎勵表 PDF（官方）", "url": "https://www.singaporeair.com/content/dam/sia/web-assets/pdfs/ppsclub-krisflyer/krisflyer/progupdates/awardcharts/StarAllianceRound-TripAwardChartupdated1Nov25.pdf", "official": true },
+        { "label": "AwardWallet：新航中停規則", "url": "https://awardwallet.com/airlines/singapore-stopover-award-rules/", "official": false }
+      ]
+    },
+    {
+      "id": "evainfinity",
+      "name": "長榮 無限萬哩遊",
+      "chart": "eva",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 0, "roundTrip": 2, "perDirection": 1 },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "noStopoverCountries": ["TW"],
+      "needsPhone": true,
+      "conditions": ["星盟來回去回程各 1 次，需電話開票", "長榮自家航班只有長程來回可中停 1 次，短程不可", "台灣出發的行程不可在台灣中停", "開口的兩個城市須在同一區域"],
+      "confidence": "official",
+      "sources": [
+        { "label": "長榮 星空聯盟獎勵機票（官方）", "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html", "official": true },
+        { "label": "長榮 自家獎勵機票（官方）", "url": "https://www.evaair.com/zh-tw/infinity-mileageLands/mileage-award-program/mileage-redemption/award-ticket/eva-uni-air/", "official": true }
+      ]
+    },
+    {
+      "id": "dynastyflyer",
+      "name": "華航 華夏哩程（天合聯盟夥伴）",
+      "chart": "ci",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 0, "roundTrip": 1, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "chartNote": "價格以華航自家航班表估算，天合夥伴實際價格可能不同",
+      "conditions": ["只限天合聯盟與澳航夥伴來回票，中停點須在出發地或目的地區域", "華航自家獎勵票不可中停（台北轉機須在 24 小時內）"],
+      "confidence": "official",
+      "sources": [
+        { "label": "華航 獎勵機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket", "official": true },
+        { "label": "華航 獎勵機票規則 PDF（官方）", "url": "https://cms-externalcontent-prod.s3.ap-northeast-1.amazonaws.com/ci/Member/Reward-Ticket/rt-before-15SEP26-en.pdf", "official": true }
+      ]
+    },
+    {
+      "id": "turkish",
+      "name": "土耳其航空 Miles&Smiles",
+      "chart": "turkish",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 0, "roundTrip": 1, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "stopoverMinMiles": { "Y": 60000, "J": 90000, "F": 135000 },
+      "needsPhone": true,
+      "conditions": ["星盟夥伴來回票的總哩數要達門檻才可中停", "要電話辦理，線上開票不行", "同一機場不能在去程或回程中出現兩次"],
+      "confidence": "secondary",
+      "sources": [
+        { "label": "土航 獎勵機票條款（官方）", "url": "https://www.turkishairlines.com/en-us/miles-and-smiles/redeem-miles/redeem-miles-on-flights/award-travel-terms-conditions/", "official": true },
+        { "label": "AwardFares：Miles&Smiles 指南", "url": "https://awardfares.com/blog/miles-and-smiles-guide/", "official": false }
+      ]
+    },
+    {
+      "id": "alaska",
+      "name": "阿拉斯加 Atmos Rewards",
+      "chart": "alaska",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 1, "roundTrip": 2, "perDirection": 1 },
+      "stopoverMiles": 0,
+      "openJaws": 99,
+      "conditions": ["國際夥伴單程票跨區時可免費中停 1 次（第三方指最多 14 天）", "以整段總飛行距離計價，繞路可能跳到下一級", "以單程計價，來回或開口就是兩張單程"],
+      "confidence": "secondary",
+      "sources": [
+        { "label": "One Mile at a Time：Atmos 兌換", "url": "https://onemileatatime.com/guides/redeem-alaska-atmos-rewards-points/", "official": false },
+        { "label": "AwardFares：Atmos 甜蜜點", "url": "https://awardfares.com/blog/atmos-rewards-sweet-spots", "official": false }
+      ]
+    },
+    {
+      "id": "british",
+      "name": "英航 Avios",
+      "chart": "british",
+      "pricing": "segment",
+      "stopovers": { "oneWay": 99, "roundTrip": 99, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "conditions": ["每段航班依距離分開計價再相加，停留不另收，但也沒有優惠", "含兩家以上寰宇一家航司的行程最多 8 段、不可走回頭路"],
+      "confidence": "official",
+      "sources": [
+        { "label": "英航俱樂部條款（官方）", "url": "https://www.britishairways.com/content/the-british-airways-club/about-the-club/terms-and-conditions", "official": true },
+        { "label": "英航 Avios 兌換說明（官方）", "url": "https://www.britishairways.com/content/the-british-airways-club/avios/spending-avios/reward-flights", "official": true }
+      ]
+    },
+    {
+      "id": "american",
+      "name": "美國航空 AAdvantage",
+      "chart": "american",
+      "pricing": "direction",
+      "stopovers": { "oneWay": 0, "roundTrip": 0, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 99,
+      "conditions": ["不可中停：長程轉機超過 24 小時就算中停，要拆成兩張票", "以單程計價，開口就是兩張單程"],
+      "confidence": "secondary",
+      "sources": [
+        { "label": "One Mile at a Time：AAdvantage 兌換", "url": "https://onemileatatime.com/guides/redeem-american-aadvantage-miles/", "official": false }
+      ]
+    },
+    {
+      "id": "jal_partner",
+      "name": "日航 寰宇一家夥伴獎勵",
+      "chart": "jal_partner",
+      "pricing": "wholeTrip",
+      "roundTripOnly": true,
+      "stopovers": { "oneWay": 0, "roundTrip": 3, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "conditions": ["以整趟總飛行距離計價", "單一夥伴最多中停 3 次（第三方）；多家寰宇一家航司最多 7 次", "整趟可有一段地面段"],
+      "confidence": "secondary",
+      "sources": [
+        { "label": "日航 寰宇一家獎勵機票表（官方）", "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/miles.html", "official": true },
+        { "label": "One Mile at a Time：中停規則整理", "url": "https://onemileatatime.com/stopover-rules-on-award-tickets/", "official": false }
+      ]
+    },
+    {
+      "id": "united",
+      "name": "聯合航空 MileagePlus",
+      "chart": null,
+      "pricing": "none",
+      "stopovers": { "oneWay": 0, "roundTrip": 0, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 99,
+      "conditions": ["Excursionist Perk 已於 2025-08-21 停止，多城市行程改為各段單程相加", "浮動定價，價格請用「找座位」看實際哩數"],
+      "confidence": "secondary",
+      "sources": [
+        { "label": "MilesTalk：Excursionist Perk 取消", "url": "https://milestalk.com/united-kills-excursionist-award-perk/", "official": false }
+      ]
+    },
+    {
+      "id": "flyingblue",
+      "name": "法荷航 Flying Blue",
+      "chart": null,
+      "pricing": "none",
+      "stopovers": { "oneWay": 1, "roundTrip": 1, "perDirection": null },
+      "stopoverMiles": 0,
+      "openJaws": 1,
+      "needsPhone": true,
+      "unsure": true,
+      "conditions": ["需電話訂位，每段都要有最低艙位才維持入門價", "次數上限各方說法不一", "中停點讓行程往回走會被拆成兩段計價"],
+      "confidence": "secondary",
+      "sources": [
+        { "label": "Frequent Miler：Flying Blue 免費中停", "url": "https://frequentmiler.com/flying-blue-free-stopover-awards-the-rules", "official": false }
+      ]
+    }
+  ],
+  "examples": [
+    { "label": "台北 → 東京（中停）→ 溫哥華", "legs": [["TPE", "NRT"], ["NRT", "YVR"]], "program": "aeroplan", "cabin": "J" },
+    { "label": "台北 → 東京 → 檀香山 → 台北", "legs": [["TPE", "NRT"], ["NRT", "HNL"], ["HNL", "TPE"]], "program": "ana", "cabin": "J" },
+    { "label": "台北 → 新加坡 → 雪梨，墨爾本回台北（開口）", "legs": [["TPE", "SIN"], ["SIN", "SYD"], ["MEL", "TPE"]], "program": "singapore", "cabin": "J" }
+  ],
+  "positioning": {
+    "note": "台灣出發沒位或太貴時，看看從附近大站出發的獎勵位，再自己買一張飛過去的現金票。",
+    "home": ["TPE", "TSA", "KHH", "RMQ"],
+    "cashFrom": "TPE",
+    "cashFromName": "台北",
+    "cashCabin": "Y",
+    "hubs": [
+      { "id": "HKG", "name": "香港", "codes": ["HKG"], "note": "國泰主場，寰宇一家長程航班多" },
+      { "id": "TYO", "name": "東京", "codes": ["NRT", "HND"], "note": "全日空、日航主場；成田、羽田要看清楚是哪一個" },
+      { "id": "ICN", "name": "首爾", "codes": ["ICN"], "note": "大韓（天合）、韓亞（星盟）主場" },
+      { "id": "MNL", "name": "馬尼拉", "codes": ["MNL"], "note": "菲律賓航空主場" },
+      { "id": "BKK", "name": "曼谷", "codes": ["BKK"], "note": "泰航（星盟）主場" }
+    ],
+    "tips": ["台北飛外站的現金票和獎勵票分開開，前段延誤時後段不會幫你改，最好前一天到或預留半天以上", "外站出發的稅金、燃油費可能和台灣出發不同，以實際查到的稅金為準", "回程如果也從外站回來，記得把回台北那段也算進去"]
+  }
+}

@@ -971,6 +971,7 @@ async function runSearch(share, pre, autoRange = false) {
   $('#search-results').innerHTML = skeleton();
   setHolidays(HOL.search, {});
   $('#search-trip').innerHTML = '';
+  document.dispatchEvent(new CustomEvent('search:start'));
   const done = busy($('#search-form button[type=submit]'), '搜尋中…');
   reveal(status);
   try {
@@ -988,6 +989,7 @@ async function runSearch(share, pre, autoRange = false) {
     $('#fav-btn').addEventListener('click', () => { toast(toggleFav(tabParams('search')) ? '已加入常用航線' : '已從常用移除'); renderSearchFav(); });
     $('#to-cash').addEventListener('click', () => toCash(share));
     renderSearch();
+    document.dispatchEvent(new CustomEvent('search:done', { detail: { share: share.toString(), body } }));
     loadTripInfo($('#search-trip'), { from: share.get('o'), to: share.get('d'), start: state.start, end: state.end }, { hol: HOL.search, onHolidays: () => { if (fresh() && state.results.length) renderCalendar(); } });
     status.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
