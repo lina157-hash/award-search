@@ -5,7 +5,7 @@ delete process.env.SEATS_AERO_API_KEY;
 delete process.env.CASH_PASSCODE;
 delete process.env.TELEGRAM_BOT_TOKEN;
 const { server } = require('../server');
-const { telegramClient, createTelegram, pickChat, LINKED_TEXT } = require('../lib/telegram');
+const { telegramClient, createTelegram, pickChat, LINKED_TEXT, TelegramError } = require('../lib/telegram');
 const { memoryKv } = require('../lib/kv');
 const { memoryStore } = require('../lib/alerts');
 
@@ -40,7 +40,7 @@ test('linking picks the newest private chat that sent /start and says hello', as
   const bot = fakeBot({ updates: [msg(10, other, '/start'), msg(11, me, '/start'), msg(12, group, 'x')] });
   const kv = memoryKv();
   const t = createTelegram({ client: bot.client, kv });
-  assert.deepEqual(await t.status(), { configured: true, linked: false, name: '', linkedAt: null });
+  assert.deepEqual(await t.status(), { configured: true, linked: false, name: '', linkedAt: null, tokenOk: true, bot: '' });
   const r = await t.link();
   assert.deepEqual([r.linked, r.name], [true, 'Lina C']);
   const sent = bot.calls.find((c) => c.method === 'sendMessage');
@@ -108,7 +108,7 @@ test('alerts and price drops are sent to the linked chat; a Telegram failure doe
 
 test('telegram endpoints: demo bot, passcode gate, config flags', async () => {
   let cfg = await (await fetch(`${base}/api/config`)).json();
-  assert.deepEqual(cfg.telegram, { configured: true, linked: false });
+  assert.deepEqual(cfg.telegram, { configured: true, linked: false, tokenOk: true });
   const linked = await (await fetch(`${base}/api/telegram/link`, { method: 'POST' })).json();
   assert.deepEqual([linked.linked, linked.name, linked.mock], [true, '示範帳號', true]);
   const st = await (await fetch(`${base}/api/telegram`)).json();
@@ -122,4 +122,12 @@ test('telegram endpoints: demo bot, passcode gate, config flags', async () => {
   const del = await fetch(`${base}/api/telegram`, { method: 'DELETE' });
   assert.equal((await del.json()).linked, false);
   assert.equal(del.headers.get('cache-control'), 'no-store');
+});
+
+test('status reports a token Telegram refuses, and the bot name when it works', async () => {
+  const refused = { getMe: async () => { throw new TelegramError('x', 502, 'token'); }, getUpdates: async () => [], sendMessage: async () => ({}) };
+  assert.deepEqual(await createTelegram({ client: refused, kv: memoryKv() }).bot(), { tokenOk: false, bot: '' });
+  const ok = { getMe: async () => ({ username: 'my_radar_bot' }), getUpdates: async () => [], sendMessage: async () => ({}) };
+  const st = await createTelegram({ client: ok, kv: memoryKv() }).status();
+  assert.deepEqual([st.tokenOk, st.bot], [true, 'my_radar_bot']);
 });

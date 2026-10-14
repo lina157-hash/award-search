@@ -277,9 +277,20 @@ function readJson(req, limit = 10_000) {
 // stops starting new items near the time limit, so a cut-off run loses nothing and the catch-up run (or tomorrow's)
 // finishes the rest; work already done today is skipped. `?part=deals,watches,alerts` runs only those parts.
 const RUN_BUDGET = { deals: 20e3, watches: 28e3, alerts: 48e3 };
+// Whether CRON_SECRET is set (never its value) and when Vercel's run last got in or was turned away.
+async function cronStatus() {
+  const [last, denied] = await Promise.all([kv.get('cron:last').catch(() => null), kv.get('cron:denied').catch(() => null)]);
+  return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null };
+}
 async function runDaily(req, q) {
   const who = await runCaller(req);
-  if (!who) throw Object.assign(new CashError('需要通關密碼才能執行檢查', 401), { code: 'passcode' });
+  // Remembered for /api/config, so the owner can see whether Vercel's daily run gets in (CRON_SECRET set) or is turned away.
+  const fromVercel = /vercel-cron/i.test(String(req.headers['user-agent'] || ''));
+  if (!who) {
+    if (fromVercel) await kv.set('cron:denied', { at: new Date().toISOString(), auth: Boolean(req.headers.authorization) }, { ex: 40 * 86400 }).catch(() => {});
+    throw Object.assign(new CashError('需要通關密碼才能執行檢查', 401), { code: 'passcode' });
+  }
+  if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
   const parts = new Set((q.get('part') || 'deals,watches,alerts').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
@@ -850,7 +861,8 @@ async function route(req, res) {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
         accounts: Boolean(accounts), accountEmail: Boolean(accounts?.mailOn && alertMailer),
-        telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true },
+        telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true, tokenOk: telegram.configured ? (await telegram.bot()).tokenOk : null },
+        cron: await cronStatus(),
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
