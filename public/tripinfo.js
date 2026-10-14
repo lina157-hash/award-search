@@ -2,39 +2,43 @@
 // Shared by the award search and the cash tab; also marks holidays on the calendars (see holidayMark).
 /* global $, $$, esc, fmt, mmdd, dowOf, AP, api, airportCity */
 
-const REGION_ZH = (() => { try { return new Intl.DisplayNames(['zh-TW'], { type: 'region' }); } catch { return null; } })();
-const countryZh = (cc) => { try { return (REGION_ZH && REGION_ZH.of(cc)) || cc; } catch { return cc; } };
+// Created on first use: the formatter loads ICU data, which is slow on phones while the page starts.
+let regionZhDn;
+const countryZh = (cc) => { try { regionZhDn ||= new Intl.DisplayNames(['zh-TW'], { type: 'region' }); return regionZhDn.of(cc) || cc; } catch { return cc; } };
 
 // Holidays shown on the calendars: Taiwan days off and make-up workdays, and the destination's public holidays.
-const HOL = { tw: new Map(), dest: new Map(), long: new Map(), country: '' };
-function setHolidays(info) {
-  HOL.tw = new Map((info.taiwan?.days || []).map((d) => [d.date, d]));
-  HOL.dest = new Map((info.holidays || []).map((h) => [h.date, holName(h, info.country)]));
-  HOL.long = new Map();
+// Each view (award search, cash fares) keeps its own map, so one tab's destination never shows on the other's calendar.
+const newHolidays = () => ({ tw: new Map(), dest: new Map(), long: new Map(), country: '' });
+const HOL = { search: newHolidays(), cash: newHolidays() };
+// `merge` adds to what is there (the cash grid keeps its wider range when a day on it is picked).
+function setHolidays(hol, info, merge = false) {
+  if (!merge || (info.country && hol.country && info.country !== hol.country)) Object.assign(hol, newHolidays());
+  for (const d of info.taiwan?.days || []) hol.tw.set(d.date, d);
+  for (const h of info.holidays || []) hol.dest.set(h.date, holName(h, info.country));
   for (const l of info.taiwan?.longWeekends || []) {
-    for (let d = l.start; d <= l.end; d = isoNext(d)) HOL.long.set(d, l);
+    for (let d = l.start; d <= l.end; d = isoNext(d)) hol.long.set(d, l);
   }
-  HOL.country = info.country || '';
+  hol.country = info.country || hol.country;
 }
 // Local names read fine in Chinese-script countries; elsewhere the English name is clearer.
 const CJK_LOCAL = new Set(['JP', 'CN', 'HK', 'MO']);
 const holName = (h, cc) => (CJK_LOCAL.has(cc) && h.local ? h.local : h.name || h.local);
 const isoNext = (d) => new Date(Date.parse(d) + 864e5).toISOString().slice(0, 10);
 // Extra classes and tooltip text for one calendar day.
-function holidayMark(iso) {
-  const tw = HOL.tw.get(iso);
-  const long = HOL.long.get(iso);
-  const dest = HOL.dest.get(iso);
+function holidayMark(hol, iso) {
+  const tw = hol.tw.get(iso);
+  const long = hol.long.get(iso);
+  const dest = hol.dest.get(iso);
   const cls = [];
   const notes = [];
   if (tw?.workday) { cls.push('hol-work'); notes.push(`台灣補班：${tw.name}`); }
   else if (tw || long) { cls.push('hol-tw'); notes.push(`台灣放假${tw?.name && tw.name !== '放假' ? `：${tw.name}` : ''}${long ? `（${long.name} ${long.days} 天連假）` : ''}`); }
-  if (dest) { cls.push('hol-dest'); notes.push(`${countryZh(HOL.country)}假日：${dest}`); }
+  if (dest) { cls.push('hol-dest'); notes.push(`${countryZh(hol.country)}假日：${dest}`); }
   return { cls: cls.join(' '), title: notes.join('；') };
 }
-function holidayLegend() {
-  const any = HOL.tw.size || HOL.long.size || HOL.dest.size;
-  return any ? `<span class="hol-legend"><i class="dot tw"></i>台灣放假${HOL.dest.size ? `<i class="dot dest"></i>${esc(countryZh(HOL.country))}假日` : ''}${[...HOL.tw.values()].some((d) => d.workday) ? '<i class="dot work"></i>補班' : ''}</span>` : '';
+function holidayLegend(hol) {
+  const any = hol.tw.size || hol.long.size || hol.dest.size;
+  return any ? `<span class="hol-legend"><i class="dot tw"></i>台灣放假${hol.dest.size ? `<i class="dot dest"></i>${esc(countryZh(hol.country))}假日` : ''}${[...hol.tw.values()].some((d) => d.workday) ? '<i class="dot work"></i>補班' : ''}</span>` : '';
 }
 
 const VISA_TYPE = { free: ['免簽', 'ok'], arrival: ['落地簽', 'mid'], evisa: ['電子簽證', 'mid'], eta: ['免簽，需先上網申請許可', 'mid'], required: ['需要簽證', 'bad'], home: ['本國', 'ok'] };
@@ -59,7 +63,7 @@ function weatherHtml(w, err) {
   }
   return `<li><span class="ti-k">🌤️ 天氣</span><span>${w.month} 月平均：高溫 <b>${w.max}°C</b>、低溫 <b>${w.min}°C</b>${w.rainyDays != null ? `，一個月約 <b>${w.rainyDays}</b> 天下雨` : ''}<small class="hint">（近 3 年同月平均，出發前 16 天內會改成天氣預報）</small></span></li>`;
 }
-function holidaysHtml(info, start, end) {
+function holidaysHtml(info) {
   const out = [];
   const long = info.taiwan?.longWeekends || [];
   const work = (info.taiwan?.days || []).filter((d) => d.workday);
@@ -79,26 +83,43 @@ function holidaysHtml(info, start, end) {
   }
   return out.join('');
 }
+// The one-line version shown while the notes are folded: 免簽 90 天・11 月 9–18°C・無連假.
+function tripSummary(info) {
+  const out = [];
+  const v = info.visa;
+  if (info.country && info.country !== 'TW' && v) out.push(`${(VISA_TYPE[v.type] || [v.type])[0]}${v.days ? ` ${v.days} 天` : ''}`);
+  if (info.warning && info.warning.level !== 'gray') out.push((WARN_LEVEL[info.warning.level] || [info.warning.level])[0]);
+  const w = info.weather;
+  if (w?.kind === 'forecast' && w.days.length) {
+    const lo = Math.min(...w.days.map((d) => d.min ?? Infinity));
+    const hi = Math.max(...w.days.map((d) => d.max ?? -Infinity));
+    if (Number.isFinite(lo) && Number.isFinite(hi)) out.push(`${lo}–${hi}°C`);
+  } else if (w?.month) out.push(`${w.month} 月 ${w.min}–${w.max}°C`);
+  if (info.taiwan) out.push((info.taiwan.longWeekends || []).length ? `${info.taiwan.longWeekends.length} 個連假` : '無連假');
+  return out.join('・');
+}
 
 function tripInfoHtml(info, q) {
   const cc = info.country;
   const city = airportCity(info.airport) || info.airport;
-  return `<details class="trip-info" open>
-    <summary>🧳 出發前小提醒｜${esc(city)}${cc && cc !== 'TW' ? `（${esc(countryZh(cc))}）` : ''}</summary>
+  const sum = tripSummary(info);
+  return `<details class="trip-info">
+    <summary><b>🧳 出發前小提醒｜${esc(city)}${cc && cc !== 'TW' ? `（${esc(countryZh(cc))}）` : ''}</b>${sum ? `<span class="ti-sum">${esc(sum)}</span>` : ''}</summary>
     <ul class="ti-list">
       ${q.from ? `<li class="ti-directs" data-from="${esc(q.from)}" data-to="${esc(q.to)}"><span class="ti-k">✈️ 誰飛直航</span><span class="hint">查詢中…</span></li>` : ''}
       ${visaHtml(info.visa, cc)}
       ${warningHtml(info.warning)}
       ${weatherHtml(info.weather, info.errors?.weather)}
-      ${holidaysHtml(info, q.start, q.end)}
+      ${holidaysHtml(info)}
     </ul>
-    <p class="ti-src">資料來源：簽證整理自${esc(info.sources?.visa?.name || '外交部領事事務局')}${info.sources?.visa?.asOf ? `（${esc(info.sources.visa.asOf)}）` : ''}，出發前請再到<a href="https://www.boca.gov.tw/" target="_blank" rel="noopener">領事事務局</a>確認；旅遊警示來自<a href="https://www.boca.gov.tw/sp-trwa-list-1.html" target="_blank" rel="noopener">外交部</a>${info.sources?.warning?.asOf ? `（${esc(info.sources.warning.asOf)}）` : ''}；天氣 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>；台灣行事曆來自行政院人事行政總處（政府資料開放平臺）；各國假日 Nager.Date<span class="ti-src-ad" hidden>；直飛航班資料 <a href="https://aerodatabox.com/" target="_blank" rel="noopener">AeroDataBox</a></span>。</p>
+    <details class="ti-src"><summary>ⓘ 資料來源</summary><p>簽證整理自${esc(info.sources?.visa?.name || '外交部領事事務局')}${info.sources?.visa?.asOf ? `（${esc(info.sources.visa.asOf)}）` : ''}，出發前請再到<a href="https://www.boca.gov.tw/" target="_blank" rel="noopener">領事事務局</a>確認；旅遊警示來自<a href="https://www.boca.gov.tw/sp-trwa-list-1.html" target="_blank" rel="noopener">外交部</a>${info.sources?.warning?.asOf ? `（${esc(info.sources.warning.asOf)}）` : ''}；天氣 <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>；台灣行事曆來自行政院人事行政總處（政府資料開放平臺）；各國假日 Nager.Date<span class="ti-src-ad" hidden>；直飛航班資料 <a href="https://aerodatabox.com/" target="_blank" rel="noopener">AeroDataBox</a></span>。</p></details>
   </details>`;
 }
 
-// Fill `box` with the notes for a trip; `onHolidays` runs once the holiday map is ready, to redraw a calendar.
+// Fill `box` with the notes for a trip. opts.hol is the view's holiday map, opts.merge keeps marks already in it,
+// and opts.onHolidays runs once the map is ready, to redraw that view's calendar.
 const tripSeq = new Map();
-async function loadTripInfo(box, q, onHolidays) {
+async function loadTripInfo(box, q, opts = {}) {
   if (!box) return;
   const to = (q.to || '').split(',')[0];
   const from = (q.from || '').split(',')[0];
@@ -111,20 +132,23 @@ async function loadTripInfo(box, q, onHolidays) {
     const info = await api(`/api/trip-info?${p}`);
     if (tripSeq.get(box) !== n) return;
     box.innerHTML = tripInfoHtml(info, { ...q, to, from });
-    setHolidays(info);
-    if (onHolidays) onHolidays();
-    if (from && from !== to) loadDirects($('.ti-directs', box), q.from, q.to);
+    if (opts.hol) setHolidays(opts.hol, info, opts.merge);
+    if (opts.onHolidays) opts.onHolidays();
+    // Who flies it nonstop is looked up only when the notes are opened (it can spend AeroDataBox units).
+    const directs = $('.ti-directs', box);
+    if (directs && from && from !== to) {
+      $('details.trip-info', box).addEventListener('toggle', () => loadDirects(directs, q.from, q.to), { once: true });
+    } else directs?.remove();
   } catch {
     if (tripSeq.get(box) === n) box.innerHTML = '';
   }
 }
 
-// Holidays only (for a wider calendar than the trip itself); the notes card stays as it is.
-async function loadHolidays(to, start, end) {
+// Holidays only (for a wider calendar than the trip itself); returns the info, or null when it can't be had.
+async function fetchHolidays(to, start, end) {
   try {
-    const info = await api(`/api/trip-info?${new URLSearchParams({ to: to.split(',')[0], start, end, only: 'holidays' })}`);
-    setHolidays(info);
-  } catch { /* keep whatever marks are there */ }
+    return await api(`/api/trip-info?${new URLSearchParams({ to: to.split(',')[0], start, end, only: 'holidays' })}`);
+  } catch { return null; }
 }
 
 // Which airlines fly this pair nonstop, from AeroDataBox's route statistics (cached server-side for two weeks).
