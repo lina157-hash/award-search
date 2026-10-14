@@ -178,20 +178,25 @@
       "windowNote": "阿拉斯加航班通常出發前約 330 天開放；夥伴機位視各航空釋出",
       "booking": {
         "ownOnline": true,
-        "partnerOnline": "partial",
-        "phoneFee": "電話訂位每張加收 15 美元",
-        "note": "除國泰與 LATAM 須來電外，其餘夥伴皆可線上訂"
+        "partnerOnline": true,
+        "phoneFee": "電話訂位每張加收 15 美元（金卡以上菁英免）",
+        "note": "所有夥伴都可在 alaskaair.com 線上訂（國泰、LATAM 部分航線自 2022 年 11 月起開放）；複雜行程可電話訂"
       },
-      "confidence": "official",
+      "confidence": "secondary",
       "sources": [
+        {
+          "label": "One Mile at a Time：Atmos Rewards 兌換攻略（2026-02-09 更新）",
+          "url": "https://onemileatatime.com/guides/redeem-alaska-atmos-rewards-points/",
+          "official": false
+        },
+        {
+          "label": "AwardWallet：國泰、LATAM 獎勵可線上訂（2022-11）",
+          "url": "https://awardwallet.com/news/alaska-atmos-rewards/book-cathay-pacific-latam-awards/",
+          "official": false
+        },
         {
           "label": "Alaska：獎勵訂位基本須知",
           "url": "https://news.alaskaair.com/alaska-airlines/mileage-plan-101-the-basics-of-booking-award-travel/",
-          "official": true
-        },
-        {
-          "label": "Alaska：夥伴獎勵機票",
-          "url": "https://www.alaskaair.com/AwardAdvisory/AboutAwardOptions",
           "official": true
         }
       ],
@@ -721,13 +726,18 @@
         "ownOnline": true,
         "partnerOnline": "partial",
         "phoneFee": null,
-        "note": "可登入會員線上兌換阿拉斯加航空酬賓票；其他夥伴管道未確認"
+        "note": "可登入會員線上兌換阿拉斯加航空酬賓票；阿提哈德 Guest 2026-08 起也能用哩程兌換星宇經濟與商務艙，星宇會員兌換阿提哈德預計 2026 年 10 月開放"
       },
       "confidence": "secondary",
       "sources": [
         {
           "label": "星宇：線上兌換阿拉斯加航空酬賓機票",
           "url": "https://latestnews.starlux-airlines.com/zh-TW/about-us/travel-advisories/advisories/latest-news/Redeem_Award_Ticket_AS",
+          "official": true
+        },
+        {
+          "label": "阿提哈德：Etihad Guest 與 COSMILE 合作新聞稿（2026-08-11）",
+          "url": "https://www.etihad.com/en/news/etihad-guest-launches-frequent-flyer-partnership-with-starlux-airlines-cosmile",
           "official": true
         },
         {
@@ -738,5 +748,5 @@
       ]
     }
   },
-  "researched": "2026-10-13"
+  "researched": "2026-10-14"
 }
