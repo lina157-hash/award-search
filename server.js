@@ -760,7 +760,7 @@ async function handleAccor(q, req) {
   if (MOCK && !RAPIDAPI_KEY) return { mock: true, cached: false, ...(await answer(mock.mockCityHotels(want))), bookingLeft: 512, bookingLimit: 530 };
   if (!bookingLookup) throw new hotelCash.HotelCashError('雅高飯店價格要用 RapidAPI 的 Booking.com API，網站還沒設定 RAPIDAPI_KEY', 503);
   let spent = false;
-  const key = 'accor:v7:' + JSON.stringify(want);
+  const key = 'accor:v8:' + JSON.stringify(want);
   const body = await shared(key, 6 * 3600, async () => {
     spent = true;
     const search = await bookingLookup.city(want, { brands: accor.isAccorTitle, brandIds: accor.BOOKING_CHAINS, zhNames: true });

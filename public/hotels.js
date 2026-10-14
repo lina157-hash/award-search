@@ -170,7 +170,7 @@ function accorHtml(body, nights) {
       : body.scanned
         ? `Booking.com 的「${esc(body.city || hotelState.where)}」最熱門的 ${body.scanned} 家飯店裡，沒有雅高旗下的飯店。`
         : `Booking.com 這次沒有回傳「${esc(body.city || hotelState.where)}」的飯店，可能這幾晚沒有空房或資料來源暫時有問題。`}${body.cityUrl ? ` <a href="${esc(body.cityUrl)}" target="_blank" rel="noopener">在 Booking.com 看這個城市 ↗</a>` : ''}</p>`
-    : `<p class="hint">Booking.com 上的雅高飯店共 ${list.length} 家${list.length >= 90 ? '（最多列 100 家）' : ''}，便宜的在前。雅高沒有點數房，點數是用房價換算的${body.pointValueTwd ? `，每點約 NT$${body.pointValueTwd}` : ''}。</p>
+    : `<p class="hint">Booking.com 上的雅高飯店${body.more ? `太多了，只列最便宜的 ${list.length} 家` : `共 ${list.length} 家`}，便宜的在前。雅高沒有點數房，點數是用房價換算的${body.pointValueTwd ? `，每點約 NT$${body.pointValueTwd}` : ''}。</p>
       <div class="hotel-list">${list.map(card).join('')}</div>`)
     + `${rule.text ? `<p class="hint h-rule">📘 ${esc(rule.text)} ${src}</p>` : ''}<p class="hint">${quota}</p>`;
 }

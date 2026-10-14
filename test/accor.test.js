@@ -189,5 +189,9 @@ test('brand filter: when the city filter list cannot be read, the known Accor br
   assert.deepEqual(seen, ['/stays/auto-complete', '/stays/get-filters', '/stays/search', '/stays/search'], 'the last request is the Chinese names');
   assert.equal(r.requests, 4);
   assert.deepEqual(accorAnswer(r, { eurRate: 36, nights: 2 }).hotels.map((h) => [h.name, h.nameZh]), [['Novotel Tokyo Shinjuku', '東京新宿諾富特酒店']], 'Simplified names become Traditional');
+  seen.length = 0;
+  const again = await lookup.city({ city: 'Tokyo', checkin: '2026-12-01', checkout: '2026-12-03', adults: 2, lat: null, lon: null }, { brands: isAccorTitle, brandIds: ['chaincode::1050', 'chaincode::1053'], zhNames: true });
+  assert.deepEqual(seen, ['/stays/get-filters', '/stays/search'], 'Chinese names are remembered per city, so other dates need no Chinese request (the unreadable filter list is asked again)');
+  assert.equal(again.hotels[0].nameZh, '東京新宿諾富特酒店');
   assert.match(r.debug.filters.shape, /something/);
 });
