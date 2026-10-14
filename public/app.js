@@ -1892,15 +1892,31 @@ function pointsHtml() {
 // Dynamic conversion table: one row per bank points program, one column per airline program.
 const CALC_COLS = [['eva', '長榮'], ['asiamiles', '亞洲萬里通'], ['ci', '華航'], ['sq', '新航'], ['other', '其他計畫']];
 const CALC_PRESETS = [5000, 10000, 30000, 50000, 100000];
-const calcState = { mode: 'p2m', amount: 10000, bank: '', detail: false };
+const calcState = { mode: 'p2m', amount: 10000, bank: '', detail: false, kind: 'air' };
+// Hotel transfers reuse the same table: each hotel program is a column and its rate's `miles` holds hotel points.
+function calcView(pts) {
+  const h = pts.calc?.hotels;
+  if (calcState.kind !== 'hotel' || !h?.rates?.length) return { kind: 'air', cols: CALC_COLS, sources: pts.calc.sources, unit: '哩', what: '哩程' };
+  const counts = {};
+  for (const r of h.rates) counts[r.to] = (counts[r.to] || 0) + 1;
+  const cols = Object.keys(h.programs).filter((k) => counts[k]).sort((a, b) => counts[b] - counts[a]).map((k) => [k, h.programs[k]]);
+  const all = [...pts.calc.sources, ...(h.extraSources || [])];
+  const sources = all.map((src) => ({ ...src, note: '', rates: h.rates.filter((r) => r.source === src.id).map((r) => ({ to: r.to, points: r.points, miles: r.hotelPoints, minPoints: r.minPoints || 0, stepPoints: r.stepPoints || 0, secondary: r.confidence !== 'official', note: r.note })) }))
+    .filter((src) => src.rates.length);
+  return { kind: 'hotel', cols, sources, unit: '點', what: '飯店點數' };
+}
 
 function calcHtml(pts) {
   const sources = pts.calc?.sources || [];
   if (!sources.length) return '';
-  const banks = [...new Set(sources.map((s) => s.bank))];
+  const view = calcView(pts);
+  const banks = [...new Set(view.sources.map((s) => s.bank))];
+  if (calcState.bank && !banks.includes(calcState.bank)) calcState.bank = '';
+  const hotel = view.kind === 'hotel';
   return `<div class="calc" id="calc">
+    ${pts.calc.hotels?.rates?.length ? `<fieldset class="seg calc-kind" aria-label="換什麼">${[['air', '✈ 換航空哩程'], ['hotel', '🏨 換飯店點數']].map(([k, l]) => `<label><input type="radio" name="calc-kind" value="${k}" ${calcState.kind === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>` : ''}
     <div class="calc-bar">
-      <label class="field">我想算<select id="calc-mode">${[['p2m', '手上的點數能換多少哩'], ['m2p', '想要的哩程需要多少點'], ['mine', '用「我的點數」各自計算']].map(([v, l]) => `<option value="${v}" ${calcState.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="field">我想算<select id="calc-mode">${[['p2m', hotel ? '手上的點數能換多少飯店點數' : '手上的點數能換多少哩'], ['m2p', hotel ? '想要的飯店點數需要多少點' : '想要的哩程需要多少點'], ['mine', '用「我的點數」各自計算']].map(([v, l]) => `<option value="${v}" ${calcState.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="field"><span id="calc-amount-label">點數（假設每家都有這麼多）</span><input type="number" id="calc-amount" min="0" step="100" value="${calcState.amount}" inputmode="numeric"></label>
       <label class="field">銀行<select id="calc-bank"><option value="">全部銀行</option>${banks.map((b) => `<option value="${esc(b)}" ${calcState.bank === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select></label>
     </div>
@@ -1908,7 +1924,7 @@ function calcHtml(pts) {
       <div class="presets calc-presets"><span class="presets-label">快速填入</span>${CALC_PRESETS.map((n) => `<button type="button" data-n="${n}">${fmt(n)}</button>`).join('')}</div>
       <label class="switch"><input type="checkbox" id="calc-detail" ${calcState.detail ? 'checked' : ''}><span class="knob"></span>顯示比率與備註</label>
     </div>
-    ${promosHtml()}
+    ${hotel ? '' : promosHtml()}
     <div class="table-wrap calc-table${calcState.detail ? '' : ' simple'}"><table id="calc-table"></table></div>
     <p class="hint" id="calc-note">${calcState.detail ? esc(pts.calc.note || '') : ''} 底色標示的是該計畫最划算的來源。</p>
   </div>`;
@@ -1948,10 +1964,12 @@ function renderCalc() {
   const { amount: typed, bank, detail } = calcState;
   const mine = calcState.mode === 'mine';
   const mode = mine ? 'p2m' : calcState.mode;
-  const unit = mode === 'p2m' ? '哩' : '點';
-  const ratioText = (r) => `${fmt(r.points)} 點 = ${fmt(r.miles)} 哩`;
+  const view = calcView(pts);
+  const CALC_COLS = view.cols;
+  const unit = mode === 'p2m' ? view.unit : '點';
+  const ratioText = (r) => `${fmt(r.points)} 點 = ${fmt(r.miles)} ${view.unit}`;
   // In "my points" mode each bank row converts its own balance from the wallet.
-  const sources = pts.calc.sources.filter((s) => (!bank || s.bank === bank) && (!mine || wallet.banks[s.id]));
+  const sources = view.sources.filter((s) => (!bank || s.bank === bank) && (!mine || wallet.banks[s.id]));
   const amountOf = (s) => (mine ? wallet.banks[s.id] || 0 : typed);
   const amount = mine ? (sources.length ? 1 : 0) : typed;
   if (mine && !sources.length) {
@@ -1959,13 +1977,13 @@ function renderCalc() {
     return;
   }
   if (!(amount > 0)) {
-    table.innerHTML = `<thead><tr><th>請輸入${mode === 'p2m' ? '點數' : '哩程'}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody><tr><td colspan="${CALC_COLS.length + 1}" class="none">輸入數字後，這裡會列出每家銀行能換到的哩程。</td></tr></tbody>`;
+    table.innerHTML = `<thead><tr><th>請輸入${mode === 'p2m' ? '點數' : view.what}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody><tr><td colspan="${CALC_COLS.length + 1}" class="none">輸入數字後，這裡會列出每家銀行能換到的${view.what}。</td></tr></tbody>`;
     return;
   }
   // Best value per airline column: most miles, or fewest points needed.
   const best = {};
   // Active transfer bonuses only change the points-to-miles direction.
-  const bonusOf = (s, col) => (mode === 'p2m' ? transferBonus(s, col) : null);
+  const bonusOf = (s, col) => (mode === 'p2m' && view.kind === 'air' ? transferBonus(s, col) : null);
   const convert = (s, r) => {
     const out = calcConvert(r, amountOf(s), mode);
     const extra = out.value ? bonusMiles(out.value, bonusOf(s, r.to)) : 0;
@@ -1985,7 +2003,7 @@ function renderCalc() {
       const out = convert(s, r);
       if (!out.value) return `<td class="short"><span>${esc(out.short)}</span>${detail ? `<small>${ratioText(r)}</small>` : ''}</td>`;
       const tags = detail && r.secondary ? '<small class="warn">第三方比率</small>' : '';
-      const extra = detail ? `<small>${ratioText(r)}</small>${out.note ? `<small>${esc(out.note)}</small>` : ''}${tags}` : '';
+      const extra = detail ? `<small>${ratioText(r)}</small>${out.note ? `<small>${esc(out.note)}</small>` : ''}${r.note ? `<small>${esc(r.note)}</small>` : ''}${tags}` : '';
       return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${out.extra ? `<small class="bonus">🎁 含加贈 ${fmt(out.extra)} 哩</small>` : ''}${extra}</td>`;
     }
     // Other programs: group identical rates so 12 airlines at 1:1 take one line.
@@ -2003,7 +2021,7 @@ function renderCalc() {
     return `<td class="others">${lines.join('')}</td>`;
   };
   const rows = sources.map((s) => `<tr><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${detail && s.confidence === 'verify' ? '<span class="tag verify">待核實</span>' : ''}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}</th>${CALC_COLS.map(([col]) => cell(s, col)).join('')}</tr>`);
-  table.innerHTML = `<thead><tr><th>${mine ? '我的點數可換' : mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} 哩需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`;
+  table.innerHTML = `<thead><tr><th>${mine ? '我的點數可換' : mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} ${view.unit}需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`;
 }
 
 function bindCalc() {
@@ -2015,7 +2033,7 @@ function bindCalc() {
     calcState.amount = Math.max(0, Math.floor(Number(amountEl.value) || 0));
     calcState.bank = $('#calc-bank').value;
     calcState.detail = $('#calc-detail').checked;
-    $('#calc-amount-label').textContent = calcState.mode === 'm2p' ? '想換到的哩程' : calcState.mode === 'mine' ? '點數（改用「我的點數」）' : '點數（假設每家都有這麼多）';
+    $('#calc-amount-label').textContent = calcState.mode === 'm2p' ? `想換到的${calcView(data.points).what}` : calcState.mode === 'mine' ? '點數（改用「我的點數」）' : '點數（假設每家都有這麼多）';
     amountEl.disabled = calcState.mode === 'mine';
     $('.calc-table').classList.toggle('simple', !calcState.detail);
     $('#calc-note').textContent = `${calcState.detail ? data.points.calc.note || '' : ''} 底色標示的是該計畫最划算的來源。`.trim();
@@ -2025,6 +2043,7 @@ function bindCalc() {
   amountEl.addEventListener('input', sync);
   $('#calc-bank').addEventListener('change', sync);
   $('#calc-detail').addEventListener('change', sync);
+  $$('input[name=calc-kind]').forEach((i) => i.addEventListener('change', () => { calcState.kind = i.value; renderPoints(); }));
   $$('.calc-presets button').forEach((b) => b.addEventListener('click', () => { if (calcState.mode === 'mine') modeEl.value = 'p2m'; amountEl.value = b.dataset.n; sync(); }));
   sync();
 }

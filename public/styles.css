@@ -493,6 +493,7 @@ h3.sub { font-size: 1rem; margin: 22px 0 10px; }
 /* points calculator */
 .calc { margin: 26px 0 8px; }
 .tab-link-hint { font-size: .92rem; }
+.calc-kind { margin-bottom: 12px; }
 .calc-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 .calc-bar .field { flex: 1 1 200px; max-width: 320px; }
 .calc-presets { margin: 10px 0 12px; }
