@@ -1199,6 +1199,357 @@
      }
     ]
    }
-  ]
+  ],
+  "hotels": {
+   "researched": "2026-10-14",
+   "note": "各家比率多為 2026 年度條款，明年初需重新確認。飯店點數價值差很多：雅高 1 點約 €0.02，萬豪約 US$0.0075、洲際約 US$0.006、希爾頓約 US$0.004（The Points Guy 2026/10 估值），點數多不代表比較划算。",
+   "valueSource": {
+    "label": "The Points Guy 每月點數估值",
+    "url": "https://thepointsguy.com/loyalty-programs/monthly-valuations/"
+   },
+   "programs": {
+    "marriott": "萬豪 Bonvoy",
+    "ihg": "洲際 IHG One Rewards",
+    "hilton": "希爾頓 Hilton Honors",
+    "accor": "雅高 ALL",
+    "shangrila": "香格里拉 Circle"
+   },
+   "extraSources": [
+    {
+     "id": "hsbc-premier",
+     "bank": "滙豐",
+     "program": "卓越理財信用卡 紅利積分",
+     "variant": "卓越理財卡",
+     "confidence": "official",
+     "rates": []
+    }
+   ],
+   "rates": [
+    {
+     "source": "amex-mr",
+     "to": "marriott",
+     "points": 1000,
+     "hotelPoints": 900,
+     "note": "限正卡持卡人，電話申請，約2–3週入帳；官網列兌換期至2026/12/31",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "美國運通 會員酬賓 Marriott Bonvoy 積分轉換",
+       "url": "https://www.americanexpress.com/zh-tw/rewards/membership-rewards/partner/Marriott_Bonvoy%C2%AE/Marriott-Bonvoy-Transfer/SHER",
+       "official": true
+      },
+      {
+       "label": "美國運通 會員酬賓 旅遊夥伴總覽",
+       "url": "https://www.americanexpress.com/zh-tw/rewards/membership-rewards/travel/all",
+       "official": true
+      }
+     ],
+     "minPoints": 1000,
+     "stepPoints": 1000
+    },
+    {
+     "source": "amex-mr",
+     "to": "hilton",
+     "points": 1000,
+     "hotelPoints": 1250,
+     "note": "限正卡持卡人，約2–3週入帳；官網列兌換期至2026/12/31",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "美國運通 會員酬賓 Hilton Honors 積分轉換",
+       "url": "https://www.americanexpress.com/zh-tw/rewards/membership-rewards/partner/Hilton_Honors/Hilton-Point-Transfer/HILT",
+       "official": true
+      },
+      {
+       "label": "美國運通 會員酬賓 旅遊夥伴總覽",
+       "url": "https://www.americanexpress.com/zh-tw/rewards/membership-rewards/travel/all",
+       "official": true
+      }
+     ],
+     "minPoints": 1000,
+     "stepPoints": 1000
+    },
+    {
+     "source": "hsbc-travel",
+     "to": "marriott",
+     "points": 1,
+     "hotelPoints": 1,
+     "note": "旅人卡旅遊積分；萬豪全卡別單日上限75萬點；本期比例適用至2026/12/31",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "滙豐(台灣) 飯店計劃",
+       "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/hotel.html",
+       "official": true
+      }
+     ],
+     "minPoints": 3000,
+     "stepPoints": 500
+    },
+    {
+     "source": "hsbc-travel",
+     "to": "ihg",
+     "points": 1,
+     "hotelPoints": 1,
+     "note": "旅人卡旅遊積分；本期比例適用至2026/12/31",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "滙豐(台灣) 飯店計劃",
+       "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/hotel.html",
+       "official": true
+      }
+     ],
+     "minPoints": 3000,
+     "stepPoints": 500
+    },
+    {
+     "source": "hsbc-travel",
+     "to": "accor",
+     "points": 1,
+     "hotelPoints": 1,
+     "note": "旅人卡旅遊積分；雅高官網亦列1:1；本期比例至2026/12/31",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "滙豐(台灣) 飯店計劃",
+       "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/hotel.html",
+       "official": true
+      },
+      {
+       "label": "ALL Accor 滙豐台灣轉點條款",
+       "url": "https://all.accor.com/a/zh/loyalty-program/partners/conditions/hsbctaiwan.html",
+       "official": true
+      }
+     ],
+     "minPoints": 3000,
+     "stepPoints": 500
+    },
+    {
+     "source": "hsbc-premier",
+     "to": "marriott",
+     "points": 2,
+     "hotelPoints": 1,
+     "note": "卓越理財卡紅利積分；官網門檻文字寫旅遊積分，略有出入",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "滙豐(台灣) 飯店計劃",
+       "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/hotel.html",
+       "official": true
+      }
+     ],
+     "minPoints": 3000,
+     "stepPoints": 300
+    },
+    {
+     "source": "hsbc-premier",
+     "to": "ihg",
+     "points": 2,
+     "hotelPoints": 1,
+     "note": "卓越理財卡紅利積分；本期比例適用至2026/12/31",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "滙豐(台灣) 飯店計劃",
+       "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/hotel.html",
+       "official": true
+      }
+     ],
+     "minPoints": 3000,
+     "stepPoints": 300
+    },
+    {
+     "source": "hsbc-premier",
+     "to": "accor",
+     "points": 2,
+     "hotelPoints": 1,
+     "note": "卓越理財卡紅利積分；本期比例適用至2026/12/31",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "滙豐(台灣) 飯店計劃",
+       "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/hotel.html",
+       "official": true
+      }
+     ],
+     "minPoints": 3000,
+     "stepPoints": 300
+    },
+    {
+     "source": "cathay-tree",
+     "to": "marriott",
+     "points": 340,
+     "hotelPoints": 1000,
+     "note": "全卡別同比例；限正卡，轉出不可取消；常有季度加贈活動",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "國泰世華 小樹點兌換航空里程/飯店積分",
+       "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+       "official": true
+      }
+     ],
+     "stepMiles": 1000
+    },
+    {
+     "source": "cathay-tree",
+     "to": "ihg",
+     "points": 250,
+     "hotelPoints": 1000,
+     "note": "全卡別同比例；限正卡，需先為IHG會員",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "國泰世華 小樹點兌換航空里程/飯店積分",
+       "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+       "official": true
+      }
+     ],
+     "stepMiles": 1000
+    },
+    {
+     "source": "cathay-tree",
+     "to": "accor",
+     "points": 600,
+     "hotelPoints": 1000,
+     "note": "全卡別同比例；雅高夥伴總覽同列600:1000",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "國泰世華 小樹點兌換航空里程/飯店積分",
+       "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+       "official": true
+      },
+      {
+       "label": "ALL Accor 合作夥伴總覽",
+       "url": "https://all.accor.com/loyalty-program/partners/index.en.shtml",
+       "official": true
+      }
+     ],
+     "stepMiles": 1000
+    },
+    {
+     "source": "cathay-tree",
+     "to": "shangrila",
+     "points": 550,
+     "hotelPoints": 250,
+     "note": "全卡別同比例；轉入香格里拉會積分",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "國泰世華 小樹點兌換航空里程/飯店積分",
+       "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+       "official": true
+      }
+     ],
+     "stepMiles": 250
+    },
+    {
+     "source": "cathay-tree-world",
+     "to": "marriott",
+     "points": 340,
+     "hotelPoints": 1000,
+     "note": "世界卡飯店比例與一般卡相同（僅航空有世界卡優惠）",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "國泰世華 小樹點兌換航空里程/飯店積分",
+       "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+       "official": true
+      }
+     ],
+     "stepMiles": 1000
+    },
+    {
+     "source": "cathay-tree-world",
+     "to": "ihg",
+     "points": 250,
+     "hotelPoints": 1000,
+     "note": "世界卡飯店比例與一般卡相同",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "國泰世華 小樹點兌換航空里程/飯店積分",
+       "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+       "official": true
+      }
+     ],
+     "stepMiles": 1000
+    },
+    {
+     "source": "cathay-tree-world",
+     "to": "accor",
+     "points": 600,
+     "hotelPoints": 1000,
+     "note": "世界卡飯店比例與一般卡相同",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "國泰世華 小樹點兌換航空里程/飯店積分",
+       "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+       "official": true
+      }
+     ],
+     "stepMiles": 1000
+    },
+    {
+     "source": "cathay-tree-world",
+     "to": "shangrila",
+     "points": 550,
+     "hotelPoints": 250,
+     "note": "世界卡飯店比例與一般卡相同",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "國泰世華 小樹點兌換航空里程/飯店積分",
+       "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+       "official": true
+      }
+     ],
+     "stepMiles": 250
+    },
+    {
+     "source": "ctbc-bonus",
+     "to": "ihg",
+     "points": 3200,
+     "hotelPoints": 1000,
+     "note": "未找到中信官方比例頁；兩篇2026部落格一致",
+     "confidence": "secondary",
+     "sources": [
+      {
+       "label": "寶可孟 飯店會籍全攻略(2026/10更新)",
+       "url": "https://pokem.tw/hotel-loyalty-compare/",
+       "official": false
+      },
+      {
+       "label": "旅行酷 中信紅利轉IHG 週三旅享日(2026/01)",
+       "url": "https://www.travelideas.tw/2026/01/ctbcbank-Airlines-hotels-points.html",
+       "official": false
+      }
+     ]
+    },
+    {
+     "source": "ctbc-bonus",
+     "to": "accor",
+     "points": 84,
+     "hotelPoints": 10,
+     "note": "雅高官網列8.4紅利點=1積分，即8,400換1,000",
+     "confidence": "official",
+     "sources": [
+      {
+       "label": "ALL Accor 中國信託轉點條款",
+       "url": "https://all.accor.com/a/zh/loyalty-program/partners/conditions/ctbcbank.html",
+       "official": true
+      },
+      {
+       "label": "寶可孟 飯店會籍全攻略(2026/10更新)",
+       "url": "https://pokem.tw/hotel-loyalty-compare/",
+       "official": false
+      }
+     ]
+    }
+   ]
+  }
  }
 }

@@ -1901,11 +1901,20 @@ function calcView(pts) {
   for (const r of h.rates) counts[r.to] = (counts[r.to] || 0) + 1;
   const cols = Object.keys(h.programs).filter((k) => counts[k]).sort((a, b) => counts[b] - counts[a]).map((k) => [k, h.programs[k]]);
   const all = [...pts.calc.sources, ...(h.extraSources || [])];
-  const sources = all.map((src) => ({ ...src, note: '', rates: h.rates.filter((r) => r.source === src.id).map((r) => ({ to: r.to, points: r.points, miles: r.hotelPoints, minPoints: r.minPoints || 0, stepPoints: r.stepPoints || 0, secondary: r.confidence !== 'official', note: r.note })) }))
+  const sources = all.map((src) => ({ ...src, note: '', rates: h.rates.filter((r) => r.source === src.id).map((r) => ({ to: r.to, points: r.points, miles: r.hotelPoints, minPoints: r.minPoints || 0, stepPoints: r.stepPoints || 0, stepMiles: r.stepMiles || 0, secondary: r.confidence !== 'official', note: r.note })) }))
     .filter((src) => src.rates.length);
   return { kind: 'hotel', cols, sources, unit: '點', what: '飯店點數' };
 }
 
+// Hotel points differ a lot in value, so hotel mode always says so; the airline note stays behind the detail switch.
+function calcNoteHtml() {
+  const c = data.points.calc;
+  if (calcView(data.points).kind === 'hotel') {
+    const src = c.hotels.valueSource;
+    return `${esc(c.hotels.note)}${src ? ` <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label)} ↗</a>` : ''} 底色標示的是同一家飯店最划算的銀行。`;
+  }
+  return `${calcState.detail ? esc(c.note || '') : ''} 底色標示的是該計畫最划算的來源。`.trim();
+}
 function calcHtml(pts) {
   const sources = pts.calc?.sources || [];
   if (!sources.length) return '';
@@ -1926,7 +1935,7 @@ function calcHtml(pts) {
     </div>
     ${hotel ? '' : promosHtml()}
     <div class="table-wrap calc-table${calcState.detail ? '' : ' simple'}"><table id="calc-table"></table></div>
-    <p class="hint" id="calc-note">${calcState.detail ? esc(pts.calc.note || '') : ''} 底色標示的是該計畫最划算的來源。</p>
+    <p class="hint" id="calc-note"></p>
   </div>`;
 }
 
@@ -2036,7 +2045,7 @@ function bindCalc() {
     $('#calc-amount-label').textContent = calcState.mode === 'm2p' ? `想換到的${calcView(data.points).what}` : calcState.mode === 'mine' ? '點數（改用「我的點數」）' : '點數（假設每家都有這麼多）';
     amountEl.disabled = calcState.mode === 'mine';
     $('.calc-table').classList.toggle('simple', !calcState.detail);
-    $('#calc-note').textContent = `${calcState.detail ? data.points.calc.note || '' : ''} 底色標示的是該計畫最划算的來源。`.trim();
+    $('#calc-note').innerHTML = calcNoteHtml();
     renderCalc();
   };
   modeEl.addEventListener('change', sync);
