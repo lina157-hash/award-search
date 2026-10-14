@@ -2418,11 +2418,12 @@ function renderPoints() {
   const calc = pts && calcHtml(pts);
   if (!calc) { host.innerHTML = '<p class="hint">點數資料載入失敗，請重新整理。</p>'; return; }
   const view = pointsView.view;
-  host.innerHTML = pointsTabsHtml() + (view === 'wallet' ? walletHtml() : view === 'need' ? needHtml() : view === 'detour' ? detourHtml()
+  host.innerHTML = pointsTabsHtml() + (view === 'wallet' ? walletHtml() : view === 'need' ? needHtml() : view === 'map' ? rmapHtml() : view === 'detour' ? detourHtml()
     : `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積里程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉里程」</a>。</p>`);
   bindPointsTabs(host);
   if (view === 'wallet') bindWallet(host);
   else if (view === 'need') bindNeed(host);
+  else if (view === 'map') bindRmap(host);
   else if (view === 'detour') bindDetour(host);
   else bindCalc();
   bindTabLinks(host);

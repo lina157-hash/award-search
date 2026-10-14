@@ -1055,3 +1055,24 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .alert-pick summary { cursor: pointer; font-weight: 600; font-size: .92rem; padding: 4px 0; }
 .alert-pick .h-progs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; max-height: 210px; overflow-y: auto; }
 .alert-pick .field { margin-top: 6px; }
+
+/* 兌換地圖: price pins; far out only the thousands, closer in a label with the city and the full price */
+.rmap { height: 560px; }
+.leaflet-marker-icon.rm-pin { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.rm-pin .rm-k { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font-size: .7rem; font-weight: 700; color: #fff; border: 2px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .35); }
+.rm-pin .rm-label { background: var(--surface); color: var(--text); border-radius: 8px; padding: 2px 8px; font-size: .78rem; line-height: 1.3; box-shadow: 0 1px 4px rgb(0 0 0 / .25); }
+.rm-pin .rm-label b { display: block; font-size: .72rem; font-weight: 600; color: var(--muted); }
+.leaflet-marker-icon.rm-dot .rm-label { display: none; }
+.leaflet-marker-icon.rm-hide { display: none; }
+.rm-pin.t0 .rm-k { background: #0b8ea3; }
+.rm-pin.t1 .rm-k { background: #2fa7a0; }
+.rm-pin.t2 .rm-k { background: #e39b2d; }
+.rm-pin.t3 .rm-k { background: #d1495b; }
+.rm-pop { border-collapse: collapse; margin: 6px 0; font-size: .82rem; }
+.rm-pop { width: 100%; }
+.rm-pop td { padding: 3px 6px 3px 0; vertical-align: top; position: static; background: none; border-bottom: 1px solid #eee; }
+.rmap-row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.rmap-row > * { flex: 1 1 220px; min-width: 0; }
+.rm-pop td small { display: block; color: #777; }
+.rm-pop td:last-child { text-align: right; white-space: nowrap; }
+@media (max-width: 640px) { .rmap { height: 440px; } .rmap-row > *, .rmap-row > .field.grow { flex: 1 1 100%; } }
