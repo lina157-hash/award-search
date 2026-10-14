@@ -1,5 +1,5 @@
 {
-  "note": "English airline names as AeroDataBox writes them (operators often come without codes) → IATA code and Chinese name. Matching ignores case, spaces and punctuation; aliases cover common variants.",
+  "note": "English airline names as AeroDataBox writes them (operators often come without codes) → IATA code and Chinese name. Matching ignores case, spaces and punctuation; aliases cover common variants. `defunct` marks codes that no longer fly; they stay in the list so older records still get a name.",
   "airlines": [
     ["BR", "長榮航空", "EVA Air", "EVA Airways"],
     ["CI", "中華航空", "China Airlines"],
@@ -90,6 +90,24 @@
     ["WY", "阿曼航空", "Oman Air"],
     ["SV", "沙烏地阿拉伯航空", "Saudia"],
     ["GF", "海灣航空", "Gulf Air"],
-    ["MS", "埃及航空", "EgyptAir"]
-  ]
+    ["MS", "埃及航空", "EgyptAir"],
+    ["A3", "愛琴海航空", "Aegean Airlines", "Aegean"],
+    ["AR", "阿根廷航空", "Aerolineas Argentinas", "Aerolíneas Argentinas"],
+    ["AT", "摩洛哥皇家航空", "Royal Air Maroc"],
+    ["AV", "哥倫比亞航空", "Avianca"],
+    ["CM", "巴拿馬航空", "Copa Airlines", "Copa"],
+    ["KQ", "肯亞航空", "Kenya Airways"],
+    ["ME", "中東航空", "Middle East Airlines", "MEA"],
+    ["OU", "克羅埃西亞航空", "Croatia Airlines"],
+    ["RJ", "約旦皇家航空", "Royal Jordanian"],
+    ["RO", "羅馬尼亞航空", "TAROM"],
+    ["SA", "南非航空", "South African Airways"],
+    ["SN", "布魯塞爾航空", "Brussels Airlines"],
+    ["UX", "歐羅巴航空", "Air Europa"],
+    ["ZH", "深圳航空", "Shenzhen Airlines"]
+  ],
+  "defunct": {
+    "KA": { "until": "2020-10-21", "note": "國泰港龍已停飛，航線併入國泰；保留代碼只為辨識舊資料" },
+    "3K": { "until": "2025-07-31", "note": "捷星亞洲已停止營運；保留代碼只為辨識舊資料" }
+  }
 }
