@@ -939,7 +939,7 @@ const watchCfg = { on: false };
 const watchSummary = (w) => `${w.origin} → ${w.destination}　${mmdd(w.depart)}${w.ret ? ` – ${mmdd(w.ret)} 來回` : ' 單程'}　${CABIN_LABEL[w.cabin]}${w.adults > 1 ? `　${w.adults} 人` : ''}`;
 function watchFormHtml() {
   return `<form class="watch-form" id="watch-form">
-    <p class="hint">比現在便宜就寄信通知你。為了省查價額度，出發前 60 天以上每週查 1 次、15 到 60 天每 3 天、最後 14 天才每天查；所有追蹤每月合計最多用 30 次，帳號剩不到 150 次時自動暫停。開始追蹤不會另外用額度。</p>
+    <p class="hint">比現在便宜就寄信通知你。為了省查價額度，出發前 60 天以上每週查 1 次、15 到 60 天每 3 天、最後 14 天才每天查；所有追蹤每月合計最多用 30 次，而且用的是 RapidAPI 的額度，SerpApi 留給你自己查；RapidAPI 出錯時才借用 SerpApi，SerpApi 剩不到 150 次就不借。開始追蹤不會另外用額度。</p>
     <div class="w-add"><input type="email" name="email" placeholder="通知信箱（可留空，只在網站顯示）" autocomplete="email" value="${esc(store.get(ALERT_EMAIL_KEY, ''))}">
     <button type="submit" class="primary">開始追蹤</button><button type="button" class="outline" id="watch-cancel">取消</button></div>
   </form>`;

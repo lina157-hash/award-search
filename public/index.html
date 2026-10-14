@@ -27,6 +27,7 @@
         <button role="tab" data-tab="search" aria-selected="true">航線查詢</button>
         <button role="tab" data-tab="explore">區域探索</button>
         <button role="tab" data-tab="cash">查現金票</button>
+        <button role="tab" data-tab="hotels">查飯店</button>
         <button role="tab" data-tab="points">點數換算器</button>
         <button role="tab" data-tab="rules">規則庫</button>
       </nav>
@@ -213,6 +214,7 @@
               <button type="submit" class="primary big">搜尋票價</button>
             </div>
             <p id="cash-lock" class="hint" hidden></p>
+            <p id="cash-quota" class="hint" hidden></p>
           </form>
           <details class="alerts-panel" id="watch-panel" hidden>
             <summary>📉 降價追蹤 <span id="watch-count"></span></summary>
@@ -223,6 +225,21 @@
       <div class="wrap">
         <div id="cash-status" class="status" aria-live="polite"></div>
         <div id="cash-results"></div>
+      </div>
+    </section>
+
+    <!-- ================= 查飯店 ================= -->
+    <section id="tab-hotels" class="panel" hidden>
+      <div class="hero slim">
+        <div class="wrap">
+          <h1>查飯店</h1>
+          <p class="lead">用點數訂飯店：查萬豪、希爾頓、洲際、凱悅的點數房價，看每點值多少、你的點數夠不夠。</p>
+          <div id="hotels-page"></div>
+        </div>
+      </div>
+      <div class="wrap">
+        <div id="hotels-status" class="status" aria-live="polite"></div>
+        <div id="hotels-results"></div>
       </div>
     </section>
 
@@ -286,5 +303,6 @@
   </footer>
   <script src="/app.js"></script>
   <script src="/features.js"></script>
+  <script src="/hotels.js"></script>
 </body>
 </html>
