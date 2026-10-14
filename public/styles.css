@@ -1338,3 +1338,10 @@ dialog.cost-pop .hint { margin: 4px 0 10px; font-size: .8rem; }
 .upg-table td b { color: var(--accent); }
 .upg-table .muted { color: var(--muted); }
 .upg-rules { margin: 8px 0; padding-left: 18px; color: var(--muted); font-size: .84rem; display: grid; gap: 3px; }
+/* ---------- aihelper: 「交給 AI 助理」 in the flight details dialog (public/aihelper.js) ---------- */
+.ai-box { margin: 12px 0; display: grid; gap: 8px; }
+.ai-box.open { padding: 12px 14px; border: 1px dashed var(--border); border-radius: 12px; }
+.ai-head { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
+.ai-ok { color: var(--accent); font-weight: 700; font-size: .9rem; }
+.ai-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: .86rem; line-height: 1.55; margin: 0; background: var(--bg); color: var(--text); border-radius: 10px; padding: 10px 12px; user-select: text; -webkit-user-select: text; }
+.ai-more .hint { margin: 8px 0 0; }

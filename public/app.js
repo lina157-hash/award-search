@@ -1510,6 +1510,7 @@ async function openTrips(id, title, cabin) {
       (first ? bookingNotesHtml(first.source, first.miles * pax) + homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
     $$('[data-plan]', $('#trip-body')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
+    if (main[0] && typeof aiHelperMount === 'function') aiHelperMount(main[0], pax, main.length); // public/aihelper.js
   } catch (err) {
     if (!fresh()) return;
     $('#trip-body').innerHTML = `<p class="status error">${esc(err.message)}</p>`;
@@ -2810,11 +2811,11 @@ function renderVersion(config) {
 // The data comes in two bundles, each cached per release (?v=): `core` for the first screen (index.html preloads it)
 // and `more` (points, charts, rules, booking notes) once a search, a flight's details or a tab that needs it opens.
 const DATA_CORE = ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'];
-const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades'];
+const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters'];
 const DATA_KEY = { sourcenames: 'sourceNames', airlinenames: 'airlineNames', airportnames: 'airportNames' };
 // Niceties the page works without: Chinese airline and airport names (codes show as they are), expiry rules,
 // buy-miles prices, dated rule changes, and the fee, hold, cost-per-mile and upgrade notes.
-const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades'];
+const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters'];
 async function loadPart(part, names) {
   try {
     const all = await api(`/api/data/${part}${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);

@@ -1,0 +1,124 @@
+{
+  "note": "Reservation / member service phone numbers per seats.aero program id, used by the flight dialog's 「交給 AI 助理」 text. Only numbers read on the airline's own site are listed; a program without phones shows its contact page instead. Taiwan numbers where the airline publishes one, else its international line. Re-check yearly.",
+  "programs": {
+    "american": {
+      "en": "American Airlines AAdvantage",
+      "phones": [
+        { "number": "+1 800-882-8880", "label": "AAdvantage 會員與獎勵機票，美國・加拿大免付費" },
+        { "number": "+1 800-492-8095", "label": "訂位中文專線，美國・加拿大免付費" }
+      ],
+      "contactUrl": "https://www.aa.com/web/i18n/customer-service/contact-american/reservations-and-ticket-changes.html",
+      "source": "https://www.aa.com/i18n/customer-service/contact-american/aadvantage-customer-service.html",
+      "asOf": "2026-10-14"
+    },
+    "aeroplan": {
+      "en": "Air Canada Aeroplan",
+      "phones": [
+        { "number": "+1 514-395-0300", "label": "Aeroplan，加拿大・美國以外地區" }
+      ],
+      "contactUrl": "https://www.aircanada.com/tw/zh/aco/home/fly/customer-support.html",
+      "source": "https://www.aircanada.com/tw/zh/aco/home/fly/customer-support.html",
+      "asOf": "2026-10-14"
+    },
+    "alaska": {
+      "en": "Alaska Airlines Atmos Rewards",
+      "phones": [
+        { "number": "+1 206-485-4390", "label": "美國・加拿大以外來電，24 小時，非免付費" }
+      ],
+      "contactUrl": "https://www.alaskaair.com/content/about-us/help-contact/contact-us",
+      "source": "https://www.alaskaair.com/content/about-us/help-contact/contact-us",
+      "asOf": "2026-10-14"
+    },
+    "delta": {
+      "en": "Delta SkyMiles",
+      "phones": [
+        { "number": "00806651982", "label": "達美台灣一般訂位" },
+        { "number": "00806651981", "label": "達美台灣尊爵會 Medallion 會員" }
+      ],
+      "contactUrl": "https://zt.delta.com/us/zt/need-help/overview",
+      "source": "https://zt.delta.com/us/zt/need-help/overview",
+      "asOf": "2026-10-14"
+    },
+    "qantas": {
+      "en": "Qantas Frequent Flyer",
+      "phones": [
+        { "number": "00800 001 31131", "label": "澳航台灣，請用市話撥打，24 小時" },
+        { "number": "+886 2 2509 2000", "label": "澳航台灣，週一至週五 9:00–17:30" }
+      ],
+      "contactUrl": "https://www.qantas.com/en-tw/help/contact-us",
+      "source": "https://www.qantas.com/en-tw/help/contact-us",
+      "asOf": "2026-10-14"
+    },
+    "singapore": {
+      "en": "Singapore Airlines KrisFlyer",
+      "phones": [
+        { "number": "02-7750-7708", "label": "新航台北客服中心" }
+      ],
+      "contactUrl": "https://www.singaporeair.com/en_UK/tw/contact-us/",
+      "source": "https://www.singaporeair.com/saar5/pdf/local/tw/16Jun23-tktsample.pdf",
+      "asOf": "2026-10-14"
+    },
+    "emirates": {
+      "en": "Emirates Skywards",
+      "phones": [
+        { "number": "+886 2 7745 0420", "label": "阿聯酋台北客服中心；英語 24 小時，中文週一至週五 8:00–18:00、週末 8:00–17:00" }
+      ],
+      "contactUrl": "https://www.emirates.com/tw/english/help/offices/",
+      "source": "https://www.emirates.com/english/help/offices/tpe/taipei/",
+      "asOf": "2026-10-14"
+    },
+    "british": {
+      "en": "British Airways Avios",
+      "phones": [
+        { "number": "+1 800-247-9297", "label": "英航美國訂位，每天 7:00–凌晨 1:00（美東時間）" }
+      ],
+      "contactUrl": "https://www.britishairways.com/content/information/help-and-contacts/contact-us",
+      "source": "https://www.britishairways.com/content/en/us/information/help-and-contacts/contact-us",
+      "asOf": "2026-10-14"
+    },
+    "virginatlantic": {
+      "en": "Virgin Atlantic Flying Club",
+      "phones": [
+        { "number": "+1 800-862-8621", "label": "美國・加拿大，24 小時" }
+      ],
+      "contactUrl": "https://www.virginatlantic.com/en-US/contact-us",
+      "source": "https://www.virginatlantic.com/en-US/contact-us",
+      "asOf": "2026-10-14"
+    },
+    "lifemiles": {
+      "en": "Avianca LifeMiles",
+      "phones": [
+        { "number": "+1 866-919-0081", "label": "美國，與 Avianca 共用客服，語音選 3" }
+      ],
+      "contactUrl": "https://helpcenter.lifemiles.com/hc/en-us/articles/15800876272027-Contact-Numbers",
+      "source": "https://helpcenter.lifemiles.com/hc/en-us/articles/15800876272027-Contact-Numbers",
+      "asOf": "2026-10-14"
+    },
+    "velocity": {
+      "en": "Virgin Australia Velocity",
+      "phones": [
+        { "number": "+61 2 8667 5924", "label": "澳洲・紐西蘭以外地區" }
+      ],
+      "contactUrl": "https://www.velocityfrequentflyer.com/member-support",
+      "source": "https://www.velocityfrequentflyer.com/member-support",
+      "asOf": "2026-10-14"
+    },
+    "united": { "en": "United MileagePlus", "contactUrl": "https://www.united.com/en/us/fly/help.html" },
+    "asiamiles": { "en": "Cathay Asia Miles", "contactUrl": "https://www.cathaypacific.com/cx/zh_TW/frequent-flyers/about-the-club/contact-us-before-login.html" },
+    "flyingblue": { "en": "Air France-KLM Flying Blue", "contactUrl": "https://wwws.airfrance.com.tw/contact" },
+    "turkish": { "en": "Turkish Airlines Miles&Smiles", "contactUrl": "https://www.turkishairlines.com/en-int/help-center/" },
+    "qatar": { "en": "Qatar Airways Privilege Club", "contactUrl": "https://www.qatarairways.com/en-tw/contact-us.html" },
+    "etihad": { "en": "Etihad Guest", "contactUrl": "https://www.etihad.com/en-us/help" },
+    "lufthansa": { "en": "Lufthansa Miles & More", "contactUrl": "https://www.lufthansa.com/tw/zh/help-and-contact" },
+    "eurobonus": { "en": "SAS EuroBonus", "contactUrl": "https://www.flysas.com/en/eurobonus" },
+    "jetblue": { "en": "JetBlue TrueBlue", "contactUrl": "https://www.jetblue.com/contact-us" },
+    "aeromexico": { "en": "Aeromexico Rewards", "contactUrl": "https://www.aeromexico.com/en-us/aeromexico-rewards" },
+    "ethiopian": { "en": "Ethiopian ShebaMiles", "contactUrl": "https://shebamiles.ethiopianairlines.com/" },
+    "finnair": { "en": "Finnair Plus", "contactUrl": "https://www.finnair.com/en/customer-care-and-contact-information" },
+    "smiles": { "en": "GOL Smiles" },
+    "azul": { "en": "Azul TudoAzul" },
+    "connectmiles": { "en": "Copa ConnectMiles" },
+    "copa": { "en": "Copa ConnectMiles" },
+    "saudia": { "en": "Saudia AlFursan" }
+  }
+}
