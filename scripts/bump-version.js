@@ -27,4 +27,9 @@ v.version = version;
 v.updated = date;
 v.history = [{ version, date, note }, ...(v.history || [])].slice(0, 20);
 fs.writeFileSync(file, `${JSON.stringify(v, null, 2)}\n`);
+// Cache-bust the page's script and stylesheet URLs (?v=) so browsers fetch the new release.
+const page = path.join(__dirname, '..', 'public', 'index.html');
+const html = fs.readFileSync(page, 'utf8');
+const next = html.replace(/(\.(?:js|css))\?v=[\w.-]+/g, `$1?v=${version}`);
+if (next !== html) fs.writeFileSync(page, next);
 console.log(`版本 ${version}（${date}）：${note}`);

@@ -126,7 +126,7 @@ function howToBookHtml(program, milesNeeded) {
   if (info?.booking) {
     const b = info.booking;
     const where = b.partnerOnline === true ? '官網可線上訂，夥伴航班也可以' : b.partnerOnline === 'partial' ? '官網可線上訂，部分夥伴航班要打電話' : b.ownOnline ? '自家航班可線上訂，夥伴航班要打電話' : '需要打電話訂';
-    lines.push(`<li><b>訂位方式</b>　${where}${b.phoneFee ? `；${esc(b.phoneFee)}` : ''}${b.note ? `。${esc(b.note)}` : ''}</li>`);
+    lines.push(`<li><b>訂位方式</b>　${where}${b.phoneFee ? `；${esc(phoneFeeText(b.phoneFee))}` : ''}${b.note ? `。${esc(b.note)}` : ''}</li>`);
   }
   // Banks the user holds come first, then the best ratios; only three show until expanded.
   const mine = (r) => (wallet.banks[r.source.id] ? 1 : 0);
@@ -141,8 +141,10 @@ function howToBookHtml(program, milesNeeded) {
   }
   if (info?.days) lines.push(`<li><b>開票</b>　${esc(info.windowNote || `約 ${info.days} 天前開放`)}</li>`);
   const src = info?.sources?.[0];
-  return `<div class="howto"><h3>怎麼用 ${esc(programName(key))} 訂</h3><ul>${lines.join('')}</ul>${src ? `<p class="hint">資料來源：<a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label)} ↗</a>${info.confidence === 'secondary' ? '（第三方整理）' : ''}</p>` : ''}</div>`;
+  return `<details class="howto"><summary>怎麼用 ${esc(programName(key))} 訂</summary><ul>${lines.join('')}</ul>${src ? `<p class="hint">資料來源：<a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label)} ↗</a>${info.confidence === 'secondary' ? '（第三方整理）' : ''}</p>` : ''}</details>`;
 }
+// The data writes the phone fee as a bare value ("無（2020 年起取消電話訂位費）"); give it a subject so it reads as a sentence.
+const phoneFeeText = (fee) => (/^無/.test(fee) ? `電話訂位不收手續費${fee.replace(/^無/, '').replace(/電話訂位費/, '')}` : fee);
 
 const phantomHtml = (program, airlines) => phantomWarnings(program, airlines).map((p) => `<p class="phantom">⚠️ ${esc(p.warning)}</p>`).join('');
 
@@ -212,14 +214,29 @@ function releaseTableHtml() {
 }
 
 // ---------- points tab: converter / my points / miles needed ----------
-const pointsView = { view: 'calc' };
+// The tool shown is part of the address (#points/wallet), so a reload or a link opens the same one.
+const POINTS_VIEWS = ['calc', 'wallet', 'detour', 'need'];
+const pointsView = { view: POINTS_VIEWS.includes(tabSub.points) ? tabSub.points : 'calc' };
 function pointsTabsHtml() {
   const v = pointsView.view;
   return `<fieldset class="seg points-seg" aria-label="工具">${[['calc', '點數換算'], ['wallet', '我的點數'], ['detour', '繞路兌換'], ['need', '哩程試算']].map(([k, l]) =>
     `<label><input type="radio" name="points-view" value="${k}" ${k === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
 }
+function setPointsView(v) {
+  pointsView.view = v;
+  if (v === 'calc') delete tabSub.points; else tabSub.points = v;
+}
 function bindPointsTabs(host) {
-  $$('input[name=points-view]', host).forEach((i) => i.addEventListener('change', () => { pointsView.view = i.value; renderPoints(); }));
+  $$('input[name=points-view]', host).forEach((i) => i.addEventListener('change', () => { setPointsView(i.value); showTab('points'); renderPoints(); }));
+}
+// 「去填點數」 from the results: straight to 點數工具 › 我的點數.
+function openWallet() {
+  setPointsView('wallet');
+  const first = !tabDone.has('points');
+  showTab('points');
+  if (!first) renderPoints();
+  window.scrollTo({ top: 0 });
+  $('#w-pick')?.focus();
 }
 
 // Only what the user entered is listed; everything else is picked from one dropdown, so the page stays short.
@@ -285,7 +302,7 @@ function renderWalletHotelSum() {
   host.parentElement.hidden = !rows.length;
   host.innerHTML = rows.length ? `<div class="table-wrap"><table class="wallet-sum"><thead><tr><th>飯店</th><th>最多可湊到</th><th>來源</th></tr></thead><tbody>
     ${rows.map(({ k, r }) => `<tr><td><b>${esc(hotelPrograms()[k])}</b></td><td><b>${fmt(r.total)} 點</b></td><td><small>${[r.own ? `自有 ${fmt(r.own)}` : '', ...r.banks.map((b) => `${esc(b.source.bank)} ${fmt(b.points)} 點 → ${fmt(b.miles)}`)].filter(Boolean).join('、')}</small></td></tr>`).join('')}
-    </tbody></table></div><p class="hint">一樣每一列各自計算，同一筆點數只能轉一次。各家飯店一點的價值差很多，點數多不代表比較划算，可以到「點數換算」切換「🏨 換飯店點數」看說明。</p>` : '';
+    </tbody></table></div><p class="hint">一樣每一列各自計算，同一筆點數只能轉一次。各家飯店一點的價值差很多，點數多不代表比較划算，可以到「點數換算」把「換成」改為「🏨 飯店點數」看說明。</p>` : '';
 }
 function renderWalletList() {
   const host = $('#wallet-list');
@@ -590,8 +607,9 @@ function needHtml() {
 function bindNeed(host) {
   const form = $('#need-form', host);
   const pk = { origin: createAirportPicker(form, 'origin'), destination: createAirportPicker(form, 'destination') };
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    await loadAirports();
     for (const p of Object.values(pk)) {
       const unknown = p.commit();
       if (unknown.length || !p.codes().length) { toast(unknown.length ? `找不到「${unknown.join('、')}」` : `請輸入${p.label}`); p.focus(); return; }
@@ -601,7 +619,7 @@ function bindNeed(host) {
     need.cabin = new FormData(form).get('cabin') || 'J';
     renderNeed();
   });
-  if (need.origin && need.destination) renderNeed();
+  if (need.origin && need.destination) loadAirports().then(renderNeed);
 }
 function renderNeed() {
   const host = $('#need-result');
@@ -639,11 +657,10 @@ function renderNeed() {
   $('#need-search').addEventListener('click', () => {
     pickers.origin.set([need.origin]);
     pickers.destination.set([need.destination]);
-    const cab = $(`#search-form input[name=cabin][value="${c}"]`);
-    if (cab) cab.checked = true;
+    setCabin(c);
     showTab('search');
     $('#search-form .dp-btn').focus();
-    toast('選好出發日期後按「搜尋機位」');
+    toast('選好出發日期後按「搜尋機位」；不選日期會查未來 1 個月');
   });
 }
 
@@ -655,6 +672,7 @@ async function loadDeals() {
   try {
     dealsState.body = await api('/api/deals');
     renderDeals();
+    if (!AP.loaded) onAirports(renderDeals); // city names under the codes
   } catch {
     host.innerHTML = '';
   }
@@ -673,8 +691,8 @@ function renderDeals() {
     ${groups.map((g) => `<div class="deal-group"><h3 class="sub">${esc(g.name)}</h3><div class="deal-row">${g.items.slice(0, 4).map((d) => `
       <button type="button" class="deal-mini" data-deal="${esc(d.origin)}|${esc(d.destination)}|${esc(d.date)}">
         <span class="dm-route">${esc(d.origin)} → ${esc(d.destination)} <small>${esc(airportCity(d.destination))}</small></span>
-        <span class="dm-miles">${fmt(d.miles)} <small>哩</small></span>
-        <span class="dm-meta">${mmdd(d.date)}（${dowOf(d.date)}）· ${esc(srcName(d.source))}${d.direct ? ' · 直飛' : ''}</span>
+        <span class="dm-miles">${fmt(d.miles)} <small>哩</small>${d.direct ? '<small class="dm-direct">直飛</small>' : ''}</span>
+        <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>
       </button>`).join('')}</div></div>`).join('') || '<p class="hint">這個艙等今天沒有整理到好康。</p>'}
     <p class="hint">每天早上整理一次，座位可能已被訂走；點卡片會查那一天前後三天。</p>`;
   $$('input[name=deal-cabin]', host).forEach((i) => i.addEventListener('change', () => { dealsState.cabin = i.value; renderDeals(); }));
@@ -904,7 +922,7 @@ function rememberCash(from, to, date, cabin, price) {
   if (cashSeen[k] && cashSeen[k].price <= price && Date.now() - cashSeen[k].at < 864e5) return;
   cashSeen[k] = { price: Math.round(price), at: Date.now() };
   store.set(CASH_SEEN_KEY, cashSeen);
-  if (!fxCache) api('/api/fx').then((f) => { fxCache = f; }).catch(() => {});
+  loadFx().catch(() => {});
 }
 // Remember every one-way fare of a cash search, per actual airport pair, per person.
 function rememberCashSearch(r, options) {
@@ -1004,7 +1022,7 @@ async function loadWatches() {
 function initFeatures() {
   wallet = loadWallet();
   cashSeen = loadCashSeen();
-  if (Object.keys(cashSeen).length && !fxCache) api('/api/fx').then((f) => { fxCache = f; }).catch(() => {});
+  if (Object.keys(cashSeen).length) loadFx().catch(() => {});
   $('#watch-panel')?.addEventListener('toggle', loadWatches);
   plan = cleanPlan(store.get(PLAN_KEY, null));
   readSharedPlan();
