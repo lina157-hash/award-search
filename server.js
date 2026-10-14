@@ -18,6 +18,7 @@ const { redisKv, memoryKv, takeLock, sharedCache, KvError } = require('./lib/kv'
 const { todayTW, monthTW, validDate } = require('./lib/day');
 const tg = require('./lib/telegram');
 const accor = require('./lib/accor');
+const { createAccounts, AccountError } = require('./lib/accounts');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -222,7 +223,7 @@ const priceWatch = watchStore && createPriceWatch({
 });
 async function handleWatch(req, q) {
   if (!priceWatch) return { configured: false, watches: [] };
-  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能管理降價追蹤', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能管理降價追蹤', 401), { code: 'passcode' });
   if (req.method === 'POST') return { configured: true, ...(await priceWatch.add(await readJson(req))) };
   if (req.method === 'DELETE') { await priceWatch.remove(String(q.get('id') || '')); return { ok: true }; }
   return { configured: true, email: Boolean(alertMailer), max: priceWatch.max, ...(await priceWatch.list()) };
@@ -237,17 +238,17 @@ async function handleDeals() {
 
 const safeEqual = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 // Vercel's cron calls the run endpoint with `Authorization: Bearer $CRON_SECRET`; people use the passcode (when one is set).
-function alertsAllowed(req) {
+async function alertsAllowed(req) {
   const secret = (process.env.CRON_SECRET || '').trim();
   if (secret && safeEqual(String(req.headers.authorization || ''), `Bearer ${secret}`)) return true;
-  return cashUnlocked(req);
+  return cashOk(req);
 }
 // Who may start the daily run, which spends seats.aero, RapidAPI and mail: the cron (its secret) or the owner (the
 // passcode). With neither set, nobody, except in the demo, which spends nothing.
-function runCaller(req) {
+async function runCaller(req) {
   const secret = (process.env.CRON_SECRET || '').trim();
   if (secret && safeEqual(String(req.headers.authorization || ''), `Bearer ${secret}`)) return 'cron';
-  if (cashPasscode()) return cashUnlocked(req) ? 'owner' : null;
+  if (cashPasscode()) return (await cashOk(req)) ? 'owner' : null;
   return MOCK && CASH_MODE !== 'live' && !secret ? 'owner' : null;
 }
 function readJson(req, limit = 10_000) {
@@ -277,7 +278,7 @@ function readJson(req, limit = 10_000) {
 // finishes the rest; work already done today is skipped. `?part=deals,watches,alerts` runs only those parts.
 const RUN_BUDGET = { deals: 20e3, watches: 28e3, alerts: 48e3 };
 async function runDaily(req, q) {
-  const who = runCaller(req);
+  const who = await runCaller(req);
   if (!who) throw Object.assign(new CashError('需要通關密碼才能執行檢查', 401), { code: 'passcode' });
   const t0 = Date.now();
   const parts = new Set((q.get('part') || 'deals,watches,alerts').split(','));
@@ -299,7 +300,7 @@ async function runDaily(req, q) {
 async function handleAlerts(req, q, sub) {
   if (sub === 'run') return runDaily(req, q);
   if (!alerts) return { configured: false, email: false, alerts: [] };
-  if (!alertsAllowed(req)) throw Object.assign(new CashError('需要通關密碼才能管理提醒', 401), { code: 'passcode' });
+  if (!(await alertsAllowed(req))) throw Object.assign(new CashError('需要通關密碼才能管理提醒', 401), { code: 'passcode' });
   if (req.method === 'POST') return { configured: true, ...(await alerts.add(await readJson(req))) };
   if (req.method === 'DELETE') { await alerts.remove(String(q.get('id') || '')); return { ok: true }; }
   return { configured: true, email: Boolean(alertMailer), alerts: await alerts.list() };
@@ -308,7 +309,7 @@ async function handleAlerts(req, q, sub) {
 // /api/telegram: GET status, POST /api/telegram/link links the newest chat that sent /start to the bot, DELETE unlinks.
 // Linking decides where the owner's alerts go, so it needs the passcode to be set (except in the demo).
 async function handleTelegram(req, sub) {
-  const ok = cashPasscode() ? cashUnlocked(req) : TELEGRAM_MOCK;
+  const ok = cashPasscode() ? await cashOk(req) : TELEGRAM_MOCK;
   if (!ok) throw Object.assign(new CashError(cashPasscode() ? '需要通關密碼才能設定 Telegram' : '要先在 Vercel 設定 CASH_PASSCODE，才能連結 Telegram', 401), { code: 'passcode' });
   const mock = TELEGRAM_MOCK ? { mock: true } : {};
   if (sub === 'link') {
@@ -327,6 +328,87 @@ function cashUnlocked(req) {
   const want = cashPasscode();
   if (!want) return true;
   return safeEqual(String(req.headers['x-cash-pass'] || ''), want);
+}
+
+// Signed-in accounts that entered the passcode once count as unlocked from then on (see lib/accounts.js), next to the
+// x-cash-pass header. The header on a signed-in request is what marks the account.
+async function cashOk(req) {
+  if (!cashPasscode()) return true;
+  const sess = await sessionOf(req);
+  if (cashUnlocked(req)) {
+    if (sess) await accounts.markUnlocked(sess, cashPasscode()).catch((e) => console.error('unlock', e.message));
+    return true;
+  }
+  return sess ? accounts.isUnlocked(sess.user, cashPasscode()) : false;
+}
+
+// Accounts (optional): email + password, to carry one's own settings between devices. Needs Redis (in-memory in the
+// demo); verify and reset mails go through Resend, and the demo prints the links to the server log instead.
+const ACCOUNTS_ON = HAS_REDIS || MOCK;
+const accounts = ACCOUNTS_ON ? createAccounts({ kv, sendMail: alertMailer, log: MOCK && !alertMailer ? (m) => console.log(m) : null }) : null;
+const cookiesOf = (req) => Object.fromEntries(String(req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter(([k, v]) => k && v).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
+function sessionOf(req) {
+  if (!accounts) return Promise.resolve(null);
+  req.sessionPromise ||= accounts.session(cookiesOf(req).sid).catch(() => null);
+  return req.sessionPromise;
+}
+const sidCookie = (sid, maxAge) => `sid=${sid}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge != null ? `; Max-Age=${maxAge}` : ''}`;
+const clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+const siteBase = (req) => SITE_URL || `${String(req.headers['x-forwarded-proto'] || 'http').split(',')[0]}://${req.headers['x-forwarded-host'] || req.headers.host}`;
+// State-changing account requests: JSON only (a cross-site form cannot send it without a CORS preflight) and, when
+// the browser says where it comes from, from this site.
+function sameSite(req) {
+  if (!/^application\/json\b/i.test(String(req.headers['content-type'] || ''))) return false;
+  const origin = req.headers.origin;
+  if (origin) {
+    let host;
+    try { host = new URL(origin).host; } catch { return false; }
+    const own = [req.headers['x-forwarded-host'], req.headers.host, SITE_URL ? new URL(SITE_URL).host : ''].filter(Boolean);
+    return own.includes(host);
+  }
+  const site = req.headers['sec-fetch-site'];
+  return !site || site === 'same-origin' || site === 'none';
+}
+async function handleAccount(req, res, sub) {
+  if (!accounts) return sendJson(res, 200, { configured: false, loggedIn: false });
+  const m = req.method;
+  if (m !== 'GET' && !sameSite(req)) return sendJson(res, 403, { error: '請從網站本身操作', code: 'origin' });
+  const ctx = { ip: clientIp(req), ua: req.headers['user-agent'], base: siteBase(req) };
+  const sess = await sessionOf(req);
+  const need = () => { if (!sess) throw new AccountError('請先登入', 401, 'login-required'); return sess; };
+  const body = m === 'POST' || m === 'PUT' || m === 'DELETE' ? await readJson(req, sub === 'data' ? 260_000 : 10_000) : {};
+  const pass = cashPasscode();
+  const status = async (s) => ({ configured: true, emailEnabled: accounts.mailOn, ...(await accounts.status(s, pass)) });
+  if (sub === '' && m === 'GET') return sendJson(res, 200, await status(sess));
+  if (sub === '' && m === 'DELETE') {
+    await accounts.remove(need(), body, ctx);
+    return sendJson(res, 200, { ok: true }, null, { 'set-cookie': sidCookie('', 0) });
+  }
+  if (sub === 'data' && m === 'GET') return sendJson(res, 200, await accounts.getData(need()));
+  if (sub === 'data' && m === 'PUT') return sendJson(res, 200, await accounts.putData(need(), body));
+  if (m !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
+  if (sub === 'signup') return sendJson(res, 200, await accounts.signup(body, ctx));
+  if (sub === 'verify') return sendJson(res, 200, await accounts.verify(body, ctx));
+  if (sub === 'forgot') return sendJson(res, 200, await accounts.forgot(body, ctx));
+  if (sub === 'reset') return sendJson(res, 200, await accounts.reset(body, ctx), null, { 'set-cookie': sidCookie('', 0) });
+  if (sub === 'login') {
+    if (sess) await accounts.logout(sess).catch(() => {});
+    const r = await accounts.login(body, ctx);
+    const fresh = await accounts.session(r.sid);
+    return sendJson(res, 200, { ok: true, ...(await status(fresh)) }, null, { 'set-cookie': sidCookie(r.sid, r.maxAge) });
+  }
+  if (sub === 'logout') {
+    await accounts.logout(sess);
+    return sendJson(res, 200, { ok: true, loggedIn: false }, null, { 'set-cookie': sidCookie('', 0) });
+  }
+  if (sub === 'password') return sendJson(res, 200, await accounts.changePassword(need(), body, ctx));
+  if (sub === 'unlock') {
+    need();
+    if (!pass) return sendJson(res, 200, { unlocked: true });
+    if (!(await cashOk(req))) throw Object.assign(new CashError('通關密碼不對', 401), { code: 'passcode' });
+    return sendJson(res, 200, await status(await accounts.session(cookiesOf(req).sid)));
+  }
+  return sendJson(res, 404, { error: 'not found' });
 }
 
 // TWD per unit of each currency, for converting award taxes. Refreshed daily from a free rate feed; the table is the fallback.
@@ -442,7 +524,7 @@ const CABIN_CLASS = { Y: 1, W: 2, J: 3, F: 4 };
 
 async function handleCash(q, req) {
   if (CASH_MODE === 'off') return { configured: false, options: [] };
-  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
   const depart = param(q, 'depart', DATE, { required: true });
   const ret = param(q, 'return', DATE);
   const today = todayTW();
@@ -502,7 +584,7 @@ async function handleDirects(q, req) {
   const open = from.every((o) => DIRECTS_OPEN.has(o));
   if (MOCK && !directs) return { body: { configured: true, mock: true, ...mock.mockDirects(from, to) }, open };
   if (!directs) return { body: { configured: false }, open };
-  const unlocked = cashUnlocked(req);
+  const unlocked = await cashOk(req);
   try {
     return { body: { configured: true, ...(await directs.between(from, to, { canFetch: (o) => DIRECTS_OPEN.has(o) || unlocked })), quota: directsQuota.left }, open };
   } catch (e) {
@@ -515,7 +597,7 @@ async function handleDirects(q, req) {
 // Google Flights' lowest fare per departure day (RapidAPI, one request per call), for the month view in the cash tab.
 async function handleCashCalendar(q, req) {
   if (CASH_MODE === 'off') return { configured: false, days: [] };
-  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
   const { start_date: start, end_date: end } = dateRange(q);
   if (start < todayTW()) throw new BadRequest('開始日期不可早於今天');
   if ((Date.parse(end) - Date.parse(start)) / 864e5 > 61) throw new BadRequest('一次最多查 2 個月');
@@ -538,7 +620,7 @@ async function handleCashCalendar(q, req) {
 
 // A RapidAPI seller's booking page (one more request), fetched when the user presses its button.
 async function handleCashLink(q, req) {
-  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼', 401), { code: 'passcode' });
   const token = param(q, 'token', /^r:[\w\-+/=.:]{1,4000}$/, { required: true });
   if (CASH_MODE === 'mock') return { url: 'https://www.google.com/travel/flights' };
   if (!rapidQuery) throw new CashError('沒有設定 RapidAPI', 503);
@@ -594,7 +676,7 @@ const serpHotelLookup = SERPAPI_KEY && hotelCash.serpHotels({ apiKey: SERPAPI_KE
 const bookingQuota = { left: null, limit: null };
 const bookingLookup = RAPIDAPI_KEY && hotelCash.bookingHotels({ apiKey: RAPIDAPI_KEY, kv, onQuota: (q) => Object.assign(bookingQuota, q) });
 async function handleHotelCash(q, req) {
-  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查飯店現金價', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能查飯店現金價', 401), { code: 'passcode' });
   const name = (q.get('name') || '').trim().replace(/\s+/g, ' ');
   if (!name || name.length > 120 || /[<>{}\\]/.test(name)) throw new BadRequest('缺少飯店名稱');
   const city = (q.get('city') || '').trim().replace(/\s+/g, ' ').slice(0, 60);
@@ -636,7 +718,7 @@ async function handleHotelCash(q, req) {
 // usually 1 page + a cached city id), Accor brands kept, the price turned into points. Never SerpApi. Answers are
 // shared for 6 hours. Behind the passcode because it spends the Booking.com quota.
 async function handleAccor(q, req) {
-  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查雅高飯店', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能查雅高飯店', 401), { code: 'passcode' });
   const city = (q.get('city') || '').trim().replace(/\s+/g, ' ');
   if (!city || city.length > 60 || /[<>{}\\]/.test(city)) throw new BadRequest('請輸入城市');
   const checkin = param(q, 'checkin', DATE, { required: true });
@@ -678,8 +760,8 @@ const CACHE = {
 };
 
 // Errors are never cached.
-function sendJson(res, status, body, cache) {
-  res.writeHead(status, { 'content-type': MIME['.json'], 'cache-control': status === 200 && cache ? cache : 'no-store' });
+function sendJson(res, status, body, cache, extra = {}) {
+  res.writeHead(status, { 'content-type': MIME['.json'], 'cache-control': status === 200 && cache ? cache : 'no-store', ...extra });
   res.end(JSON.stringify(body));
 }
 
@@ -746,6 +828,11 @@ async function route(req, res) {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleAlerts(req, q, p.endsWith('/run') ? 'run' : ''));
     }
+    const am = p.match(/^\/api\/account(?:\/(signup|verify|login|logout|forgot|reset|password|unlock|data))?$/);
+    if (am) {
+      if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return await handleAccount(req, res, am[1] || '');
+    }
     if (p === '/api/telegram' || p === '/api/telegram/link') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleTelegram(req, p.endsWith('/link') ? 'link' : ''));
@@ -761,6 +848,7 @@ async function route(req, res) {
       return sendJson(res, 200, {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
+        accounts: Boolean(accounts), accountEmail: Boolean(accounts?.mailOn && alertMailer),
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true },
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK },
         // Which deployment is answering, to confirm a redeploy went live.
@@ -811,7 +899,8 @@ async function route(req, res) {
     serveStatic(req, res, url);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
-    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof AccountError && e.current) return sendJson(res, e.status, { error: e.message, code: e.code, ...e.current });
+    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof AccountError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

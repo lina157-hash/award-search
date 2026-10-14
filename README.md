@@ -57,5 +57,6 @@ npm test
 
 7. （選用）「誰飛直航」用同一把 `RAPIDAPI_KEY` 的 AeroDataBox（每月約 400 單位，每個出發機場 6 單位，存兩週）。台灣各機場與香港、東京、大阪、首爾、曼谷、新加坡任何人都能查；其他出發機場要通關密碼。每月剩 40 單位時自動停止查新機場；如果你的方案額度不同，可設 `DIRECTS_MONTHLY_UNITS`。
 8. （選用）Telegram 通知：在 Telegram 找 @BotFather，傳 `/newbot` 建立自己的機器人，複製它給的金鑰，在 Vercel 新增環境變數 `TELEGRAM_BOT_TOKEN` 後重新部署（需要已設定 `CASH_PASSCODE` 和 Upstash Redis）。接著在 Telegram 打開你的機器人按「開始」（傳送 `/start`），再回網站按「連結 Telegram」；收到「機票搜索雷達已連結」就完成了。之後新機位提醒和降價通知除了 Email 也會傳到 Telegram。
+9. （選用）帳號同步：有 Upstash Redis 就能用 Email＋密碼註冊，在不同裝置同步點數、收藏、最近搜尋、行程等個人設定（不登入也一切照舊）。驗證信和重設密碼信透過同一個 `RESEND_API_KEY` 寄出；沒設定寄信時帳號直接啟用、無法用「忘記密碼」。登入後輸入過一次通關密碼，同一個帳號在其他裝置也算已解鎖（只存加鹽雜湊，改了 `CASH_PASSCODE` 就要重新輸入）。
 
 前端放在 `public/`，`/api/*` 由 `api/index.js` 這支 serverless function 處理，金鑰不會出現在瀏覽器端。
