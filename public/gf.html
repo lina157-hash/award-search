@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>機票搜索雷達｜從 Google 航班帶入</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #fff8ee; --text: #1f2a37; --muted: #6b5d50; --accent: #06798f; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0e1620; --text: #eef2f5; --muted: #a9b4bf; --accent: #4fd1e0; } }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; padding: 16px; box-sizing: border-box; }
+    p { margin: 0; text-align: center; } small { color: var(--muted); } a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <p id="msg">正在從 Google 航班帶入航線…<br><small>只會開一次一般的航線查詢</small></p>
+  <script src="/gflights.js"></script>
+  <script>
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var page = { title: q.get('title') || '' };
+      try { page.v = JSON.parse(q.get('v') || '[]'); } catch (e) { page.v = []; }
+      if (!Array.isArray(page.v)) page.v = [];
+      var target = '/#search';
+      try {
+        var today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+        target = GF.searchTarget(GF.parseGoogleFlights(q.get('u') || '', page, today), today);
+      } catch (e) { target = '/#gf?'; }
+      document.getElementById('msg').innerHTML = '正在前往機票搜索雷達…<br><small><a href="' + target.replace(/"/g, '&quot;') + '">沒有自動跳轉請點這裡</a></small>';
+      location.replace(target);
+    })();
+  </script>
+</body>
+</html>

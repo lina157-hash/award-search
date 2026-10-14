@@ -1160,3 +1160,65 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .buy-line small { display: block; color: var(--muted); font-size: .78rem; }
 .need-table td small.ok-text { color: var(--heat-4); }
 .upcoming li .tag.until { margin-left: 2px; }
+/* ---------- etrips: 中停／開口組合 (E9), 外站出發 (E10), Google 航班快捷 (E14) ---------- */
+.combo-ex { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 8px 0 4px; font-size: .86rem; }
+.combo-legs { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; counter-reset: leg; }
+.combo-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; counter-increment: leg; }
+.combo-leg::before { content: counter(leg); display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: .78rem; font-weight: 700; }
+.combo-leg input { font: inherit; font-size: 1rem; padding: 6px 8px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); min-width: 0; }
+.combo-leg .combo-ap { width: 6.5em; text-transform: uppercase; }
+.combo-leg .combo-date { width: 10.5em; }
+.combo-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0 12px; }
+.combo-verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); border-left: 4px solid var(--muted); }
+.combo-verdict.ok { border-left-color: var(--accent); }
+.combo-verdict.ok b { color: var(--accent); }
+.combo-verdict.check { border-left-color: var(--sun-2); }
+.combo-verdict.bad { border-left-color: var(--danger); }
+.combo-verdict.bad b { color: var(--danger); }
+.combo-verdict span { color: var(--muted); font-size: .86rem; }
+.combo-checks { list-style: none; margin: 8px 0; padding: 0; font-size: .88rem; display: grid; gap: 2px; }
+.combo-checks li.ok { color: var(--text); }
+.combo-checks li.bad { color: var(--danger); }
+.combo-checks li:not(.ok):not(.bad) { color: var(--muted); }
+.combo-price { margin: 8px 0 4px; }
+.combo-price small { display: block; color: var(--muted); font-size: .8rem; }
+.combo-src a { margin-right: 4px; }
+.combo-all { margin: 10px 0; }
+.combo-all summary, .pos-tips summary { cursor: pointer; font-size: .88rem; color: var(--accent); }
+.combo-all .table-wrap { margin-top: 8px; box-shadow: none; }
+.combo-out > * + * { margin-top: 6px; }
+#combo-panel { scroll-margin-top: 70px; }
+.pos-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 18px 0 4px; }
+.pos-out { margin-top: 18px; }
+.pos-table td { vertical-align: top; }
+.pos-table td small { display: block; color: var(--muted); font-size: .78rem; }
+.pos-table button.small-btn { font-size: .8rem; padding: 4px 10px; white-space: nowrap; }
+.pos-tips { margin: 10px 0 6px; }
+.pos-tips ul { margin: 6px 0; padding-left: 1.2em; font-size: .86rem; color: var(--muted); }
+.gf-card { margin: 20px 0 8px; }
+.gf-card summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.gf-card summary small { color: var(--muted); font-size: .84rem; }
+.gf-drag { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0; }
+.gf-drag a { cursor: grab; }
+.gf-how { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 24px; font-size: .88rem; }
+.gf-how ol { margin: 6px 0 10px; padding-left: 1.3em; }
+.combo-all td, .pos-table td { white-space: normal; }
+.combo-all td:first-child { min-width: 9em; }
+.combo-all .linklike { text-align: left; }
+@media (max-width: 640px) {
+  /* Each leg on two lines: from → to (✕), then the date and its search button. */
+  .combo-leg { display: grid; grid-template-columns: 22px minmax(0, 1fr) 14px minmax(0, 1fr) auto; }
+  .combo-leg .combo-ap, .combo-leg .combo-date { width: 100%; }
+  .combo-leg .combo-date { grid-column: 2 / 4; grid-row: 2; }
+  .combo-leg [data-seek] { grid-column: 4 / 6; grid-row: 2; font-size: .82rem; padding: 6px 8px; }
+  .combo-leg [data-crm] { grid-column: 5; grid-row: 1; }
+  .combo-opts .seg { width: 100%; }
+  /* Positioning rows as small cards: no sideways scrolling on a phone. */
+  .pos-table thead { display: none; }
+  .pos-table, .pos-table tbody { display: block; }
+  .pos-table tr { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); padding: 4px 0; }
+  .pos-table td { display: block; border: 0; padding: 6px 12px; position: static; }
+  .pos-table td:nth-child(3) { grid-column: 1; }
+  .pos-table td:nth-child(4) { grid-column: 2; }
+  .pos-table td:nth-child(5) { grid-column: 1 / 3; padding-top: 0; }
+}
