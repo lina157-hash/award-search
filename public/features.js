@@ -606,7 +606,7 @@ function cashLegs() {
 }
 
 function planHtml(p, editable) {
-  if (!p.legs.length) return '<p class="hint">還沒有航段。在航班明細按「＋ 加入我的行程」，或在買機票選好航班後加入。可以把里程票和現金票混搭，例如去程用哩程、回程買票。</p>';
+  if (!p.legs.length) return '<p class="hint">還沒有航段。在航班明細按「＋ 加入我的行程」，或在查現金票選好航班後加入。可以把里程票和現金票混搭，例如去程用哩程、回程買票。</p>';
   const milesBy = {};
   const taxBy = {};
   let cashTotal = 0;
@@ -780,7 +780,7 @@ async function loadWatches() {
         <div class="hint">${w.flights ? `追蹤 ${esc(w.flights.replace(/\+/g, '、'))}` : '追蹤最便宜票價'}・${w.everyDays === 1 ? '每天' : `每 ${w.everyDays} 天`}查一次${w.paused ? `・<b class="warn">${w.paused === 'cap' ? '本月追蹤額度用完，下個月繼續' : 'SerpApi 額度快用完，暫停中'}</b>` : ''}：現在 <b>${money(w.lastPrice)}</b>${diff ? `（比開始時${diff < 0 ? `<b class="new">便宜 NT$${fmt(-diff)}</b>` : `貴 NT$${fmt(diff)}`}）` : ''}${w.lastLowest && w.lastLowest < (w.lastPrice || Infinity) ? `；同天最低 ${money(w.lastLowest)}` : ''}${w.pickedGone ? '；原航班已查不到，改看最低價' : ''}　${w.lastRun ? `${ago(w.lastRun)}檢查` : ''}${w.lastError ? `　⚠ ${esc(w.lastError)}` : ''}</div>
         <div class="alert-actions">${sparkline((w.history || []).map(([d, p]) => [d, p]))}<button type="button" class="outline" data-wdel="${esc(w.id)}">停止追蹤</button></div>
       </li>`;
-    }).join('')}</ul><p class="hint">本月追蹤已用 ${body.used || 0} / ${body.cap} 次查價額度。</p>` : '<p class="hint">還沒有追蹤。在買機票選好航班後，按「📉 追蹤降價」。</p>';
+    }).join('')}</ul><p class="hint">本月追蹤已用 ${body.used || 0} / ${body.cap} 次查價額度。</p>` : '<p class="hint">還沒有追蹤。在查現金票選好航班後，按「📉 追蹤降價」。</p>';
     $$('[data-wdel]', box).forEach((b) => b.addEventListener('click', async () => {
       try { await cashApi(`/api/watch?id=${encodeURIComponent(b.dataset.wdel)}`, { method: 'DELETE' }); toast('已停止追蹤'); loadWatches(); } catch (err) { toast(err.message); }
     }));
