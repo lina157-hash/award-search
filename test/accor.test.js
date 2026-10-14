@@ -170,11 +170,13 @@ test('brand filter: when the city filter list cannot be read, the known Accor br
     if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: Buffer.from(JSON.stringify({ dest_id: '-246227', dest_type: 'city' })).toString('base64'), name: 'Tokyo' }] });
     if (u.pathname === '/stays/get-filters') return Response.json({ status: true, data: { something: 'else' } });
     assert.equal(u.searchParams.get('categoriesFilter'), 'chaincode::1050,chaincode::1053');
-    return Response.json({ status: true, data: [{ id: 1, name: 'Novotel Tokyo Shinjuku', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } }] });
+    const zh = u.searchParams.get('languageCode') === 'zh-tw';
+    return Response.json({ status: true, data: [{ id: 1, name: zh ? '東京新宿諾富特酒店' : 'Novotel Tokyo Shinjuku', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } }] });
   };
   const lookup = bookingHotels({ apiKey: 'r', kv: memoryKv(), fetchImpl });
-  const r = await lookup.city({ city: 'Tokyo', checkin: '2026-11-22', checkout: '2026-11-24', adults: 2, lat: null, lon: null }, { brands: isAccorTitle, brandIds: ['chaincode::1050', 'chaincode::1053'] });
-  assert.deepEqual(seen, ['/stays/auto-complete', '/stays/get-filters', '/stays/search']);
-  assert.equal(r.hotels.length, 1);
+  const r = await lookup.city({ city: 'Tokyo', checkin: '2026-11-22', checkout: '2026-11-24', adults: 2, lat: null, lon: null }, { brands: isAccorTitle, brandIds: ['chaincode::1050', 'chaincode::1053'], zhNames: true });
+  assert.deepEqual(seen, ['/stays/auto-complete', '/stays/get-filters', '/stays/search', '/stays/search'], 'the last request is the Chinese names');
+  assert.equal(r.requests, 4);
+  assert.deepEqual(accorAnswer(r, { eurRate: 36, nights: 2 }).hotels.map((h) => [h.name, h.nameZh]), [['Novotel Tokyo Shinjuku', '東京新宿諾富特酒店']]);
   assert.match(r.debug.filters.shape, /something/);
 });

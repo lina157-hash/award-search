@@ -46,7 +46,7 @@ function hotelsHtml() {
   const s = hotelState;
   // Multi-select, so each chain is a toggle chip with a tick rather than a one-of-many segment.
   const chk = (k, title = '') => `<label class="h-chip"${title ? ` title="${esc(title)}"` : ''}><input type="checkbox" name="h-prog" value="${k}" ${s.programs.includes(k) ? 'checked' : ''}><span>${HOTEL_SHORT[k]}${k === 'accor' ? '<small>用額度</small>' : ''}</span></label>`;
-  const extra = [cashCfg.accor ? chk('accor', '用 Booking.com 的房價換算 ALL 點數，第一次查一個城市用 2 到 3 次 Booking.com 查價額度，之後同城市換日期只用 1 次（6 小時內同城市同日期不再花）') : '', chk('shangrila', '香格里拉的點數價不公開，會給你官網的連結')].join('');
+  const extra = [cashCfg.accor ? chk('accor', '用 Booking.com 的房價換算 ALL 點數，第一次查一個城市用 3 到 4 次 Booking.com 查價額度（含飯店中文名稱 1 次），之後同城市換日期用 2 次（6 小時內同城市同日期不再花）') : '', chk('shangrila', '香格里拉的點數價不公開，會給你官網的連結')].join('');
   return `<form id="hotel-form" class="search-card" autocomplete="off" novalidate>
     <div class="opts-row h-row">
       <label class="field h-where">城市或地區<input name="where" list="h-where-list" placeholder="例如 東京、曼谷、Bali" value="${esc(s.where)}"></label>
@@ -155,7 +155,7 @@ function accorHtml(body, nights) {
   const card = (h) => `<article class="hotel h-accor${h.soldOut ? ' sold-out' : ''}">
       <div class="hotel-main">
         <div><span class="pill h-accor">雅高</span> <small class="inline">${esc(h.brand)}</small>${h.stars ? ` <small class="inline stars" title="${h.stars} 星">${'★'.repeat(Math.round(h.stars))}</small>` : ''}</div>
-        <h3>${esc(h.name)}</h3>
+        <h3>${esc(h.name)}</h3>${h.nameZh ? `<small class="h-zh">${esc(h.nameZh)}</small>` : ''}
       </div>
       <div class="hotel-price">
         ${h.soldOut ? '<b class="muted">這幾晚已售完</b><small>或 Booking.com 沒有報價</small>' : `<b>NT$${fmt(h.total)}</b><small>${nights} 晚含稅總價</small>${ptsLine(h)}`}
