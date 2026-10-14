@@ -1,5 +1,5 @@
 {
- "lastReviewed": "2026-10-13",
+ "lastReviewed": "2026-10-14",
  "disclaimer": "銀行點數轉換比率、最低門檻與活動常變動，轉點前請到銀行官網確認；比率多來自銀行 2026 年公告，標示「待核實」的列來源較舊或僅有第三方整理。查無可靠來源而未列入：永豐、聯邦吉鶴卡（現金回饋卡）。",
  "programKeys": {
   "eva": "長榮 無限萬哩遊",
@@ -71,13 +71,69 @@
    "toName": "長榮、亞洲萬里通、華航、新航、日航、加航、法荷航、聯合、卡達、阿聯酋、澳航、LifeMiles、土航、越南航空、海南、亞航（共 16 家）",
    "ratio": "1 分 = 1 哩（全部 1:1）",
    "min": "3,000 分，以 500 分為單位",
-   "notes": "華航自 2026-04-01 起由 2:1 調回 1:1。網銀或 App 兌換多數即時入帳，華航、新航、日航、海南約 7 至 21 個工作天。",
+   "notes": "華航自 2026-04-01 起由 2:1 調回 1:1（滙豐 2026-01-30 公告）。一般約 7 至 14 個工作天、日航 7 至 21 個工作天入帳；網銀或 App 兌換可即時入帳，但華航、新航、日航、海南除外。",
    "confidence": "official",
    "source": {
     "label": "滙豐：旅人卡哩程兌換表（2026 Q4）",
     "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/fly.html"
    },
    "date": "2026-10-13"
+  },
+  {
+   "bank": "滙豐",
+   "program": "卓越理財信用卡 紅利積分",
+   "to": [
+    "eva",
+    "asiamiles",
+    "ci",
+    "sq"
+   ],
+   "toName": "長榮、亞洲萬里通、華航、新航",
+   "ratio": "1 點 = 1 哩",
+   "min": "3,000 點，以 300 點為單位",
+   "notes": "表格適用 2026-10-01 至 12-31；入帳時間與即時入帳例外同旅人卡。",
+   "confidence": "official",
+   "source": {
+    "label": "滙豐：哩程兌換表（2026 Q4，卓越理財卡）",
+    "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/fly.html"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "滙豐",
+   "program": "卓越理財信用卡 紅利積分",
+   "to": [
+    "other"
+   ],
+   "toName": "日航、阿聯酋、加航、LifeMiles、法荷航、海南、澳航、卡達、聯合、越南航空、土航、亞航",
+   "ratio": "3 點 = 1 哩",
+   "min": "3,000 點，以 300 點為單位",
+   "confidence": "official",
+   "source": {
+    "label": "滙豐：哩程兌換表（2026 Q4，卓越理財卡）",
+    "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/fly.html"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "滙豐",
+   "program": "運籌理財卡／白金卡／紅利好點御璽卡 紅利積分",
+   "to": [
+    "eva",
+    "ci",
+    "asiamiles",
+    "sq"
+   ],
+   "toName": "長榮、華航、亞洲萬里通（3 點 = 1 哩）；新航（2.5 點 = 1 哩）",
+   "ratio": "3 點 = 1 哩；新航 2.5 點 = 1 哩",
+   "min": "10,000 點（見說明）",
+   "notes": "官方頁只寫「其餘適用紅利好點信用卡」每次最低 10,000 點，未明確是否包含這三張卡，也沒寫兌換單位；換算器暫以 10,000 點為門檻。只能轉這四家。",
+   "confidence": "official",
+   "source": {
+    "label": "滙豐：哩程兌換表（2026 Q4，其他信用卡）",
+    "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/fly.html"
+   },
+   "date": "2026-10-14"
   },
   {
    "bank": "星展 DBS",
@@ -166,6 +222,24 @@
    "date": "2026-10-13"
   },
   {
+   "bank": "星展 DBS",
+   "program": "PChome 聯名卡 紅利點數",
+   "to": [
+    "asiamiles",
+    "eva"
+   ],
+   "toName": "亞洲萬里通（1 點 = 1 哩）、長榮（1 點 = 2 哩）",
+   "ratio": "亞洲萬里通 1 點 = 1 哩；長榮 1 點 = 2 哩",
+   "min": "3,000 哩，以 1,000 哩為單位",
+   "notes": "不能轉華航。",
+   "confidence": "official",
+   "source": {
+    "label": "星展：哩程兌換說明 PDF（適用至 2027-06-30）",
+    "url": "https://dbs.com.tw/iwov-resources/pdf/reward-tnc/miles.pdf"
+   },
+   "date": "2026-10-14"
+  },
+  {
    "bank": "國泰世華",
    "program": "小樹點（信用卡）",
    "to": [
@@ -218,15 +292,15 @@
     "sq",
     "other"
    ],
-   "toName": "法荷航 340、阿提哈德 420、泰航 450、英航 450、日航 480、卡達 480、加航 510、聯合 510、阿聯酋 550、新航 620（點數 = 1,000 哩）",
-   "ratio": "依計畫 340 至 620 點 = 1,000 哩",
+   "toName": "亞航 250、法荷航 340、阿提哈德 420、泰航 450、英航 450、日航 480、卡達 480、加航 510、聯合 510、阿聯酋 550、新航 620（點數 = 1,000 哩／點）",
+   "ratio": "依計畫 250 至 620 點 = 1,000 哩",
    "notes": "另可轉萬豪 340、IHG 250、雅高 600 點 = 1,000 點。日航比例 2026 年由 670 調為 480 點。",
    "confidence": "official",
    "source": {
     "label": "國泰世華：2026 年小樹點權益公告",
     "url": "https://www.cathaybk.com.tw/cathaybk/promo/event/credit-card/discount/2026/pointannounceInfo05/index.html"
    },
-   "date": "2026-10-13"
+   "date": "2026-10-14"
   },
   {
    "bank": "中國信託",
@@ -378,13 +452,13 @@
    ],
    "toName": "亞洲萬里通",
    "ratio": "1,000 點 = 1,000 哩",
-   "notes": "2026 年 10 至 12 月每月 5 日轉點另加贈 500 哩；也可轉高鐵 TGo（1,000 點 = 2,000 點）。",
+   "notes": "2026 年 10 至 12 月每月 5 日轉 1,000 點另加贈 500 哩（每月前 100 名正卡人、每戶每月一次）；也可轉高鐵 TGo（1,000 點 = 2,000 點）。",
    "confidence": "official",
    "source": {
     "label": "凱基：雙幣哩程卡",
     "url": "https://www.kgibank.com.tw/zh-tw/personal/credit-card/list/dual-currency-mileage-credit-card"
    },
-   "date": "2026-10-13"
+   "date": "2026-10-14"
   },
   {
    "bank": "凱基",
@@ -448,6 +522,145 @@
     "url": "https://www.fubon.com/banking/personal/credit_card/all_card/amiles/amiles.htm"
    },
    "date": "2026-10-13"
+  },
+  {
+   "bank": "華南",
+   "program": "紅利積點",
+   "to": [
+    "asiamiles"
+   ],
+   "toName": "亞洲萬里通",
+   "ratio": "3 點 = 1 哩",
+   "min": "9,000 點，以 9,000 點為單位",
+   "notes": "限正卡；首次申請須傳真或郵寄，之後可電話或傳真；約 4 至 6 週入帳。",
+   "confidence": "official",
+   "source": {
+    "label": "華南銀行：紅利兌換航空里數",
+    "url": "https://card.hncb.com.tw/wps/portal/card/area2/bonus/bonus_mileage/"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "華南",
+   "program": "紅利積點",
+   "to": [
+    "eva"
+   ],
+   "toName": "長榮 無限萬哩遊",
+   "ratio": "4.5 點 = 1 哩",
+   "min": "13,500 點（= 3,000 哩），以 13,500 點為單位",
+   "notes": "約 4 至 6 週入帳。",
+   "confidence": "official",
+   "source": {
+    "label": "華南銀行：紅利兌換航空里數",
+    "url": "https://card.hncb.com.tw/wps/portal/card/area2/bonus/bonus_mileage/"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "華南",
+   "program": "紅利積點",
+   "to": [
+    "other"
+   ],
+   "toName": "全日空 ANA（The One 尊榮無限卡 3 點、其他卡 4 點 = 1 哩）、日航 JMB（4 點 = 1 哩）",
+   "ratio": "全日空 3 或 4 點 = 1 哩；日航 4 點 = 1 哩",
+   "min": "12,000 點，以 12,000 點為單位",
+   "notes": "全日空每月 17 日與次月 2 日分兩批送出，約 4 至 6 週入帳；日航約 8 週。全日空官網對高等級卡的寫法為「美饌遨遊世界卡」，以銀行頁面為準。",
+   "confidence": "official",
+   "source": {
+    "label": "華南銀行：紅利兌換航空里數",
+    "url": "https://card.hncb.com.tw/wps/portal/card/area2/bonus/bonus_mileage/"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "第一銀行",
+   "program": "紅利積點",
+   "to": [
+    "asiamiles"
+   ],
+   "toName": "亞洲萬里通",
+   "ratio": "5,000 點 = 1,000 哩（世界卡 4,000 點）",
+   "min": "以 1,000 哩為單位",
+   "notes": "申請書適用 2026-09-01 至 2027-02-28；限正卡，銀行收件後 3 至 14 個工作天送出，約 2 週入帳。",
+   "confidence": "official",
+   "source": {
+    "label": "第一銀行：亞洲萬里通轉換申請書（2026.08 版）",
+    "url": "https://card.firstbank.com.tw/sites/card/files/1565713727213"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "第一銀行",
+   "program": "紅利積點",
+   "to": [
+    "eva"
+   ],
+   "toName": "長榮 無限萬哩遊",
+   "ratio": "35,000 點 = 5,000 哩（世界卡 30,000 點）",
+   "min": "以 5,000 哩為單位",
+   "notes": "申請書為 2023.10 版，轉點前請向銀行確認仍適用。",
+   "confidence": "official",
+   "source": {
+    "label": "第一銀行：長榮哩程兌換申請書（2023.10 版）",
+    "url": "https://card.firstbank.com.tw/sites/card/files/1565691530787"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "第一銀行",
+   "program": "紅利積點",
+   "to": [
+    "ci"
+   ],
+   "toName": "華航 華夏哩程",
+   "ratio": "45,000 點 = 5,000 哩（世界卡 15,000 點 = 2,000 哩）",
+   "min": "一般卡以 5,000 哩、世界卡以 2,000 哩為單位",
+   "notes": "申請書為 2023.10 版，轉點前請向銀行確認仍適用。",
+   "confidence": "official",
+   "source": {
+    "label": "第一銀行：華航哩程兌換申請書（2023.10 版）",
+    "url": "https://card.firstbank.com.tw/sites/card/files/1565691532429"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "上海商銀",
+   "program": "紅利積點",
+   "to": [
+    "asiamiles",
+    "ci",
+    "eva"
+   ],
+   "toName": "亞洲萬里通、華航、長榮",
+   "ratio": "8,000 點 = 500 哩",
+   "min": "以 8,000 點為單位",
+   "notes": "網路銀行或語音索取申請書兌換，約 2 至 4 週入帳。",
+   "confidence": "official",
+   "source": {
+    "label": "上海商銀：紅利兌換 票券／航空",
+    "url": "https://www.scsb.com.tw/content/card/reward/ti"
+   },
+   "date": "2026-10-14"
+  },
+  {
+   "bank": "台灣樂天",
+   "program": "樂翔卡 樂翔積分",
+   "to": [
+    "asiamiles",
+    "eva"
+   ],
+   "toName": "亞洲萬里通、長榮",
+   "ratio": "1 積分 = 1 哩（第三方整理）",
+   "min": "5,000 積分，以 900 積分為一組",
+   "notes": "門檻、單位與每月限兌一次來自官方頁（適用 2026-07-01 至 2027-06-30），但官方頁未寫出兌換比率，1:1 來自 roo.cash 整理（2026-06）。約 12 至 21 個工作天，長榮最快可即時入帳。",
+   "confidence": "verify",
+   "source": {
+    "label": "台灣樂天：樂翔卡哩程兌換說明",
+    "url": "https://www.card.rakuten.com.tw/corp/ads/11.xhtml"
+   },
+   "date": "2026-10-14"
   },
   {
    "bank": "渣打",
@@ -552,26 +765,27 @@
    "bank": "中國信託",
    "card": "ANA 聯名卡（極緻／無限）",
    "program": "全日空 ANA Mileage Club",
-   "earn": "國外消費最高 NT$10 = 1 哩；一般消費約 NT$20 = 1 哩（第三方整理）",
-   "confidence": "official",
+   "earn": "國外消費最高 NT$10 = 1 哩（官方頁）；國內一般消費約 NT$20 = 1 哩（第三方整理）",
+   "confidence": "secondary",
    "source": {
     "label": "中國信託：ANA 聯名卡",
     "url": "https://www.ctbcbank.com/content/dam/minisite/long/creditcard/ANA/index.html"
    },
-   "date": "2026-10-13"
+   "date": "2026-10-14",
+   "notes": "官方活動頁只寫海外與首刷優惠，國內一般消費比率未列出。"
   },
   {
    "bank": "新光",
    "card": "JAL 聯名卡",
    "program": "日航 JMB",
    "earn": "台灣 NT$40 = 1 哩；海外與日航官網購票 NT$40 = 2 哩",
-   "notes": "受理至 2025-12-31，可能已停發。",
-   "confidence": "verify",
+   "notes": "已停止受理新申請（官方：受理至 2025-12-31，多項權益至 2026-04-30 止）；新光銀行預計 2027-01-01 併入台新銀行（媒體報導，基準日暫定）。",
+   "confidence": "official",
    "source": {
     "label": "日航：新光 JAL 聯名卡",
     "url": "https://www.jal.co.jp/tw/zhtw/jalmile/shopping/jal_shinkong.html"
    },
-   "date": "2026-10-13"
+   "date": "2026-10-14"
   }
  ],
  "calc": {
@@ -757,6 +971,174 @@
     ]
    },
    {
+    "id": "hsbc-premier",
+    "bank": "滙豐",
+    "program": "卓越理財信用卡 紅利積分",
+    "variant": "卓越理財卡",
+    "confidence": "official",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "asiamiles",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "ci",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "sq",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "日航",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "阿聯酋",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "加航",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "LifeMiles",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "法荷航",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "海南",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "澳航",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "卡達",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "聯合",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "越南航空",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "土航",
+      "minPoints": 3000,
+      "stepPoints": 300
+     },
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "亞航",
+      "minPoints": 3000,
+      "stepPoints": 300
+     }
+    ],
+    "note": "最低 3,000 點，以 300 點為單位；長榮、亞萬、華航、新航 1:1，其他 12 家 3:1（2026-10-01 至 12-31 表）。"
+   },
+   {
+    "id": "hsbc-bonus",
+    "bank": "滙豐",
+    "program": "紅利積分",
+    "variant": "運籌理財／白金卡／紅利好點御璽卡",
+    "confidence": "official",
+    "note": "長榮、華航、亞萬 3:1，新航 2.5:1；官方頁未明確寫這三張卡的門檻，暫以「其餘紅利好點信用卡」的 10,000 點計。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 3,
+      "miles": 1,
+      "minPoints": 10000
+     },
+     {
+      "to": "asiamiles",
+      "points": 3,
+      "miles": 1,
+      "minPoints": 10000
+     },
+     {
+      "to": "ci",
+      "points": 3,
+      "miles": 1,
+      "minPoints": 10000
+     },
+     {
+      "to": "sq",
+      "points": 5,
+      "miles": 2,
+      "minPoints": 10000
+     }
+    ]
+   },
+   {
     "id": "dbs-flight",
     "bank": "星展 DBS",
     "program": "飛行積金",
@@ -886,6 +1268,29 @@
     ]
    },
    {
+    "id": "dbs-pchome",
+    "bank": "星展 DBS",
+    "program": "PChome 聯名卡 紅利點數",
+    "confidence": "official",
+    "note": "最低 3,000 哩，以 1,000 哩為單位；不能轉華航。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 1,
+      "miles": 1,
+      "minMiles": 3000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 2,
+      "minMiles": 3000,
+      "stepMiles": 1000
+     }
+    ]
+   },
+   {
     "id": "cathay-tree",
     "bank": "國泰世華",
     "program": "小樹點",
@@ -915,6 +1320,13 @@
       "to": "sq",
       "points": 620,
       "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 250,
+      "miles": 1000,
+      "name": "亞航",
       "stepMiles": 1000
      },
      {
@@ -1015,31 +1427,35 @@
     "bank": "中國信託",
     "program": "紅利點數（哩程酬賓計劃）",
     "confidence": "official",
-    "note": "需先加入哩程酬賓計劃（部分卡別扣點）；首次最低 3,000 點，之後每次 1,000 點以上。",
+    "note": "需先加入哩程酬賓計劃（部分卡別扣點）；首次最低 3,000 點，之後每次 1,000 點以上，點數須為 3（亞萬、新航）、5（長榮）、6（華航）的倍數。換算器以首次門檻 3,000 點計。",
     "rates": [
      {
       "to": "asiamiles",
       "points": 3,
       "miles": 1,
-      "minPoints": 1000
+      "minPoints": 3000,
+      "stepPoints": 3
      },
      {
       "to": "sq",
       "points": 3,
       "miles": 1,
-      "minPoints": 1000
+      "minPoints": 3000,
+      "stepPoints": 3
      },
      {
       "to": "eva",
       "points": 5,
       "miles": 1,
-      "minPoints": 1000
+      "minPoints": 3000,
+      "stepPoints": 5
      },
      {
       "to": "ci",
       "points": 6,
       "miles": 1,
-      "minPoints": 1000
+      "minPoints": 3000,
+      "stepPoints": 6
      }
     ]
    },
@@ -1173,6 +1589,172 @@
     ]
    },
    {
+    "id": "hncb-bonus",
+    "bank": "華南",
+    "program": "紅利積點",
+    "variant": "一般卡",
+    "confidence": "official",
+    "note": "亞萬以 9,000 點、長榮以 13,500 點、全日空與日航以 12,000 點為單位。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 3,
+      "miles": 1,
+      "minPoints": 9000,
+      "stepPoints": 9000
+     },
+     {
+      "to": "eva",
+      "points": 9,
+      "miles": 2,
+      "minPoints": 13500,
+      "stepPoints": 13500
+     },
+     {
+      "to": "other",
+      "points": 4,
+      "miles": 1,
+      "name": "全日空",
+      "minPoints": 12000,
+      "stepPoints": 12000
+     },
+     {
+      "to": "other",
+      "points": 4,
+      "miles": 1,
+      "name": "日航",
+      "minPoints": 12000,
+      "stepPoints": 12000
+     }
+    ]
+   },
+   {
+    "id": "hncb-bonus-theone",
+    "bank": "華南",
+    "program": "紅利積點",
+    "variant": "The One 尊榮無限卡",
+    "confidence": "official",
+    "note": "只有全日空比率較優（3:1），其他計畫同一般卡。",
+    "rates": [
+     {
+      "to": "other",
+      "points": 3,
+      "miles": 1,
+      "name": "全日空",
+      "minPoints": 12000,
+      "stepPoints": 12000
+     }
+    ]
+   },
+   {
+    "id": "firstbank-bonus",
+    "bank": "第一銀行",
+    "program": "紅利積點",
+    "variant": "一般卡",
+    "confidence": "official",
+    "note": "亞萬以 1,000 哩、長榮與華航以 5,000 哩為單位；長榮、華航申請書為 2023.10 版。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 5,
+      "miles": 1,
+      "stepMiles": 1000
+     },
+     {
+      "to": "eva",
+      "points": 7,
+      "miles": 1,
+      "stepMiles": 5000
+     },
+     {
+      "to": "ci",
+      "points": 9,
+      "miles": 1,
+      "stepMiles": 5000
+     }
+    ]
+   },
+   {
+    "id": "firstbank-bonus-world",
+    "bank": "第一銀行",
+    "program": "紅利積點",
+    "variant": "世界卡",
+    "confidence": "official",
+    "note": "亞萬以 1,000 哩、長榮以 5,000 哩、華航以 2,000 哩為單位。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 4,
+      "miles": 1,
+      "stepMiles": 1000
+     },
+     {
+      "to": "eva",
+      "points": 6,
+      "miles": 1,
+      "stepMiles": 5000
+     },
+     {
+      "to": "ci",
+      "points": 15,
+      "miles": 2,
+      "stepMiles": 2000
+     }
+    ]
+   },
+   {
+    "id": "scsb-bonus",
+    "bank": "上海商銀",
+    "program": "紅利積點",
+    "confidence": "official",
+    "note": "每 8,000 點換 500 哩。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 16,
+      "miles": 1,
+      "stepPoints": 8000
+     },
+     {
+      "to": "ci",
+      "points": 16,
+      "miles": 1,
+      "stepPoints": 8000
+     },
+     {
+      "to": "eva",
+      "points": 16,
+      "miles": 1,
+      "stepPoints": 8000
+     }
+    ]
+   },
+   {
+    "id": "rakuten-joyfly",
+    "bank": "台灣樂天",
+    "program": "樂翔卡 樂翔積分",
+    "confidence": "verify",
+    "note": "最低 5,000 積分，以 900 積分為一組，每月限兌一次；1:1 比率來自第三方整理，官方頁未寫明。",
+    "rates": [
+     {
+      "to": "asiamiles",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 5000,
+      "stepPoints": 900,
+      "secondary": true
+     },
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 1,
+      "minPoints": 5000,
+      "stepPoints": 900,
+      "secondary": true
+     }
+    ]
+   },
+   {
     "id": "scb-bonus",
     "bank": "渣打",
     "program": "紅利積點",
@@ -1214,16 +1796,7 @@
     "accor": "雅高 ALL",
     "shangrila": "香格里拉 Circle"
    },
-   "extraSources": [
-    {
-     "id": "hsbc-premier",
-     "bank": "滙豐",
-     "program": "卓越理財信用卡 紅利積分",
-     "variant": "卓越理財卡",
-     "confidence": "official",
-     "rates": []
-    }
-   ],
+   "extraSources": [],
    "rates": [
     {
      "source": "amex-mr",
