@@ -109,6 +109,25 @@ test('createExpiry: tracked accounts and the owner list are reminded once per st
   assert.equal((await ex.getOwner()).count, 0);
 });
 
+test('createExpiry: a reminder whose send failed is tried again on the next run', async () => {
+  const kv = memoryKv();
+  const today = todayTW();
+  const wallet = { miles: { eva: 10000 }, expiry: { eva: addDays(today, 25) } };
+  let fail = true;
+  const mails = [];
+  const ex = createExpiry({ kv, rules: RULES, loadWallet: async () => wallet, sendEmail: async (m) => { if (fail) throw new Error('mail down'); mails.push(m); } });
+  await ex.track('a@x.co', wallet);
+  let r = await ex.run();
+  assert.equal(r.errors, 1);
+  assert.equal(mails.length, 0);
+  fail = false;
+  r = await ex.run();
+  assert.equal(r.reminded, 1);
+  assert.equal(mails.length, 1);
+  r = await ex.run();
+  assert.equal(r.reminded, 0, 'sent once it went out');
+});
+
 test('server: a synced wallet with dates gets a reminder from the daily run; the owner list needs no account', async () => {
   let cookie = '';
   const call = async (p, { method = 'GET', body } = {}) => {
