@@ -272,6 +272,16 @@ test('feature data files are served and well formed', async () => {
     if (p.days != null) assert.ok(Number.isInteger(p.days) && p.days > 0 && p.days <= 366, k);
   }
   assert.equal((await fetch(`${base}/api/data/charts`)).status, 200);
+  // Hotel → airline transfers: every partner names a known airline and a positive ratio.
+  const points = await (await fetch(`${base}/api/data/points`)).json();
+  const toAir = points.calc.hotels.toAir;
+  for (const [hotel, h] of Object.entries(toAir.hotels)) {
+    assert.ok(points.calc.hotels.programs[hotel], hotel);
+    for (const p of h.partners) {
+      assert.ok(toAir.airlines[p.to], `${hotel} → ${p.to}`);
+      assert.ok(p.hotelPoints > 0 && p.miles > 0, `${hotel} → ${p.to}`);
+    }
+  }
 });
 
 test('price watch mails only after a real drop and tracks the picked flights', async () => {
