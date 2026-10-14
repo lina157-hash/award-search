@@ -120,6 +120,8 @@ let currentTab = 'search';
 // Tabs that render or fetch something on first open instead of on every page load.
 const tabInit = {};
 const tabDone = new Set();
+// Run each time a tab is shown (features.js: maps re-measure, 兌換地圖 follows wallet changes).
+const tabShown = {};
 let dataReady = false;
 function ensureTab(tab) {
   if (!dataReady || tabDone.has(tab) || !tabInit[tab]) return;
@@ -139,6 +141,7 @@ function showTab(name) {
   $$('.panel').forEach((p) => (p.hidden = p.id !== `tab-${tab}`));
   history.replaceState(null, '', `${location.pathname}${tabQuery[tab] || ''}#${tabHash(tab)}`);
   ensureTab(tab);
+  tabShown[tab]?.();
 }
 // Record a tab's query string, and show it in the address bar when that tab is open.
 function setTabUrl(tab, query) {
@@ -157,6 +160,22 @@ const BOOT_HASH = location.hash;
   const h = location.hash.slice(1);
   showTab(TABS.includes(h.split('/')[0]) ? h : 'search');
 }
+// showTab writes the hash with replaceState, which fires no hashchange; this is for the hash edited by hand, a bookmark
+// opened in the same tab, or an in-page #link.
+addEventListener('hashchange', () => {
+  const h = location.hash.slice(1);
+  const [tab, sub] = h.split('/');
+  if (!TABS.includes(tab)) return;
+  if (tab === 'points') {
+    const v = POINTS_VIEWS.includes(sub) ? sub : 'calc';
+    const redraw = v !== pointsView.view && tabDone.has('points');
+    setPointsView(v);
+    showTab('points');
+    if (redraw) renderPoints();
+    return;
+  }
+  showTab(h);
+});
 // Bring a status line into view when it is off screen (on phones the results start far below the form).
 function reveal(el) {
   const r = el.getBoundingClientRect();
@@ -838,10 +857,13 @@ function renderMine() {
 const alertCfg = { store: false, email: false };
 const ALERT_EMAIL_KEY = 'alertEmail';
 const alertSummary = (a) => `${a.origin} → ${a.destination}　${ymd(a.start)}${a.end !== a.start ? ` – ${ymd(a.end)}` : ''}　${CABIN_LABEL[a.cabin]}${a.pax ? `　至少 ${a.pax} 位` : ''}`;
-const alertFilterText = (a) => [a.sources?.length ? `哩程：${a.sources.map(srcName).join('、')}` : '', a.airlines?.length ? `航空公司：${a.airlines.map((x) => `${airlineZh(x)}（${x}）`).join('、')}${a.anyLeg ? '（含轉機）' : ''}` : ''].filter(Boolean).join('　');
+const allianceName = (id) => data.alliances?.alliances.find((x) => x.id === id)?.name || '';
+const alertFilterText = (a) => [a.sources?.length ? `哩程：${a.sources.map(srcName).join('、')}` : '', a.alliance ? `聯盟：${allianceName(a.alliance) || a.alliance}` : '', a.airlines?.length ? `航空公司：${a.airlines.map((x) => `${airlineZh(x)}（${x}）`).join('、')}${a.anyLeg ? '（含轉機）' : ''}` : '', a.direct ? '只要直飛' : ''].filter(Boolean).join('　');
+// The search a watch came from, for its 「查看」 button.
+const alertShare = (a) => new URLSearchParams({ o: a.origin, d: a.destination, s: a.start, e: a.end, c: a.cabin, ...(a.pax ? { n: a.pax } : {}), ...(a.alliance ? { al: a.alliance } : {}), ...(a.direct ? { direct: '1' } : {}) });
 // Which programs and airlines a watch reports. Programs: every seats.aero program, the ones in this search first, ticked
 // when the result filter hides some. Airlines: the carriers in this search's results, plus codes typed in for ones that
-// have no seats yet. Nothing ticked means any.
+// have no seats yet. Nothing ticked means any. The search's 航空聯盟 and 只看直飛 carry over too.
 function alertFiltersHtml(share) {
   const c = state.cabin;
   const inResults = [...new Set(state.results.map((r) => r.source))].filter((x) => SOURCE_NAMES[x]);
@@ -851,16 +873,19 @@ function alertFiltersHtml(share) {
   // An airline filter on the search itself (航空公司 field) carries over.
   const airPre = new Set(String(share.get('a') || '').toUpperCase().split(/[\s,]+/).filter((x) => /^[A-Z0-9]{2}$/.test(x)));
   for (const x of airPre) if (!carriers.includes(x)) carriers.push(x);
+  const al = data.alliances.alliances.some((x) => x.id === share.get('al')) ? share.get('al') : '';
   const chip = (name, value, label, on) => `<label class="h-chip"><input type="checkbox" name="${name}" value="${esc(value)}" ${on ? 'checked' : ''}><span>${esc(label)}</span></label>`;
   return `<details class="alert-pick"${pre.size ? ' open' : ''}><summary>只通知這些哩程計畫 <small class="muted">（不選＝全部）</small></summary>
       <div class="h-progs">${programs.map((x) => chip('a-src', x, srcName(x), pre.has(x))).join('')}</div>
     </details>
-    <details class="alert-pick"${airPre.size ? ' open' : ''}><summary>只通知這些航空公司的航班 <small class="muted">（不選＝全部）</small></summary>
+    <details class="alert-pick"${airPre.size || al ? ' open' : ''}><summary>只通知這些航空公司的航班 <small class="muted">（不選＝全部）</small></summary>
+      <label class="field">航空聯盟<select name="alliance"><option value="">全部聯盟</option>${data.alliances.alliances.map((x) => `<option value="${esc(x.id)}" ${x.id === al ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
       ${carriers.length ? `<div class="h-progs">${carriers.map((x) => chip('a-air', x, airlineLabel(x), airPre.has(x))).join('')}</div>` : ''}
       <label class="field">其他航空公司代碼（現在還沒有位子的，例如 CI、BR）<input name="airlinesExtra" placeholder="CI, BR" autocomplete="off" autocapitalize="characters"></label>
       <label class="switch"><input type="checkbox" name="anyLeg"><span class="knob"></span>轉機也通知（只要其中一段是這些航空公司）</label>
       <p class="hint">沒勾的話，整趟都是這些航空公司飛的才通知。</p>
-    </details>`;
+    </details>
+    <label class="switch"><input type="checkbox" name="direct" ${share.get('direct') === '1' ? 'checked' : ''}><span class="knob"></span>只通知直飛</label>`;
 }
 const ALERT_SETUP = `<p class="hint">機位提醒還沒啟用。網站主人要在 Vercel 做兩件事：① Storage 分頁用 Marketplace 建一個 Upstash Redis（免費方案），它會自動加上連線設定；② 到 resend.com 申請免費金鑰，在 Environment Variables 新增 <code>RESEND_API_KEY</code>。都設好後重新部署。</p>`;
 function openAlertDialog() {
@@ -890,7 +915,7 @@ $('#alert-form').addEventListener('submit', async (e) => {
     store.set(ALERT_EMAIL_KEY, f.email.value.trim());
     const sources = $$('input[name="a-src"]:checked', f).map((i) => i.value);
     const airlines = [...new Set([...$$('input[name="a-air"]:checked', f).map((i) => i.value), ...f.airlinesExtra.value.toUpperCase().split(/[\s,，、]+/).filter(Boolean)])];
-    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim(), sources, airlines, anyLeg: f.anyLeg.checked }), headers: { 'content-type': 'application/json' } });
+    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim(), sources, airlines, anyLeg: f.anyLeg.checked, alliance: f.alliance.value, direct: f.direct.checked }), headers: { 'content-type': 'application/json' } });
     $('#alert-dialog').close();
     toast(`已建立提醒，目前有 ${body.found} 筆有位`);
     $('#alerts-panel').open = true;
@@ -912,7 +937,7 @@ async function loadAlerts() {
     box.innerHTML = (list.length ? `<ul class="alert-list">${list.map((a) => `<li>
         <div><b>${esc(alertSummary(a))}</b>${alertFilterText(a) ? `<small>${esc(alertFilterText(a))}</small>` : ''}${a.email ? `<small>→ ${esc(a.email)}</small>` : '<small>只在網站顯示</small>'}</div>
         <div class="hint">${a.lastRun ? `上次檢查 ${ago(a.lastRun)}：有位 ${a.lastFound ?? '—'} 筆${a.lastNew ? `，<b class="new">新增 ${a.lastNew} 筆</b>` : ''}` : '尚未檢查'}${a.lastError ? `　⚠ ${esc(a.lastError)}` : ''}</div>
-        <div class="alert-actions"><button type="button" class="outline" data-open="${esc(new URLSearchParams({ o: a.origin, d: a.destination, s: a.start, e: a.end, c: a.cabin, ...(a.pax ? { n: a.pax } : {}) }))}">查看</button><button type="button" class="outline" data-del="${esc(a.id)}">刪除</button></div>
+        <div class="alert-actions"><button type="button" class="outline" data-open="${esc(alertShare(a))}">查看</button><button type="button" class="outline" data-del="${esc(a.id)}">刪除</button></div>
       </li>`).join('')}</ul>` : '<p class="hint">還沒有提醒。搜尋一條航線後，按結果上方的「🔔 有新機位通知我」。</p>')
       + `<div class="alert-foot">${list.length ? '<button type="button" class="outline" id="alerts-run">立即檢查全部</button>' : ''}<span class="hint">每天早上 8 點多（台灣時間）自動檢查${body.email ? '並寄信' : '；尚未設定寄信服務，只會顯示在這裡'}。</span></div>`;
     $$('[data-open]', box).forEach((b) => b.addEventListener('click', () => applyShare(new URLSearchParams(b.dataset.open))));
@@ -1508,7 +1533,9 @@ function applyExploreShare(share) {
   const f = $('#explore-form');
   for (const k of ['program', 'origin_region', 'destination_region']) if (share.get(k)) f[k].value = share.get(k);
   if (share.get('start')) datePickers.explore.set(share.get('start'), share.get('end') || share.get('start'));
-  const cab = $(`#explore-form input[name=cabin][value="${share.get('cabin') || 'J'}"]`);
+  // The cabin comes from the URL, so only a known letter goes into the selector.
+  const c = share.get('cabin');
+  const cab = $(`#explore-form input[name=cabin][value="${/^[YWJF]$/.test(c || '') ? c : 'J'}"]`);
   if (cab) cab.checked = true;
   f.requestSubmit();
 }

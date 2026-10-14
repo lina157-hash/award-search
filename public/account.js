@@ -131,6 +131,7 @@ function refreshViews(keys) {
     wallet = loadWallet();
     // Not while someone is typing a number into it.
     if (tabDone.has('points') && !$('#points-page')?.contains(document.activeElement)) renderPoints();
+    if (currentTab === 'map') syncRmap(); // otherwise when the tab is next shown
   }
   if (has('plan:v1')) { plan = cleanPlan(store.get(PLAN_KEY, null)); renderPlan(); }
   if (has('cashSeen:v1')) cashSeen = loadCashSeen();
@@ -646,13 +647,17 @@ const TG_STEPS = `<ol class="tg-steps">
 const TG_ERR = { 'no-start': '機器人還沒收到你的訊息：請先照第 1 步打開機器人按「開始」（或隨便傳一句話給它），再按一次連結。', token: 'Telegram 不接受網站設定的機器人金鑰（TELEGRAM_BOT_TOKEN），請到 @BotFather 重新複製後更新到 Vercel 並重新部署。', 'not-configured': '網站還沒設定 Telegram 機器人，請照上面的步驟設定。', blocked: '機器人被封鎖了：請在 Telegram 解除封鎖、按「開始」後再試一次。', 'not-linked': '還沒連結 Telegram，請先按「連結 Telegram」。' };
 // Can the gated status be read without asking for the passcode?
 const tgOpen = () => !cashCfg.locked || Boolean(store.get(PASS_KEY, ''));
+// Through the passcode prompt only when the site has a passcode. Without one the server refuses Telegram with a note
+// for the owner (set CASH_PASSCODE); cashApi would read that as a wrong passcode, ask every visitor for one and lock
+// 即時查價 for the rest of the visit.
+const tgApi = (path, opts) => (cashCfg.locked ? cashApi(path, opts) : api(path, opts));
 async function tgRender(host, note = '') {
   if (!host) return;
   host.innerHTML = '<p class="hint">載入中…</p>';
   let st;
   try {
     const cfg = (await api('/api/config')).telegram || {};
-    st = cfg.configured && tgOpen() ? await cashApi('/api/telegram') : { ...cfg };
+    st = cfg.configured && tgOpen() ? await tgApi('/api/telegram') : { ...cfg };
   } catch (err) { host.innerHTML = `<p class="acct-err">${esc(err.message)}</p>`; return; }
   const mock = st.mock ? '<p class="hint">（示範模式：連結的是一個假的 Telegram 帳號。）</p>' : '';
   host.innerHTML = !st.configured
@@ -673,13 +678,13 @@ async function tgRender(host, note = '') {
     const done = busy(b, act === 'unlink' ? '取消中…' : act === 'send' ? '傳送中…' : '連結中…');
     try {
       if (act === 'send') {
-        await cashApi('/api/telegram/test', { method: 'POST' });
+        await tgApi('/api/telegram/test', { method: 'POST' });
         done();
         $('.acct-err', host).hidden = true;
         toast('已傳送測試訊息，請到 Telegram 查看');
         return;
       }
-      const r = act === 'unlink' ? await cashApi('/api/telegram', { method: 'DELETE' }) : await cashApi('/api/telegram/link', { method: 'POST' });
+      const r = act === 'unlink' ? await tgApi('/api/telegram', { method: 'DELETE' }) : await tgApi('/api/telegram/link', { method: 'POST' });
       toast(r.linked ? `已連結 Telegram${r.name ? `：${r.name}` : ''}` : '已取消連結 Telegram');
       tgSummaries(r.linked);
       tgRender(host);
