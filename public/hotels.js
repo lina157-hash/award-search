@@ -4,16 +4,16 @@
 const HOTEL_NAMES = { marriott: '萬豪 Bonvoy', hilton: '希爾頓 Honors', ihg: '洲際 IHG', hyatt: '凱悅 World of Hyatt', choice: 'Choice', wyndham: '溫德姆 Wyndham', iprefer: 'I Prefer' };
 const HOTEL_SHORT = { marriott: '萬豪', hilton: '希爾頓', ihg: '洲際', hyatt: '凱悅', choice: 'Choice', wyndham: '溫德姆', iprefer: 'I Prefer', accor: '雅高', shangrila: '香格里拉' };
 // rooms.aero chains; 雅高 is priced from Booking.com cash rates (quota, passcode), 香格里拉 only links to its own site.
-const ROOMS_PROGRAMS = ['marriott', 'hilton', 'ihg', 'hyatt', 'wyndham', 'choice'];
+const ROOMS_PROGRAMS = ['marriott', 'hilton', 'ihg', 'hyatt'];
 // Shangri-La publishes no search URL that takes a city and dates (checked 2026-10), so these are the stable pages.
 const SL_REDEEM_URL = 'https://www.shangri-la.com/en/corporate/shangrilacircle/redeem-points/';
 const SL_HOTELS_URL = 'https://www.shangri-la.com/en/find-a-hotel/';
 // Typical value of one point in US cents (The Points Guy, 2026/10). A stay worth 30% more than this is marked as a good use.
-const POINT_VALUE_CENTS = { marriott: 0.75, hilton: 0.4, ihg: 0.6, hyatt: 1.7, wyndham: 1.1, choice: 0.6 };
+const POINT_VALUE_CENTS = { marriott: 0.75, hilton: 0.4, ihg: 0.6, hyatt: 1.7 };
 const HOTEL_GOOD = 1.3;
 const HOTEL_KEY = 'hotelSearch:v1';
 seq.hotels = 0;
-const hotelState = { where: '', date: '', flex: 7, nights: 1, programs: ['marriott', 'hilton', 'ihg', 'hyatt', 'wyndham', 'choice'], sort: 'points', affordOnly: false, results: null, params: null };
+const hotelState = { where: '', date: '', flex: 7, nights: 1, programs: ['marriott', 'hilton', 'ihg', 'hyatt'], sort: 'points', affordOnly: false, results: null, params: null };
 let hotelDate = null; // the form's date picker
 
 // Chinese city names → the English place name rooms.aero geocodes (multi-airport cities and airports with a Chinese name).
@@ -59,7 +59,7 @@ function hotelsHtml() {
       <fieldset class="h-progs" aria-label="飯店集團（可複選）"><legend class="sr-only">飯店集團（可複選）</legend>${ROOMS_PROGRAMS.map((k) => chk(k)).join('')}${extra}</fieldset>
       <button type="submit" class="primary big">搜尋點數房</button>
     </div>
-    <p class="hint">萬豪、希爾頓、洲際、凱悅、溫德姆、Choice 的點數房價來自 rooms.aero。雅高沒有點數房：ALL 點數固定 2,000 點折 €40，${cashCfg.accor ? '勾「雅高」會用 Booking.com 的房價換算成點數（要通關密碼、會用查價額度）' : '可以直接用現金價換算'}。香格里拉的點數價不公開，勾選後會給你官網的連結。</p>
+    <p class="hint">萬豪、希爾頓、洲際、凱悅的點數房價來自 rooms.aero。雅高沒有點數房：ALL 點數固定 2,000 點折 €40，${cashCfg.accor ? '勾「雅高」會用 Booking.com 的房價換算成點數（要通關密碼、會用查價額度）' : '可以直接用現金價換算'}。香格里拉的點數價不公開，勾選後會給你官網的連結。</p>
   </form>`;
 }
 
