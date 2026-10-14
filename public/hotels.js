@@ -46,7 +46,7 @@ function hotelsHtml() {
   const s = hotelState;
   // Multi-select, so each chain is a toggle chip with a tick rather than a one-of-many segment.
   const chk = (k, title = '') => `<label class="h-chip"${title ? ` title="${esc(title)}"` : ''}><input type="checkbox" name="h-prog" value="${k}" ${s.programs.includes(k) ? 'checked' : ''}><span>${HOTEL_SHORT[k]}${k === 'accor' ? '<small>用額度</small>' : ''}</span></label>`;
-  const extra = [cashCfg.accor ? chk('accor', '用 Booking.com 的房價換算 ALL 點數，第一次查一個城市用 3 到 4 次 Booking.com 查價額度（含飯店中文名稱 1 次），之後同城市換日期用 2 次（6 小時內同城市同日期不再花）') : '', chk('shangrila', '香格里拉的點數價不公開，會給你官網的連結')].join('');
+  const extra = [cashCfg.accor ? chk('accor', '用 Booking.com 的房價換算 ALL 點數，每次搜尋約用 2 到 10 次 Booking.com 查價額度（雅高飯店多的城市要翻好幾頁，每頁再多 1 次查中文名稱）（6 小時內同城市同日期不再花）') : '', chk('shangrila', '香格里拉的點數價不公開，會給你官網的連結')].join('');
   return `<form id="hotel-form" class="search-card" autocomplete="off" novalidate>
     <div class="opts-row h-row">
       <label class="field h-where">城市或地區<input name="where" list="h-where-list" placeholder="例如 東京、曼谷、Bali" value="${esc(s.where)}"></label>
@@ -154,7 +154,7 @@ function accorHtml(body, nights) {
   };
   const card = (h) => `<article class="hotel h-accor${h.soldOut ? ' sold-out' : ''}">
       <div class="hotel-main">
-        <div><span class="pill h-accor">雅高</span> <small class="inline">${esc(h.brand)}</small>${h.stars ? ` <small class="inline stars" title="${h.stars} 星">${'★'.repeat(Math.round(h.stars))}</small>` : ''}</div>
+        <div><span class="pill h-accor">雅高</span> <small class="inline">${esc(h.brand)}${h.brandZh ? ` ${esc(h.brandZh)}` : ''}</small>${h.stars ? ` <small class="inline stars" title="${h.stars} 星">${'★'.repeat(Math.round(h.stars))}</small>` : ''}</div>
         <h3>${esc(h.name)}</h3>${h.nameZh ? `<small class="h-zh">${esc(h.nameZh)}</small>` : ''}
       </div>
       <div class="hotel-price">
@@ -170,7 +170,7 @@ function accorHtml(body, nights) {
       : body.scanned
         ? `Booking.com 的「${esc(body.city || hotelState.where)}」最熱門的 ${body.scanned} 家飯店裡，沒有雅高旗下的飯店。`
         : `Booking.com 這次沒有回傳「${esc(body.city || hotelState.where)}」的飯店，可能這幾晚沒有空房或資料來源暫時有問題。`}${body.cityUrl ? ` <a href="${esc(body.cityUrl)}" target="_blank" rel="noopener">在 Booking.com 看這個城市 ↗</a>` : ''}</p>`
-    : `<p class="hint">只列出 Booking.com 上較熱門的雅高飯店（${list.length} 家，便宜的在前）。雅高沒有點數房，點數是用房價換算的${body.pointValueTwd ? `，每點約 NT$${body.pointValueTwd}` : ''}。</p>
+    : `<p class="hint">Booking.com 上的雅高飯店共 ${list.length} 家${list.length >= 90 ? '（最多列 100 家）' : ''}，便宜的在前。雅高沒有點數房，點數是用房價換算的${body.pointValueTwd ? `，每點約 NT$${body.pointValueTwd}` : ''}。</p>
       <div class="hotel-list">${list.map(card).join('')}</div>`)
     + `${rule.text ? `<p class="hint h-rule">📘 ${esc(rule.text)} ${src}</p>` : ''}<p class="hint">${quota}</p>`;
 }

@@ -67,8 +67,10 @@ test('Booking.com city search: two requests at most, city id cached, a cache hit
     assert.equal(u.searchParams.get('locationId'), tokyo, 'the city nearest to the given position');
     assert.equal(u.searchParams.get('currencyCode'), 'TWD');
     const page = Number(u.searchParams.get('page'));
+    // A full first page (20 rows) and a short second one.
+    const fillers = Array.from({ length: 18 }, (_, i) => ({ id: 100 + i, name: `Tokyo Inn ${i}` }));
     return Response.json({ status: true, data: page === 1
-      ? [{ id: 1, name: 'Pullman Tokyo Tamachi', priceBreakdown: { grossPrice: { value: 20000, currency: 'TWD' } }, propertyClass: 4, latitude: 35.64, longitude: 139.75 }, { id: 2, name: 'Tokyo Marriott Hotel', priceBreakdown: { grossPrice: { value: 25000, currency: 'TWD' } } }]
+      ? [{ id: 1, name: 'Pullman Tokyo Tamachi', priceBreakdown: { grossPrice: { value: 20000, currency: 'TWD' } }, propertyClass: 4, latitude: 35.64, longitude: 139.75 }, { id: 2, name: 'Tokyo Marriott Hotel', priceBreakdown: { grossPrice: { value: 25000, currency: 'TWD' } } }, ...fillers]
       : [{ id: 3, name: 'ibis Tokyo Shinjuku', priceBreakdown: { grossPrice: { value: 8000, currency: 'TWD' } } }] }, { headers });
   };
   const lookup = bookingHotels({ apiKey: 'r', kv, fetchImpl, onQuota: (q) => { quota = q; } });
@@ -80,7 +82,7 @@ test('Booking.com city search: two requests at most, city id cached, a cache hit
   assert.match(first.url, /dest_id=-246227&dest_type=city/);
   const again = await lookup.city(want);
   assert.deepEqual(calls.slice(2), ['/stays/search#1', '/stays/search#2'], 'with the city id cached, both requests are result pages');
-  assert.equal(again.hotels.length, 3);
+  assert.equal(again.hotels.length, 21);
   assert.match(again.url, /dest_id=-246227/);
   const answer = accorAnswer(again, { eurRate: 36, nights: 2 });
   assert.deepEqual(answer.hotels.map((h) => [h.name, h.total, h.stars]), [['ibis Tokyo Shinjuku', 8000, null], ['Pullman Tokyo Tamachi', 20000, 4]]);
@@ -128,15 +130,21 @@ test('Things4u brand filter: get-filters genericIds go back as categoriesFilter'
   const fetchImpl = async (url) => {
     const u = new URL(String(url));
     calls.push(u.pathname);
-    if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: b64({ city_name: 'Bangkok', dest_id: '-3414440', dest_type: 'city' }), name: 'Bangkok' }] });
+    const q = u.searchParams.get('query');
+    if (u.pathname === '/stays/auto-complete') return Response.json({ status: true, data: [{ id: b64({ city_name: q, dest_id: q === 'Paris' ? '-1456928' : '-3414440', dest_type: 'city' }), name: q }] });
+    if (u.pathname === '/stays/get-filters' && Buffer.from(u.searchParams.get('locationId'), 'base64').toString().includes('Paris')) return Response.json({ status: true, data: { filters: [] } });
     if (u.pathname === '/stays/get-filters') return Response.json({ status: true, data: { filters: [{ field: 'chaincode', title: 'Brands', options: [{ value: { text: 'Novotel', __typename: 'TranslatedString' }, genericId: 'chaincode::1050' }, { value: { text: 'Hilton Hotels & Resorts' }, genericId: 'chaincode::1000' }, { value: { text: 'Pullman Hotels and Resorts' }, genericId: 'chaincode::1049' }] }] } });
     assert.equal(u.searchParams.get('categoriesFilter'), 'chaincode::1050,chaincode::1049');
     return Response.json({ status: true, data: [{ id: 7, name: 'Novotel Bangkok Sukhumvit 20', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } }] });
   };
-  const lookup = bookingHotels({ apiKey: 'r', kv: memoryKv(), fetchImpl });
+  const kv = memoryKv();
+  const lookup = bookingHotels({ apiKey: 'r', kv, fetchImpl });
   const r = await lookup.city({ city: 'Bangkok', checkin: '2026-11-26', checkout: '2026-11-28', adults: 2, lat: null, lon: null }, { brands: isAccorTitle });
-  assert.deepEqual(calls, ['/stays/auto-complete', '/stays/get-filters', '/stays/search']);
-  assert.deepEqual([r.requests, r.hotels[0].total, r.url.includes('dest_id=-3414440')], [3, 9000, true]);
+  // Sofitel is still unknown, so the brand list of the first teacher city (Paris) is read too.
+  assert.deepEqual(calls, ['/stays/auto-complete', '/stays/get-filters', '/stays/search', '/stays/auto-complete', '/stays/get-filters']);
+  assert.deepEqual([r.requests, r.hotels[0].total, r.url.includes('dest_id=-3414440')], [5, 9000, true]);
+  assert.deepEqual((await kv.get('booking:brandids:v1')).titles, ['Novotel', 'Pullman Hotels and Resorts']);
+  assert.deepEqual((await kv.get('booking:brandteach:v1')).tried, ['Paris']);
 });
 
 test('/api/hotels/accor: demo list, validation, passcode, config flag', async () => {
@@ -171,12 +179,15 @@ test('brand filter: when the city filter list cannot be read, the known Accor br
     if (u.pathname === '/stays/get-filters') return Response.json({ status: true, data: { something: 'else' } });
     assert.equal(u.searchParams.get('categoriesFilter'), 'chaincode::1050,chaincode::1053');
     const zh = u.searchParams.get('languageCode') === 'zh-tw';
-    return Response.json({ status: true, data: [{ id: 1, name: zh ? '東京新宿諾富特酒店' : 'Novotel Tokyo Shinjuku', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } }] });
+    assert.equal(u.searchParams.get('sortBy'), 'price', 'a filtered search is sorted by price so both languages line up');
+    return Response.json({ status: true, data: [{ id: 1, name: zh ? '东京新宿诺富特酒店' : 'Novotel Tokyo Shinjuku', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } }] });
   };
-  const lookup = bookingHotels({ apiKey: 'r', kv: memoryKv(), fetchImpl });
+  const kv = memoryKv();
+  await kv.set('booking:brandids:v1', { ids: [], titles: ['Pullman', 'Sofitel'] });
+  const lookup = bookingHotels({ apiKey: 'r', kv, fetchImpl });
   const r = await lookup.city({ city: 'Tokyo', checkin: '2026-11-22', checkout: '2026-11-24', adults: 2, lat: null, lon: null }, { brands: isAccorTitle, brandIds: ['chaincode::1050', 'chaincode::1053'], zhNames: true });
   assert.deepEqual(seen, ['/stays/auto-complete', '/stays/get-filters', '/stays/search', '/stays/search'], 'the last request is the Chinese names');
   assert.equal(r.requests, 4);
-  assert.deepEqual(accorAnswer(r, { eurRate: 36, nights: 2 }).hotels.map((h) => [h.name, h.nameZh]), [['Novotel Tokyo Shinjuku', '東京新宿諾富特酒店']]);
+  assert.deepEqual(accorAnswer(r, { eurRate: 36, nights: 2 }).hotels.map((h) => [h.name, h.nameZh]), [['Novotel Tokyo Shinjuku', '東京新宿諾富特酒店']], 'Simplified names become Traditional');
   assert.match(r.debug.filters.shape, /something/);
 });
