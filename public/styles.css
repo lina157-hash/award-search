@@ -1049,3 +1049,9 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
   .acct-menu { position: fixed; left: 12px; right: 12px; top: 52px; width: auto; max-height: calc(100dvh - 64px); overflow: auto; }
   .acct-dlg .pass-in { padding: 16px; }
 }
+
+/* Seat-alert dialog: fold-outs of program and airline chips */
+.alert-pick { margin: 8px 0; }
+.alert-pick summary { cursor: pointer; font-weight: 600; font-size: .92rem; padding: 4px 0; }
+.alert-pick .h-progs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; max-height: 210px; overflow-y: auto; }
+.alert-pick .field { margin-top: 6px; }

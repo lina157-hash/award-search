@@ -838,6 +838,29 @@ function renderMine() {
 const alertCfg = { store: false, email: false };
 const ALERT_EMAIL_KEY = 'alertEmail';
 const alertSummary = (a) => `${a.origin} → ${a.destination}　${ymd(a.start)}${a.end !== a.start ? ` – ${ymd(a.end)}` : ''}　${CABIN_LABEL[a.cabin]}${a.pax ? `　至少 ${a.pax} 位` : ''}`;
+const alertFilterText = (a) => [a.sources?.length ? `哩程：${a.sources.map(srcName).join('、')}` : '', a.airlines?.length ? `航空公司：${a.airlines.map((x) => `${airlineZh(x)}（${x}）`).join('、')}` : ''].filter(Boolean).join('　');
+// Which programs and airlines a watch reports. Programs: every seats.aero program, the ones in this search first, ticked
+// when the result filter hides some. Airlines: the carriers in this search's results, plus codes typed in for ones that
+// have no seats yet. Nothing ticked means any.
+function alertFiltersHtml(share) {
+  const c = state.cabin;
+  const inResults = [...new Set(state.results.map((r) => r.source))].filter((x) => SOURCE_NAMES[x]);
+  const programs = [...inResults, ...Object.keys(SOURCE_NAMES).filter((x) => !inResults.includes(x))];
+  const pre = state.hidden.size ? new Set(inResults.filter((x) => !state.hidden.has(x))) : new Set();
+  const carriers = [...new Set(state.results.flatMap((r) => (cab(r, c)?.available ? r.cabins[c].airlines.split(/,\s*/) : [])).filter((x) => /^[A-Z0-9]{2}$/.test(x)))].sort();
+  // An airline filter on the search itself (航空公司 field) carries over.
+  const airPre = new Set(String(share.get('a') || '').toUpperCase().split(/[\s,]+/).filter((x) => /^[A-Z0-9]{2}$/.test(x)));
+  for (const x of airPre) if (!carriers.includes(x)) carriers.push(x);
+  const chip = (name, value, label, on) => `<label class="h-chip"><input type="checkbox" name="${name}" value="${esc(value)}" ${on ? 'checked' : ''}><span>${esc(label)}</span></label>`;
+  return `<details class="alert-pick"${pre.size ? ' open' : ''}><summary>只通知這些哩程計畫 <small class="muted">（不選＝全部）</small></summary>
+      <div class="h-progs">${programs.map((x) => chip('a-src', x, srcName(x), pre.has(x))).join('')}</div>
+    </details>
+    <details class="alert-pick"${airPre.size ? ' open' : ''}><summary>只通知這些航空公司的航班 <small class="muted">（不選＝全部）</small></summary>
+      ${carriers.length ? `<div class="h-progs">${carriers.map((x) => chip('a-air', x, airlineLabel(x), airPre.has(x))).join('')}</div>` : ''}
+      <label class="field">其他航空公司代碼（現在還沒有位子的，例如 CI、BR）<input name="airlinesExtra" placeholder="CI, BR" autocomplete="off" autocapitalize="characters"></label>
+      <p class="hint">整趟都是這些航空公司飛的才通知，轉機段是別家的不算。</p>
+    </details>`;
+}
 const ALERT_SETUP = `<p class="hint">機位提醒還沒啟用。網站主人要在 Vercel 做兩件事：① Storage 分頁用 Marketplace 建一個 Upstash Redis（免費方案），它會自動加上連線設定；② 到 resend.com 申請免費金鑰，在 Environment Variables 新增 <code>RESEND_API_KEY</code>。都設好後重新部署。</p>`;
 function openAlertDialog() {
   const share = tabParams('search');
@@ -846,6 +869,7 @@ function openAlertDialog() {
   const f = $('#alert-form');
   f.email.value = store.get(ALERT_EMAIL_KEY, '');
   f.pax.value = share.get('n') || '';
+  $('#alert-filters').innerHTML = alertFiltersHtml(share);
   $('#alert-summary').textContent = alertSummary({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J' });
   $('#alert-note').innerHTML = alertCfg.store
     ? `每天早上自動檢查一次，有新的獎勵位就${alertCfg.email ? '寄信通知' : '顯示在「機位提醒」裡（網站尚未設定寄信服務）'}；現在已有的座位不會重複通知。`
@@ -863,7 +887,9 @@ $('#alert-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   try {
     store.set(ALERT_EMAIL_KEY, f.email.value.trim());
-    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim() }), headers: { 'content-type': 'application/json' } });
+    const sources = $$('input[name="a-src"]:checked', f).map((i) => i.value);
+    const airlines = [...new Set([...$$('input[name="a-air"]:checked', f).map((i) => i.value), ...f.airlinesExtra.value.toUpperCase().split(/[\s,，、]+/).filter(Boolean)])];
+    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim(), sources, airlines }), headers: { 'content-type': 'application/json' } });
     $('#alert-dialog').close();
     toast(`已建立提醒，目前有 ${body.found} 筆有位`);
     $('#alerts-panel').open = true;
@@ -883,7 +909,7 @@ async function loadAlerts() {
     const list = body.alerts || [];
     $('#alerts-count').textContent = list.length ? `（${list.length}）` : '';
     box.innerHTML = (list.length ? `<ul class="alert-list">${list.map((a) => `<li>
-        <div><b>${esc(alertSummary(a))}</b>${a.email ? `<small>→ ${esc(a.email)}</small>` : '<small>只在網站顯示</small>'}</div>
+        <div><b>${esc(alertSummary(a))}</b>${alertFilterText(a) ? `<small>${esc(alertFilterText(a))}</small>` : ''}${a.email ? `<small>→ ${esc(a.email)}</small>` : '<small>只在網站顯示</small>'}</div>
         <div class="hint">${a.lastRun ? `上次檢查 ${ago(a.lastRun)}：有位 ${a.lastFound ?? '—'} 筆${a.lastNew ? `，<b class="new">新增 ${a.lastNew} 筆</b>` : ''}` : '尚未檢查'}${a.lastError ? `　⚠ ${esc(a.lastError)}` : ''}</div>
         <div class="alert-actions"><button type="button" class="outline" data-open="${esc(new URLSearchParams({ o: a.origin, d: a.destination, s: a.start, e: a.end, c: a.cabin, ...(a.pax ? { n: a.pax } : {}) }))}">查看</button><button type="button" class="outline" data-del="${esc(a.id)}">刪除</button></div>
       </li>`).join('')}</ul>` : '<p class="hint">還沒有提醒。搜尋一條航線後，按結果上方的「🔔 有新機位通知我」。</p>')

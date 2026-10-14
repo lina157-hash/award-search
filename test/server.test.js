@@ -90,6 +90,24 @@ test('alerts: add takes a baseline, run reports and mails only new seats', async
   assert.equal((await al.list()).length, 0);
 });
 
+test('alerts: only the chosen programs, and only flights flown entirely by the chosen airlines', async () => {
+  const { createAlerts, memoryStore } = require('../lib/alerts');
+  const row = (id, source, airlines) => ({ id, date: '2026-12-01', origin: 'TPE', destination: 'PVG', source, cabins: { J: { available: true, miles: 30000, seats: 2, airlines, direct: !airlines.includes(',') } } });
+  let rows = [row('a', 'flyingblue', 'CI'), row('b', 'jetblue', 'CI'), row('c', 'flyingblue', 'MU'), row('d', 'flyingblue', 'CI, MU')];
+  const mails = [];
+  const al = createAlerts({ store: memoryStore(), search: async () => rows, sendEmail: async (m) => mails.push(m), programNames: { flyingblue: '法航 Flying Blue' } });
+  const added = await al.add({ origin: 'TPE', destination: 'PVG', start: '2026-12-01', end: '2026-12-10', cabin: 'J', email: 'me@example.com', sources: ['flyingblue'], airlines: 'ci' });
+  assert.deepEqual([added.alert.sources, added.alert.airlines, added.found], [['flyingblue'], ['CI'], 1]);
+  rows = [...rows, row('e', 'flyingblue', 'CI'), row('f', 'delta', 'CI'), row('g', 'flyingblue', 'BR')];
+  const r = await al.run();
+  assert.deepEqual(r.report[0], { id: added.alert.id, found: 2, fresh: 1, mailed: true });
+  assert.match(mails[0].html, /只看 法航 Flying Blue，航空公司 CI/);
+  await assert.rejects(al.add({ origin: 'TPE', destination: 'PVG', start: '2026-12-01', cabin: 'J', airlines: ['China'] }), /兩碼/);
+  // Watches saved before these filters existed still report everything.
+  const old = createAlerts({ store: memoryStore([{ id: 'x', origin: 'TPE', destination: 'PVG', start: '2026-12-01', end: '2026-12-10', cabin: 'J', pax: 0, email: '', seen: {}, lastRun: null }]), search: async () => rows, sendEmail: async () => {} });
+  assert.equal((await old.run()).report[0].found, rows.length);
+});
+
 test('alerts endpoints work in demo mode and honour the passcode', async () => {
   const cfg = await (await fetch(`${base}/api/config`)).json();
   assert.equal(cfg.alerts.store, true);
