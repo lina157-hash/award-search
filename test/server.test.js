@@ -354,3 +354,55 @@ test('price watch endpoint works in demo mode', async () => {
   assert.ok(list.watches.some((x) => x.id === watch.id));
   assert.equal((await fetch(`${base}/api/watch?id=${watch.id}`, { method: 'DELETE' })).status, 200);
 });
+
+test('RapidAPI Google Flights results are reshaped like SerpApi and filtered locally', async () => {
+  const { createRapidFlights, isRapidToken } = require('../lib/rapidflights');
+  const seg = (from, to, fn, t1, t2) => ({ departure_airport: { airport_name: from, airport_code: from, time: t1 }, arrival_airport: { airport_name: to, airport_code: to, time: t2 }, duration: { raw: 120, text: '2 hr' }, airline: 'X', flight_number: fn, aircraft: 'Airbus A350', legroom: '31 in', extensions: [] });
+  const sample = { status: true, message: 'Success', data: { itineraries: {
+    topFlights: [{ duration: { raw: 180 }, flights: [seg('TPE', 'NRT', 'BR 198', '2026-11-1 8:05', '2026-11-1 12:20')], price: 9800, stops: 0, next_token: 'abc=' }],
+    otherFlights: [
+      { duration: { raw: 400 }, flights: [seg('TPE', 'HKG', 'CX 451', '2026-11-1 7:00', '2026-11-1 9:00'), seg('HKG', 'NRT', 'CX 500', '2026-11-1 11:00', '2026-11-1 16:00')], layovers: [{ airport_code: 'HKG', airport_name: 'Hong Kong', duration: 120 }], price: 'unavailable', stops: 0, next_token: 'def=' },
+    ] }, priceHistory: { summary: { current: 9800, typical: [{ operation: '>=', value: 9000 }, { operation: '&&', value: null }, { operation: '<=', value: 12000 }] }, history: [{ time: 1e12, value: 9900 }, { time: 1.0001e12, value: 9800 }] } } };
+  const seen = [];
+  let quota;
+  const q = createRapidFlights({ apiKey: 'k', onQuota: (x) => { quota = x; }, fetchImpl: async (url, opts) => {
+    seen.push({ url: String(url), host: opts.headers['x-rapidapi-host'] });
+    return new Response(JSON.stringify(sample), { status: 200, headers: { 'x-ratelimit-requests-remaining': '149', 'x-ratelimit-requests-limit': '150' } });
+  } });
+  const raw = await q({ departure_id: 'TPE', arrival_id: 'NRT', outbound_date: '2026-11-01', return_date: '2026-11-05', travel_class: 3, adults: 1 });
+  assert.match(seen[0].url, /searchFlights\?.*travel_class=BUSINESS.*currency=TWD/);
+  assert.deepEqual(quota, { left: 149, limit: 150 });
+  const n = normalizeCash(raw);
+  assert.equal(n.options.length, 2);
+  assert.equal(n.options[0].segments[0].from.time, '2026-11-01 08:05');
+  assert.equal(n.options[0].segments[0].flightNumber, 'BR 198');
+  assert.ok(isRapidToken(n.options[0].departureToken));
+  assert.equal(n.options[1].price, null, '"unavailable" becomes no price');
+  assert.equal(n.insights.level, 'typical');
+  // Direct-only is filtered here because this API has no stops parameter.
+  const direct = normalizeCash(await q({ departure_id: 'TPE', arrival_id: 'NRT', outbound_date: '2026-11-01', travel_class: 1, adults: 1, stops: 1 }));
+  assert.equal(direct.options.length, 1);
+  // The return-leg call goes back with the original token, without our prefix.
+  await q({ departure_token: n.options[0].departureToken, return_date: '2026-11-05' });
+  assert.match(seen.at(-1).url, /getNextFlights\?next_token=abc%3D/);
+});
+
+test('RapidAPI quota exhaustion is reported as such', async () => {
+  const { createRapidFlights } = require('../lib/rapidflights');
+  const q = createRapidFlights({ apiKey: 'k', fetchImpl: async () => new Response(JSON.stringify({ message: 'You have exceeded the MONTHLY quota for requests on your current plan, BASIC.' }), { status: 429, headers: { 'x-ratelimit-requests-remaining': '0' } }) });
+  await assert.rejects(q({ departure_id: 'TPE', arrival_id: 'NRT', outbound_date: '2026-11-01', travel_class: 1, adults: 1 }), (e) => e.quota === true && e.status === 429);
+});
+
+test('hotel award search, calendar and rooms work in demo mode', async () => {
+  const s = await (await fetch(`${base}/api/hotels/search?where=Tokyo&start=2026-11-01&end=2026-11-10&nights=2&programs=marriott,hilton`)).json();
+  assert.ok(s.hotels.length > 0);
+  assert.ok(s.hotels.every((h) => ['marriott', 'hilton'].includes(h.source) && h.standard.points > 0 && h.standard.nights === 2));
+  const c = await (await fetch(`${base}/api/hotels/calendar?hotel=${s.hotels[0].id}&start=2026-11-01&end=2026-11-03&nights=2`)).json();
+  assert.equal(c.dates.length, 3);
+  const r = await (await fetch(`${base}/api/hotels/rooms?id=${encodeURIComponent(c.dates[0].id)}`)).json();
+  assert.ok(r.rooms.length > 0);
+  assert.equal((await fetch(`${base}/api/hotels/search?where=&start=2026-11-01`)).status, 400);
+  assert.equal((await fetch(`${base}/api/hotels/search?where=Tokyo&start=2026-11-01&nights=9`)).status, 400);
+  const quota = await (await fetch(`${base}/api/cash/quota`)).json();
+  assert.ok(quota.rapid && quota.serpapi);
+});

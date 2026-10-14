@@ -708,3 +708,4 @@ details.release li { margin: 3px 0; }
 @media (max-width: 360px) {
   .tabs button { font-size: .72rem; padding: 6px 1px; }
 }
+.h-bar .field { flex-direction: row; align-items: center; gap: 6px; white-space: nowrap; }

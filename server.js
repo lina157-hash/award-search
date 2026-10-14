@@ -7,16 +7,20 @@ const { createClient, normalizeAvailability, normalizeTrips, SeatsAeroError } = 
 const mock = require('./lib/mock');
 const { createCashClient, normalizeCash, CashError } = require('./lib/cash');
 const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = require('./lib/alerts');
-const { createPriceWatch } = require('./lib/pricewatch');
+const { createPriceWatch, RESERVE } = require('./lib/pricewatch');
 const { createDeals } = require('./lib/deals');
 const rooms = require('./lib/rooms');
+const rapid = require('./lib/rapidflights');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
 const MOCK = !API_KEY || process.env.MOCK === '1';
 const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
-// Cash fares: live with a SerpApi key, demo data when the whole site is in demo mode, otherwise off.
-const CASH_MODE = SERPAPI_KEY ? 'live' : MOCK ? 'mock' : 'off';
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '';
+// Cash fares: RapidAPI's Google Flights first (150 free a month), SerpApi as the fallback; demo data in demo mode, otherwise off.
+const CASH_MODE = SERPAPI_KEY || RAPIDAPI_KEY ? 'live' : MOCK ? 'mock' : 'off';
+const REDIS_URL_EARLY = () => process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '';
+const REDIS_TOKEN_EARLY = () => process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '';
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -51,6 +55,52 @@ const roomsClient = rooms.createRoomsClient({
     roomsUsage.calls++;
   },
 });
+// What is left of each provider's monthly quota, as last reported. RapidAPI says so in every response's headers;
+// it is kept in Redis too, because each serverless instance only sees its own calls.
+const quotaStore = REDIS_URL_EARLY() ? redisStore({ url: REDIS_URL_EARLY(), token: REDIS_TOKEN_EARLY(), key: 'cash-quota:v1' }) : null;
+const cashQuota = { rapid: null, serp: null };
+const rapidQuery = RAPIDAPI_KEY && rapid.createRapidFlights({
+  apiKey: RAPIDAPI_KEY,
+  onQuota: ({ left, limit }) => {
+    cashQuota.rapid = { left, limit, at: new Date().toISOString() };
+    quotaStore?.save({ rapid: cashQuota.rapid }).catch(() => {});
+  },
+});
+// SerpApi's account endpoint is free and reports the searches left this month; asked at most every 10 minutes.
+async function serpLeft() {
+  if (!SERPAPI_KEY) return null;
+  if (cashQuota.serp && Date.now() - Date.parse(cashQuota.serp.at) < 600e3) return cashQuota.serp.left;
+  try {
+    const res = await fetch(`https://serpapi.com/account.json?api_key=${encodeURIComponent(SERPAPI_KEY)}`, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return cashQuota.serp?.left ?? null;
+    const a = await res.json();
+    const left = Number.isFinite(a.total_searches_left) ? a.total_searches_left : Number.isFinite(a.plan_searches_left) ? a.plan_searches_left : null;
+    cashQuota.serp = { left, limit: Number.isFinite(a.searches_per_month) ? a.searches_per_month : null, at: new Date().toISOString() };
+    return left;
+  } catch { return cashQuota.serp?.left ?? null; }
+}
+const ALLIANCE_CARRIERS = Object.fromEntries(require('./data/alliances.json').alliances.map((a) => [a.id, new Set(a.members || a.carriers || [])]));
+// One live cash lookup. Tokens go back to whoever issued them; a new search tries RapidAPI first (single airports only,
+// it takes no city lists) and falls back to SerpApi when RapidAPI fails or runs out, if `allowSerp` agrees.
+async function liveCash(params, { allowSerp = async () => true } = {}) {
+  if (rapid.isRapidToken(params.departure_token) || rapid.isRapidToken(params.booking_token)) return { ...(await rapidQuery(params)), provider: 'rapid' };
+  if (params.departure_token || params.booking_token) return { ...(await cashQuery(params)), provider: 'serpapi' };
+  let fallback = '';
+  const single = /^[A-Z]{3}$/.test(params.departure_id) && /^[A-Z]{3}$/.test(params.arrival_id);
+  if (rapidQuery && single) {
+    try {
+      const inc = params.include_airlines;
+      const allianceCarriers = !inc ? null : ALLIANCE_KEY[inc] ? ALLIANCE_CARRIERS[ALLIANCE_KEY[inc]] : new Set(inc.split(','));
+      return { ...(await rapidQuery({ ...params, allianceCarriers })), provider: 'rapid' };
+    } catch (e) {
+      if (!(e instanceof CashError) || !SERPAPI_KEY) throw e;
+      fallback = e.message;
+    }
+  } else if (rapidQuery) fallback = '多個機場一起查，RapidAPI 不支援';
+  if (!SERPAPI_KEY) throw new CashError('沒有設定現金票資料來源', 503);
+  if (!(await allowSerp())) throw new CashError(`${fallback || 'RapidAPI 無法使用'}，SerpApi 額度要留給手動查詢，這次先跳過`, 503);
+  return { ...(await cashQuery(params)), provider: 'serpapi', fallback };
+}
 const cache = new Map();
 async function cached(key, fn) {
   const hit = cache.get(key);
@@ -93,17 +143,13 @@ const priceWatch = watchStore && createPriceWatch({
   store: watchStore,
   sendEmail: alertMailer,
   siteUrl: process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : ''),
-  // SerpApi's account endpoint is free and reports the searches left this month.
-  quota: async () => {
-    if (CASH_MODE !== 'live') return null;
-    const res = await fetch(`https://serpapi.com/account.json?api_key=${encodeURIComponent(SERPAPI_KEY)}`);
-    if (!res.ok) return null;
-    const a = await res.json();
-    return Number.isFinite(a.total_searches_left) ? a.total_searches_left : Number.isFinite(a.plan_searches_left) ? a.plan_searches_left : null;
-  },
+  // Checks run on RapidAPI; the SerpApi reserve only matters when there is no RapidAPI key.
+  quota: async () => (CASH_MODE !== 'live' || RAPIDAPI_KEY ? null : serpLeft()),
   search: async (w) => {
     const params = { departure_id: w.origin, arrival_id: w.destination, outbound_date: w.depart, return_date: w.ret || undefined, type: w.ret ? 1 : 2, travel_class: CABIN_CLASS[w.cabin], adults: w.adults, stops: w.stops || undefined };
-    return normalizeCash(CASH_MODE === 'mock' ? mock.mockCash(params) : await cashQuery(params));
+    if (CASH_MODE === 'mock') return normalizeCash(mock.mockCash(params));
+    // Falling back to SerpApi is fine only while it has plenty left for the owner's own searches.
+    return normalizeCash(await liveCash(params, { allowSerp: async () => { const left = await serpLeft(); return left == null || left >= RESERVE; } }));
   },
 });
 async function handleWatch(req, q) {
@@ -255,6 +301,7 @@ async function handleExplore(q) {
 }
 
 const ALLIANCE_PARAM = { star: 'STAR_ALLIANCE', skyteam: 'SKYTEAM', oneworld: 'ONEWORLD' };
+const ALLIANCE_KEY = Object.fromEntries(Object.entries(ALLIANCE_PARAM).map(([k, v]) => [v, k]));
 const CABIN_CLASS = { Y: 1, W: 2, J: 3, F: 4 };
 
 async function handleCash(q, req) {
@@ -287,8 +334,28 @@ async function handleCash(q, req) {
   };
   if (params.departure_token && !ret) throw new BadRequest('只有來回票才能查回程');
   if (params.departure_token && params.booking_token) throw new BadRequest('回程查詢和預訂選項不能同時查');
-  const raw = await cached('cash:' + JSON.stringify(params), () => (CASH_MODE === 'mock' ? mock.mockCash(params) : cashQuery(params)));
-  return { configured: true, mock: CASH_MODE === 'mock', returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), ...normalizeCash(raw) };
+  const raw = await cached('cash:' + JSON.stringify(params), () => (CASH_MODE === 'mock' ? mock.mockCash(params) : liveCash(params)));
+  return { configured: true, mock: CASH_MODE === 'mock', returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), provider: raw.provider || 'mock', fallback: raw.fallback || '', ...normalizeCash(raw) };
+}
+
+// A RapidAPI seller's booking page (one more request), fetched when the user presses its button.
+async function handleCashLink(q, req) {
+  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼', 401), { code: 'passcode' });
+  const token = param(q, 'token', /^r:[\w\-+/=.:]{1,4000}$/, { required: true });
+  if (CASH_MODE === 'mock') return { url: 'https://www.google.com/travel/flights' };
+  if (!rapidQuery) throw new CashError('沒有設定 RapidAPI', 503);
+  return { url: await cached('cashlink:' + token, () => rapid.bookingUrl({ apiKey: RAPIDAPI_KEY }, token)) };
+}
+
+// Searches left this month on each cash source, for the note under the cash search form.
+async function handleCashQuota() {
+  if (CASH_MODE === 'mock') return { rapid: { left: 142, limit: 150 }, serpapi: { left: 231, limit: 250 }, mock: true };
+  if (!cashQuota.rapid && quotaStore) cashQuota.rapid = (await quotaStore.load().catch(() => ({})))?.rapid || null;
+  const serp = await serpLeft();
+  return {
+    rapid: RAPIDAPI_KEY ? { left: cashQuota.rapid?.left ?? null, limit: cashQuota.rapid?.limit ?? 150, at: cashQuota.rapid?.at || null } : null,
+    serpapi: SERPAPI_KEY ? { left: serp, limit: cashQuota.serp?.limit ?? 250 } : null,
+  };
 }
 
 const HOTEL_ID = /^[\w-]{1,64}$/;
@@ -367,7 +434,7 @@ async function route(req, res) {
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
     if (p === '/api/config') {
       return sendJson(res, 200, {
-        mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashLocked: Boolean(cashPasscode()),
+        mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000 },
         // Which deployment is answering, to confirm a redeploy went live.
@@ -377,6 +444,8 @@ async function route(req, res) {
       });
     }
     if (p === '/api/cash') return sendJson(res, 200, await handleCash(q, req));
+    if (p === '/api/cash/link') return sendJson(res, 200, await handleCashLink(q, req));
+    if (p === '/api/cash/quota') return sendJson(res, 200, await handleCashQuota());
     const hm = p.match(/^\/api\/hotels\/(search|calendar|rooms)$/);
     if (hm) return sendJson(res, 200, await handleHotels(hm[1], q));
     if (p === '/api/fx') return sendJson(res, 200, await handleFx());

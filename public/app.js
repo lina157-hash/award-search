@@ -1641,11 +1641,13 @@ function bookingRowHtml(b, label) {
     go = `<form method="post" action="${esc(b.request.url)}" target="_blank" rel="noopener">${fields}<button type="submit" class="primary small">前往訂票 ↗</button></form>`;
   } else if (b.request) {
     go = `<a class="primary btn small" href="${esc(b.request.url)}" target="_blank" rel="noopener">前往訂票 ↗</a>`;
+  } else if (b.linkToken) {
+    go = `<button type="button" class="primary small" data-book-link="${esc(b.linkToken)}">前往訂票 ↗</button>`;
   } else if (b.phone) {
     go = `<a class="outline btn small" href="tel:${esc(b.phone.replace(/\s/g, ''))}">電話訂票 ${esc(b.phone)}</a>`;
   }
   return `<div class="book-opt">
-    <div>${label ? `<small class="leg-tag">${label}</small>` : ''}<b>${esc(b.bookWith || '未知賣家')}</b>${b.title ? `<small>${esc(b.title)}</small>` : ''}${extras}</div>
+    <div>${label ? `<small class="leg-tag">${label}</small>` : ''}<b>${esc(b.bookWith || '未知賣家')}</b>${b.isAirline ? ' <span class="pill">航空公司官網</span>' : ''}${b.title ? `<small>${esc(b.title)}</small>` : ''}${extras}</div>
     <div class="book-price"><b>${money(b.price)}</b>${go}</div>
   </div>`;
 }
@@ -1662,12 +1664,32 @@ function renderBooking() {
     const list = cash.booking;
     host.innerHTML = `<h3 class="sub">預訂選項</h3>
       ${list.length ? list.map((b) => (b.separate ? `${bookingRowHtml(b.departing, '去程')}${bookingRowHtml(b.returning, '回程')}` : bookingRowHtml(b))).join('') : '<p class="hint">Google 航班沒有提供這組航班的預訂選項，請用下面的連結到 Google 航班或 Skyscanner 訂票。</p>'}
-      ${list.length ? '<p class="hint">價格與行李規定以賣家網站為準，按「前往訂票」會開新分頁。</p>' : ''}`;
+      ${list.length ? `<p class="hint">價格與行李規定以賣家網站為準，按「前往訂票」會開新分頁。${list.some((b) => b.linkToken) ? '這組資料來自 RapidAPI，按下去才會取得訂票連結，每按一家用掉 1 次額度。' : ''}</p>` : ''}`;
+    $$('[data-book-link]', host).forEach((b) => b.addEventListener('click', () => openBookingLink(b)));
     return;
   }
   host.innerHTML = `${cash.bookingErr ? `<p class="status error">${esc(cash.bookingErr)}</p>` : ''}
-    ${final.bookingToken ? `<button type="button" class="primary" id="cash-book">查預訂選項（航空公司官網、旅行社價格）</button><p class="hint">會用掉 1 次即時查價額度。也可以直接用下面的連結到 Google 航班訂票。</p>` : ''}`;
+    ${final.bookingToken ? `<button type="button" class="primary" id="cash-book">查預訂選項（航空公司官網、旅行社價格）</button><p class="hint">會用掉 1 次即時查價額度${cash.provider === 'rapid' ? '，之後每開一家賣家的訂票連結再用 1 次' : ''}。也可以直接用下面的連結到 Google 航班訂票。</p>` : ''}`;
   $('#cash-book')?.addEventListener('click', loadBooking);
+}
+
+// RapidAPI sellers: open the tab right away (popup blockers allow it only inside the click), then point it at the link.
+async function openBookingLink(btn) {
+  const w = window.open('about:blank', '_blank');
+  if (w) w.opener = null;
+  btn.disabled = true;
+  btn.textContent = '取得連結中…';
+  try {
+    const { url } = await cashApi(`/api/cash/link?${new URLSearchParams({ token: btn.dataset.bookLink })}`);
+    if (w) w.location.href = url; else location.href = url;
+    btn.textContent = '已開啟 ↗';
+    loadCashQuota();
+  } catch (err) {
+    w?.close();
+    btn.disabled = false;
+    btn.textContent = '前往訂票 ↗';
+    toast(err.message);
+  }
 }
 
 async function loadBooking() {
@@ -1766,11 +1788,12 @@ cashForm.addEventListener('submit', async (e) => {
       cash.off = true;
       status.textContent = '';
     } else {
-      Object.assign(cash, { options: body.options, insights: body.insights, googleUrl: body.googleUrl });
+      Object.assign(cash, { options: body.options, insights: body.insights, googleUrl: body.googleUrl, provider: body.provider });
       rememberCashSearch(r, body.options);
-      status.textContent = body.options.length
+      status.textContent = (body.options.length
         ? `找到 ${body.options.length} 個航班選項${body.mock ? '（示範資料）' : ''}${rt ? '，價格為來回總價，選去程後可看回程' : `，單程 ${r.adults} 人總價，選一班後可看預訂選項`}`
-        : body.message || '沒有找到航班';
+        : body.message || '沒有找到航班') + providerNote(body);
+      loadCashQuota();
     }
     renderCash();
     status.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1781,6 +1804,22 @@ cashForm.addEventListener('submit', async (e) => {
     $('#cash-results').innerHTML = '';
   }
 });
+
+const PROVIDER_NAME = { rapid: 'RapidAPI', serpapi: 'SerpApi' };
+const providerNote = (body) => (!PROVIDER_NAME[body.provider] ? '' : body.fallback ? `（${body.fallback}，這次改用 SerpApi）` : `（資料來源：${PROVIDER_NAME[body.provider]}）`);
+
+// Searches left this month on each source, shown under the form so the owner can see what remains.
+async function loadCashQuota() {
+  const el = $('#cash-quota');
+  if (!el || !cashCfg.enabled) return;
+  try {
+    const q = await api('/api/cash/quota');
+    const part = (name, x) => (!x ? '' : x.left == null ? `${name} 還沒有查詢紀錄` : `${name} 剩 <b>${fmt(x.left)}</b>${x.limit ? `／${fmt(x.limit)}` : ''} 次`);
+    const parts = [part('RapidAPI', q.rapid), part('SerpApi', q.serpapi)].filter(Boolean);
+    el.innerHTML = parts.length ? `📊 本月查價額度：${parts.join('・')}${q.rapid && q.serpapi ? '。會先用 RapidAPI，用完或出錯才用 SerpApi。' : ''}${q.mock ? '（示範數字）' : ''}` : '';
+    el.hidden = !parts.length;
+  } catch { el.hidden = true; }
+}
 
 $$('#cash-form input[name=trip]').forEach((el) => el.addEventListener('change', () => {
   const rt = $('#cash-form input[name=trip]:checked').value === 'rt';
@@ -2136,6 +2175,7 @@ function renderVersion(config) {
   cashCfg.enabled = config.cash !== 'off';
   watchCfg.on = Boolean(config.watch);
   loadWatches();
+  loadCashQuota();
   Object.assign(alertCfg, config.alerts || {});
   $('#alerts-count').textContent = alertCfg.store ? '' : '（未啟用）';
   updateLockHint();
