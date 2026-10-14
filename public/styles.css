@@ -1086,3 +1086,45 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .map-osm .leaflet-tile-pane { filter: saturate(0.75) brightness(1.03); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); } }
 :root[data-theme="dark"] .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
+
+/* ---------- einfra: LINE notifications (E4) and seat-release history heatmap (E8) ---------- */
+.nf-body { display: grid; gap: 10px; }
+.nf-h { margin: 0; font-size: .85rem; color: var(--muted); font-weight: 700; }
+.nf-body .nf-h ~ .nf-h { padding-top: 12px; border-top: 1px solid var(--border); }
+.line-setup summary { cursor: pointer; font-size: .9rem; color: var(--accent); }
+.line-setup .tg-steps { margin-top: 8px; }
+.line-code { margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: .12em; font-variant-numeric: tabular-nums; color: var(--text); }
+
+#search-hist:empty { display: none; }
+.hist { margin-top: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; }
+.hist summary { cursor: pointer; font-weight: 700; font-size: .95rem; }
+.hist summary small { font-weight: 400; color: var(--muted); margin-left: 4px; }
+.hist-body { display: grid; gap: 12px; margin-top: 10px; }
+.hist-body .hint { margin: 0; font-size: .8rem; }
+.hist-route { display: grid; gap: 6px; }
+.hist-title { margin: 0; font-weight: 600; font-size: .88rem; }
+.hist-row { display: grid; grid-template-columns: 10em minmax(0, 1fr) 13em; gap: 10px; align-items: center; font-size: .84rem; }
+.hist-row.other { opacity: .72; }
+.hist-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-name small { color: var(--muted); }
+.hist-sum { color: var(--muted); font-size: .8rem; white-space: nowrap; text-align: right; }
+.hist-strip { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 1px; height: 16px; }
+.hist-strip i, .hist-legend i { display: block; border-radius: 2px; }
+.hist-legend i { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; margin-right: 2px; }
+.hist i.h0 { background: color-mix(in srgb, var(--muted) 16%, transparent); }
+.hist i.h1 { background: var(--heat-1); }
+.hist i.h2 { background: var(--heat-2); }
+.hist i.h3 { background: var(--heat-3); }
+.hist i.h4 { background: var(--heat-4); }
+.hist i.hx { background: transparent; }
+.hist-legend i.hx { box-shadow: inset 0 0 0 1px var(--border); }
+.hist-axis { margin-top: -2px; }
+.hist-axis .ax { display: flex; justify-content: space-between; font-size: .88em; color: var(--muted); }
+.hist-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: .78rem; color: var(--muted); }
+@media (max-width: 640px) {
+  .hist-row { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; }
+  .hist-strip { grid-column: 1 / -1; grid-row: 2; height: 14px; }
+  .hist-strip i { border-radius: 1px; }
+  .hist-axis > span:not(.ax) { display: none; }
+  .hist-axis .ax { grid-column: 1 / -1; }
+}
