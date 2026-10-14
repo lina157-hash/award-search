@@ -136,6 +136,22 @@
    "date": "2026-10-14"
   },
   {
+   "bank": "滙豐",
+   "program": "匯鑽卡／現金回饋御璽卡／Live+ 現金回饋卡 現金積點",
+   "to": [
+    "eva"
+   ],
+   "toName": "長榮 無限萬哩遊",
+   "ratio": "1 點 = 2 哩",
+   "notes": "官方兌換表（2026-10-01 至 12-31）只在長榮欄列「1點轉換2哩」，其他航空空白；頁面沒寫這三張卡的最低門檻與兌換單位，「其餘紅利好點信用卡每次最低 10,000 點」是否適用不明。",
+   "confidence": "official",
+   "source": {
+    "label": "滙豐：哩程兌換表（2026 Q4，其他信用卡）",
+    "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/fly.html"
+   },
+   "date": "2026-10-14"
+  },
+  {
    "bank": "星展 DBS",
    "program": "飛行積金（飛行世界商務卡等）",
    "to": [
@@ -357,13 +373,14 @@
    ],
    "toName": "華航 華夏哩程",
    "ratio": "11 點 = 14 哩",
-   "notes": "以 100 點為級距，兌換後不可取消。",
+   "notes": "以 100 點為級距，兌換後不可取消。比率為活動期間 2026/09/01–2026/10/31 適用，11/1 後可能調整，請再到台新活動頁確認。可用台新 Point 與台新 Point（信用卡）合併兌換。",
    "confidence": "official",
    "source": {
     "label": "台新：台新 Point 兌換哩程活動頁",
     "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
    },
-   "date": "2026-10-13"
+   "date": "2026-10-14",
+   "validUntil": "2026-10-31"
   },
   {
    "bank": "台新",
@@ -378,11 +395,13 @@
     "label": "台新：台新 Point 兌換哩程活動頁",
     "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
    },
-   "date": "2026-10-13"
+   "date": "2026-10-14",
+   "validUntil": "2026-10-31",
+   "notes": "比率為活動期間 2026/09/01–2026/10/31 適用，11/1 後可能調整，請再到台新活動頁確認。可用台新 Point 與台新 Point（信用卡）合併兌換。"
   },
   {
    "bank": "台新",
-   "program": "台新 Point",
+   "program": "台新 Point（信用卡）",
    "to": [
     "asiamiles"
    ],
@@ -393,7 +412,9 @@
     "label": "台新：台新 Point 兌換哩程活動頁",
     "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
    },
-   "date": "2026-10-13"
+   "date": "2026-10-14",
+   "validUntil": "2026-10-31",
+   "notes": "比率為活動期間 2026/09/01–2026/10/31 適用，11/1 後可能調整，請再到台新活動頁確認。亞洲萬里通只能用台新 Point（信用卡）兌換。"
   },
   {
    "bank": "台新",
@@ -1139,6 +1160,21 @@
     ]
    },
    {
+    "id": "hsbc-cash",
+    "bank": "滙豐",
+    "program": "現金積點",
+    "variant": "匯鑽卡／現金回饋御璽卡／Live+ 現金回饋卡",
+    "confidence": "official",
+    "note": "官方表只列長榮 1 點 = 2 哩；頁面沒寫最低門檻與兌換單位，換算器不設門檻。",
+    "rates": [
+     {
+      "to": "eva",
+      "points": 1,
+      "miles": 2
+     }
+    ]
+   },
+   {
     "id": "dbs-flight",
     "bank": "星展 DBS",
     "program": "飛行積金",
@@ -1464,7 +1500,7 @@
     "bank": "台新",
     "program": "台新 Point",
     "confidence": "official",
-    "note": "以 100 點為級距，兌換後不可取消。",
+    "note": "以 100 點為級距，兌換後不可取消。比率為 2026/09/01–10/31 活動期間適用；亞洲萬里通只能用台新 Point（信用卡）。",
     "rates": [
      {
       "to": "ci",
@@ -1482,9 +1518,11 @@
       "to": "asiamiles",
       "points": 10,
       "miles": 18,
-      "stepPoints": 100
+      "stepPoints": 100,
+      "note": "限台新 Point（信用卡）"
      }
-    ]
+    ],
+    "validUntil": "2026-10-31"
    },
    {
     "id": "taishin-infinite",

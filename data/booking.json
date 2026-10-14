@@ -615,7 +615,7 @@
         "ownOnline": true,
         "partnerOnline": true,
         "phoneFee": null,
-        "note": "官網或訂位組皆可訂；含長榮航班每張另收 25 美元訂位服務費（YR）"
+        "note": "官網或訂位組皆可訂；含長榮航班的票每張另收訂位服務費（YR），2026-08-01 起國際線 33 美元（行程從菲律賓出發仍為 28 美元），開票、改票都收"
       },
       "confidence": "secondary",
       "sources": [
@@ -632,6 +632,11 @@
         {
           "label": "Executive Traveller 開放日整理",
           "url": "https://executivetraveller.com/when-do-award-calendars-open",
+          "official": false
+        },
+        {
+          "label": "民報：長榮、立榮 8/1 起訂位服務費 33 美元（2026-07-01）",
+          "url": "https://www.peoplenews.tw/?p=41150",
           "official": false
         }
       ]
