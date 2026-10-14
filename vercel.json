@@ -2,5 +2,13 @@
   "outputDirectory": "public",
   "rewrites": [{ "source": "/api/:path*", "destination": "/api/index?__path=:path*" }],
   "functions": { "api/index.js": { "includeFiles": "data/**", "maxDuration": 60 } },
-  "crons": [{ "path": "/api/alerts/run", "schedule": "0 23 * * *" }]
+  "crons": [
+    { "path": "/api/alerts/run", "schedule": "10 0 * * *" },
+    { "path": "/api/cron/daily", "schedule": "10 1 * * *" }
+  ],
+  "headers": [
+    { "source": "/airports.min.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }] },
+    { "source": "/icon-(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }] },
+    { "source": "/(.*)\\.(js|css)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] }
+  ]
 }
