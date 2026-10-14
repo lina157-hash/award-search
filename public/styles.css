@@ -1302,3 +1302,34 @@ label.switch { min-height: 40px; }
 
 /* 今日好康 keeps about its usual height while /api/deals loads, so the page below does not jump (desktop CLS). */
 @media (min-width: 641px) { #deals[aria-busy="true"] { min-height: 720px; } }
+
+/* ---------- cxfill: 國泰補查 badge and 經香港轉機 ---------- */
+:root { --cx: #0b6b62; --cx-soft: #e5f4f1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cx: #5fd3c2; --cx-soft: #12332f; } }
+:root[data-theme="dark"] { --cx: #5fd3c2; --cx-soft: #12332f; }
+.cx-badge { margin: 10px 0 4px; font-size: .9rem; }
+.cx-badge > summary { display: inline-block; min-height: 36px; line-height: 1.6; padding: 5px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); cursor: pointer; list-style: none; }
+.cx-badge > summary::-webkit-details-marker { display: none; }
+.cx-badge > summary::after { content: " ⓘ"; color: var(--muted); }
+.cx-badge .cx-am { white-space: nowrap; }
+.cx-badge > summary b { color: var(--cx); }
+.cx-tag { display: inline-block; margin-right: 8px; font-size: .74rem; font-weight: 700; color: var(--cx); background: var(--cx-soft); border-radius: 999px; padding: 1px 8px; }
+.cx-more { margin-top: 8px; padding: 10px 14px; border-left: 3px solid var(--cx); background: var(--surface); border-radius: 0 10px 10px 0; box-shadow: var(--shadow); }
+.cx-more p { margin: 0 0 6px; }
+.cx-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; }
+.cx-actions .outline { font-size: .84rem; }
+#search-pos:not(:empty) + #search-cx .cx-box { margin-top: 8px; }
+.cx-out .cx-total { margin: 6px 0 8px; }
+.cx-out .table-wrap, .cx-out .cx-note { max-width: 860px; }
+.cx-out .cx-total b { color: var(--cx); font-size: 1.08rem; }
+.cx-out .cx-total small { display: block; color: var(--muted); font-size: .8rem; }
+.cx-table td { vertical-align: top; white-space: normal; }
+.cx-table td small { display: block; color: var(--muted); font-size: .76rem; }
+.cx-next { display: inline-block; font-size: .74rem; color: var(--few-text); background: var(--few); border-radius: 6px; padding: 0 5px; margin-right: 4px; }
+.cx-note { margin-top: 8px; }
+.cx-empty { color: var(--muted); }
+@media (max-width: 640px) {
+  .cx-badge > summary { border-radius: 12px; }
+  .cx-table th, .cx-table td { padding: 6px; font-size: .84rem; }
+  .cx-table td:first-child { white-space: nowrap; }
+}
