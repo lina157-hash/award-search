@@ -838,7 +838,7 @@ function renderMine() {
 const alertCfg = { store: false, email: false };
 const ALERT_EMAIL_KEY = 'alertEmail';
 const alertSummary = (a) => `${a.origin} → ${a.destination}　${ymd(a.start)}${a.end !== a.start ? ` – ${ymd(a.end)}` : ''}　${CABIN_LABEL[a.cabin]}${a.pax ? `　至少 ${a.pax} 位` : ''}`;
-const alertFilterText = (a) => [a.sources?.length ? `哩程：${a.sources.map(srcName).join('、')}` : '', a.airlines?.length ? `航空公司：${a.airlines.map((x) => `${airlineZh(x)}（${x}）`).join('、')}` : ''].filter(Boolean).join('　');
+const alertFilterText = (a) => [a.sources?.length ? `哩程：${a.sources.map(srcName).join('、')}` : '', a.airlines?.length ? `航空公司：${a.airlines.map((x) => `${airlineZh(x)}（${x}）`).join('、')}${a.anyLeg ? '（含轉機）' : ''}` : ''].filter(Boolean).join('　');
 // Which programs and airlines a watch reports. Programs: every seats.aero program, the ones in this search first, ticked
 // when the result filter hides some. Airlines: the carriers in this search's results, plus codes typed in for ones that
 // have no seats yet. Nothing ticked means any.
@@ -858,7 +858,8 @@ function alertFiltersHtml(share) {
     <details class="alert-pick"${airPre.size ? ' open' : ''}><summary>只通知這些航空公司的航班 <small class="muted">（不選＝全部）</small></summary>
       ${carriers.length ? `<div class="h-progs">${carriers.map((x) => chip('a-air', x, airlineLabel(x), airPre.has(x))).join('')}</div>` : ''}
       <label class="field">其他航空公司代碼（現在還沒有位子的，例如 CI、BR）<input name="airlinesExtra" placeholder="CI, BR" autocomplete="off" autocapitalize="characters"></label>
-      <p class="hint">整趟都是這些航空公司飛的才通知，轉機段是別家的不算。</p>
+      <label class="switch"><input type="checkbox" name="anyLeg"><span class="knob"></span>轉機也通知（只要其中一段是這些航空公司）</label>
+      <p class="hint">沒勾的話，整趟都是這些航空公司飛的才通知。</p>
     </details>`;
 }
 const ALERT_SETUP = `<p class="hint">機位提醒還沒啟用。網站主人要在 Vercel 做兩件事：① Storage 分頁用 Marketplace 建一個 Upstash Redis（免費方案），它會自動加上連線設定；② 到 resend.com 申請免費金鑰，在 Environment Variables 新增 <code>RESEND_API_KEY</code>。都設好後重新部署。</p>`;
@@ -889,7 +890,7 @@ $('#alert-form').addEventListener('submit', async (e) => {
     store.set(ALERT_EMAIL_KEY, f.email.value.trim());
     const sources = $$('input[name="a-src"]:checked', f).map((i) => i.value);
     const airlines = [...new Set([...$$('input[name="a-air"]:checked', f).map((i) => i.value), ...f.airlinesExtra.value.toUpperCase().split(/[\s,，、]+/).filter(Boolean)])];
-    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim(), sources, airlines }), headers: { 'content-type': 'application/json' } });
+    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim(), sources, airlines, anyLeg: f.anyLeg.checked }), headers: { 'content-type': 'application/json' } });
     $('#alert-dialog').close();
     toast(`已建立提醒，目前有 ${body.found} 筆有位`);
     $('#alerts-panel').open = true;

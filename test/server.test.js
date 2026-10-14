@@ -103,6 +103,9 @@ test('alerts: only the chosen programs, and only flights flown entirely by the c
   assert.deepEqual(r.report[0], { id: added.alert.id, found: 2, fresh: 1, mailed: true });
   assert.match(mails[0].html, /只看 法航 Flying Blue，航空公司 CI/);
   await assert.rejects(al.add({ origin: 'TPE', destination: 'PVG', start: '2026-12-01', cabin: 'J', airlines: ['China'] }), /兩碼/);
+  // Connections welcome: one leg on a chosen airline is enough.
+  const any = createAlerts({ store: memoryStore(), search: async () => rows, sendEmail: async () => {} });
+  assert.equal((await any.add({ origin: 'TPE', destination: 'PVG', start: '2026-12-01', end: '2026-12-10', cabin: 'J', sources: 'flyingblue', airlines: 'CI', anyLeg: true })).found, 3);
   // Watches saved before these filters existed still report everything.
   const old = createAlerts({ store: memoryStore([{ id: 'x', origin: 'TPE', destination: 'PVG', start: '2026-12-01', end: '2026-12-10', cabin: 'J', pax: 0, email: '', seen: {}, lastRun: null }]), search: async () => rows, sendEmail: async () => {} });
   assert.equal((await old.run()).report[0].found, rows.length);
