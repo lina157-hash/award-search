@@ -1245,7 +1245,7 @@ function renderSearch() {
     </div>` : ''}
     <h2 class="section-title">最划算的選擇 <small>${allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
     <div class="best${folded ? ' folded' : ''}">${dealHtml}</div>
-    ${folded ? `<p class="same-more">同樣 ${fmt(lowMiles)} 哩：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}
+    ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}
     <h2 class="section-title">日曆 <small>每天最低哩數（顏色對照下方的便宜／較貴）；點日期篩選下表</small></h2>
     <div id="cal-host"></div>
     <h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>

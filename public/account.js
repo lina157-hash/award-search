@@ -434,7 +434,7 @@ function showErr(form, msg, extra = '') {
   p.hidden = !msg;
 }
 const why = () => `<p class="why">登入是為了<b>同步你的資料</b>：我的點數、常用航線、最近搜尋、我的行程和通知信箱會存在雲端，換手機或電腦登入就會看到同樣的資料。不登入也能用全部功能。</p>
-  <p class="hint">「通關密碼」是另一件事：只用來解鎖會花付費額度的即時查價（現金票價、雅高），一般訪客不需要。有通關密碼的人登入後輸入過一次，其他登入的裝置就不用再輸入（密碼本身不會上傳）。</p>`;
+  <p class="hint">「通關密碼」是另一回事：只用來解鎖會用付費額度的即時查價（現金票價、雅高），一般訪客不需要。登入後輸入過一次，其他登入的裝置就不用再輸入（密碼本身不會上傳）。</p>`;
 const tabsHtml = (on) => `<div class="auth-tabs" role="tablist" aria-label="登入或註冊">${[['login', '登入'], ['signup', '註冊']].map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === on}" data-view="${k}">${l}</button>`).join('')}</div>`;
 
 // view: login | signup | sent | forgot | forgot-sent | reset | settings | message

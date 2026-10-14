@@ -1137,6 +1137,7 @@ details.rules-fold > summary::-webkit-details-marker, .prog-card > summary::-web
 details.rules-fold > summary h2.section { display: flex; align-items: center; gap: 8px; }
 details.rules-fold > summary h2.section::after { content: "▾"; color: var(--muted); font-size: .85rem; font-weight: 400; }
 details.rules-fold[open] > summary h2.section::after { content: "▴"; }
+.prog-card { min-width: 0; }
 .prog-card > summary h3 { margin-bottom: 2px; }
 .prog-sum { display: block; color: var(--muted); font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prog-sum::before { content: "▸ "; }
@@ -1155,7 +1156,10 @@ details.rules-fold[open] > summary h2.section::after { content: "▴"; }
 
 /* tap targets: switches, the changelog toggle, preset chips and the airport-chip × reach about 40px */
 label.switch { min-height: 40px; }
-.foot summary { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 0; }
+.foot summary { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 8px 0; list-style: none; }
+.foot summary::-webkit-details-marker { display: none; }
+.foot summary::before { content: "▸"; }
+.foot details[open] > summary::before { content: "▾"; }
 .presets button, .presets .mine-chip button { min-height: 36px; }
 .chip button { position: relative; }
 .chip button::after { content: ""; position: absolute; inset: -4px; }
