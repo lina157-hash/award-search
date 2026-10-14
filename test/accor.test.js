@@ -4,7 +4,7 @@ const assert = require('node:assert');
 delete process.env.SEATS_AERO_API_KEY;
 delete process.env.CASH_PASSCODE;
 const { server } = require('../server');
-const { brandOf, pointsFor, accorAnswer, RULE } = require('../lib/accor');
+const { brandOf, pointsFor, accorAnswer, RULE, isAccorTitle } = require('../lib/accor');
 const { bookingHotels } = require('../lib/hotelcash');
 const { memoryKv, sharedCache } = require('../lib/kv');
 
@@ -86,6 +86,36 @@ test('Booking.com city search: two requests at most, city id cached, a cache hit
   const n = calls.length;
   await run();
   assert.deepEqual([spent, calls.length], [1, n]);
+});
+
+test('Booking.com city search with a brand filter: Accor brands asked for by filter id, filter ids kept per city', async () => {
+  const calls = [];
+  const kv = memoryKv();
+  const fetchImpl = async (url) => {
+    const u = new URL(String(url));
+    calls.push(u.pathname);
+    if (u.hostname === 'booking-com.p.rapidapi.com') return new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 });
+    if (u.pathname === '/api/v1/hotels/searchDestination') return Response.json({ status: true, data: [{ dest_id: '-3414440', search_type: 'city', name: 'Bangkok' }] });
+    if (u.pathname === '/api/v1/hotels/getFilter') {
+      return Response.json({ status: true, data: { filters: [
+        { title: 'Property rating', field: 'class', options: [{ title: '5 stars', genericId: 'class::5' }] },
+        { title: 'Brands', field: 'chaincode', options: [{ title: 'Novotel', genericId: 'chaincode::1053' }, { title: 'Marriott Hotels & Resorts', genericId: 'chaincode::1001' }, { title: 'ibis Styles', genericId: 'chaincode::1121' }, { title: 'Steigenberger', genericId: 'chaincode::1400' }] },
+      ] } });
+    }
+    assert.equal(u.searchParams.get('categories_filter'), 'chaincode::1053,chaincode::1121');
+    return Response.json({ status: true, data: { hotels: [{ hotel_id: 7, property: { name: 'Novotel Bangkok Sukhumvit 20', priceBreakdown: { grossPrice: { value: 9000, currency: 'TWD' } } } }] } });
+  };
+  const lookup = bookingHotels({ apiKey: 'r', kv, fetchImpl });
+  const want = { city: 'Bangkok', checkin: '2026-11-26', checkout: '2026-11-28', adults: 2, lat: null, lon: null };
+  const first = await lookup.city(want, { brands: isAccorTitle });
+  assert.deepEqual(calls.filter((c) => c.startsWith('/api/')), ['/api/v1/hotels/searchDestination', '/api/v1/hotels/getFilter', '/api/v1/hotels/searchHotels']);
+  assert.equal(first.requests, 3, 'a new city: city id, filters, one page');
+  assert.deepEqual(first.debug.filters.matched, ['Novotel=chaincode::1053', 'ibis Styles=chaincode::1121']);
+  assert.deepEqual(accorAnswer(first, { eurRate: 36, nights: 2 }).hotels.map((h) => h.brand), ['Novotel']);
+  calls.length = 0;
+  const again = await lookup.city({ ...want, checkin: '2026-12-01', checkout: '2026-12-03' }, { brands: isAccorTitle });
+  assert.deepEqual(calls, ['/api/v1/hotels/searchHotels'], 'same city: city id and filters cached, one filtered page');
+  assert.equal(again.requests, 1);
 });
 
 test('/api/hotels/accor: demo list, validation, passcode, config flag', async () => {
