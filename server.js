@@ -35,7 +35,13 @@ const kv = HAS_REDIS ? redisKv({ url: REDIS_URL, token: REDIS_TOKEN }) : memoryK
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames'];
+// The page loads the bundle in two parts: `core` is what the first screen needs (form menus, airline and airport names);
+// `more` (points, charts, rules, booking notes…) is fetched when a search, a flight's details or a tab that uses it opens.
+const DATA_PARTS = {
+  core: ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'],
+  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos'],
+};
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
 
@@ -825,14 +831,17 @@ function sendBody(req, res, { body, type, etag, cache, modified }) {
 
 // The data files, read once: one by one at /api/data/<name>, or all together at /api/data/all (one request at start-up
 // instead of twelve). /api/data/all?v=<current version> never changes, so the browser may keep it for good.
-const DATA_FILE_NAMES = { sourcenames: 'source-names', airlinenames: 'airline-names' };
+const DATA_FILE_NAMES = { sourcenames: 'source-names', airlinenames: 'airline-names', airportnames: 'airport-names-zh' };
 const dataFile = (name) => path.join(DATA_DIR, (DATA_FILE_NAMES[name] || name) + '.json');
 const DATA = Object.fromEntries(DATA_FILES.map((n) => {
   const body = fs.readFileSync(dataFile(n));
   return [n, { body, etag: etagOf(body) }];
 }));
-const DATA_ALL_BODY = JSON.stringify(Object.fromEntries(DATA_FILES.map((n) => [n, JSON.parse(DATA[n].body)])));
-const DATA_ALL = { body: DATA_ALL_BODY, etag: etagOf(DATA_ALL_BODY) };
+const dataBundle = (names) => {
+  const body = JSON.stringify(Object.fromEntries(names.map((n) => [n, JSON.parse(DATA[n].body)])));
+  return { body, etag: etagOf(body) };
+};
+const DATA_BUNDLES = { all: dataBundle(DATA_FILES), core: dataBundle(DATA_PARTS.core), more: dataBundle(DATA_PARTS.more) };
 
 function staticPolicy(rel, q) {
   if (rel.endsWith('.html')) return 'no-cache';
@@ -937,8 +946,9 @@ async function route(req, res) {
       try { id = decodeURIComponent(p.slice(11)); } catch { throw new BadRequest('網址編碼錯誤'); }
       return sendJson(res, 200, await handleTrips(id), CACHE.search);
     }
-    if (p === '/api/data/all') {
-      return sendBody(req, res, { ...DATA_ALL, type: MIME['.json'], cache: q.get('v') === VERSION.version ? CACHE.immutable : CACHE.data });
+    const dm = p.match(/^\/api\/data\/(all|core|more)$/);
+    if (dm) {
+      return sendBody(req, res, { ...DATA_BUNDLES[dm[1]], type: MIME['.json'], cache: q.get('v') === VERSION.version ? CACHE.immutable : CACHE.data });
     }
     const m = p.match(/^\/api\/data\/(\w+)$/);
     if (m && DATA_FILES.includes(m[1])) return sendBody(req, res, { ...DATA[m[1]], type: MIME['.json'], cache: CACHE.data });

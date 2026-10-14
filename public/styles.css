@@ -49,6 +49,7 @@ code { background: var(--surface-2); padding: 1px 6px; border-radius: 6px; font-
 .tabs button { border: 0; background: none; color: #d9eef6; padding: 7px 14px; border-radius: 9px; font: inherit; font-weight: 500; cursor: pointer; }
 .tabs button:hover { color: #fff; }
 .tabs button[aria-selected="true"] { background: var(--sun); color: var(--sun-text); font-weight: 700; }
+.tabs .ts, .rules-nav .ts { display: none; }
 .banner { background: var(--few); color: var(--few-text); padding: 8px 16px; text-align: center; font-size: .9rem; }
 
 /* ---------- hero ---------- */
@@ -455,6 +456,8 @@ dialog.pass { width: min(380px, calc(100vw - 32px)); border-radius: 16px; }
 
 /* ---------- seat alerts ---------- */
 .alerts-panel { margin-top: 12px; color: var(--hero-text); }
+/* The panels sit side by side as pills; an open one takes the full width. */
+.alerts-panel:not([open]) { display: inline-block; vertical-align: top; margin-right: 6px; }
 .alerts-panel summary { cursor: pointer; font-weight: 700; font-size: .9rem; color: var(--preset-label); list-style: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; background: var(--preset-bg); border: 1px solid var(--preset-border); }
 .alerts-panel summary::-webkit-details-marker { display: none; }
 .alerts-panel summary span { font-weight: 400; }
@@ -555,6 +558,9 @@ details.release li { margin: 3px 0; }
 
 /* ---------- result tools ---------- */
 .result-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: -4px 0 14px; }
+.result-tools { scroll-margin-top: 72px; }
+.wallet-back { margin: 12px 0 2px; }
+#wallet-back:empty { display: none; }
 .field.compact { flex-direction: row; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; font-size: .88rem; white-space: nowrap; }
 .field.compact select { padding: 6px 10px; min-height: 0; }
 .field.compact label { white-space: nowrap; margin: 0; }
@@ -603,10 +609,11 @@ details.release li { margin: 3px 0; }
 .ex-map .hint { padding: 16px; }
 .map-pin { display: grid; place-items: center; }
 .map-pin span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-size: .75rem; font-weight: 700; color: #fff; border: 2px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .35); }
-.map-pin.t0 span { background: #0b8ea3; }
-.map-pin.t1 span { background: #2fa7a0; }
-.map-pin.t2 span { background: #e39b2d; }
-.map-pin.t3 span { background: #d1495b; }
+/* Pin colours dark enough for white digits (about 5:1). */
+.map-pin.t0 span { background: #08788a; }
+.map-pin.t1 span { background: #2f7d4f; }
+.map-pin.t2 span { background: #b35c00; }
+.map-pin.t3 span { background: #b8323f; }
 .map-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .map-actions button { font: inherit; font-size: .8rem; border: 1px solid #ccc; background: #fff; color: #06798f; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
 
@@ -960,10 +967,13 @@ details.ti-src p { margin: 4px 0 0; }
 @media (max-width: 640px) {
   .top-inner { flex-wrap: nowrap; gap: 8px; padding-top: 6px; padding-bottom: 6px; }
   .brand > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .logo { width: 30px; height: 30px; }
-  .tabs { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; gap: 2px; padding: 3px; -webkit-mask: linear-gradient(90deg, #000 calc(100% - 18px), transparent); mask: linear-gradient(90deg, #000 calc(100% - 18px), transparent); }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tabs button { flex: none; padding: 6px 10px; font-size: .86rem; }
+  .logo { width: 28px; height: 28px; font-size: .9rem; }
+  .brand { min-width: 28px; }
+  /* All seven tabs in one row with two-character labels: nothing hides off screen, the open tab is always in view. */
+  .tabs { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; padding: 3px; }
+  .tabs button { min-width: 0; min-height: 36px; padding: 4px 0; font-size: .84rem; line-height: 1.2; white-space: nowrap; }
+  .tabs .tl, .rules-nav .tl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tabs .ts, .rules-nav .ts { display: inline; }
   .banner { padding: 4px 12px; font-size: .78rem; }
   .status { scroll-margin-top: 64px; }
   .rules-sec h2.section, .rules-sec h3.sub, .rules-sec [id] { scroll-margin-top: 60px; }
@@ -980,12 +990,18 @@ details.ti-src p { margin: 4px 0 0; }
   .points-table td:first-child, .points-table td:nth-child(4), .points-table td:last-child { grid-column: 1 / -1; }
   .points-table td:empty { display: none; }
   .points-table td[data-l]::before, .calc-table td[data-l]::before { content: attr(data-l); display: block; color: var(--muted); font-size: .74rem; font-weight: 400; }
-  .calc-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
-  .calc-table tbody th, .calc-table tbody th:first-child, .calc-table td { display: block; min-width: 0 !important; max-width: none !important; padding: 0; border: 0; position: static; box-shadow: none; background: none; }
-  .calc-table tbody th { grid-column: 1 / -1; }
-  .calc-table td.best { background: none; }
-  .calc-table td.others { grid-column: 1 / -1; }
+  /* Points calculator: one bank card per row, one program per line (label left, result right), nothing side by side. */
+  .calc-table tr { display: block; padding: 12px 14px 8px; border-bottom: 1px solid var(--border); }
+  .calc-table tbody th, .calc-table tbody th:first-child, .calc-table td { display: block; min-width: 0 !important; max-width: none !important; padding: 0; border: 0; position: static; box-shadow: none; background: none; white-space: normal; }
+  .calc-table tbody th { margin-bottom: 4px; }
+  .calc-table td[data-l] { display: grid; grid-template-columns: 5.6em minmax(0, 1fr); column-gap: 12px; align-items: baseline; padding: 5px 0; border-top: 1px dashed var(--border); }
+  .calc-table td[data-l]::before { grid-row: 1 / span 9; font-size: .84rem !important; color: var(--muted); }
+  .calc-table td[data-l] > * { grid-column: 2; min-width: 0; overflow-wrap: anywhere; }
+  .calc-table td.short span, .calc-table.simple td.short span { white-space: normal; font-size: .86rem; }
+  .calc-table td.best[data-l] { background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); margin: 0 -8px; padding: 5px 8px; border-radius: 8px; border-top-color: transparent; }
+  .calc-table td.others div + div { margin-top: 4px; }
   .calc-table td.none { text-align: left; }
+  .calc-table td.none[data-l] > * { color: var(--muted); }
 }
 
 /* ---------- accounts (public/account.js) ---------- */
@@ -1043,7 +1059,9 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .tg-on { margin: 0; } .tg-on small { color: var(--muted); margin-left: 4px; }
 #mine, #plan-panel, #alerts-panel, .tg-panel { scroll-margin-top: 70px; }
 @media (max-width: 640px) {
-  .acct-btn { padding: 4px 10px; font-size: .84rem; min-height: 34px; }
+  .acct-btn { padding: 4px 10px; font-size: .84rem; min-height: 36px; }
+  .acct-btn:not(:has(.av)) { width: 36px; padding: 0; justify-content: center; }
+  .acct-btn .acct-txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .acct-btn .nm { display: none; }
   .acct-btn .av { margin-left: -4px; }
   .acct-menu { position: fixed; left: 12px; right: 12px; top: 52px; width: auto; max-height: calc(100dvh - 64px); overflow: auto; }
@@ -1064,10 +1082,15 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .rm-pin .rm-label b { display: block; font-size: .72rem; font-weight: 600; color: var(--muted); }
 .leaflet-marker-icon.rm-dot .rm-label { display: none; }
 .leaflet-marker-icon.rm-hide { display: none; }
-.rm-pin.t0 .rm-k { background: #0b8ea3; }
-.rm-pin.t1 .rm-k { background: #2fa7a0; }
-.rm-pin.t2 .rm-k { background: #e39b2d; }
-.rm-pin.t3 .rm-k { background: #d1495b; }
+.rm-pin.t0 .rm-k { background: #08788a; }
+.rm-pin.t1 .rm-k { background: #2f7d4f; }
+.rm-pin.t2 .rm-k { background: #b35c00; }
+.rm-pin.t3 .rm-k { background: #b8323f; }
+/* A bigger tap area than the 28px circle, and what the number means under the map. */
+.rm-pin .rm-k { position: relative; font-size: .74rem; }
+.rm-pin .rm-k::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+.rmap + .hint { margin-top: 10px; }
+.rmap + .hint::before { content: "圓圈數字＝最低哩數（千哩，例如 23 ＝ 約 23,000 哩）。"; }
 .rm-pop { border-collapse: collapse; margin: 6px 0; font-size: .82rem; }
 .rm-pop { width: 100%; }
 .rm-pop td { padding: 3px 6px 3px 0; vertical-align: top; position: static; background: none; border-bottom: 1px solid #eee; }
@@ -1075,7 +1098,7 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .rmap-row > * { flex: 1 1 220px; min-width: 0; }
 .rm-pop td small { display: block; color: #777; }
 .rm-pop td:last-child { text-align: right; white-space: nowrap; }
-@media (max-width: 640px) { .rmap { height: 440px; } .rmap-row > *, .rmap-row > .field.grow { flex: 1 1 100%; } }
+@media (max-width: 640px) { .rmap { height: 440px; } #rmap-form button[type=submit] { width: 100%; padding: 12px 28px; } .rmap-row > *, .rmap-row > .field.grow { flex: 1 1 100%; } }
 
 /* Maps when no tile server answers: sea and land drawn by the site itself */
 :root { --map-sea: #a9d3f0; --map-land: #f6f1e3; --map-coast: #b9ad94; }
@@ -1086,3 +1109,57 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .map-osm .leaflet-tile-pane { filter: saturate(0.75) brightness(1.03); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); } }
 :root[data-theme="dark"] .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
+
+/* 最划算: tied prices fold into one card */
+.same-more { margin: 8px 2px 0; color: var(--muted); font-size: .85rem; }
+.same-more .linklike { margin-left: 4px; }
+@media (max-width: 640px) {
+  /* results: tighter so the calendar and table come sooner */
+  #search-results .section-title { margin: 18px 0 8px; }
+  .best { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .best.folded { grid-template-columns: minmax(0, 1fr); }
+  .deal { padding: 10px 12px; }
+  .deal .rank { position: static; display: inline-block; margin-bottom: 4px; }
+  .deal .miles { font-size: 1.3rem; margin: 2px 0; }
+  .deal .meta { font-size: .78rem; }
+  .am-callout { padding: 10px 12px; margin-top: 10px; }
+  .result-tools { margin-bottom: 8px; }
+}
+
+/* form errors under the field */
+.field-err { margin: 2px 0 0; color: var(--danger); font-size: .82rem; font-weight: 500; }
+.chips-box[aria-invalid], .ac-host:has(.field-err) .chips-box, .field:has(.field-err) > .dp-btn, .field:has(.field-err) > input { border-color: var(--danger); }
+
+/* rules: chapter chips stay under the header; sections and program cards fold (folded by default on phones) */
+.rules-nav { position: sticky; top: var(--hdr-h, 62px); z-index: 5; margin: 0 -16px 4px; padding: 8px 16px; background: var(--bg); box-shadow: 0 6px 8px -8px rgb(0 0 0 / .25); }
+details.rules-fold > summary, .prog-card > summary { list-style: none; cursor: pointer; margin-top: 0; color: inherit; }
+details.rules-fold > summary::-webkit-details-marker, .prog-card > summary::-webkit-details-marker { display: none; }
+details.rules-fold > summary h2.section { display: flex; align-items: center; gap: 8px; }
+details.rules-fold > summary h2.section::after { content: "▾"; color: var(--muted); font-size: .85rem; font-weight: 400; }
+details.rules-fold[open] > summary h2.section::after { content: "▴"; }
+.prog-card > summary h3 { margin-bottom: 2px; }
+.prog-sum { display: block; color: var(--muted); font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog-sum::before { content: "▸ "; }
+.prog-card[open] .prog-sum { display: none; }
+@media (max-width: 640px) {
+  .rules-nav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; padding: 6px 16px; }
+  .rules-nav button { min-width: 0; min-height: 36px; padding: 4px 0; white-space: nowrap; }
+  details.rules-fold { border-bottom: 1px solid var(--border); }
+  details.rules-fold > summary h2.section { margin: 0; padding: 14px 0; font-size: 1.02rem; justify-content: space-between; }
+  details.rules-fold[open] > summary h2.section { padding-bottom: 8px; }
+  .prog-card { padding: 12px 14px; }
+}
+
+/* results scrolled into view land below the sticky header */
+#hotels-results, #explore-results, #search-results, #cash-results { scroll-margin-top: calc(var(--hdr-h, 56px) + 12px); }
+
+/* tap targets: switches, the changelog toggle, preset chips and the airport-chip × reach about 40px */
+label.switch { min-height: 40px; }
+.foot summary { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 0; }
+.presets button, .presets .mine-chip button { min-height: 36px; }
+.chip button { position: relative; }
+.chip button::after { content: ""; position: absolute; inset: -4px; }
+.alerts-panel summary { min-height: 36px; }
+
+/* 今日好康 keeps about its usual height while /api/deals loads, so the page below does not jump (desktop CLS). */
+@media (min-width: 641px) { #deals[aria-busy="true"] { min-height: 720px; } }

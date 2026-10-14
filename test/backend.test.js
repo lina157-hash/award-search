@@ -370,7 +370,7 @@ test('P01/P09: the in-instance cache shares in-flight calls; the shared cache sp
 });
 
 test('P02: /api/data/all bundles exactly the data files, cacheable for good per version', async () => {
-  const names = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames'];
+  const names = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames'];
   const res = await fetch(`${base}/api/data/all`);
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('cache-control'), 'public, max-age=300, s-maxage=3600');
@@ -388,6 +388,30 @@ test('P02: /api/data/all bundles exactly the data files, cacheable for good per 
   assert.equal(head.status, 200);
   assert.ok(Number(head.headers.get('content-length')) > 100);
   assert.equal((await fetch(`${base}/api/search`, { method: 'HEAD' })).status, 405);
+});
+
+test('C10: the data comes in two bundles, core (first screen) and more, that together make up all', async () => {
+  const v = require('../data/version.json').version;
+  const all = await (await fetch(`${base}/api/data/all`)).json();
+  const core = await fetch(`${base}/api/data/core?v=${v}`);
+  assert.equal(core.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+  const coreBody = await core.json();
+  const more = await (await fetch(`${base}/api/data/more`)).json();
+  assert.deepEqual(Object.keys(coreBody), ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames']);
+  assert.deepEqual([...Object.keys(coreBody), ...Object.keys(more)].sort(), Object.keys(all).sort(), 'no file missing or in both');
+  for (const n of Object.keys(more)) assert.deepEqual(more[n], all[n], n);
+  assert.ok(coreBody.airportnames.names.TPE, 'Chinese airport names for chips and cards before the full list loads');
+  // The first screen's bundle stays small (the whole bundle is about 200 KB).
+  assert.ok(JSON.stringify(coreBody).length < 40_000, `core is ${JSON.stringify(coreBody).length} bytes`);
+  assert.equal((await fetch(`${base}/api/data/core`)).headers.get('cache-control'), 'public, max-age=300, s-maxage=3600');
+});
+
+test('C10: index.html preloads the core bundle at the same version as its scripts', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const versions = new Set([...html.matchAll(/\?v=([\w.-]+)/g)].map((m) => m[1]));
+  assert.equal(versions.size, 1, `one version in every ?v= (${[...versions]})`);
+  assert.match(html, /<link rel="preload" as="fetch" href="\/api\/data\/core\?v=[\w.-]+" crossorigin>/);
+  assert.doesNotMatch(html, /wght@[\d;]*500/, 'the web font loads two weights');
 });
 
 test('P02: static files carry validators and a cache policy, and answer HEAD', async () => {

@@ -294,7 +294,8 @@ updateLockHint = function () {
 // ---------- header button and menu ----------
 function mountHeader() {
   const inner = $('.top-inner');
-  inner.insertAdjacentHTML('beforeend', `<div class="acct" id="acct" hidden>
+  // index.html carries the button already (so the header doesn't shift); older pages get it inserted here.
+  if (!$('#acct')) inner.insertAdjacentHTML('beforeend', `<div class="acct" id="acct" hidden>
     <button type="button" class="acct-btn" id="acct-btn" aria-haspopup="dialog">👤 登入</button>
     <div class="acct-menu" id="acct-menu" role="menu" aria-labelledby="acct-btn" hidden></div>
   </div>`);
@@ -323,7 +324,7 @@ function renderHeader() {
     b.setAttribute('aria-expanded', String(!$('#acct-menu').hidden));
     b.setAttribute('aria-label', `帳號：${name}`);
   } else {
-    b.textContent = '👤 登入';
+    b.innerHTML = '<span aria-hidden="true">👤</span><span class="acct-txt">登入</span>';
     b.setAttribute('aria-haspopup', 'dialog');
     b.removeAttribute('aria-expanded');
     b.removeAttribute('aria-label');
@@ -368,6 +369,7 @@ function showPanel(id, tab = 'search') {
   showTab(tab);
   const el = $(`#${id}`);
   if (!el) return;
+  el.hidden = false; // 我的行程 stays hidden until it has a leg
   if (el.tagName === 'DETAILS') el.open = true;
   requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 }
@@ -431,7 +433,8 @@ function showErr(form, msg, extra = '') {
   p.innerHTML = `${esc(msg)}${extra}`;
   p.hidden = !msg;
 }
-const why = () => `<p class="why">登入後，<b>我的點數、常用航線、最近搜尋、我的行程</b>和通知信箱會存在雲端，換手機或電腦登入就會看到同樣的資料。輸入過一次通關密碼，其他登入的裝置也不用再輸入（密碼本身不會上傳）。不登入也能用全部功能。</p>`;
+const why = () => `<p class="why">登入是為了<b>同步你的資料</b>：我的點數、常用航線、最近搜尋、我的行程和通知信箱會存在雲端，換手機或電腦登入就會看到同樣的資料。不登入也能用全部功能。</p>
+  <p class="hint">「通關密碼」是另一件事：只用來解鎖會花付費額度的即時查價（現金票價、雅高），一般訪客不需要。有通關密碼的人登入後輸入過一次，其他登入的裝置就不用再輸入（密碼本身不會上傳）。</p>`;
 const tabsHtml = (on) => `<div class="auth-tabs" role="tablist" aria-label="登入或註冊">${[['login', '登入'], ['signup', '註冊']].map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === on}" data-view="${k}">${l}</button>`).join('')}</div>`;
 
 // view: login | signup | sent | forgot | forgot-sent | reset | settings | message
@@ -730,10 +733,11 @@ addEventListener('hashchange', () => { if (/^#(verify|reset)=/.test(location.has
 (async function initAccount() {
   mountTelegram();
   let st;
-  try { st = await acctCall('/api/account'); } catch { return; }
+  const hideBtn = () => { const box = $('#acct'); if (box) box.hidden = true; };
+  try { st = await acctCall('/api/account'); } catch { hideBtn(); return; }
   acct.configured = Boolean(st.configured);
   acct.emailEnabled = Boolean(st.emailEnabled);
-  if (!acct.configured) return;
+  if (!acct.configured) { hideBtn(); return; }
   mountHeader();
   mountDialog();
   acct.status = st;
