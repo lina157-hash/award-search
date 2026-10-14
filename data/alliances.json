@@ -6,7 +6,7 @@
       "id": "oneworld",
       "name": "寰宇一家 oneworld",
       "members": ["AA", "AS", "BA", "CX", "AY", "HA", "IB", "JL", "MH", "QF", "QR", "AT", "RJ", "UL", "FJ", "WY"],
-      "summary": "國泰、日航、英航、美航、阿拉斯加航空等。里程計畫多半以「距離」計價，跨航司的夥伴票通常沒有動態加價。夏威夷航空 2026-04-23 正式加入；菲律賓航空已宣布將加入，日期未定。",
+      "summary": "國泰、日航、英航、美航、阿拉斯加航空等。哩程計畫多半以「距離」計價，跨航司的夥伴票通常沒有動態加價。夏威夷航空 2026-04-23 正式加入；菲律賓航空已宣布將加入，日期未定。",
       "memberNotes": [
         { "code": "HA", "status": "joined", "date": "2026-04-23", "note": "夏威夷航空成為正式成員（日本時間）。", "source": { "label": "日航新聞稿（2026-04）", "url": "https://press.jal.co.jp/en/release/202604/009496.html" } },
         { "code": "PR", "status": "upcoming", "date": null, "note": "即將加入：菲律賓航空 2026-06-06 簽署備忘錄、將成為正式成員，加入日期未公布，尚未列入 members。", "source": { "label": "oneworld 新聞稿（2026-06-06）", "url": "https://oneworld.com/news/philippine-airlines-to-join-oneworld-alliance" } }
@@ -17,7 +17,7 @@
       "id": "star",
       "name": "星空聯盟 Star Alliance",
       "members": ["A3", "AC", "CA", "AI", "NZ", "NH", "OZ", "OS", "AV", "SN", "CM", "OU", "MS", "ET", "BR", "AZ", "LO", "LH", "ZH", "SQ", "SA", "LX", "TP", "TG", "TK", "UA"],
-      "summary": "長榮、加航、全日空、聯合、新航、漢莎、土航等，是成員最多的聯盟。加航 Aeroplan、聯合 MileagePlus 常被用來換長榮與全日空的座位。義大利 ITA 航空 2026-04-01 加入；韓亞航空將於 2026-12-16 退出（2026-10-15 後出發的韓亞航班已不累積星盟里程，用星盟里程換韓亞的票須在 12-16 前飛完）。",
+      "summary": "長榮、加航、全日空、聯合、新航、漢莎、土航等，是成員最多的聯盟。加航 Aeroplan、聯合 MileagePlus 常被用來換長榮與全日空的座位。義大利 ITA 航空 2026-04-01 加入；韓亞航空將於 2026-12-16 退出（2026-10-15 後出發的韓亞航班已不累積星盟哩程，用星盟哩程換韓亞的票須在 12-16 前飛完）。",
       "memberNotes": [
         { "code": "AZ", "status": "joined", "date": "2026-04-01", "note": "ITA 航空加入，里程計畫改為漢莎 Miles & More（原 Volare 2026-03-30 結束）。", "source": { "label": "LoyaltyLobby（2026-03-22）", "url": "https://loyaltylobby.com/2026/03/22/ita-airways-joins-star-alliance-on-april-1-2026/" } },
         { "code": "OZ", "status": "leaving", "date": "2026-12-16", "note": "韓亞航空 2026-12-16 韓國時間 23:59 退出，隔日併入大韓航空；2026-10-15（含）前出發的航班仍可累積星盟里程，星盟獎勵票與升等須在 12-16 前完成旅行。退出後請從 members 移除 OZ。", "source": { "label": "加航轉載星空聯盟新聞稿（2026-06）", "url": "https://www.aircanada.com/media/asiana-airlines-to-exit-star-alliance/" } }

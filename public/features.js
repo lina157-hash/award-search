@@ -251,6 +251,8 @@ function openProgramCard(id) {
   if (!first) renderRules();
   const el = document.getElementById(`prog-${id}`);
   if (!el) return;
+  // Folded on phones: open the card and its section first.
+  for (let d = el; d; d = d.parentElement?.closest('details')) d.open = true;
   window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 76 });
   el.classList.add('flash');
   setTimeout(() => el.classList.remove('flash'), 1600);
@@ -354,8 +356,10 @@ function setPointsView(v) {
 function bindPointsTabs(host) {
   $$('input[name=points-view]', host).forEach((i) => i.addEventListener('change', () => { setPointsView(i.value); showTab('points'); renderPoints(); }));
 }
-// 「去填點數」 from the results: straight to 點數換算器 › 我的點數.
+// 「去填點數」 from the results: straight to 點數換算器 › 我的點數, with a way back once something is filled in.
+let walletReturn = false;
 function openWallet() {
+  walletReturn = currentTab === 'search' && state.results.length > 0;
   setPointsView('wallet');
   const first = !tabDone.has('points');
   showTab('points');
@@ -363,6 +367,19 @@ function openWallet() {
   window.scrollTo({ top: 0 });
   $('#w-pick')?.focus();
 }
+
+// Back to the search results with 只看我換得起的 switched on, scrolled to the filter.
+function walletBackHtml() {
+  return walletReturn && !walletEmpty() ? '<button type="button" class="primary wallet-back" data-wallet-back>← 回到搜尋結果（只看換得起的）</button>' : '';
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest?.('[data-wallet-back]')) return;
+  walletReturn = false;
+  state.affordOnly = true;
+  showTab('search');
+  renderSearch();
+  $('#search-results .result-tools')?.scrollIntoView({ block: 'start' });
+});
 
 // Only what the user entered is listed; everything else is picked from one dropdown, so the page stays short.
 const walletItemName = (kind, id) => {
@@ -388,6 +405,7 @@ function walletHtml() {
     </div>
     <div id="wallet-expiry"></div>
     <div id="wallet-goal"></div>
+    <div id="wallet-back"></div>
     <div id="wallet-sum-wrap"><h3 class="sub">合計可換到：航空哩程</h3><div id="wallet-sum"></div>
       <div id="wallet-hotel-wrap" hidden><h3 class="sub">合計可換到：飯店點數</h3><div id="wallet-hotel-sum"></div></div>
       <div id="wallet-detour-wrap" hidden><h3 class="sub">經飯店繞路可換到的航空</h3><div id="wallet-detour-sum"></div></div></div>
@@ -396,6 +414,8 @@ function walletHtml() {
 function renderWalletSum() {
   const host = $('#wallet-sum');
   if (!host) return;
+  const back = $('#wallet-back');
+  if (back) back.innerHTML = walletBackHtml();
   const keys = [...new Set([...WALLET_PROGRAMS, ...Object.keys(PROGRAM_TRANSFER)])];
   const rows = keys.map((k) => ({ k, r: reach(k) })).filter(({ r }) => r.total > 0).sort((a, b) => b.r.total - a.r.total);
   host.innerHTML = rows.length ? `<div class="table-wrap"><table class="wallet-sum"><thead><tr><th>計畫</th><th>最多可湊到</th><th>來源</th></tr></thead><tbody>
@@ -1017,6 +1037,7 @@ async function loadDeals() {
   } catch {
     host.innerHTML = '';
   }
+  host.removeAttribute('aria-busy'); // drops the reserved height (index.html), see styles.css
 }
 function renderDeals() {
   const host = $('#deals');
@@ -1226,7 +1247,7 @@ function cashLegs() {
 }
 
 function planHtml(p, editable) {
-  if (!p.legs.length) return '<p class="hint">還沒有航段。在航班明細按「＋ 加入我的行程」，或在查現金票選好航班後加入。可以把里程票和現金票混搭，例如去程用哩程、回程買票。</p>';
+  if (!p.legs.length) return '<p class="hint">還沒有航段。在航班明細按「＋ 加入我的行程」，或在查現金票選好航班後加入。可以把哩程票和現金票混搭，例如去程用哩程、回程買票。</p>';
   const milesBy = {};
   const taxBy = {};
   let cashTotal = 0;
@@ -1249,6 +1270,9 @@ function planHtml(p, editable) {
 function renderPlan() {
   const body = $('#plan-body');
   if (!body) return;
+  // An empty 我的行程 stays out of the way until a leg is added (the account menu can still open it).
+  const panel = $('#plan-panel');
+  if (panel) panel.hidden = !plan.legs.length && !sharedPlan && !panel.open;
   $('#plan-count').textContent = plan.legs.length ? `（${plan.legs.length} 段）` : '';
   body.innerHTML = `${sharedPlan ? `<div class="plan-shared"><b>朋友分享的行程：${esc(sharedPlan.name)}</b>${planHtml(sharedPlan, false)}
       <div class="plan-actions"><button type="button" class="primary small" id="plan-import">存成我的行程</button><button type="button" class="outline" id="plan-dismiss">不用了</button></div></div>` : ''}

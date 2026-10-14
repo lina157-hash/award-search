@@ -3,15 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>機票搜索雷達｜里程票與現金票查詢</title>
-  <meta name="description" content="一次查詢多個里程計畫的獎勵機位與現金票價：國泰、長榮、華航、法航、加航等，附航空聯盟與開票規則整理。">
+  <title>機票搜索雷達｜哩程票與現金票查詢</title>
+  <meta name="description" content="一次查詢多個哩程計畫的獎勵機位與現金票價：國泰、長榮、華航、法航、加航等，附航空聯盟與開票規則整理。">
   <meta name="theme-color" content="#0a6a96">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Web font loads after first paint; system fonts show meanwhile. -->
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="/styles.css?v=1.24.1">
+  <!-- What the first screen needs, fetched while the scripts download (app.js asks for the same URLs). -->
+  <link rel="preload" as="fetch" href="/api/data/core?v=1.24.1" crossorigin>
+  <link rel="preload" as="fetch" href="/api/config" crossorigin>
   <link rel="icon" href="/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="/icon-180.png">
   <link rel="manifest" href="/manifest.webmanifest">
@@ -24,25 +27,30 @@
     <div class="wrap top-inner">
       <a class="brand" href="/#search"><span class="logo" aria-hidden="true">✈</span><span>機票搜索雷達</span></a>
       <nav class="tabs" role="tablist">
-        <button role="tab" data-tab="search" aria-selected="true">航線查詢</button>
-        <button role="tab" data-tab="explore">區域探索</button>
-        <button role="tab" data-tab="map">兌換地圖</button>
-        <button role="tab" data-tab="cash">查現金票</button>
-        <button role="tab" data-tab="hotels">查飯店</button>
-        <button role="tab" data-tab="points">點數換算器</button>
-        <button role="tab" data-tab="rules">規則庫</button>
+        <button role="tab" data-tab="search" aria-selected="true"><span class="tl">航線查詢</span><span class="ts" aria-hidden="true">航線</span></button>
+        <button role="tab" data-tab="explore"><span class="tl">區域探索</span><span class="ts" aria-hidden="true">探索</span></button>
+        <button role="tab" data-tab="map"><span class="tl">兌換地圖</span><span class="ts" aria-hidden="true">地圖</span></button>
+        <button role="tab" data-tab="cash"><span class="tl">查現金票</span><span class="ts" aria-hidden="true">現金</span></button>
+        <button role="tab" data-tab="hotels"><span class="tl">查飯店</span><span class="ts" aria-hidden="true">飯店</span></button>
+        <button role="tab" data-tab="points"><span class="tl">點數換算器</span><span class="ts" aria-hidden="true">點數</span></button>
+        <button role="tab" data-tab="rules"><span class="tl">規則庫</span><span class="ts" aria-hidden="true">規則</span></button>
       </nav>
+      <!-- account.js wires this up (or hides it when accounts are off); static so the header doesn't jump when it loads. -->
+      <div class="acct" id="acct">
+        <button type="button" class="acct-btn" id="acct-btn" aria-haspopup="dialog"><span aria-hidden="true">👤</span><span class="acct-txt">登入</span></button>
+        <div class="acct-menu" id="acct-menu" role="menu" aria-labelledby="acct-btn" hidden></div>
+      </div>
     </div>
   </header>
 
-  <div id="mock-banner" class="banner" hidden>目前為<strong>示範資料</strong>模式：尚未設定 seats.aero API 金鑰，顯示的座位與里程都是假資料。</div>
+  <div id="mock-banner" class="banner" hidden>目前為<strong>示範資料</strong>模式：尚未設定 seats.aero API 金鑰，顯示的座位與哩程都是假資料。</div>
 
   <main>
     <!-- ================= 航線查詢 ================= -->
     <section id="tab-search" class="panel">
       <div class="hero">
         <div class="wrap">
-          <h1>找出用里程換得到的機位</h1>
+          <h1>找出用哩程換得到的機位</h1>
           <p class="lead">一次比較 Aeroplan、Flying Blue、阿拉斯加、聯合等計畫的獎勵座位，涵蓋國泰、長榮、華航、法航、加航等航空公司。</p>
 
           <form id="search-form" class="search-card" autocomplete="off">
@@ -109,7 +117,7 @@
             <summary>🔔 機位提醒 <span id="alerts-count"></span></summary>
             <div id="alerts-body" class="alerts-body"><p class="hint">載入中…</p></div>
           </details>
-          <details class="alerts-panel" id="plan-panel">
+          <details class="alerts-panel" id="plan-panel" hidden>
             <summary>🧳 我的行程 <span id="plan-count"></span></summary>
             <div id="plan-body" class="alerts-body"></div>
           </details>
@@ -121,7 +129,7 @@
         <div id="search-results"></div>
         <div id="search-trip"></div>
         <div id="search-empty">
-          <div id="deals" class="deals"></div>
+          <div id="deals" class="deals" aria-busy="true"></div>
           <p class="empty-hint">輸入航線或點選熱門航線開始搜尋。可以一次輸入多個機場，例如 <code>TPE,TSA</code>。</p>
         </div>
       </div>
@@ -132,10 +140,10 @@
       <div class="hero slim">
         <div class="wrap">
           <h1>區域探索</h1>
-          <p class="lead">不確定去哪？選一個里程計畫和區域，列出所有還有獎勵位的航線，依里程由低到高排序。</p>
+          <p class="lead">不確定去哪？選一個哩程計畫和區域，列出所有還有獎勵位的航線，依哩程由低到高排序。</p>
           <form id="explore-form" class="search-card">
             <div class="opts-row">
-              <label class="field">里程計畫<select name="program" required></select></label>
+              <label class="field">哩程計畫<select name="program" required></select></label>
               <label class="field">出發區域<select name="origin_region"></select></label>
               <label class="field">抵達區域<select name="destination_region"></select></label>
             </div>
@@ -166,7 +174,7 @@
       <div class="hero slim">
         <div class="wrap">
           <h1>查現金票</h1>
-          <p class="lead">查一般付費機票的價格，資料來自 Google 航班。可以跟里程票對照，看換票划不划算。</p>
+          <p class="lead">查一般付費機票的價格，資料來自 Google 航班。可以跟哩程票對照，看換票划不划算。</p>
           <form id="cash-form" class="search-card" autocomplete="off">
             <div class="opts-row">
               <fieldset class="seg" aria-label="行程類型">
@@ -214,9 +222,9 @@
             </div>
             <div class="opts-row">
               <fieldset class="seg" aria-label="艙等">
-                <label><input type="radio" name="cabin" value="Y" checked><span>經濟</span></label>
+                <label><input type="radio" name="cabin" value="Y"><span>經濟</span></label>
                 <label><input type="radio" name="cabin" value="W"><span>豪經</span></label>
-                <label><input type="radio" name="cabin" value="J"><span>商務</span></label>
+                <label><input type="radio" name="cabin" value="J" checked><span>商務</span></label>
                 <label><input type="radio" name="cabin" value="F"><span>頭等</span></label>
               </fieldset>
               <button type="submit" class="primary big">搜尋票價</button>
@@ -282,7 +290,7 @@
       <div class="hero slim">
         <div class="wrap">
           <h1>規則庫</h1>
-          <p class="lead">航空聯盟、各里程計畫的單程、中停、開口、燃油費與改退票規則，每條都附上資料來源。</p>
+          <p class="lead">航空聯盟、各哩程計畫的單程、中停、開口、燃油費與改退票規則，每條都附上資料來源。</p>
         </div>
       </div>
       <div class="wrap"><div id="rules"></div></div>
@@ -308,9 +316,9 @@
 
   <dialog id="pass-dialog" class="pass" aria-labelledby="pass-title">
     <form method="dialog" class="pass-in">
-      <h2 id="pass-title">輸入通關密碼</h2>
-      <p class="hint" id="pass-msg">即時票價查詢有通關密碼保護，輸入一次後這台裝置會記住。</p>
-      <input type="password" id="pass-input" autocomplete="current-password" placeholder="通關密碼" required>
+      <h2 id="pass-title">輸入通關密碼（解鎖即時查價）</h2>
+      <p class="hint" id="pass-msg">即時查價會用到網站的付費額度，所以要輸入站長給的通關密碼（不是帳號的登入密碼）。輸入一次後這台裝置會記住。</p>
+      <input type="password" id="pass-input" autocomplete="off" placeholder="通關密碼" required>
       <div class="pass-actions"><button type="button" class="outline" id="pass-cancel">取消</button><button type="submit" class="primary small" value="ok">確定</button></div>
     </form>
   </dialog>

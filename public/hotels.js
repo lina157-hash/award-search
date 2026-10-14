@@ -182,8 +182,12 @@ async function searchHotels() {
   const programs = $$('input[name=h-prog]:checked', f).map((i) => i.value);
   // Same messages in the status line as the other tabs (the browser's own bubbles were in its own language).
   if (!f.where.value.trim()) { f.where.focus(); return formError(status, '請輸入城市或地區。'); }
-  if (!f.date.value) { $('.h-date .dp-btn', f).focus(); return formError(status, '請選擇入住日期。'); }
   if (!programs.length) return formError(status, '請至少選一個飯店集團。');
+  // No date: a month from now, like 航線查詢; with 雅高 (paid quota) the visitor confirms the date first.
+  if (!f.date.value) {
+    hotelDate.set(isoDate(30));
+    if (programs.includes('accor') && cashCfg.accor) { $('.h-date .dp-btn', f).focus(); return formError(status, `沒有選入住日期，先幫你填了 ${dayLabel(isoDate(30))}；確認後再按一次搜尋。`); }
+  }
   Object.assign(hotelState, { where: f.where.value.trim(), date: f.date.value, flex: Number(f.flex.value), nights: Number(f.nights.value), programs });
   store.set(HOTEL_KEY, { where: hotelState.where, flex: hotelState.flex, nights: hotelState.nights, programs, sort: hotelState.sort });
   const { date, flex } = hotelState;

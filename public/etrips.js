@@ -172,7 +172,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   const comboPanel = $('#combo-panel');
   comboPanel.addEventListener('toggle', () => {
     if (!comboPanel.open) return;
-    Promise.all([etLoad(), loadAirports()]).then(renderCombo).catch((e) => { $('#combo-body').innerHTML = `<p class="status error">${esc(e.message)}</p>`; });
+    Promise.all([etLoad(), loadAirports(), loadMore()]).then(renderCombo).catch((e) => { $('#combo-body').innerHTML = `<p class="status error">${esc(e.message)}</p>`; });
   });
 
   const comboAp = (code) => AP.byCode.get(code) || null;

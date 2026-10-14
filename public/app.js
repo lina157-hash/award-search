@@ -125,8 +125,20 @@ const tabDone = new Set();
 // Run each time a tab is shown (features.js: maps re-measure, 兌換地圖 follows wallet changes).
 const tabShown = {};
 let dataReady = false;
+// Tabs drawn from the second data part (points, charts, rules); they wait for it on first open.
+const NEEDS_MORE = { rules: '#rules', points: '#points-page', map: '#map-page', hotels: '#hotels-page' };
 function ensureTab(tab) {
   if (!dataReady || tabDone.has(tab) || !tabInit[tab]) return;
+  if (NEEDS_MORE[tab] && !moreReady) {
+    const host = $(NEEDS_MORE[tab]);
+    if (host && !host.children.length) host.innerHTML = skeleton(4);
+    loadMore().then(() => ensureTab(tab), () => {
+      if (!host) return;
+      host.innerHTML = '<div class="status error"><span>資料載入失敗，請檢查網路後再試。</span><button type="button" class="outline retry">重試</button></div>';
+      $('.retry', host).addEventListener('click', () => ensureTab(tab));
+    });
+    return;
+  }
   tabDone.add(tab);
   tabInit[tab]();
 }
@@ -178,6 +190,12 @@ addEventListener('hashchange', () => {
   }
   showTab(h);
 });
+// The sticky header's height (it differs by width and when the 登入 button appears), for bars that stick below it.
+{
+  const setHdr = () => document.documentElement.style.setProperty('--hdr-h', `${$('.top').offsetHeight}px`);
+  setHdr();
+  if (window.ResizeObserver) new ResizeObserver(setHdr).observe($('.top'));
+}
 // Bring a status line into view when it is off screen (on phones the results start far below the form).
 function reveal(el) {
   const r = el.getBoundingClientRect();
@@ -295,7 +313,7 @@ function carrierHint() {
   const al = $('#search-form [name=alliance]').value;
   $('#carrier-hint').textContent = a
     ? `${a.name}的座位可透過：${a.bookableVia.map(srcName).join('、')} 查到。` +
-      (a.homeProgram && !a.bookableVia.includes(a.homeProgram) ? '（自家里程計畫未收錄於 seats.aero，規則見規則庫）' : '')
+      (a.homeProgram && !a.bookableVia.includes(a.homeProgram) ? '（自家哩程計畫未收錄於 seats.aero，規則見規則庫）' : '')
     : ALLIANCE_HINT[al] || '';
 }
 
@@ -316,7 +334,7 @@ const regionName = (() => {
 const normQ = (s) => s.trim().replace(/臺/g, '台');
 const splitCodes = (v) => v.split(/\s*[,，、]\s*/);
 
-// The list is 270 KB, so it loads when an airport field is first used or the page goes idle, not on the critical path.
+// The list is 270 KB, so it loads only when an airport field is first used (or a view that needs coordinates opens).
 let airportsP = null;
 const airportsWaiting = [];
 const onAirports = (fn) => (AP.loaded ? fn() : airportsWaiting.push(fn));
@@ -395,7 +413,7 @@ function createAirportPicker(form, name) {
   const renderChips = () => {
     $('.chips', box).innerHTML = codes().map((c) => {
       const a = AP.byCode.get(c);
-      const nm = a ? a.zh || a.city : '';
+      const nm = a ? a.zh || a.city : data.airportNames?.names?.[c] || '';
       return `<span class="chip" title="${esc(a ? `${a.name}（${a.cn}）` : c)}"><b>${esc(c)}</b>${nm ? `<small>${esc(nm)}</small>` : ''}<button type="button" data-rm="${esc(c)}" aria-label="移除 ${esc(c)}">×</button></span>`;
     }).join('');
     q.placeholder = codes().length ? '＋ 加入機場' : '城市、機場或代碼';
@@ -761,12 +779,33 @@ async function checkAirports(form, list) {
   }
   return '';
 }
-// Validation messages go to the status line, which is brought on screen (it sits below the form on phones).
+// Validation messages go under the field that needs fixing (the caller focuses it first) and that field is scrolled
+// into view; with no focused field the message goes to the status line instead. Fixing the form clears it.
+function clearFieldErrors(form) {
+  $$('.field-err', form).forEach((x) => x.remove());
+  $$('[aria-invalid]', form).forEach((x) => x.removeAttribute('aria-invalid'));
+}
 function formError(status, msg) {
-  status.className = 'status error';
-  status.textContent = msg;
-  reveal(status);
-  toast(msg);
+  const el = document.activeElement;
+  const form = el?.closest?.('form');
+  const field = form && el.closest('.field, .ac-host');
+  if (form) clearFieldErrors(form);
+  if (!field) {
+    status.className = 'status error';
+    status.textContent = msg;
+    reveal(status);
+    return;
+  }
+  status.className = 'status';
+  status.textContent = '';
+  field.insertAdjacentHTML('beforeend', `<p class="field-err" role="alert">${esc(msg)}</p>`);
+  el.setAttribute('aria-invalid', 'true');
+  const clear = () => clearFieldErrors(form);
+  form.addEventListener('input', clear, { once: true });
+  form.addEventListener('change', clear, { once: true });
+  form.addEventListener('submit', clear, { once: true, capture: true });
+  const r = field.getBoundingClientRect();
+  if (r.top < 70 || r.bottom > innerHeight - 40) field.scrollIntoView({ block: 'center' });
 }
 
 $('#search-form').addEventListener('submit', async (e) => {
@@ -987,12 +1026,12 @@ async function runSearch(share, pre, autoRange = false) {
   normalizeShare(share);
   const fresh = latest('search');
   const params = searchQuery(share);
-  Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, allRows: false, results: [], start: share.get('s'), end: share.get('e') || share.get('s'), pax: Number(share.get('n')) || 0, withTaxes: false, product: '', route: `${share.get('o')} → ${share.get('d')}` });
+  Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, allRows: false, showSame: false, results: [], start: share.get('s'), end: share.get('e') || share.get('s'), pax: Number(share.get('n')) || 0, withTaxes: false, product: '', route: `${share.get('o')} → ${share.get('d')}` });
   const status = $('#search-status');
   const range = `${dayLabel(state.start)} – ${dayLabel(state.end)}`;
   const autoNote = autoRange ? `沒有選日期，先查未來 1 個月（${range}），要換日期可以點上面的出發日期。` : '';
   status.className = 'status';
-  status.textContent = autoNote || '正在搜尋各里程計畫的獎勵位…';
+  status.textContent = autoNote || '正在搜尋各哩程計畫的獎勵位…';
   if (autoNote) status.insertAdjacentHTML('beforeend', '<small class="fresh">搜尋中…</small>');
   $('#search-empty').hidden = true;
   $('#search-results').innerHTML = skeleton();
@@ -1003,7 +1042,7 @@ async function runSearch(share, pre, autoRange = false) {
   const done = busy($('#search-form button[type=submit]'), '搜尋中…');
   reveal(status);
   try {
-    const body = await (pre || api(`/api/search?${params}`));
+    const [body] = await Promise.all([pre || api(`/api/search?${params}`), loadMore()]);
     if (!fresh()) return;
     done();
     state.results = [...body.results, ...asiaMilesRows(body.results)];
@@ -1101,7 +1140,14 @@ document.addEventListener('change', (e) => {
 $('#search-results').addEventListener('click', (e) => {
   const t = e.target;
   const goto = t.closest('[data-goto]');
-  if (goto) { e.preventDefault(); showTab(goto.dataset.goto); $('#am-chart')?.scrollIntoView(); return; }
+  if (goto) {
+    e.preventDefault();
+    showTab(goto.dataset.goto);
+    const chart = $('#am-chart');
+    chart?.closest('details')?.setAttribute('open', '');
+    chart?.scrollIntoView();
+    return;
+  }
   const card = t.closest('.deal, td.cell[data-id]');
   if (card) { openTrips(card.dataset.id, card.dataset.title, state.cabin, card); return; }
   const chip = t.closest('.chip[data-src]');
@@ -1113,6 +1159,7 @@ $('#search-results').addEventListener('click', (e) => {
   const day = t.closest('.day.has');
   if (day) { pickDay(state.day === day.dataset.date ? null : day.dataset.date); return; }
   if (t.closest('#all-rows')) { state.allRows = true; renderMatrix(); return; }
+  if (t.closest('#show-same')) { state.showSame = true; renderSearch(); return; }
   if (t.closest('#clear-day')) pickDay(null);
 });
 $('#search-results').addEventListener('change', (e) => {
@@ -1196,10 +1243,12 @@ function renderSearch() {
   const picks = dealPicks(realRows, c);
   const lowMiles = Math.min(...picks.map((r) => r.cabins[c].miles));
   const allSame = picks.length > 1 && picks.every((r) => r.cabins[c].miles === lowMiles);
-  const dealHtml = picks.map((r) => {
+  // Identical prices: one card that says how many programs tie, the others behind a link.
+  const folded = allSame && !state.showSame;
+  const dealHtml = (folded ? picks.slice(0, 1) : picks).map((r) => {
     const x = r.cabins[c];
     return `<button type="button" class="deal" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">
-      ${!allSame && x.miles === lowMiles ? '<span class="rank">★ 最低</span>' : ''}
+      ${!allSame && x.miles === lowMiles ? '<span class="rank">★ 最低</span>' : folded ? `<span class="rank same">${picks.length} 個計畫同價</span>` : ''}
       <div class="route">${esc(srcName(r.source))}</div>
       <div class="miles">${fmt(x.miles)} <small>哩起</small>${x.taxes ? `<small class="tax">＋ 稅 ${esc(taxText(x.taxes))}</small>` : ''}</div>
       <div class="meta">${dayLabel(r.date)} · ${esc(r.origin)} → ${esc(r.destination)}</div>
@@ -1226,8 +1275,9 @@ function renderSearch() {
       <div class="hint">依 2026-05-01 起的距離哩數表推算，實際座位與價格請至國泰官網確認；轉機行程依各段距離相加，可能落在更高區間。<a href="#rules" data-goto="rules">看哩數表</a></div>
     </div>` : ''}
     <h2 class="section-title">最划算的選擇 <small>${allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
-    <div class="best">${dealHtml}</div>
-    <h2 class="section-title">日曆 <small>每天最低哩數，顏色越深越便宜；點日期篩選下表</small></h2>
+    <div class="best${folded ? ' folded' : ''}">${dealHtml}</div>
+    ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}
+    <h2 class="section-title">日曆 <small>每天最低哩數（顏色對照下方的便宜／較貴）；點日期篩選下表</small></h2>
     <div id="cal-host"></div>
     <h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>
     <div class="filters">${chips}</div>
@@ -1403,7 +1453,8 @@ function seatLinks(seg) {
 // 「長榮航空・」 for a segment's flight number (the marketing carrier).
 const segAirline = (s) => { const c = (s.flight || '').slice(0, 2).toUpperCase(); return airlineZh(c) !== c ? `<span class="al" title="${esc(c)}">${esc(airlineZh(c))}</span>・` : ''; };
 function tripHtml(t, i) {
-  const taxes = t.taxes != null ? `${esc(t.taxesSymbol || '')}${fmt(t.taxes / 100)} ${esc(t.taxesCurrency || '')}` : '稅金未提供';
+  // 「NT$8,500」, or 「USD 56」 without a symbol (not both, as 「NT$8,500 TWD」 read).
+  const taxes = t.taxes != null ? esc(taxText({ symbol: t.taxesSymbol, currency: t.taxesCurrency, amount: t.taxes / 100 })) : '稅金未提供';
   const dur = t.durationMin ? `${Math.floor(t.durationMin / 60)} 小時 ${t.durationMin % 60} 分` : '';
   return `<div class="trip">
     <div class="trip-top">
@@ -1436,7 +1487,7 @@ async function openTrips(id, title, cabin) {
   $('#trip-body').innerHTML = skeleton(3);
   dlg.showModal();
   try {
-    const body = await api(`/api/trips/${encodeURIComponent(id)}`);
+    const [body] = await Promise.all([api(`/api/trips/${encodeURIComponent(id)}`), loadMore()]);
     if (!fresh()) return;
     const want = CABIN_API[cabin];
     const byMiles = (a, b) => a.miles - b.miles || a.stops - b.stops;
@@ -1503,7 +1554,8 @@ $('#trip-dialog').addEventListener('click', (e) => { if (e.target.id === 'trip-d
 // ---------- explore ----------
 const PAGE = 200;
 const ex = { rows: [], cabin: 'J', sort: { key: 'miles', dir: 1 }, f: {}, shown: PAGE, view: 'table' };
-const airportCity = (code) => { const a = AP.byCode.get(code); return a ? a.zh || a.city : ''; };
+// Until the full airport list loads (on first use of an airport field), the short Chinese name list from the data covers common airports.
+const airportCity = (code) => { const a = AP.byCode.get(code); return a ? a.zh || a.city : data.airportNames?.names?.[code] || ''; };
 
 $('#explore-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1765,7 +1817,7 @@ const cashCfg = { locked: false, enabled: true };
 function askPass(message) {
   const dlg = $('#pass-dialog');
   const input = $('#pass-input');
-  $('#pass-msg').textContent = message || '即時票價查詢有通關密碼保護，輸入一次後這台裝置會記住。';
+  $('#pass-msg').textContent = message || '即時查價會用到網站的付費額度，所以要輸入站長給的通關密碼（不是帳號的登入密碼）。輸入一次後這台裝置會記住。';
   input.value = '';
   return new Promise((resolve) => {
     const done = () => { dlg.removeEventListener('close', done); resolve(dlg.returnValue === 'ok' && input.value ? input.value : null); dlg.returnValue = ''; };
@@ -1781,7 +1833,7 @@ function updateLockHint() {
   if (!cashCfg.locked) return;
   el.innerHTML = store.get(PASS_KEY, '')
     ? '🔓 這台裝置已記住通關密碼。<button type="button" class="linklike" id="pass-forget">清除密碼</button>'
-    : '🔒 即時查價有通關密碼保護，按「搜尋票價」時會請你輸入。';
+    : '🔒 即時查價會用付費額度，需要通關密碼（不是登入密碼），按「搜尋票價」時會請你輸入。';
   $('#pass-forget')?.addEventListener('click', () => { store.del(PASS_KEY); updateLockHint(); toast('已清除通關密碼'); });
 }
 // Fetch a cash-fare endpoint, asking for the passcode when the server wants one.
@@ -1825,7 +1877,7 @@ function cashLinks(r, googleUrl) {
   return `<div class="cash-links">
     <a class="outline btn" href="${esc(gf)}" target="_blank" rel="noopener">在 Google 航班開啟 ↗</a>
     <a class="outline btn" href="${esc(sky)}" target="_blank" rel="noopener">Skyscanner ↗</a>
-    <button type="button" class="outline" id="cash-to-award">用里程查這條航線</button>
+    <button type="button" class="outline" id="cash-to-award">用哩程查這條航線</button>
   </div>`;
 }
 
@@ -1892,7 +1944,7 @@ async function renderCashFrom() {
   if (!a || !r || cash.off) { host.innerHTML = ''; return; }
   const fares = (cash.options || []).filter((o) => o.price);
   const cheapest = fares.length ? Math.min(...fares.map((o) => o.price)) : null;
-  const back = '<button type="button" class="linklike" id="cash-from-back">← 回到里程票結果</button>';
+  const back = '<button type="button" class="linklike" id="cash-from-back">← 回到哩程票結果</button>';
   const award = `${dayLabel(a.date)} ${esc(a.origin)} → ${esc(a.destination)} ${CABIN_LABEL[a.cabin]}：${esc(srcName(a.source))} <b>${fmt(a.miles * a.pax)} 哩</b>${a.taxes ? `＋稅 ${esc(taxText({ ...a.taxes, amount: a.taxes.amount * a.pax }))}` : ''}`;
   let verdict = '';
   if (cheapest) {
@@ -1901,10 +1953,10 @@ async function renderCashFrom() {
     const rate = a.taxes?.currency ? fx?.rates?.[a.taxes.currency.toUpperCase()] : null;
     const tax = a.taxes && rate ? a.taxes.amount * a.pax * rate : 0;
     const per = (cheapest - tax) / (a.miles * a.pax);
-    const word = per >= 0.6 ? ['good', '換里程划算'] : per >= 0.35 ? ['mid', '普通'] : ['bad', '買現金票比較好'];
+    const word = per >= 0.6 ? ['good', '換哩程划算'] : per >= 0.35 ? ['mid', '普通'] : ['bad', '買現金票比較好'];
     verdict = `<span>→ 這天最便宜現金票 <b>NT$${fmt(cheapest)}</b>，每哩約 <b class="${word[0]}">NT$${Math.max(0, per).toFixed(2)}</b>（${word[1]}${a.taxes && !rate ? '，稅金未換算' : ''}）</span>`;
   }
-  host.innerHTML = `<div class="from-bar"><span>💺 里程票 ${award}</span>${verdict}${back}</div>`;
+  host.innerHTML = `<div class="from-bar"><span>💺 哩程票 ${award}</span>${verdict}${back}</div>`;
   $('#cash-from-back').addEventListener('click', () => showTab('search'));
 }
 
@@ -2233,8 +2285,18 @@ cashForm.addEventListener('submit', async (e) => {
   const f = new FormData(cashForm);
   const rt = f.get('trip') === 'rt';
   const r = { origin: f.get('origin'), destination: f.get('destination'), depart: f.get('depart'), ret: rt ? f.get('return') : '', cabin: f.get('cabin') || 'Y', adults: Number(f.get('adults')) || 1, stops: f.get('stops') || '0', alliance: f.get('alliance') || '' };
-  if (!r.depart) { $('#cash-depart .dp-btn').focus(); return formError(status, '請選擇出發日期。'); }
-  if (rt && !r.ret) { $('#cash-return .dp-btn').focus(); return formError(status, '請選擇回程日期，或改選「單程」。'); }
+  // No date: fill in a month from now (like 航線查詢) but let the visitor confirm first, since each search uses paid quota.
+  if (!r.depart) {
+    cashDates.depart.set(isoDate(30));
+    if (rt && !r.ret) cashDates.ret.set(isoDate(37));
+    $('#cash-depart .dp-btn').focus();
+    return formError(status, `沒有選日期，先幫你填了 ${dayLabel(isoDate(30))} 出發${rt && !r.ret ? `、${dayLabel(isoDate(37))} 回程` : ''}；確認後再按一次「搜尋票價」。`);
+  }
+  if (rt && !r.ret) {
+    cashDates.ret.set(isoDateFrom(r.depart, 7));
+    $('#cash-return .dp-btn').focus();
+    return formError(status, `沒有選回程日期，先幫你填了 ${dayLabel(isoDateFrom(r.depart, 7))}（一週後）；確認後再按一次，或改選「單程」。`);
+  }
   // A day picked on the month grid keeps that grid (same weeks) and its holiday marks.
   const keep = cash.keepMonth && cash.req && cash.req.origin === r.origin && cash.req.destination === r.destination ? cash.keepMonth : null;
   const from = cash.pendingFrom || null;
@@ -2323,13 +2385,22 @@ const ALLIANCE_SHORT = { oneworld: '寰宇一家', star: '星空聯盟', skyteam
 const rulesState = { alliance: '', q: '' };
 
 // The search box and chapter links sit at the top; the search covers every section, not just the program cards.
-const RULES_CHAPTERS = [['r-alliances', '航空聯盟'], ['am-chart', '亞萬哩數表'], ['r-programs', '計畫規則'], ['release-dates', '開票日'], ['points-rules', '信用卡轉點'], ['r-glossary', '名詞解釋']];
+// [anchor, label, short label for phones]
+const RULES_CHAPTERS = [['r-alliances', '航空聯盟', '聯盟'], ['am-chart', '亞萬哩數表', '亞萬表'], ['r-programs', '計畫規則', '計畫'], ['release-dates', '開票日', '開票'], ['points-rules', '信用卡轉點', '轉點'], ['r-glossary', '名詞解釋', '名詞']];
+// On phones every section and program card starts folded (the page was 40,000 px tall); the chapter chips stay on screen.
+const rulesFolded = () => matchMedia('(max-width: 640px)').matches;
+// A section whose html starts with its <h2>: the heading becomes the summary of a <details>.
+function rulesSection(html, cls = '') {
+  const m = /^\s*(<h2[\s\S]*?<\/h2>)([\s\S]*)$/.exec(html);
+  if (!m) return html ? `<section class="rules-sec ${cls}">${html}</section>` : '';
+  return `<details class="rules-sec rules-fold ${cls}" ${rulesFolded() && !rulesState.q ? '' : 'open'}><summary>${m[1]}</summary>${m[2]}</details>`;
+}
 function renderRules() {
   $('#rules').innerHTML = `<div class="rules-top">
       <label class="rules-search"><span>搜尋規則庫</span><input type="search" id="rules-q" placeholder="例如：中停、燃油、效期、稅金" value="${esc(rulesState.q)}"></label>
-      <nav class="rules-nav" aria-label="規則庫章節">${RULES_CHAPTERS.map(([id, t]) => `<button type="button" data-jump="${id}">${t}</button>`).join('')}</nav>
       <p class="hint" id="rules-count" aria-live="polite"></p>
     </div>
+    <nav class="rules-nav" aria-label="規則庫章節">${RULES_CHAPTERS.map(([id, t, s]) => `<button type="button" data-jump="${id}"><span class="tl">${t}</span><span class="ts" aria-hidden="true">${s}</span></button>`).join('')}</nav>
     <div id="rules-body"></div>`;
   let timer;
   $('#rules-q').addEventListener('input', (e) => {
@@ -2341,7 +2412,9 @@ function renderRules() {
     const el = id && document.getElementById(id);
     if (!el) return;
     el.closest('details')?.setAttribute('open', '');
-    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 76, behavior: 'smooth' });
+    // Below the sticky header and chapter chips.
+    const offset = $('.top').offsetHeight + $('.rules-nav').offsetHeight + 12;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
   });
   renderRulesBody();
 }
@@ -2367,20 +2440,21 @@ function renderRulesBody() {
     ${memberNotesHtml(a.memberNotes)}
     <p><a href="${esc(a.url)}" target="_blank" rel="noopener">官方成員名單 ↗</a></p></div>`).join('');
 
-  $('#rules-body').innerHTML = `
-    <section class="rules-sec"><h2 class="section" id="r-alliances">航空聯盟</h2><div class="cards">${allianceCards}</div></section>
-    <section class="rules-sec">${amChartHtml()}</section>
-    <section class="rules-sec rules-programs"><h2 class="section" id="r-programs">里程計畫規則</h2>
+  $('#rules-body').innerHTML = [
+    rulesSection(`<h2 class="section" id="r-alliances">航空聯盟</h2><div class="cards">${allianceCards}</div>`),
+    rulesSection(amChartHtml()),
+    rulesSection(`<h2 class="section" id="r-programs">哩程計畫規則</h2>
     <p class="hint">${esc(programs.disclaimer)}（最後整理：${esc(programs.lastReviewed)}）</p>
     <div class="filters" id="alliance-filter">
       <button type="button" class="chip ${rulesState.alliance ? '' : 'on'}" data-a="">全部</button>
       ${Object.entries(ALLIANCE_SHORT).map(([k, v]) => `<button type="button" class="chip ${rulesState.alliance === k ? 'on' : ''}" data-a="${k}"><span class="dot ${k}"></span> ${v}</button>`).join('')}
       <button type="button" class="chip ${rulesState.alliance === 'none' ? 'on' : ''}" data-a="none" title="星宇、阿聯酋等沒有加入聯盟的航空">非聯盟</button>
     </div>
-    <div class="cards" id="program-cards"></div></section>
-    <section class="rules-sec">${releaseTableHtml()}</section>
-    <section class="rules-sec">${pointsHtml()}</section>
-    <section class="rules-sec"><h2 class="section" id="r-glossary">名詞解釋</h2>${glossary.sections.map((s) => `<h3 class="sub">${esc(s.title)}</h3><div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div>`).join('')}</section>`;
+    <div class="cards" id="program-cards"></div>`, 'rules-programs'),
+    rulesSection(releaseTableHtml()),
+    rulesSection(pointsHtml()),
+    rulesSection(`<h2 class="section" id="r-glossary">名詞解釋</h2>${glossary.sections.map((s) => `<h3 class="sub">${esc(s.title)}</h3><div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div>`).join('')}`),
+  ].join('');
 
   $$('#alliance-filter .chip').forEach((b) => b.addEventListener('click', () => {
     rulesState.alliance = b.dataset.a;
@@ -2417,6 +2491,7 @@ function filterRules() {
     if (q) hits += n;
   }
   $('.rules-programs', body).hidden = Boolean(q) && !$$('#program-cards .card').length;
+  if (q) $$('details.rules-fold', body).forEach((d) => (d.open = true));
   $('#rules-count').textContent = q ? (hits ? `找到 ${hits} 筆含「${q}」的規則` : `沒有找到「${q}」，換個說法試試，例如「中停」「燃油」「效期」。`) : '';
 }
 // Wrap each occurrence of q in the element's text nodes with <mark>.
@@ -2441,6 +2516,7 @@ function bindTabLinks(root) {
     e.preventDefault();
     showTab(a.dataset.tabLink);
     const target = a.dataset.anchor && document.getElementById(a.dataset.anchor);
+    target?.closest('details')?.setAttribute('open', '');
     if (target) window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 76 });
     else window.scrollTo({ top: 0 });
   }));
@@ -2455,7 +2531,7 @@ function renderPoints() {
   if (!calc) { host.innerHTML = '<p class="hint">點數資料載入失敗，請重新整理。</p>'; return; }
   const view = pointsView.view;
   host.innerHTML = pointsTabsHtml() + (view === 'wallet' ? walletHtml() : view === 'need' ? needHtml() : view === 'detour' ? detourHtml()
-    : `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積里程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉里程」</a>。</p>`);
+    : `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積哩程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉哩程」</a>。</p>`);
   bindPointsTabs(host);
   if (view === 'wallet') bindWallet(host);
   else if (view === 'need') bindNeed(host);
@@ -2476,13 +2552,13 @@ function pointsHtml() {
       <td data-l="說明">${r.notes ? esc(r.notes) : ''}</td><td data-l="來源">${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
   const cobrandRows = pts.cobrand.map((r) => `<tr>
       <td><b>${esc(r.bank)}</b><small>${esc(r.card)}</small></td><td data-l="累積到">${esc(r.program)}</td><td data-l="累積率"><b>${esc(r.earn)}</b></td><td data-l="說明">${r.notes ? esc(r.notes) : ''}</td><td data-l="來源">${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
-  return `<h2 class="section" id="points-rules">台灣信用卡點數轉里程</h2>
+  return `<h2 class="section" id="points-rules">台灣信用卡點數轉哩程</h2>
     <p class="hint">${esc(pts.disclaimer)}（最後整理：${esc(pts.lastReviewed)}）</p>
     ${pts.calc?.sources?.length ? '<p class="hint tab-link-hint">想直接算手上的點數能換多少哩？用「<a href="#points" data-tab-link="points">點數換算器</a>」分頁。</p>' : ''}
     ${pts.transfers.length ? `<div class="filters points-filter"><button type="button" class="chip on" data-p="">全部計畫</button>${keys.map(([k, label]) => `<button type="button" class="chip" data-p="${esc(k)}">${esc(label)}</button>`).join('')}</div>
     <div class="table-wrap points-table"><table id="points-table"><thead><tr><th>銀行／點數</th><th>轉到</th><th>比率</th><th>說明</th><th>來源</th></tr></thead><tbody>${transferRows}</tbody></table></div>
     <p class="hint" id="points-empty" hidden>這個計畫目前沒有整理到的轉點管道。</p>` : ''}
-    ${pts.cobrand.length ? `<h3 class="sub">直接累積里程的聯名卡</h3><div class="table-wrap points-table"><table><thead><tr><th>銀行／卡片</th><th>累積到</th><th>累積率</th><th>說明</th><th>來源</th></tr></thead><tbody>${cobrandRows}</tbody></table></div>` : ''}`;
+    ${pts.cobrand.length ? `<h3 class="sub">直接累積哩程的聯名卡</h3><div class="table-wrap points-table"><table><thead><tr><th>銀行／卡片</th><th>累積到</th><th>累積率</th><th>說明</th><th>來源</th></tr></thead><tbody>${cobrandRows}</tbody></table></div>` : ''}`;
 }
 // Dynamic conversion table: one row per bank points program, one column per airline program.
 const CALC_COLS = [['eva', '長榮'], ['asiamiles', '亞洲萬里通'], ['ci', '華航'], ['sq', '新航'], ['other', '其他計畫']];
@@ -2696,14 +2772,17 @@ function renderProgramCards() {
   const mark = (text) => (q ? esc(text).split(esc(q)).join(`<mark>${esc(q)}</mark>`) : esc(text));
   // With a query, each card keeps only the fields that mention it (「中停」 shows every program's 中停 rule, nothing else).
   const fieldsOf = (p) => (q ? fieldRows.filter(([k, label]) => label.includes(q) || String(p[k] ?? '').includes(q)) : fieldRows);
+  // Each card folds to its name and the first line of its pricing rule (folded on phones unless searching).
+  const open = !rulesFolded() || q ? 'open' : '';
   $('#program-cards').innerHTML = list.map((p) => `
-    <div class="card" id="prog-${esc(p.id)}">
-      <h3>${p.alliance ? `<span class="dot ${p.alliance}"></span>` : ''}${esc(p.name)} ${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? '<span class="tag">可查座位</span>' : ''}${programChangeTag(p.id)}</h3>
+    <details class="card prog-card" id="prog-${esc(p.id)}" ${open}>
+      <summary><h3>${p.alliance ? `<span class="dot ${p.alliance}"></span>` : ''}${esc(p.name)} ${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? '<span class="tag">可查座位</span>' : ''}${programChangeTag(p.id)}</h3>
+      <small class="prog-sum">${esc(String(p.pricing || '').split('。')[0])}</small></summary>
       ${fieldsOf(p).length ? `<dl>${fieldsOf(p).map(([k, label]) => `<dt>${mark(label)}</dt><dd>${mark(p[k])}</dd>`).join('')}</dl>` : ''}
       ${!q || String(p.notes || '').includes(q) ? `<p class="hint">${mark(p.notes)}</p>` : ''}
       <div class="src">來源（${esc(p.lastVerified || '')} 查核）：${(p.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}
       ・<a href="${esc(p.officialUrl)}" target="_blank" rel="noopener">官方網站 ↗</a></div>
-    </div>`).join('') || '<p class="hint">沒有符合的計畫。</p>';
+    </details>`).join('') || '<p class="hint">沒有符合的計畫。</p>';
 }
 
 // ---------- footer version line ----------
@@ -2718,25 +2797,40 @@ function renderVersion(config) {
     $('#ver-commit-wrap').hidden = false;
   }
   const history = config.history || [];
-  $('#ver-list').innerHTML = history.map((h) => `<li><b>v${esc(h.version)}</b> <span class="d">${esc(h.date)}</span> ${esc(h.note)}</li>`).join('');
+  // `user` is the plain-language line for visitors; `note` keeps the technical wording (older entries have only that).
+  $('#ver-list').innerHTML = history.map((h) => `<li><b>v${esc(h.version)}</b> <span class="d">${esc(h.date)}</span> ${esc(h.user || h.note)}</li>`).join('');
   $('#ver-history').hidden = !history.length;
   $('#version-line').hidden = false;
 }
 
 // ---------- init ----------
-const DATA_NAMES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'expiry', 'buymiles', 'changes'];
-// Niceties the page works without (Chinese airline names; expiry rules, buy-miles prices, dated rule changes).
-const OPTIONAL_DATA = ['airlinenames', 'expiry', 'buymiles', 'changes'];
-// All data files in one request, cached per release (?v=); the per-file endpoints are the fallback for older servers.
-async function loadData() {
+// The data comes in two bundles, each cached per release (?v=): `core` for the first screen (index.html preloads it)
+// and `more` (points, charts, rules, booking notes) once a search, a flight's details or a tab that needs it opens.
+const DATA_CORE = ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'];
+const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes'];
+const DATA_KEY = { sourcenames: 'sourceNames', airlinenames: 'airlineNames', airportnames: 'airportNames' };
+// Niceties the page works without: Chinese airline and airport names (codes show as they are), expiry rules,
+// buy-miles prices and dated rule changes.
+const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes'];
+async function loadPart(part, names) {
   try {
-    const all = await api(`/api/data/all${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);
-    if (DATA_NAMES.every((n) => all[n] || OPTIONAL_DATA.includes(n))) return all;
+    const all = await api(`/api/data/${part}${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);
+    if (names.every((n) => all[n] || DATA_OPTIONAL.includes(n))) return all;
   } catch { /* fall back below */ }
-  // Chinese airline names are a nicety: without them the codes show as they are.
-  const files = await Promise.all(DATA_NAMES.map((n) => (OPTIONAL_DATA.includes(n) ? api(`/api/data/${n}`).catch(() => null) : api(`/api/data/${n}`))));
-  return Object.fromEntries(DATA_NAMES.map((n, i) => [n, files[i]]));
+  // The per-file endpoints, for a server without the bundles.
+  const files = await Promise.all(names.map((n) => (DATA_OPTIONAL.includes(n) ? api(`/api/data/${n}`).catch(() => null) : api(`/api/data/${n}`))));
+  return Object.fromEntries(names.map((n, i) => [n, files[i]]));
 }
+const putData = (all, names) => { for (const n of names) data[DATA_KEY[n] || n] = all[n]; };
+let moreP = null;
+let moreReady = false;
+function loadMore() {
+  moreP ||= loadPart('more', DATA_MORE).then((all) => { putData(all, DATA_MORE); moreReady = true; }).catch((err) => { moreP = null; throw err; });
+  return moreP;
+}
+// Start on the first sign of a search (a tap or focus on the search page), so the results don't wait for it.
+const warmMore = () => { loadMore().catch(() => {}); };
+for (const ev of ['pointerdown', 'focusin']) $('#tab-search').addEventListener(ev, warmMore, { once: true });
 
 tabInit.rules = () => renderRules();
 tabInit.points = () => renderPoints();
@@ -2752,10 +2846,12 @@ tabInit.cash = () => loadCashQuota();
   if (isShare && !share.get('al')) {
     pre = api(`/api/search?${searchQuery(normalizeShare(new URLSearchParams(share)))}`);
     pre.catch(() => {}); // handled when awaited
-    $('#search-status').textContent = '正在搜尋各里程計畫的獎勵位…';
+    $('#search-status').textContent = '正在搜尋各哩程計畫的獎勵位…';
   }
-  const [config, all] = await Promise.all([api('/api/config'), loadData()]);
-  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points, data.booking, data.charts, data.products, data.promos, data.airlineNames, data.expiry, data.buymiles, data.changes] = DATA_NAMES.map((n) => all[n]);
+  // A link that opens results or a tab drawn from the second part fetches it alongside the first.
+  if (isShare || NEEDS_MORE[currentTab]) warmMore();
+  const [config, core] = await Promise.all([api('/api/config'), loadPart('core', DATA_CORE)]);
+  putData(core, DATA_CORE);
   SOURCE_NAMES = data.sourceNames.names;
   indexAirlineNames(data.airlineNames);
   $('#mock-banner').hidden = !config.mock;
@@ -2800,8 +2896,6 @@ tabInit.cash = () => loadCashQuota();
   // Hidden tabs (rules, points, hotels) and the cash quota are set up when first opened.
   dataReady = true;
   ensureTab(currentTab);
-  // The airport list is needed for names on chips and cards; fetch it once the page is idle.
-  (window.requestIdleCallback || ((fn) => setTimeout(fn, 1200)))(() => loadAirports(), { timeout: 3000 });
 
   // Restore a shared search from the URL and run it.
   if (share.get('x') && share.get('program')) applyExploreShare(tabParams('explore'));

@@ -1,7 +1,7 @@
 {
   "name": "機票搜索雷達",
   "short_name": "機票雷達",
-  "description": "里程票與現金票一次查：國泰、長榮、華航、法航、加航等。",
+  "description": "哩程票與現金票一次查：國泰、長榮、華航、法航、加航等。",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
