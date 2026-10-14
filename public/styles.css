@@ -1376,3 +1376,14 @@ dialog.cost-pop .hint { margin: 4px 0 10px; font-size: .8rem; }
   .cx-table th, .cx-table td { padding: 6px; font-size: .84rem; }
   .cx-table td:first-child { white-space: nowrap; }
 }
+/* ---------- cxcal: 國泰哩程日曆 landing (#cxcal=…) and help card (public/cxcal.js) ---------- */
+dialog.cx-dlg { width: min(560px, calc(100vw - 24px)); overflow: auto; }
+.cx-land { padding: 12px 18px 18px; }
+.cx-land > .hint { margin: 0 0 10px; }
+.cx-land .cxp { --cb: var(--surface); --ct: var(--text); --cm: var(--muted); --cl: var(--border); --ca: var(--accent); --cs: var(--accent-soft); --cn: var(--surface-2); font-size: .88rem; }
+.cx-land .cxp .cx-d { min-height: 54px; font-size: .74rem; }
+@media (max-width: 480px) {
+  .cx-land { padding: 10px 12px 14px; }
+  .cx-land .cxp .cx-d { min-height: 46px; font-size: .64rem; padding: 2px; }
+}
+#cx-card .gf-how .hint { margin: 6px 0 10px; }
