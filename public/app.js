@@ -971,6 +971,7 @@ async function runSearch(share, pre, autoRange = false) {
   $('#search-results').innerHTML = skeleton();
   setHolidays(HOL.search, {});
   $('#search-trip').innerHTML = '';
+  if (typeof histShow === 'function') histShow(null);
   const done = busy($('#search-form button[type=submit]'), '搜尋中…');
   reveal(status);
   try {
@@ -989,6 +990,7 @@ async function runSearch(share, pre, autoRange = false) {
     $('#to-cash').addEventListener('click', () => toCash(share));
     renderSearch();
     loadTripInfo($('#search-trip'), { from: share.get('o'), to: share.get('d'), start: state.start, end: state.end }, { hol: HOL.search, onHolidays: () => { if (fresh() && state.results.length) renderCalendar(); } });
+    if (typeof histShow === 'function') histShow(share);
     status.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     if (!fresh()) return;

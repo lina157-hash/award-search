@@ -19,6 +19,9 @@ const { todayTW, monthTW, validDate } = require('./lib/day');
 const tg = require('./lib/telegram');
 const accor = require('./lib/accor');
 const { createAccounts, AccountError } = require('./lib/accounts');
+const lineLib = require('./lib/line');
+const { createHistory } = require('./lib/history');
+const { createSearchCache } = require('./lib/searchcache');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -153,6 +156,10 @@ function cached(key, fn, ttlMs = CACHE_TTL_MS) {
 // on another instance or a double click costs no quota. `key` describes the query only, never the passcode.
 const shared = (key, ttlSec, fn) => cached(key, () => sharedCache(kv, key, ttlSec, fn), Math.min(ttlSec * 1000, CACHE_TTL_MS));
 const lockFor = (name, seconds) => () => takeLock(kv, name, seconds);
+// seats.aero / rooms.aero searches: the per-instance cache in front of one shared through Upstash (lib/searchcache.js),
+// so every instance and visitor reuses an answer for 30 minutes. Off without Redis and in the demo.
+const searchCache = createSearchCache({ kv, enabled: HAS_REDIS && !MOCK, ttl: Number(process.env.SEARCH_CACHE_TTL_SECONDS) || CACHE_TTL_MS / 1000, defer });
+const sharedSearch = (key, fn) => cached(key, () => searchCache.wrap(key, fn));
 
 class BadRequest extends Error {}
 
@@ -190,17 +197,36 @@ const SOURCE_NAMES = require('./data/source-names.json').names;
 const TELEGRAM_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
 const telegram = tg.createTelegram({ client: TELEGRAM_TOKEN ? tg.telegramClient({ token: TELEGRAM_TOKEN }) : MOCK ? tg.mockTelegramClient() : null, kv });
 const TELEGRAM_MOCK = !TELEGRAM_TOKEN && MOCK;
+// LINE: the owner's own LINE Official Account (Messaging API), linked by a one-time code sent to the bot (lib/line.js).
+// Needs Upstash, because the code and the link must reach whichever instance LINE's webhook lands on.
+const LINE_TOKEN = (process.env.LINE_CHANNEL_ACCESS_TOKEN || '').trim();
+const LINE_SECRET = (process.env.LINE_CHANNEL_SECRET || '').trim();
+const LINE_READY = Boolean(LINE_TOKEN && LINE_SECRET && HAS_REDIS);
+const LINE_MOCK = !LINE_TOKEN && MOCK;
+const line = lineLib.createLine({
+  client: LINE_READY ? lineLib.lineClient({ token: LINE_TOKEN }) : LINE_MOCK ? lineLib.mockLineClient() : null,
+  kv,
+  secret: LINE_SECRET,
+  cap: Number(process.env.LINE_MONTHLY_CAP) || 180,
+  missing: [!LINE_TOKEN && 'LINE_CHANNEL_ACCESS_TOKEN', !LINE_SECRET && 'LINE_CHANNEL_SECRET', !HAS_REDIS && 'Upstash Redis'].filter(Boolean),
+});
+// Alerts and price drops go to Telegram and LINE side by side; true when either got it.
+const notifyAll = async (html) => (await Promise.all([telegram.notify(html), line.notify(html)])).some(Boolean);
+// Award-space history from the searches the daily jobs already make (lib/history.js); needs Upstash.
+const history = createHistory({ kv, enabled: HAS_REDIS && !MOCK, demo: MOCK });
 const alerts = alertStore && createAlerts({
   store: alertStore,
   sendEmail: alertMailer,
-  notify: (html) => telegram.notify(html),
+  notify: notifyAll,
   siteUrl: SITE_URL,
   programNames: SOURCE_NAMES,
   // Cheapest seats first, one page of 1,000 (two for ranges over four months): what an alert mail lists anyway.
   search: (params) => cached('alert:' + JSON.stringify(params), async () => {
     const p = { ...params, order_by: 'lowest_mileage', take: 1000 };
     const { items } = MOCK ? { items: mock.mockSearch(p) } : await client.search(p, { maxPages: pagesFor(p, 1, 120) });
-    return items.map(normalizeAvailability);
+    const rows = items.map(normalizeAvailability);
+    defer(history.note(p, rows));
+    return rows;
   }),
 });
 // Daily deals from Taipei, refreshed by the daily cron and kept in the same Redis. The demo looks two months ahead
@@ -212,7 +238,9 @@ const deals = createDeals({
   defer,
   search: (params) => cached('deals:' + JSON.stringify(params), async () => {
     const { items } = MOCK ? { items: mock.mockSearch(params) } : await client.search(params, { maxPages: 1 });
-    return items.map(normalizeAvailability);
+    const rows = items.map(normalizeAvailability);
+    defer(history.note(params, rows));
+    return rows;
   }),
 });
 // Cash price tracking: same Redis and mailer as the seat alerts; each check spends one search credit, so lib/pricewatch spaces them out and caps them.
@@ -220,7 +248,7 @@ const watchStore = CASH_MODE === 'off' ? null : HAS_REDIS ? redisStore({ url: RE
 const priceWatch = watchStore && createPriceWatch({
   store: watchStore,
   sendEmail: alertMailer,
-  notify: (html) => telegram.notify(html),
+  notify: notifyAll,
   siteUrl: SITE_URL,
   // Checks run on RapidAPI; the SerpApi reserve only matters when there is no RapidAPI key.
   quota: async () => (CASH_MODE !== 'live' || RAPIDAPI_KEY ? null : serpLeft()),
@@ -346,6 +374,34 @@ async function handleTelegram(req, sub) {
   if (req.method === 'DELETE') return { ...(await telegram.unlink()), ...mock };
   if (req.method !== 'GET') throw new BadRequest('請用 GET 或 DELETE');
   return { ...(await telegram.status()), ...mock };
+}
+
+// /api/line: GET status, POST /api/line/code shows a one-time link code, POST /api/line/test sends a test message,
+// DELETE unlinks; gated like Telegram. POST /api/line/webhook is LINE's own call, checked by its signature instead.
+// The demo has POST /api/line/demo, standing in for sending the code from the LINE app.
+async function handleLine(req, sub) {
+  if (sub === 'webhook') {
+    if (req.method !== 'POST') throw new BadRequest('只接受 POST');
+    if (!LINE_READY) throw new lineLib.LineError('網站還沒設定 LINE 官方帳號', 503, 'not-configured');
+    const raw = await lineLib.readRaw(req);
+    if (!line.verify(raw, req.headers['x-line-signature'])) throw new lineLib.LineError('簽章不符', 401, 'signature');
+    let body;
+    try { body = JSON.parse(raw.toString('utf8') || '{}'); } catch { throw new BadRequest('JSON 格式錯誤'); }
+    return line.handleEvents(body.events);
+  }
+  const ok = cashPasscode() ? await cashOk(req) : LINE_MOCK;
+  if (!ok) throw Object.assign(new CashError(cashPasscode() ? '需要通關密碼才能設定 LINE' : '要先在 Vercel 設定 CASH_PASSCODE，才能連結 LINE', 401), { code: 'passcode' });
+  const mockFlag = LINE_MOCK ? { mock: true } : {};
+  if (sub === 'code' && req.method === 'POST') return { ...(await line.startLink()), ...mockFlag };
+  if (sub === 'test' && req.method === 'POST') return { ...(await line.test()), ...mockFlag };
+  if (sub === 'demo' && req.method === 'POST' && LINE_MOCK) {
+    const pending = await kv.get('line:pending').catch(() => null);
+    await line.handleEvents([{ type: 'message', source: { type: 'user', userId: 'Udemo' }, message: { type: 'text', text: pending?.code || '000000' } }]);
+    return { ...(await line.status()), ...mockFlag };
+  }
+  if (sub) throw new BadRequest('未知的 LINE 操作');
+  if (req.method === 'DELETE') return { ...(await line.unlink()), ...mockFlag };
+  return { ...(await line.status()), ...mockFlag };
 }
 
 // Optional passcode that gates the cash-fare lookups (each one spends a SerpApi credit). Read per request so tests can set it.
@@ -512,7 +568,7 @@ async function handleSearch(q) {
   // Trip details carry the taxes; include them for ranges short enough that the bigger payload stays quick.
   if ((new Date(params.end_date) - new Date(params.start_date)) / 864e5 <= 45) params.include_trips = true;
   // Pages of 1,000: one call up to five months, three for a whole year.
-  const out = await cached('search:' + JSON.stringify(params), async () => {
+  const out = await sharedSearch('search:' + JSON.stringify(params), async () => {
     const { items, hasMore } = MOCK ? { items: mock.mockSearch(params), hasMore: false } : await client.search({ ...params, take: 1000 }, { maxPages: pagesFor(params, 1, 150) });
     return { truncated: hasMore, results: items.map(normalizeAvailability) };
   });
@@ -533,7 +589,7 @@ async function handleExplore(q) {
   const cabin = param(q, 'cabin', /^[YWJF]$/, { upper: true }) || 'J';
   params.cabin = CABIN_NAMES[cabin];
   // Ship one compact row per result for the requested cabin; the browser filters and sorts.
-  return cached('explore:' + JSON.stringify(params), async () => {
+  return sharedSearch('explore:' + JSON.stringify(params), async () => {
     const { items, hasMore } = MOCK ? { items: mock.mockAvailability(params), hasMore: false } : await client.availability(params, { maxPages: pagesFor(params, 3) });
     const results = items.map(normalizeAvailability).filter((r) => r.cabins[cabin].available).map((r) => {
       const c = r.cabins[cabin];
@@ -682,15 +738,15 @@ async function handleHotels(sub, q) {
     if (!where || where.length > 80 || /[<>{}\\]/.test(where)) throw new BadRequest('請輸入城市或地區');
     const params = { location: where, ...dateRange(q), nights: nightsParam(q), source: hotelPrograms(q), take: 100 };
     if ((Date.parse(params.end_date) - Date.parse(params.start_date)) / 864e5 > 92) throw new BadRequest('入住日期範圍最多 3 個月');
-    return cached('rooms:s:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeSearch(MOCK ? mock.mockRoomsSearch(params) : await roomsClient.search(params)) }));
+    return sharedSearch('rooms:s:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeSearch(MOCK ? mock.mockRoomsSearch(params) : await roomsClient.search(params)) }));
   }
   if (sub === 'calendar') {
     const params = { hotel_id: param(q, 'hotel', HOTEL_ID, { required: true }), ...dateRange(q), nights: nightsParam(q), rate_type: 'any', take: 500 };
-    return cached('rooms:c:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeAvailability(MOCK ? mock.mockRoomsAvailability(params) : await roomsClient.availability(params)) }));
+    return sharedSearch('rooms:c:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeAvailability(MOCK ? mock.mockRoomsAvailability(params) : await roomsClient.availability(params)) }));
   }
   if (sub === 'rooms') {
     const id = param(q, 'id', HOTEL_ID, { required: true });
-    return cached('rooms:r:' + id, async () => ({ mock: MOCK, ...rooms.normalizeDetail(MOCK ? mock.mockRoomsDetail(id) : await roomsClient.detail(id)) }));
+    return sharedSearch('rooms:r:' + id, async () => ({ mock: MOCK, ...rooms.normalizeDetail(MOCK ? mock.mockRoomsDetail(id) : await roomsClient.detail(id)) }));
   }
   throw new BadRequest('未知的飯店查詢');
 }
@@ -784,7 +840,7 @@ async function handleAccor(q, req) {
 
 async function handleTrips(id) {
   if (!/^[\w-]{1,80}$/.test(id)) throw new BadRequest('ID 格式錯誤');
-  return cached('trips:' + id, async () => ({ mock: MOCK, ...normalizeTrips(MOCK ? mock.mockTrips(id) : await client.trips(id)) }));
+  return sharedSearch('trips:' + id, async () => ({ mock: MOCK, ...normalizeTrips(MOCK ? mock.mockTrips(id) : await client.trips(id)) }));
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
@@ -882,6 +938,11 @@ async function route(req, res) {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleTelegram(req, p.endsWith('/link') ? 'link' : p.endsWith('/test') ? 'test' : ''));
     }
+    const lm = p.match(/^\/api\/line(?:\/(code|test|demo|webhook))?$/);
+    if (lm) {
+      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleLine(req, lm[1] || ''));
+    }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleWatch(req, q));
@@ -894,6 +955,8 @@ async function route(req, res) {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
         accounts: Boolean(accounts), accountEmail: Boolean(accounts?.mailOn && alertMailer),
+        line: await line.status().then((s) => ({ configured: s.configured, linked: s.linked, ...(s.missing ? { missing: s.missing } : {}), ...(s.configured ? { tokenOk: s.tokenOk } : {}) })).catch(() => ({ configured: line.configured })),
+        searchCache: await searchCache.stats(),
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true, tokenOk: telegram.configured ? (await telegram.bot()).tokenOk : null },
         cron: await cronStatus(),
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK },
@@ -930,6 +993,10 @@ async function route(req, res) {
       const d = await handleDeals();
       return sendJson(res, 200, d, d.groups?.length ? CACHE.deals : CACHE.short);
     }
+    if (p === '/api/history') {
+      const h = await history.get(param(q, 'origin', IATA_LIST, { required: true, upper: true }), param(q, 'destination', IATA_LIST, { required: true, upper: true }));
+      return sendJson(res, 200, h, CACHE.deals);
+    }
     if (p === '/api/search') return sendJson(res, 200, await handleSearch(q), CACHE.search);
     if (p === '/api/explore') return sendJson(res, 200, await handleExplore(q), CACHE.search);
     if (p.startsWith('/api/trips/')) {
@@ -947,7 +1014,7 @@ async function route(req, res) {
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
     if (e instanceof AccountError && e.current) return sendJson(res, e.status, { error: e.message, code: e.code, ...e.current });
-    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof AccountError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

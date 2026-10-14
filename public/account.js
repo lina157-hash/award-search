@@ -599,6 +599,7 @@ function settingsHtml() {
       <p class="hint">改好後，其他裝置會被登出，這台不會。</p>
     </section>
     <section class="acct-sec" aria-labelledby="tg-h"><h3 id="tg-h">📨 連結 Telegram</h3><div class="tg-box" id="tg-settings"></div></section>
+    <section class="acct-sec" aria-labelledby="line-h"><h3 id="line-h">💬 連結 LINE</h3><div class="tg-box" id="line-settings"></div></section>
     <section class="acct-sec" aria-labelledby="del-h"><h3 id="del-h">刪除帳號</h3>
       <p class="hint">會刪掉帳號和存在雲端的資料；這台裝置上的資料不會被刪。</p>
       <label>輸入密碼確認<input type="password" name="delpw" autocomplete="current-password"></label>
@@ -636,6 +637,7 @@ function bindSettings(form) {
     } catch (err) { showErr(delSec, errOf(err)); } finally { done(); }
   });
   tgRender($('#tg-settings', form));
+  if (typeof lineRender === 'function') lineRender($('#line-settings', form));
 }
 
 // ---------- Telegram (passcode-gated, not account-gated) ----------
@@ -698,9 +700,9 @@ function mountTelegram() {
   const add = (after, id) => {
     const at = $(`#${after}`);
     if (!at) return;
-    at.insertAdjacentHTML('afterend', `<details class="alerts-panel tg-panel" id="${id}"><summary>📨 Telegram 通知 <span class="tg-count"></span></summary><div class="alerts-body tg-box"></div></details>`);
+    at.insertAdjacentHTML('afterend', `<details class="alerts-panel tg-panel" id="${id}"><summary>📨 Telegram／LINE 通知 <span class="tg-count"></span></summary><div class="alerts-body nf-body"><h4 class="nf-h">Telegram</h4><div class="tg-box"></div><h4 class="nf-h">LINE</h4><div class="tg-box line-box"></div></div></details>`);
     const d = $(`#${id}`);
-    d.addEventListener('toggle', () => { if (d.open) tgRender($('.tg-box', d)); });
+    d.addEventListener('toggle', () => { if (d.open) { tgRender($('.tg-box', d)); if (typeof lineRender === 'function') lineRender($('.line-box', d)); } });
     return d;
   };
   add('alerts-panel', 'tg-panel');
