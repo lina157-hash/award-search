@@ -82,9 +82,12 @@ const cleanCount = (v) => { const n = Math.floor(Number(v)); return Number.isFin
 function loadWallet() {
   const w = store.get(WALLET_KEY, {});
   const pick = (o) => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).map(([k, v]) => [k, cleanCount(v)]).filter(([k, v]) => /^[\w-]{1,40}$/.test(k) && v));
-  return { banks: pick(w.banks), miles: pick(w.miles), hotels: pick(w.hotels) };
+  const miles = pick(w.miles);
+  // Expiry (or last activity) dates of miles balances, see ewallet.js.
+  const expiry = Object.fromEntries(Object.entries(w.expiry && typeof w.expiry === 'object' ? w.expiry : {}).filter(([k, v]) => miles[k] && /^\d{4}-\d{2}-\d{2}$/.test(v)));
+  return { banks: pick(w.banks), miles, hotels: pick(w.hotels), expiry };
 }
-let wallet = { banks: {}, miles: {}, hotels: {} };
+let wallet = { banks: {}, miles: {}, hotels: {}, expiry: {} };
 const walletEmpty = () => !Object.keys(wallet.banks).length && !Object.keys(wallet.miles).length && !Object.keys(wallet.hotels).length;
 const hotelPrograms = () => data.points?.calc?.hotels?.programs || {};
 // Bank programs that only transfer to hotels (e.g. 滙豐卓越理財) are listed after the airline ones.
@@ -213,6 +216,7 @@ function earnHtml(program, miles) {
     for (const b of r.banks) lines.push(`<li>你的${esc(b.source.bank)}點數 ${fmt(b.points)} 點可換約 <b>${fmt(b.miles)} 哩</b>${r.banks.length === 1 && !r.own ? `，${goal(b.miles)}` : ''}</li>`);
     if (lines.length > 1) lines.push(`<li>合計約 <b>${fmt(r.total)} 哩</b>，${goal(r.total)}</li>`);
     parts.push(lines.length ? `<ul class="earn-mine">${lines.join('')}</ul>` : '<p class="hint">你在「我的點數」填的點數都不能轉進這個計畫。</p>');
+    if (r.total < miles) parts.push(buyMilesHtml(key, miles - r.total));
   }
   if (rates.length) {
     const li = (x) => {
@@ -382,6 +386,8 @@ function walletHtml() {
       <input type="number" id="w-amt" min="0" step="100" inputmode="numeric" placeholder="數量" aria-label="數量">
       <button type="button" class="primary" id="w-add-btn">加入</button>
     </div>
+    <div id="wallet-expiry"></div>
+    <div id="wallet-goal"></div>
     <div id="wallet-sum-wrap"><h3 class="sub">合計可換到：航空哩程</h3><div id="wallet-sum"></div>
       <div id="wallet-hotel-wrap" hidden><h3 class="sub">合計可換到：飯店點數</h3><div id="wallet-hotel-sum"></div></div>
       <div id="wallet-detour-wrap" hidden><h3 class="sub">經飯店繞路可換到的航空</h3><div id="wallet-detour-sum"></div></div></div>
@@ -398,6 +404,7 @@ function renderWalletSum() {
     : `<p class="hint">${walletEmpty() ? '加入點數後，這裡會算出每個航空計畫最多能湊到多少哩。' : '你填的點數都不能轉進航空計畫。'}</p>`;
   renderWalletHotelSum();
   renderWalletDetourSum();
+  renderWalletExtras();
 }
 // Airlines where pooling everything into one hotel first beats transferring directly (or is the only way in).
 function renderWalletDetourSum() {
@@ -432,7 +439,7 @@ function renderWalletList() {
     .map(([kind, id, n]) => ({ kind, id, n, label: walletItemName(kind, id) })).filter((x) => x.label);
   host.innerHTML = items.length ? `${items.map(({ kind, id, n, label }) => `<div class="w-row"><span><b>${esc(label.name)}</b>${label.sub ? `<small>${esc(label.sub)}</small>` : ''}</span>
       <input type="number" min="0" step="100" inputmode="numeric" data-w="${kind}:${esc(id)}" value="${n}" aria-label="${esc(label.name)} 數量">
-      <button type="button" class="w-del" data-w-del="${kind}:${esc(id)}" aria-label="移除 ${esc(label.name)}">×</button></div>`).join('')}
+      ${kind === 'm' ? expiryInputHtml(id) : ''}<button type="button" class="w-del" data-w-del="${kind}:${esc(id)}" aria-label="移除 ${esc(label.name)}">×</button></div>`).join('')}
     <button type="button" class="outline" id="wallet-clear">清除全部</button>`
     : '<p class="w-empty">還沒有加入任何點數，從下面選一個開始。</p>';
 }
@@ -441,6 +448,7 @@ function setWallet(ref, value) {
   const bucket = kind === 'b' ? wallet.banks : kind === 'h' ? wallet.hotels : wallet.miles;
   const n = cleanCount(value);
   if (n) bucket[id] = n; else delete bucket[id];
+  if (kind === 'm' && !n && wallet.expiry) delete wallet.expiry[id];
   if (walletEmpty()) store.del(WALLET_KEY); else store.set(WALLET_KEY, wallet);
 }
 function bindWallet(host) {
@@ -465,11 +473,12 @@ function bindWallet(host) {
     if (del) { setWallet(del.dataset.wDel, 0); refresh(); return; }
     if (e.target.id === 'wallet-clear') {
       if (!confirm('清除所有填入的點數與哩程？')) return;
-      wallet = { banks: {}, miles: {}, hotels: {} };
+      wallet = { banks: {}, miles: {}, hotels: {}, expiry: {} };
       store.del(WALLET_KEY);
       refresh();
     }
   });
+  bindWalletExtras(host);
   refresh();
 }
 
@@ -776,7 +785,7 @@ function renderNeed() {
   const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic' || (p.kind === 'routeSpecific' && !p.routes?.length)).map((p) => p.name || programName(p.id));
   host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${rt ? '來回・' : ''}${CABIN_LABEL[c]}・直線距離 ${fmt(dist)} 哩</h3>
     ${rows.length ? `<div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>${rt ? '來回' : '單程'}哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
-      ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(r.name || programName(r.key))}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b></td>
+      ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(r.name || programName(r.key))}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b>${shortfallHtml(r.key, r.miles)}</td>
         <td><small>${esc(r.note)}${r.perSegment ? '；每段航班分開計價，轉機會更貴' : ''}</small></td>
         <td>${CONFIDENCE_TAG[r.confidence] || ''}${r.src ? `<small><a href="${esc(r.src.url)}" target="_blank" rel="noopener">${esc(r.src.label)} ↗</a></small>` : ''}</td></tr>`).join('')}
     </tbody></table></div>` : '<p class="hint">這條航線找不到適用的固定哩程表。</p>'}

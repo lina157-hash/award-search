@@ -2470,7 +2470,7 @@ function pointsHtml() {
   const tag = (r) => CONFIDENCE_TAG[r.confidence] || '';
   const keys = Object.entries(pts.programKeys || {});
   const transferRows = pts.transfers.map((r) => `<tr data-to="${esc((r.to || []).join(','))}">
-      <td><b>${esc(r.bank)}</b><small>${esc(r.program)}</small></td><td data-l="轉到">${esc(r.toName)}</td><td data-l="比率"><b>${esc(r.ratio)}</b>${r.min ? `<small>最低 ${esc(r.min)}</small>` : ''}${r.fee ? `<small>${esc(r.fee)}</small>` : ''}</td>
+      <td><b>${esc(r.bank)}</b><small>${esc(r.program)}</small></td><td data-l="轉到">${esc(r.toName)}</td><td data-l="比率"><b>${esc(r.ratio)}</b>${untilTag(r)}${r.min ? `<small>最低 ${esc(r.min)}</small>` : ''}${r.fee ? `<small>${esc(r.fee)}</small>` : ''}</td>
       <td data-l="說明">${r.notes ? esc(r.notes) : ''}</td><td data-l="來源">${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
   const cobrandRows = pts.cobrand.map((r) => `<tr>
       <td><b>${esc(r.bank)}</b><small>${esc(r.card)}</small></td><td data-l="累積到">${esc(r.program)}</td><td data-l="累積率"><b>${esc(r.earn)}</b></td><td data-l="說明">${r.notes ? esc(r.notes) : ''}</td><td data-l="來源">${tag(r)}<small>${src(r)}${r.date ? ` ${esc(r.date)}` : ''}</small></td></tr>`).join('');
@@ -2526,7 +2526,7 @@ function calcHtml(pts) {
       <div class="presets calc-presets"><span class="presets-label">快速填入</span>${CALC_PRESETS.map((n) => `<button type="button" data-n="${n}">${fmt(n)}</button>`).join('')}</div>
       <label class="switch"><input type="checkbox" id="calc-detail" ${calcState.detail ? 'checked' : ''}><span class="knob"></span>顯示比率與備註</label>
     </div>
-    ${hotel ? '' : promosHtml()}
+    ${hotel ? '' : promosHtml() + upcomingHtml()}
     <div class="table-wrap calc-table${calcState.detail ? '' : ' simple'}"><table id="calc-table"></table></div>
     <p class="hint" id="calc-note"></p>
   </div>`;
@@ -2623,7 +2623,7 @@ function renderCalc() {
     });
     return `<td class="others">${lines.join('')}</td>`;
   };
-  const rows = sources.map((s) => `<tr><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${verifyTag(s)}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}</th>${CALC_COLS.map(([col, label]) => cell(s, col).replace('<td', `<td data-l="${esc(label)}"`)).join('')}</tr>`);
+  const rows = sources.map((s) => `<tr><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${verifyTag(s)}${untilTag(s)}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}</th>${CALC_COLS.map(([col, label]) => cell(s, col).replace('<td', `<td data-l="${esc(label)}"`)).join('')}</tr>`);
   table.innerHTML = `<thead><tr><th>${mine ? '我的點數可換' : mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} ${view.unit}需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`;
 }
 
@@ -2696,7 +2696,7 @@ function renderProgramCards() {
   const fieldsOf = (p) => (q ? fieldRows.filter(([k, label]) => label.includes(q) || String(p[k] ?? '').includes(q)) : fieldRows);
   $('#program-cards').innerHTML = list.map((p) => `
     <div class="card" id="prog-${esc(p.id)}">
-      <h3>${p.alliance ? `<span class="dot ${p.alliance}"></span>` : ''}${esc(p.name)} ${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? '<span class="tag">可查座位</span>' : ''}</h3>
+      <h3>${p.alliance ? `<span class="dot ${p.alliance}"></span>` : ''}${esc(p.name)} ${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? '<span class="tag">可查座位</span>' : ''}${programChangeTag(p.id)}</h3>
       ${fieldsOf(p).length ? `<dl>${fieldsOf(p).map(([k, label]) => `<dt>${mark(label)}</dt><dd>${mark(p[k])}</dd>`).join('')}</dl>` : ''}
       ${!q || String(p.notes || '').includes(q) ? `<p class="hint">${mark(p.notes)}</p>` : ''}
       <div class="src">來源（${esc(p.lastVerified || '')} 查核）：${(p.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}
@@ -2722,15 +2722,17 @@ function renderVersion(config) {
 }
 
 // ---------- init ----------
-const DATA_NAMES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames'];
+const DATA_NAMES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'expiry', 'buymiles', 'changes'];
+// Niceties the page works without (Chinese airline names; expiry rules, buy-miles prices, dated rule changes).
+const OPTIONAL_DATA = ['airlinenames', 'expiry', 'buymiles', 'changes'];
 // All data files in one request, cached per release (?v=); the per-file endpoints are the fallback for older servers.
 async function loadData() {
   try {
     const all = await api(`/api/data/all${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);
-    if (DATA_NAMES.every((n) => all[n])) return all;
+    if (DATA_NAMES.every((n) => all[n] || OPTIONAL_DATA.includes(n))) return all;
   } catch { /* fall back below */ }
   // Chinese airline names are a nicety: without them the codes show as they are.
-  const files = await Promise.all(DATA_NAMES.map((n) => (n === 'airlinenames' ? api(`/api/data/${n}`).catch(() => null) : api(`/api/data/${n}`))));
+  const files = await Promise.all(DATA_NAMES.map((n) => (OPTIONAL_DATA.includes(n) ? api(`/api/data/${n}`).catch(() => null) : api(`/api/data/${n}`))));
   return Object.fromEntries(DATA_NAMES.map((n, i) => [n, files[i]]));
 }
 
@@ -2751,7 +2753,7 @@ tabInit.cash = () => loadCashQuota();
     $('#search-status').textContent = '正在搜尋各里程計畫的獎勵位…';
   }
   const [config, all] = await Promise.all([api('/api/config'), loadData()]);
-  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points, data.booking, data.charts, data.products, data.promos, data.airlineNames] = DATA_NAMES.map((n) => all[n]);
+  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points, data.booking, data.charts, data.products, data.promos, data.airlineNames, data.expiry, data.buymiles, data.changes] = DATA_NAMES.map((n) => all[n]);
   SOURCE_NAMES = data.sourceNames.names;
   indexAirlineNames(data.airlineNames);
   $('#mock-banner').hidden = !config.mock;

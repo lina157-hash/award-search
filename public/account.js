@@ -58,7 +58,8 @@ const MERGE = {
   // Per program: the side that changed it since the base, else the account's number; the device adds what's missing.
   'wallet:v1'(l, r, b, hasBase) {
     const out = {};
-    for (const bucket of ['banks', 'miles', 'hotels']) {
+    // expiry: the dates entered for miles balances (ewallet.js), merged per program like the balances.
+    for (const bucket of ['banks', 'miles', 'hotels', 'expiry']) {
       const L = obj(obj(l)[bucket]);
       const R = obj(obj(r)[bucket]);
       const B = obj(obj(b)[bucket]);
