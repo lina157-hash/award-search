@@ -709,3 +709,60 @@ details.release li { margin: 3px 0; }
   .tabs button { font-size: .72rem; padding: 6px 1px; }
 }
 .h-bar .field { flex-direction: row; align-items: center; gap: 6px; white-space: nowrap; }
+
+/* ---------- 出發前小提醒 (trip notes) ---------- */
+.trip-info { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--sun); border-radius: var(--radius); padding: 10px 16px; margin: 6px 0 14px; box-shadow: var(--shadow); }
+.trip-info.loading { color: var(--muted); font-size: .88rem; }
+.trip-info summary { cursor: pointer; font-weight: 700; padding: 2px 0; }
+.ti-list { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; gap: 8px; }
+.ti-list li { display: grid; grid-template-columns: 7.5em minmax(0, 1fr); gap: 4px 10px; align-items: baseline; font-size: .9rem; }
+.ti-list li > * { min-width: 0; }
+.ti-k { color: var(--muted); font-size: .84rem; white-space: nowrap; }
+.ti-list .hint { display: inline; font-size: .78rem; }
+.ti-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .82rem; background: var(--surface-2); }
+.ti-tag.ok { background: var(--accent-soft); color: var(--accent); }
+.ti-tag.mid { background: var(--few); color: var(--few-text); }
+.ti-tag.bad, .ti-tag.warn-orange { background: #ffe1cc; color: #8a3a00; }
+.ti-tag.warn-gray { background: #e6e6e6; color: #444; }
+.ti-tag.warn-yellow { background: #fff1b8; color: #6b5200; }
+.ti-tag.warn-red { background: #ffd6d6; color: #8a1c1c; }
+.ti-days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.ti-day { flex: 0 0 auto; min-width: 64px; display: grid; justify-items: center; gap: 0; padding: 4px 6px; border-radius: 10px; background: var(--surface-2); font-size: .8rem; line-height: 1.3; }
+.ti-day small { color: var(--muted); font-size: .7rem; }
+.ti-ico { font-size: 1.2rem; }
+.ti-air { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ti-air .pill { display: inline-block; font-size: .82rem; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.ti-air .pill small { color: var(--muted); font-weight: 400; }
+.ti-src { font-size: .72rem; color: var(--muted); margin: 6px 0 2px; }
+@media (max-width: 560px) {
+  .ti-list li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ti-tag.bad, :root:not([data-theme="light"]) .ti-tag.warn-orange { background: #4a2a12; color: #ffc89a; }
+  :root:not([data-theme="light"]) .ti-tag.warn-gray { background: #2e3640; color: #d6dde4; }
+  :root:not([data-theme="light"]) .ti-tag.warn-yellow { background: #3d3410; color: #ffe27a; }
+  :root:not([data-theme="light"]) .ti-tag.warn-red { background: #4a2020; color: #ffd6d6; }
+}
+:root[data-theme="dark"] .ti-tag.bad, :root[data-theme="dark"] .ti-tag.warn-orange { background: #4a2a12; color: #ffc89a; }
+:root[data-theme="dark"] .ti-tag.warn-gray { background: #2e3640; color: #d6dde4; }
+:root[data-theme="dark"] .ti-tag.warn-yellow { background: #3d3410; color: #ffe27a; }
+:root[data-theme="dark"] .ti-tag.warn-red { background: #4a2020; color: #ffd6d6; }
+
+/* Holiday marks on the calendars: a coloured corner dot. */
+.day { position: relative; }
+.day.hol-tw::after, .day.hol-dest::after, .day.hol-work::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--coral); }
+.day.hol-dest::after { background: var(--sun); }
+.day.hol-tw.hol-dest::after { background: linear-gradient(90deg, var(--coral) 50%, var(--sun) 50%); }
+.day.hol-work::after { background: var(--muted); }
+.hol-legend { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; flex-wrap: wrap; }
+.hol-legend .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+.hol-legend .dot.tw { background: var(--coral); }
+.hol-legend .dot.dest { background: var(--sun); }
+.hol-legend .dot.work { background: var(--muted); }
+.legend { flex-wrap: wrap; }
+
+/* 每天最低價 (cash month grid) */
+.cash-month { margin: 4px 0 16px; }
+.cash-month .section small { font-weight: 400; color: var(--muted); font-size: .78rem; }
+.cash-month .cal.mini .day b { font-size: .66rem; white-space: nowrap; letter-spacing: -.02em; }
+.cash-month .day.low { outline: 2px solid var(--sun-2); outline-offset: -2px; }

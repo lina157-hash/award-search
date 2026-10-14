@@ -24,7 +24,7 @@ async function api(path, opts) {
 }
 
 // Each async view keeps a request counter so a slow older response cannot overwrite a newer one.
-const seq = { search: 0, trips: 0, explore: 0, cash: 0, returns: 0, booking: 0 };
+const seq = { search: 0, trips: 0, explore: 0, cash: 0, returns: 0, booking: 0, cashMonth: 0 };
 const latest = (key) => { const n = ++seq[key]; return () => n === seq[key]; };
 
 // Per-device preferences (recent searches, favourites, the cash passcode). Storage can be unavailable in private mode.
@@ -795,6 +795,8 @@ async function runSearch(share) {
   status.textContent = '正在搜尋各里程計畫的獎勵位…';
   $('#search-empty').hidden = true;
   $('#search-results').innerHTML = skeleton();
+  setHolidays({});
+  $('#search-trip').innerHTML = '';
   try {
     const body = await api(`/api/search?${params}`);
     if (!fresh()) return;
@@ -821,6 +823,7 @@ async function runSearch(share) {
       cashForm.requestSubmit();
     });
     renderSearch();
+    loadTripInfo($('#search-trip'), { from: share.get('o'), to: share.get('d'), start: state.start, end: state.end }, () => { if (fresh() && state.results.length) renderSearch(); });
     status.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     if (!fresh()) return;
@@ -989,9 +992,11 @@ function calendarHtml(rows) {
 
   const dayCell = (iso, text) => {
     const m = lowByDay[iso];
+    const hol = holidayMark(iso);
+    const note = hol.title ? `\n${hol.title}` : '';
     return m
-      ? `<button type="button" class="day has h${level(m)} ${state.day === iso ? 'sel' : ''}" data-date="${iso}" title="${iso} 最低 ${fmt(m)} 哩">${text}<b>${kfmt(m)}</b></button>`
-      : `<div class="day">${text}<b>—</b></div>`;
+      ? `<button type="button" class="day has h${level(m)} ${state.day === iso ? 'sel' : ''} ${hol.cls}" data-date="${iso}" title="${iso} 最低 ${fmt(m)} 哩${esc(note)}">${text}<b>${kfmt(m)}</b></button>`
+      : `<div class="day ${hol.cls}"${hol.title ? ` title="${esc(hol.title)}"` : ''}>${text}<b>—</b></div>`;
   };
   // Lay days out under weekday headers, padding before the first day.
   const grid = (from, to, text) => {
@@ -1023,7 +1028,7 @@ function calendarHtml(rows) {
     body = `<div class="cal-months">${blocks.join('')}</div>`;
   }
   return `${body}
-    <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴
+    <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴${holidayLegend()}
     ${state.day ? `　<button type="button" class="outline" id="clear-day">顯示全部日期（目前只看 ${mmdd(state.day)}）</button>` : ''}</div>`;
 }
 
@@ -1553,6 +1558,7 @@ function renderCash() {
       ${ins.range ? `<div><span>一般價格區間</span><b>${money(ins.range[0])} – ${fmt(ins.range[1])}</b></div>` : ''}
       ${sparkline(ins.history)}
     </div>` : ''}
+    ${!cash.returns ? cashMonthHtml() : ''}
     ${cash.returns ? `<div class="picked"><span>已選去程</span>${fareHtml(cash.outbound, -1, 'picked')}<button type="button" class="outline" id="cash-back">← 重新選去程</button></div><h2 class="section">選擇回程（顯示的是來回總價）</h2>` : ''}
     <div class="cash-tools">
       <label class="field">排序<select id="cash-sort">
@@ -1579,7 +1585,94 @@ function renderCash() {
   $$('[data-ret]', box).forEach((b) => b.addEventListener('click', () => loadReturns(cash.options[Number(b.dataset.ret)])));
   $$('[data-pick]', box).forEach((b) => b.addEventListener('click', () => choose(showing[Number(b.dataset.pick)])));
   $('#cash-back')?.addEventListener('click', () => { cash.returns = null; cash.outbound = null; renderCash(); });
+  bindCashMonth(box);
   bindCashLinks();
+}
+
+// ---------- 整月價格 (lowest fare per departure day) ----------
+const cashMonthOk = (r) => cashCfg.calendar && /^[A-Z]{3}$/.test(r.origin) && /^[A-Z]{3}$/.test(r.destination);
+function cashMonthRange(r) {
+  const tomorrow = isoDate(1);
+  const start = [isoDateFrom(r.depart, -21), tomorrow].sort().at(-1);
+  return { start, end: isoDateFrom(start, 59) };
+}
+// Fits a price into a small calendar cell: 9,200 → 9.2千, 12,400 → 1.24萬.
+const shortTwd = (p) => (p >= 1e5 ? `${Math.round(p / 1e4)}萬` : p >= 1e4 ? `${+(p / 1e4).toFixed(2)}萬` : p >= 1e3 ? `${+(p / 1e3).toFixed(1)}千` : String(p));
+const tripDays = (r) => (r.ret ? Math.round((Date.parse(r.ret) - Date.parse(r.depart)) / 864e5) : 0);
+function cashMonthHtml() {
+  const r = cash.req;
+  if (!r || !cashMonthOk(r)) return '';
+  const m = cash.month;
+  if (!m) {
+    return `<div class="cash-month"><button type="button" class="outline" id="cash-month-btn">📅 看前後幾週每天的最低價（用 1 次 RapidAPI 額度）</button></div>`;
+  }
+  if (m.busy) return '<div class="cash-month"><p class="hint">正在查詢每天的最低價…</p></div>';
+  if (m.err) return `<div class="cash-month"><p class="status error">${esc(m.err)}</p></div>`;
+  if (!m.days.length) return '<div class="cash-month"><p class="hint">這段期間查不到每日價格，請直接換日期搜尋。</p></div>';
+  const price = new Map(m.days.map((d) => [d.date, d.price]));
+  const uniq = [...new Set(m.days.map((d) => d.price))].sort((a, b) => a - b);
+  const level = (p) => (uniq.length === 1 ? 4 : 4 - Math.min(3, Math.floor((uniq.indexOf(p) / (uniq.length - 1)) * 4)));
+  const low = uniq[0];
+  const cell = (iso) => {
+    const p = price.get(iso);
+    const hol = holidayMark(iso);
+    const note = `${iso}（${dowOf(iso)}）${p ? ` 最低 NT$${fmt(p)}` : ''}${hol.title ? `\n${hol.title}` : ''}`;
+    return p
+      ? `<button type="button" class="day has h${level(p)} ${iso === r.depart ? 'sel' : ''} ${p === low ? 'low' : ''} ${hol.cls}" data-mdate="${iso}" title="${esc(note)}">${Number(iso.slice(8))}<b>${shortTwd(p)}</b></button>`
+      : `<div class="day ${hol.cls}" title="${esc(note)}">${Number(iso.slice(8))}<b>—</b></div>`;
+  };
+  const months = [];
+  for (let ym = m.start.slice(0, 7); ym <= m.end.slice(0, 7); ym = monthAdd(ym, 1)) {
+    const last = new Date(`${monthAdd(ym, 1)}-01T00:00:00Z`);
+    last.setUTCDate(0);
+    const from = ym === m.start.slice(0, 7) ? m.start : `${ym}-01`;
+    const to = ym === m.end.slice(0, 7) ? m.end : last.toISOString().slice(0, 10);
+    const cells = DOW.map((d) => `<div class="dow">${d}</div>`);
+    for (let i = 0; i < new Date(from + 'T00:00:00Z').getUTCDay(); i++) cells.push('<div class="day pad"></div>');
+    for (let d = from; d <= to; d = isoDateFrom(d, 1)) cells.push(cell(d));
+    const lows = m.days.filter((d) => d.date >= from && d.date <= to).map((d) => d.price);
+    months.push(`<div class="cal-month"><div class="cal-mtitle">${ym.slice(0, 4)} 年 ${Number(ym.slice(5))} 月${lows.length ? `<small>最低 <b>NT$${fmt(Math.min(...lows))}</b></small>` : ''}</div><div class="cal mini">${cells.join('')}</div></div>`);
+  }
+  const cheapest = m.days.filter((d) => d.price === low).map((d) => `${mmdd(d.date)}（${dowOf(d.date)}）`).slice(0, 3).join('、');
+  return `<div class="cash-month">
+    <h2 class="section">每天最低價 <small>${m.round ? `來回、玩 ${tripDays(r)} 天的總價` : '單程價格'}${r.adults > 1 ? `，${r.adults} 人總價` : ''}；點日期用那天重新搜尋（再用 1 次額度）</small></h2>
+    <p class="hint">最便宜：${cheapest} NT$${fmt(low)}${m.roundFailed ? '。來回的每日價格查不到，先顯示單程價格。' : ''}${m.mock ? '（示範資料）' : ''}</p>
+    <div class="cal-months">${months.join('')}</div>
+    <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴${holidayLegend()}</div>
+  </div>`;
+}
+function bindCashMonth(box) {
+  $('#cash-month-btn', box)?.addEventListener('click', loadCashMonth);
+  $$('[data-mdate]', box).forEach((b) => b.addEventListener('click', () => {
+    const r = cash.req;
+    const shift = tripDays(r);
+    cashForm.depart.value = b.dataset.mdate;
+    if (r.ret) cashForm.return.value = isoDateFrom(b.dataset.mdate, shift);
+    const keep = cash.month;
+    cashForm.requestSubmit();
+    cash.month = keep; // the new search covers the same weeks, so keep the grid
+  }));
+}
+async function loadCashMonth() {
+  const r = cash.req;
+  const n = ++seq.cashMonth;
+  const { start, end } = cashMonthRange(r);
+  cash.month = { busy: true, start, end, days: [] };
+  renderCash();
+  try {
+    const p = new URLSearchParams({ origin: r.origin, destination: r.destination, start, end, cabin: r.cabin, adults: String(r.adults) });
+    if (r.ret) p.set('trip_days', String(tripDays(r)));
+    const body = await cashApi(`/api/cash/calendar?${p}`);
+    if (n !== seq.cashMonth) return;
+    cash.month = { start, end, days: body.days || [], round: body.round, roundFailed: Boolean(r.ret) && !body.round, mock: body.mock };
+    loadCashQuota();
+    // Mark holidays across the whole grid, not just the trip dates.
+    loadHolidays(r.destination, start, end).then(() => { if (n === seq.cashMonth) renderCash(); });
+  } catch (err) {
+    if (n !== seq.cashMonth) return;
+    cash.month = { start, end, days: [], err: err.message };
+  }
+  renderCash();
 }
 
 // The traveller picked the last leg: show both legs together, the total, and how to book.
@@ -1774,8 +1867,11 @@ cashForm.addEventListener('submit', async (e) => {
     status.textContent = '請選擇回程日期，或改選「單程」。';
     return;
   }
-  Object.assign(cash, { req: r, options: [], returns: null, outbound: null, chosen: null, booking: null, bookingBusy: false, bookingErr: '', insights: null, googleUrl: '', off: false, sort: 'best', directOnly: false });
+  Object.assign(cash, { req: r, options: [], returns: null, outbound: null, chosen: null, booking: null, bookingBusy: false, bookingErr: '', insights: null, googleUrl: '', off: false, sort: 'best', directOnly: false, month: null });
   const fresh = latest('cash');
+  seq.cashMonth++;
+  setHolidays({});
+  loadTripInfo($('#cash-trip'), { from: r.origin, to: r.destination, start: r.depart, end: r.ret || r.depart }, () => { if (fresh() && cash.month?.days) renderCash(); });
   seq.booking++;
   seq.returns++; // any pending return-leg lookup belongs to the previous search
   status.className = 'status';
@@ -2173,6 +2269,7 @@ function renderVersion(config) {
   renderVersion(config);
   cashCfg.locked = Boolean(config.cashLocked);
   cashCfg.enabled = config.cash !== 'off';
+  cashCfg.calendar = config.cash === 'mock' || Boolean(config.cashSources?.rapid);
   watchCfg.on = Boolean(config.watch);
   loadWatches();
   loadCashQuota();

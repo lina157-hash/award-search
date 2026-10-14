@@ -11,6 +11,7 @@ const { createPriceWatch, RESERVE } = require('./lib/pricewatch');
 const { createDeals } = require('./lib/deals');
 const rooms = require('./lib/rooms');
 const rapid = require('./lib/rapidflights');
+const { createTravelInfo } = require('./lib/travelinfo');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -112,6 +113,20 @@ async function cached(key, fn) {
 }
 
 class BadRequest extends Error {}
+
+// Airport → country and coordinates, for the pre-trip notes.
+const AIRPORTS = new Map(require('./public/airports.min.json').airports.map(([code, , , country, , , , , lat, lon]) => [code, { country, lat, lon }]));
+const VISA = require('./data/visa.json');
+const WARNINGS = require('./data/warnings.json');
+const travelInfo = createTravelInfo({ visa: VISA.countries, warnings: WARNINGS.countries });
+async function handleTripInfo(q) {
+  const to = param(q, 'to', /^[A-Z]{3}$/, { required: true, upper: true });
+  const { start_date: start, end_date: end } = dateRange(q);
+  const place = AIRPORTS.get(to);
+  if (!place) throw new BadRequest('找不到這個機場');
+  const info = await travelInfo.forTrip(place, start, end, { withWeather: q.get('only') !== 'holidays' });
+  return { airport: to, ...info, sources: { visa: { name: VISA.source, url: VISA.sourceUrl, asOf: VISA.asOf }, warning: { name: WARNINGS.source, url: WARNINGS.sourceUrl, asOf: WARNINGS.asOf } } };
+}
 
 // Seat alerts: Upstash Redis (Vercel Storage tab) keeps the watches, Resend sends the mail. Demo mode keeps them in memory.
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '';
@@ -338,6 +353,30 @@ async function handleCash(q, req) {
   return { configured: true, mock: CASH_MODE === 'mock', returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), provider: raw.provider || 'mock', fallback: raw.fallback || '', ...normalizeCash(raw) };
 }
 
+// Google Flights' lowest fare per departure day (RapidAPI, one request per call), for the month view in the cash tab.
+async function handleCashCalendar(q, req) {
+  if (CASH_MODE === 'off') return { configured: false, days: [] };
+  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
+  const { start_date: start, end_date: end } = dateRange(q);
+  const today = new Date().toISOString().slice(0, 10);
+  if (start < today) throw new BadRequest('開始日期不可早於今天');
+  if ((Date.parse(end) - Date.parse(start)) / 864e5 > 61) throw new BadRequest('一次最多查 2 個月');
+  const tripDays = Number(q.get('trip_days') || 0);
+  if (!Number.isInteger(tripDays) || tripDays < 0 || tripDays > 60) throw new BadRequest('天數參數錯誤');
+  const adults = Number(q.get('adults') || 1);
+  if (!Number.isInteger(adults) || adults < 1 || adults > 9) throw new BadRequest('人數需為 1 到 9');
+  const params = {
+    departure_id: param(q, 'origin', /^[A-Z]{3}$/, { required: true, upper: true }),
+    arrival_id: param(q, 'destination', /^[A-Z]{3}$/, { required: true, upper: true }),
+    start_date: start, end_date: end, trip_days: tripDays || undefined,
+    travel_class: CABIN_CLASS[param(q, 'cabin', /^[YWJF]$/, { upper: true }) || 'Y'], adults,
+  };
+  if (CASH_MODE === 'mock') return { configured: true, mock: true, ...mock.mockCashCalendar(params) };
+  if (!rapidQuery) throw new CashError('整月價格要用 RapidAPI 的 Google Flights API，網站還沒設定 RAPIDAPI_KEY', 503);
+  const body = await cached('cashcal:' + JSON.stringify(params), () => rapidQuery.calendar(params));
+  return { configured: true, provider: 'rapid', ...body };
+}
+
 // A RapidAPI seller's booking page (one more request), fetched when the user presses its button.
 async function handleCashLink(q, req) {
   if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼', 401), { code: 'passcode' });
@@ -444,6 +483,8 @@ async function route(req, res) {
       });
     }
     if (p === '/api/cash') return sendJson(res, 200, await handleCash(q, req));
+    if (p === '/api/cash/calendar') return sendJson(res, 200, await handleCashCalendar(q, req));
+    if (p === '/api/trip-info') return sendJson(res, 200, await handleTripInfo(q));
     if (p === '/api/cash/link') return sendJson(res, 200, await handleCashLink(q, req));
     if (p === '/api/cash/quota') return sendJson(res, 200, await handleCashQuota());
     const hm = p.match(/^\/api\/hotels\/(search|calendar|rooms)$/);

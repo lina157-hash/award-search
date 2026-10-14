@@ -6,6 +6,7 @@ const { normalizeAvailability, createClient } = require('../lib/seats');
 const { createCashClient, normalizeCash } = require('../lib/cash');
 
 let base;
+const isoIn = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 before(() => new Promise((r) => server.listen(0, () => { base = `http://localhost:${server.address().port}`; r(); })));
 after(() => server.close());
 
@@ -405,4 +406,71 @@ test('hotel award search, calendar and rooms work in demo mode', async () => {
   assert.equal((await fetch(`${base}/api/hotels/search?where=Tokyo&start=2026-11-01&nights=9`)).status, 400);
   const quota = await (await fetch(`${base}/api/cash/quota`)).json();
   assert.ok(quota.rapid && quota.serpapi);
+});
+
+test('trip notes: forecast, climate averages, Taiwan long weekends and destination holidays', async () => {
+  const { createTravelInfo } = require('../lib/travelinfo');
+  const urls = [];
+  const days = (a, b) => { const out = []; for (let d = a; d <= b; d = new Date(Date.parse(d) + 864e5).toISOString().slice(0, 10)) out.push(d); return out; };
+  const fetchImpl = async (url) => {
+    const u = new URL(String(url));
+    urls.push(u.host);
+    const json = (b, status = 200) => new Response(JSON.stringify(b), { status });
+    if (u.host === 'api.open-meteo.com') { const t = days(u.searchParams.get('start_date'), u.searchParams.get('end_date')); return json({ daily: { time: t, weather_code: t.map(() => 61), temperature_2m_max: t.map(() => 20.4), temperature_2m_min: t.map(() => 11.6), precipitation_probability_max: t.map(() => 70) } }); }
+    if (u.host === 'archive-api.open-meteo.com') { const t = days(u.searchParams.get('start_date'), u.searchParams.get('end_date')); return json({ daily: { time: t, temperature_2m_max: t.map(() => 15), temperature_2m_min: t.map(() => 5), precipitation_sum: t.map((_, i) => (i % 3 ? 0 : 2)) } }); }
+    if (u.host === 'cdn.jsdelivr.net') {
+      const y = Number(u.pathname.match(/(\d{4})/)[1]);
+      return json(days(`${y}-01-01`, `${y}-12-31`).map((d) => {
+        const wk = [0, 6].includes(new Date(d).getUTCDay());
+        const name = { [`${y}-10-09`]: '補假', [`${y}-10-10`]: '國慶日', [`${y}-06-20`]: '' }[d] ?? '';
+        return { date: d.replace(/-/g, ''), isHoliday: (wk && d !== `${y}-06-20`) || Boolean(name), description: d === `${y}-06-20` ? '補行上班' : name };
+      }));
+    }
+    if (u.host === 'nagerholidays.com') return json({}, 503);
+    if (u.host === 'date.nager.at') return json([{ date: '2026-11-03', localName: '文化の日', name: 'Culture Day', counties: null, types: ['Public'] }, { date: '2026-11-04', name: 'Regional', counties: ['JP-01'], types: ['Public'] }]);
+    throw new Error('unexpected ' + u);
+  };
+  const ti = createTravelInfo({ fetchImpl, today: () => '2026-10-01', visa: { JP: { type: 'free', days: 90 } } });
+  const near = await ti.forTrip({ country: 'JP', lat: 35.7, lon: 140.4 }, '2026-10-05', '2026-10-12');
+  assert.equal(near.weather.kind, 'forecast');
+  assert.equal(near.weather.days.length, 7, 'forecast is capped at a week of the trip');
+  assert.deepEqual([near.weather.days[0].icon, near.weather.days[0].max, near.weather.days[0].min], ['🌧️', 20, 12]);
+  assert.deepEqual(near.taiwan.longWeekends.map((l) => [l.start, l.end, l.days, l.name]), [['2026-10-09', '2026-10-11', 3, '國慶日']]);
+  assert.equal(near.visa.days, 90);
+  const far = await ti.forTrip({ country: 'JP', lat: 35.7, lon: 140.4 }, '2026-11-01', '2026-11-30');
+  assert.equal(far.weather.kind, 'climate');
+  assert.deepEqual([far.weather.max, far.weather.min, far.weather.rainyDays, far.weather.years], [15, 5, 10, [2025, 2024, 2023]]);
+  assert.deepEqual(far.holidays, [{ date: '2026-11-03', name: 'Culture Day', local: '文化の日' }], 'regional holidays are dropped, v3 host is the fallback');
+  const summer = await ti.taiwan('2026-06-15', '2026-06-25');
+  assert.deepEqual(summer.days, [{ date: '2026-06-20', name: '補行上班', off: false, workday: true }]);
+  // A broken source only blanks its own part.
+  const broken = createTravelInfo({ fetchImpl: async () => { throw new Error('down'); }, today: () => '2026-10-01' });
+  const b = await broken.forTrip({ country: 'JP', lat: 1, lon: 1 }, '2026-11-01', '2026-11-02');
+  assert.equal(b.weather, null);
+  assert.ok(b.errors.weather && b.errors.taiwan);
+});
+
+test('cash month calendar: demo grid, validation and RapidAPI round-trip fallback', async () => {
+  const ok = await (await fetch(`${base}/api/cash/calendar?origin=TPE&destination=NRT&start=${isoIn(10)}&end=${isoIn(40)}&trip_days=5`)).json();
+  assert.equal(ok.days.length, 31);
+  assert.ok(ok.round && ok.days.every((d) => d.price > 0));
+  assert.equal((await fetch(`${base}/api/cash/calendar?origin=TPE&destination=NRT&start=${isoIn(10)}&end=${isoIn(100)}`)).status, 400);
+  assert.equal((await fetch(`${base}/api/cash/calendar?origin=TPE,TSA&destination=NRT&start=${isoIn(10)}`)).status, 400);
+  const { createRapidFlights } = require('../lib/rapidflights');
+  const seen = [];
+  const q = createRapidFlights({ apiKey: 'k', fetchImpl: async (url) => {
+    seen.push(String(url));
+    if (/trip_type=ROUND/.test(String(url))) return new Response(JSON.stringify({ status: false, message: 'Something went wrong' }));
+    return new Response(JSON.stringify({ status: true, data: [{ departure: '2026-11-01', price: 9000 }, { departure: '2026-11-02', price: 'unavailable' }] }));
+  } });
+  const cal = await q.calendar({ departure_id: 'TPE', arrival_id: 'NRT', start_date: '2026-11-01', end_date: '2026-11-30', trip_days: 5, travel_class: 1, adults: 1 });
+  assert.deepEqual(cal, { round: false, days: [{ date: '2026-11-01', price: 9000 }] });
+  assert.equal(seen.length, 2);
+  assert.match(seen[1], /getCalendarPicker\?.*start_date=2026-11-01/);
+  assert.doesNotMatch(seen[1], /outbound_date|trip_type/);
+});
+
+test('trip-info endpoint validates the airport', async () => {
+  assert.equal((await fetch(`${base}/api/trip-info?to=XXX&start=2026-11-01`)).status, 400);
+  assert.equal((await fetch(`${base}/api/trip-info?to=NRT`)).status, 400);
 });
