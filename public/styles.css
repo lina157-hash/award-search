@@ -1086,3 +1086,36 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .map-osm .leaflet-tile-pane { filter: saturate(0.75) brightness(1.03); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); } }
 :root[data-theme="dark"] .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
+
+/* ---------- ewallet: miles expiry, target plan, buy-miles cost, rule countdowns (ewallet.js) ---------- */
+.w-exp { display: flex; align-items: center; gap: 6px; flex: none; }
+.w-exp small { white-space: nowrap; }
+.w-row .w-exp input { width: 150px; flex: 0 0 150px; margin: 0; text-align: left; }
+.w-exp-none { flex: none; white-space: nowrap; }
+@media (max-width: 640px) {
+  .w-row:has(.w-exp) { flex-wrap: wrap; row-gap: 4px; }
+  .w-row .w-exp { order: 5; flex-basis: 100%; justify-content: flex-end; padding-right: 34px; }
+}
+.exp-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.exp-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: .9rem; }
+.exp-list li small { display: block; color: var(--muted); font-size: .76rem; }
+.exp-list li.gone { color: var(--muted); }
+.exp-when { white-space: nowrap; }
+.exp-empty { margin: 10px 0 4px; }
+.exp-remind-form { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.exp-remind-form input { flex: 1 1 220px; min-width: 0; }
+.tag.until { background: var(--surface-2); color: var(--muted); margin-left: 4px; white-space: nowrap; }
+.tag.until.soon { background: var(--few); color: var(--few-text); }
+.tag.until.gone { background: var(--few); color: var(--danger); }
+.goal-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.goal-bar select { flex: 1 1 200px; min-width: 0; }
+.goal-bar input { flex: 0 1 180px; min-width: 120px; text-align: right; }
+.goal-sum { margin: 10px 0 4px; font-size: .92rem; }
+.goal-steps { list-style: none; padding: 0; margin: 0 0 8px; }
+.goal-steps li { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: .9rem; }
+.goal-steps li small { display: block; text-align: right; color: var(--muted); font-size: .76rem; }
+.goal-steps .pill { font-size: .72rem; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.buy-line { margin: 8px 0; font-size: .88rem; }
+.buy-line small { display: block; color: var(--muted); font-size: .78rem; }
+.need-table td small.ok-text { color: var(--heat-4); }
+.upcoming li .tag.until { margin-left: 2px; }

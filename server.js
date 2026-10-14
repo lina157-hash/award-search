@@ -19,6 +19,7 @@ const { todayTW, monthTW, validDate } = require('./lib/day');
 const tg = require('./lib/telegram');
 const accor = require('./lib/accor');
 const { createAccounts, AccountError } = require('./lib/accounts');
+const { createExpiry } = require('./lib/expiry');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -35,7 +36,7 @@ const kv = HAS_REDIS ? redisKv({ url: REDIS_URL, token: REDIS_TOKEN }) : memoryK
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'expiry', 'buymiles', 'changes'];
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
 
@@ -285,8 +286,9 @@ function readJson(req, limit = 10_000) {
 // The daily run (Vercel cron, 00:10 UTC = 08:10 Taiwan, just after seats.aero's quota resets, plus a catch-up an hour
 // later): deals, then price watches, then seat alerts, in one 60-second function. Each part saves item by item and
 // stops starting new items near the time limit, so a cut-off run loses nothing and the catch-up run (or tomorrow's)
-// finishes the rest; work already done today is skipped. `?part=deals,watches,alerts` runs only those parts.
-const RUN_BUDGET = { deals: 20e3, watches: 28e3, alerts: 48e3 };
+// finishes the rest; work already done today is skipped. `?part=expiry,deals,watches,alerts` runs only those parts
+// (expiry: the miles expiry reminders, which spend no quota, go first).
+const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, alerts: 48e3 };
 // Whether CRON_SECRET is set (never its value) and when Vercel's run last got in or was turned away.
 async function cronStatus() {
   const [last, denied] = await Promise.all([kv.get('cron:last').catch(() => null), kv.get('cron:denied').catch(() => null)]);
@@ -302,8 +304,9 @@ async function runDaily(req, q) {
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
-  const parts = new Set((q.get('part') || 'deals,watches,alerts').split(','));
+  const parts = new Set((q.get('part') || 'expiry,deals,watches,alerts').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
+  if (parts.has('expiry')) out.expiry = await expiry.run({ deadline: t0 + RUN_BUDGET.expiry, lock: lockFor('expiry:run', 60) }).catch((e) => ({ error: e.message }));
   if (parts.has('deals')) {
     try {
       const d = await deals.refresh({ deadline: t0 + RUN_BUDGET.deals, skipFresh: true });
@@ -378,6 +381,18 @@ function sessionOf(req) {
   req.sessionPromise ||= accounts.session(cookiesOf(req).sid).catch(() => null);
   return req.sessionPromise;
 }
+// Miles expiry reminders (lib/expiry.js): accounts with dates in their synced wallet, plus the owner's own list.
+const expiry = createExpiry({
+  kv, rules: require('./data/expiry.json').programs, steps: require('./data/expiry.json').reminderDays,
+  loadWallet: async (email) => (accounts ? (await accounts.getData({ email })).data['wallet:v1'] : null),
+  sendEmail: alertMailer, notify: (html) => telegram.notify(html), siteUrl: SITE_URL, log: MOCK && !alertMailer ? (m) => console.log(m) : null,
+});
+async function handleExpiry(req) {
+  if (!(await alertsAllowed(req))) throw Object.assign(new CashError('需要通關密碼才能設定到期提醒', 401), { code: 'passcode' });
+  if (req.method !== 'POST') return expiry.getOwner();
+  const body = await readJson(req, 20_000);
+  try { return await expiry.saveOwner(body); } catch (e) { throw new BadRequest(e.message); }
+}
 const sidCookie = (sid, maxAge) => `sid=${sid}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge != null ? `; Max-Age=${maxAge}` : ''}`;
 const clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
 const siteBase = (req) => SITE_URL || `${String(req.headers['x-forwarded-proto'] || 'http').split(',')[0]}://${req.headers['x-forwarded-host'] || req.headers.host}`;
@@ -411,7 +426,11 @@ async function handleAccount(req, res, sub) {
     return sendJson(res, 200, { ok: true }, null, { 'set-cookie': sidCookie('', 0) });
   }
   if (sub === 'data' && m === 'GET') return sendJson(res, 200, await accounts.getData(need()));
-  if (sub === 'data' && m === 'PUT') return sendJson(res, 200, await accounts.putData(need(), body));
+  if (sub === 'data' && m === 'PUT') {
+    const saved = await accounts.putData(need(), body);
+    await expiry.track(sess.email, body.data?.['wallet:v1']).catch((e) => console.error('expiry track', e.message));
+    return sendJson(res, 200, saved);
+  }
   if (m !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
   if (sub === 'signup') return sendJson(res, 200, await accounts.signup(body, ctx));
   if (sub === 'verify') return sendJson(res, 200, await accounts.verify(body, ctx));
@@ -881,6 +900,10 @@ async function route(req, res) {
     if (p === '/api/telegram' || p === '/api/telegram/link' || p === '/api/telegram/test') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleTelegram(req, p.endsWith('/link') ? 'link' : p.endsWith('/test') ? 'test' : ''));
+    }
+    if (p === '/api/expiry') {
+      if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleExpiry(req));
     }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });

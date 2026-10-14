@@ -1,0 +1,25 @@
+{
+  "updated": "2026-10-14",
+  "note": "「我的點數」的哩程到期規則。kind：fixed＝每批哩程固定期限，有活動也不延長（使用者填航空公司帳戶上「最早到期」的日期）；activity＝一段時間沒有累積或兌換就全部失效（使用者填最後一次活動的日期，到期日＝活動日加 months 個月）；none＝不會過期。詳細說明與來源以 programs.json 的 expiry 欄位為準，programId 指向 programs.json 的計畫。沒有列在這裡的計畫，使用者直接填到期日。",
+  "reminderDays": [90, 30, 7],
+  "programs": {
+    "eva": { "name": "長榮 無限萬哩遊", "programId": "evainfinity", "kind": "fixed", "months": 36, "rule": "搭機或轉點後第 36 個月月底到期，有活動也不延長" },
+    "ci": { "name": "華航 華夏哩程", "programId": "dynastyflyer", "kind": "fixed", "months": 36, "rule": "累積後 36 個月到期，有活動也不延長" },
+    "jal": { "name": "日航 JMB", "programId": "jal", "kind": "fixed", "months": 36, "rule": "累積月份起第 36 個月月底到期，不能延長" },
+    "ana": { "name": "全日空 ANA", "programId": "ana", "kind": "fixed", "months": 36, "rule": "累積月份後第 36 個月月底到期" },
+    "singapore": { "name": "新航 KrisFlyer", "programId": "singapore", "kind": "fixed", "months": 36, "rule": "累積後第 36 個月月底到期，可付費延長" },
+    "turkish": { "name": "土航 Miles&Smiles", "programId": "turkish", "kind": "fixed", "rule": "入帳後第 3 個完整年度的年底到期" },
+    "emirates": { "name": "阿聯酋 Skywards", "programId": "emirates", "kind": "fixed", "months": 36, "rule": "約 3 年，第 3 年生日月份的月底到期" },
+    "starlux": { "name": "星宇 COSMILE", "programId": "starlux", "kind": "fixed", "rule": "官方沒有明寫效期，請填帳戶上顯示的到期日" },
+    "asiamiles": { "name": "國泰 亞洲萬里通", "programId": "asiamiles", "kind": "activity", "months": 18, "rule": "18 個月內有任何累積、兌換或轉移就持續有效" },
+    "aeroplan": { "name": "加航 Aeroplan", "programId": "aeroplan", "kind": "activity", "months": 18, "rule": "18 個月沒有累積或兌換就失效" },
+    "qantas": { "name": "澳航 Frequent Flyer", "programId": "qantas", "kind": "activity", "months": 18, "rule": "18 個月沒有累積或兌換就失效" },
+    "american": { "name": "美航 AAdvantage", "programId": "american", "kind": "activity", "months": 24, "rule": "24 個月沒有活動就失效" },
+    "flyingblue": { "name": "法荷航 Flying Blue", "programId": "flyingblue", "kind": "activity", "months": 24, "rule": "每次累積延長 24 個月（兌換不算）" },
+    "british": { "name": "英航 Avios", "programId": "british", "kind": "activity", "months": 36, "rule": "36 個月沒有累積、使用、購買或轉移就失效" },
+    "qatar": { "name": "卡達 Privilege Club", "programId": "qatar", "kind": "activity", "months": 36, "rule": "36 個月沒有累積、使用或轉移就失效" },
+    "alaska": { "name": "阿拉斯加 Atmos", "programId": "alaska", "kind": "none", "rule": "不會過期" },
+    "united": { "name": "聯合 MileagePlus", "programId": "united", "kind": "none", "rule": "不會過期" },
+    "delta": { "name": "達美 SkyMiles", "programId": "delta", "kind": "none", "rule": "不會過期" }
+  }
+}

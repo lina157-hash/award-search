@@ -1,0 +1,14 @@
+{
+  "updated": "2026-10-14",
+  "note": "其他資料檔沒有結構化日期的規則變更，給「即將變更」清單用。date 是生效或截止日（YYYY-MM-DD），過了日期就不再顯示，可以刪掉。轉點比率的期限寫在 points.json 的 validUntil、優惠結束日寫在 promos.json 的 end、聯盟成員退出寫在 alliances.json 的 memberNotes，都會自動列入，不用重複寫在這裡。",
+  "changes": [
+    {
+      "date": "2027-06-01",
+      "program": "emirates",
+      "title": "阿聯酋 Skywards 新累積的哩程改為累積月份起滿 3 年的月底到期",
+      "advice": "之前累積的哩程照舊制計算",
+      "confidence": "secondary",
+      "source": { "label": "Khaleej Times：Skywards 里程效期新制（2026-08-25）", "url": "https://www.khaleejtimes.com/business/emirates-airline-revises-skywards-miles-expiry-policy-from-next-year" }
+    }
+  ]
+}
