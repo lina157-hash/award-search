@@ -1453,6 +1453,7 @@ async function openTrips(id, title, cabin) {
       (first ? homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
     $$('[data-plan]', $('#trip-body')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
+    if (main[0] && typeof aiHelperMount === 'function') aiHelperMount(main[0], pax, main.length); // public/aihelper.js
   } catch (err) {
     if (!fresh()) return;
     $('#trip-body').innerHTML = `<p class="status error">${esc(err.message)}</p>`;

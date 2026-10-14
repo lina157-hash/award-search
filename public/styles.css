@@ -1086,3 +1086,11 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .map-osm .leaflet-tile-pane { filter: saturate(0.75) brightness(1.03); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); } }
 :root[data-theme="dark"] .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
+
+/* ---------- aihelper: 「交給 AI 助理」 in the flight details dialog (public/aihelper.js) ---------- */
+.ai-box { margin: 12px 0; display: grid; gap: 8px; }
+.ai-box.open { padding: 12px 14px; border: 1px dashed var(--border); border-radius: 12px; }
+.ai-head { display: flex; gap: 8px 10px; align-items: center; flex-wrap: wrap; }
+.ai-ok { color: var(--accent); font-weight: 700; font-size: .9rem; }
+.ai-text { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: .86rem; line-height: 1.55; margin: 0; background: var(--bg); color: var(--text); border-radius: 10px; padding: 10px 12px; user-select: text; -webkit-user-select: text; }
+.ai-more .hint { margin: 8px 0 0; }
