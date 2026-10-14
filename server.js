@@ -763,7 +763,7 @@ async function handleAccor(q, req) {
   const key = 'accor:v8:' + JSON.stringify(want);
   const body = await shared(key, 6 * 3600, async () => {
     spent = true;
-    const search = await bookingLookup.city(want, { brands: accor.isAccorTitle, brandIds: accor.BOOKING_CHAINS, zhNames: true });
+    const search = await bookingLookup.city(want, { brands: accor.isAccorTitle, brandIds: accor.BOOKING_CHAINS, mustIds: accor.BOOKING_MUST, zhNames: true });
     // The last search's outline (city match, how many hotels, a few names; no prices or personal data) for /api/hotels/accor/debug.
     await kv.set('accor:debug', { at: new Date().toISOString(), asked: city, query: want.city, nights, ...(search.debug || {}) }, { ex: 7 * 86400 }).catch(() => {});
     const { debug, ...rest } = search;
