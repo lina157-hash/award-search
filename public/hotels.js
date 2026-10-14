@@ -2,7 +2,12 @@
 // Classic script loaded after app.js and features.js; shares their globals ($, esc, fmt, api, store, wallet, reachHotel…).
 
 const HOTEL_NAMES = { marriott: '萬豪 Bonvoy', hilton: '希爾頓 Honors', ihg: '洲際 IHG', hyatt: '凱悅 World of Hyatt', choice: 'Choice', wyndham: '溫德姆 Wyndham', iprefer: 'I Prefer' };
-const HOTEL_SHORT = { marriott: '萬豪', hilton: '希爾頓', ihg: '洲際', hyatt: '凱悅', choice: 'Choice', wyndham: '溫德姆', iprefer: 'I Prefer' };
+const HOTEL_SHORT = { marriott: '萬豪', hilton: '希爾頓', ihg: '洲際', hyatt: '凱悅', choice: 'Choice', wyndham: '溫德姆', iprefer: 'I Prefer', accor: '雅高', shangrila: '香格里拉' };
+// rooms.aero chains; 雅高 is priced from Booking.com cash rates (quota, passcode), 香格里拉 only links to its own site.
+const ROOMS_PROGRAMS = ['marriott', 'hilton', 'ihg', 'hyatt'];
+// Shangri-La publishes no search URL that takes a city and dates (checked 2026-10), so these are the stable pages.
+const SL_REDEEM_URL = 'https://www.shangri-la.com/en/corporate/shangrilacircle/redeem-points/';
+const SL_HOTELS_URL = 'https://www.shangri-la.com/en/find-a-hotel/';
 // Typical value of one point in US cents (The Points Guy, 2026/10). A stay worth 30% more than this is marked as a good use.
 const POINT_VALUE_CENTS = { marriott: 0.75, hilton: 0.4, ihg: 0.6, hyatt: 1.7 };
 const HOTEL_GOOD = 1.3;
@@ -40,7 +45,8 @@ const countryName = (c) => (/^[A-Z]{2}$/.test(c || '') ? regionName(c).zh : c ||
 function hotelsHtml() {
   const s = hotelState;
   // Multi-select, so each chain is a toggle chip with a tick rather than a one-of-many segment.
-  const chk = (k) => `<label class="h-chip"><input type="checkbox" name="h-prog" value="${k}" ${s.programs.includes(k) ? 'checked' : ''}><span>${HOTEL_SHORT[k]}</span></label>`;
+  const chk = (k, title = '') => `<label class="h-chip"${title ? ` title="${esc(title)}"` : ''}><input type="checkbox" name="h-prog" value="${k}" ${s.programs.includes(k) ? 'checked' : ''}><span>${HOTEL_SHORT[k]}${k === 'accor' ? '<small>用額度</small>' : ''}</span></label>`;
+  const extra = [cashCfg.accor ? chk('accor', '用 Booking.com 的房價換算 ALL 點數，每次搜尋最多用 2 次 Booking.com 查價額度（6 小時內同城市同日期不再花）') : '', chk('shangrila', '香格里拉的點數價不公開，會給你官網的連結')].join('');
   return `<form id="hotel-form" class="search-card" autocomplete="off" novalidate>
     <div class="opts-row h-row">
       <label class="field h-where">城市或地區<input name="where" list="h-where-list" placeholder="例如 東京、曼谷、Bali" value="${esc(s.where)}"></label>
@@ -50,10 +56,10 @@ function hotelsHtml() {
       <label class="field h-small">住幾晚<select name="nights">${[1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${s.nights === n ? 'selected' : ''}>${n} 晚</option>`).join('')}</select></label>
     </div>
     <div class="opts-row">
-      <fieldset class="h-progs" aria-label="飯店集團（可複選）"><legend class="sr-only">飯店集團（可複選）</legend>${['marriott', 'hilton', 'ihg', 'hyatt'].map(chk).join('')}</fieldset>
+      <fieldset class="h-progs" aria-label="飯店集團（可複選）"><legend class="sr-only">飯店集團（可複選）</legend>${ROOMS_PROGRAMS.map((k) => chk(k)).join('')}${extra}</fieldset>
       <button type="submit" class="primary big">搜尋點數房</button>
     </div>
-    <p class="hint">資料來自 rooms.aero，涵蓋萬豪、希爾頓、洲際、凱悅等集團的點數房價。雅高和香格里拉沒有點數房價資料：雅高點數價值固定（2,000 點折 €40），可以直接用現金價換算。</p>
+    <p class="hint">萬豪、希爾頓、洲際、凱悅的點數房價來自 rooms.aero。雅高沒有點數房：ALL 點數固定 2,000 點折 €40，${cashCfg.accor ? '勾「雅高」會用 Booking.com 的房價換算成點數（要通關密碼、會用查價額度）' : '可以直接用現金價換算'}。香格里拉的點數價不公開，勾選後會給你官網的連結。</p>
   </form>`;
 }
 
@@ -82,17 +88,26 @@ async function searchHotels() {
   Object.assign(hotelState, { where: f.where.value.trim(), date: f.date.value, flex: Number(f.flex.value), nights: Number(f.nights.value), programs });
   store.set(HOTEL_KEY, { where: hotelState.where, flex: hotelState.flex, nights: hotelState.nights, programs, sort: hotelState.sort });
   const { date, flex } = hotelState;
+  const rooms = programs.filter((k) => ROOMS_PROGRAMS.includes(k));
   const out = $('#hotels-results');
   const fresh = latest('hotels');
+  hotelState.results = null;
   status.className = 'status';
-  status.textContent = '搜尋中…';
-  out.innerHTML = skeleton(4);
+  status.textContent = rooms.length ? '搜尋中…' : '';
+  out.innerHTML = `<div id="h-rooms-out">${rooms.length ? skeleton(4) : ''}</div><div id="h-accor-out"></div><div id="h-sl-out"></div>`;
+  if (programs.includes('shangrila')) $('#h-sl-out').innerHTML = shangrilaHtml();
   const done = busy($('button[type=submit]', f), '搜尋中…');
   reveal(status);
   try {
     await loadAirports(); // Chinese city names → English place names
+    const accor = programs.includes('accor') && cashCfg.accor ? searchAccor(fresh) : null;
+    if (!rooms.length) {
+      await accor;
+      if (fresh()) done();
+      return;
+    }
     const start = flex && isoDateFrom(date, -flex) > isoDate(0) ? isoDateFrom(date, -flex) : flex ? isoDate(0) : date;
-    const params = { where: placeQuery(hotelState.where), start, end: isoDateFrom(date, flex), nights: hotelState.nights, programs: programs.join(',') };
+    const params = { where: placeQuery(hotelState.where), start, end: isoDateFrom(date, flex), nights: hotelState.nights, programs: rooms.join(',') };
     const [body] = await Promise.all([api(`/api/hotels/search?${new URLSearchParams(params)}`), loadFx()]);
     if (!fresh()) return;
     done();
@@ -104,9 +119,75 @@ async function searchHotels() {
   } catch (e) {
     if (!fresh()) return;
     done();
-    out.innerHTML = '';
+    $('#h-rooms-out').innerHTML = '';
     showError(status, e, searchHotels);
   }
+}
+
+// ---------- 雅高 ALL: Booking.com cash rates turned into points (GET /api/hotels/accor, passcode, ≤2 Booking requests) ----------
+async function searchAccor(fresh) {
+  const box = $('#h-accor-out');
+  const { where, date, nights } = hotelState;
+  const head = `<h2 class="section">雅高 ALL <small>${esc(where)}・${dayLabel(date)} 入住 ${nights} 晚・2 人</small></h2>`;
+  box.innerHTML = `${head}<p class="hint">正在查 Booking.com 上的雅高飯店…</p>${skeleton(2)}`;
+  try {
+    const q = new URLSearchParams({ city: placeQuery(where), checkin: date, checkout: isoDateFrom(date, nights), adults: '2' });
+    const [body] = await Promise.all([cashApi(`/api/hotels/accor?${q}`), loadFx()]);
+    if (!fresh()) return;
+    box.innerHTML = head + accorHtml(body, nights);
+    loadCashQuota();
+  } catch (e) {
+    if (!fresh()) return;
+    const msg = e.code === 'passcode' || /通關密碼/.test(e.message) ? '需要通關密碼才能查雅高飯店（會用 Booking.com 查價額度）。' : e.message;
+    box.innerHTML = `${head}<p class="status error"><span>${esc(msg)}</span><button type="button" class="outline" data-accor-retry>重試</button></p>`;
+    $('[data-accor-retry]', box).addEventListener('click', () => searchAccor(fresh));
+  }
+}
+function accorHtml(body, nights) {
+  const rule = body.rule || {};
+  const list = body.hotels || [];
+  const ptsLine = (h) => {
+    if (!h.points) return '';
+    const left = h.usablePoints < h.points && h.cashLeftTwd > 0
+      ? `<small>${h.usablePoints ? `一次最多折 ${fmt(h.usablePoints)} 點，剩 NT$${fmt(h.cashLeftTwd)} 刷卡` : `不到最低 ${fmt(rule.minPoints || 1000)} 點，不能用點數折`}</small>` : '';
+    return `<small class="h-pts">約 <b>${fmt(h.points)} 點</b>（ALL 每 2,000 點折 €40）</small>${left}${hotelAffordHtml('accor', h.usablePoints || h.points)}`;
+  };
+  const card = (h) => `<article class="hotel h-accor${h.soldOut ? ' sold-out' : ''}">
+      <div class="hotel-main">
+        <div><span class="pill h-accor">雅高</span> <small class="inline">${esc(h.brand)}</small>${h.stars ? ` <small class="inline stars" title="${h.stars} 星">${'★'.repeat(Math.round(h.stars))}</small>` : ''}</div>
+        <h3>${esc(h.name)}</h3>
+      </div>
+      <div class="hotel-price">
+        ${h.soldOut ? '<b class="muted">這幾晚已售完</b><small>或 Booking.com 沒有報價</small>' : `<b>NT$${fmt(h.total)}</b><small>${nights} 晚含稅總價</small>${ptsLine(h)}`}
+      </div>
+      <div class="hotel-actions">${h.url ? `<a class="outline btn" href="${esc(h.url)}" target="_blank" rel="noopener">Booking.com ↗</a>` : ''}</div>
+    </article>`;
+  const quota = `${body.mock ? '示範資料。' : ''}${body.cached ? '剛有人查過同一個城市和日期，這次沒有用到額度。' : body.requests ? `用了 ${body.requests} 次 Booking.com 查價。` : ''}${body.bookingLeft != null ? `本月 Booking.com 剩 ${fmt(body.bookingLeft)} 次。` : ''}`;
+  const src = [rule.source && `<a href="${esc(rule.source)}" target="_blank" rel="noopener">ALL 會員條款 ↗</a>`, rule.sourceOnline && `<a href="${esc(rule.sourceOnline)}" target="_blank" rel="noopener">線上折抵說明 ↗</a>`].filter(Boolean).join('　');
+  return (!body.found || !list.length
+    ? `<p class="hint">Booking.com 上找不到${esc(hotelState.where)}的雅高飯店，換個城市寫法（例如英文）試試。${body.cityUrl ? ` <a href="${esc(body.cityUrl)}" target="_blank" rel="noopener">在 Booking.com 看這個城市 ↗</a>` : ''}</p>`
+    : `<p class="hint">只列出 Booking.com 上較熱門的雅高飯店（${list.length} 家，便宜的在前）。雅高沒有點數房，點數是用房價換算的${body.pointValueTwd ? `，每點約 NT$${body.pointValueTwd}` : ''}。</p>
+      <div class="hotel-list">${list.map(card).join('')}</div>`)
+    + `${rule.text ? `<p class="hint h-rule">📘 ${esc(rule.text)} ${src}</p>` : ''}<p class="hint">${quota}</p>`;
+}
+
+// ---------- 香格里拉 Circle: points prices are not public, so only a way to the official site ----------
+function shangrilaHtml() {
+  const { where, date, nights } = hotelState;
+  const r = !walletEmpty() && hotelPrograms().shangrila ? reachHotel('shangrila') : null;
+  return `<h2 class="section">香格里拉 Circle</h2>
+    <article class="hotel h-sl">
+      <div class="hotel-main">
+        <div><span class="pill h-shangrila">香格里拉</span></div>
+        <h3>點數房價沒有公開</h3>
+        <small class="muted">香格里拉 Circle 的點數價要登入會員、在官網選好飯店和日期才看得到，也沒有可以直接帶入城市和日期的公開網址，所以這裡沒辦法替你查。到官網登入後，搜尋 <b>${esc(where)}</b>、${dayLabel(date)} 入住 ${nights} 晚就能看到。</small>
+        ${r?.total ? `<small class="ok-text">你的點數最多可湊到 ${fmt(r.total)} 點香格里拉 Circle 點數</small>` : ''}
+      </div>
+      <div class="hotel-actions">
+        <a class="outline btn primary-link" href="${SL_REDEEM_URL}" target="_blank" rel="noopener">到香格里拉官網查點數價 ↗</a>
+        <a href="${SL_HOTELS_URL}" target="_blank" rel="noopener">香格里拉所有飯店 ↗</a>
+      </div>
+    </article>`;
 }
 
 // TWD for a cash amount, and the TWD value of one point for a stay.
@@ -130,7 +211,7 @@ function hotelAffordHtml(source, points) {
 const hotelAfford = (h) => !walletEmpty() && hotelPrograms()[h.source] && h.standard && reachHotel(h.source).total >= h.standard.points;
 
 function renderHotels() {
-  const out = $('#hotels-results');
+  const out = $('#h-rooms-out');
   const body = hotelState.results;
   if (!body) return;
   let list = [...body.hotels].filter((h) => h.standard || h.suite);
@@ -169,6 +250,7 @@ function renderHotels() {
       <div class="hotel-cal" hidden></div>
     </article>`;
   };
+  if (!out) return;
   out.innerHTML = head + (list.length ? `<div class="hotel-list">${list.map(card).join('')}</div>` : `<p class="hint">${hotelState.affordOnly ? '用你的點數換得起的飯店都沒有空房，關掉「只看我換得起的」看看全部。' : '這段日期沒有找到點數房。可以放寬日期彈性、換晚數，或換個城市。'}</p>`)
     + `<p class="hint">點數價是整段住宿合計；「每點約」是同一晚現金價除以點數，好價代表高於 The Points Guy 估值的 1.3 倍。點數房會變動，訂房前以飯店官網為準。資料約每 1 到 3 週更新一次，太久沒更新的會以灰字標示。</p>`;
   $('#h-sort', out)?.addEventListener('change', (e) => { hotelState.sort = e.target.value; renderHotels(); });
@@ -262,7 +344,7 @@ function hotelCashHtml(h, body) {
   if (body.provider === 'booking') {
     return `${fell}${otherHotelNote(h, body)}<div class="h-cash-line"><b>Booking.com</b>${body.soldOut || !body.total ? '<span>這幾晚已售完或沒有報價</span>' : `<span><b>NT$${fmt(body.total)}</b>（${nights} 晚含稅總價）${value(body.total)}</span>`}
       ${body.url ? `<a href="${esc(body.url)}" target="_blank" rel="noopener">前往 Booking.com ↗</a>` : ''}</div>
-      <p class="hint">${body.mock ? '示範資料。' : ''}${body.bookingLeft != null ? `Booking.com 查價本月還剩 ${fmt(body.bookingLeft)}${body.bookingLimit ? `／${fmt(body.bookingLimit)}` : ''} 次。` : ''}${other}</p>`;
+      <p class="hint">${body.mock ? '示範資料。' : ''}${body.cached ? '剛查過，這次沒有用到額度。' : ''}${body.bookingLeft != null ? `Booking.com 查價本月還剩 ${fmt(body.bookingLeft)}${body.bookingLimit ? `／${fmt(body.bookingLimit)}` : ''} 次。` : ''}${other}</p>`;
   }
   const official = body.prices.find((p) => p.official);
   const low = body.prices[0];
@@ -276,7 +358,7 @@ function hotelCashHtml(h, body) {
         <td data-l="每晚">${p.perNight ? `NT$${fmt(p.perNight)}` : '—'}</td><td data-l="總價"><b>${p.total ? `NT$${fmt(p.total)}` : '—'}</b></td>
         <td>${p.link ? `<a href="${esc(p.link)}" target="_blank" rel="noopener">前往 ↗</a>` : ''}</td></tr>`).join('')}
     </tbody></table></div>` : '<p class="hint">這幾晚 Google 沒有報價，可能已售完。</p>'}
-    <p class="hint">${body.mock ? '示範資料。' : ''}價格含稅、${nights} 晚總價，來自 Google 飯店；用了 ${body.credits || 1} 次查價${body.serpLeft != null ? `，這個來源本月還剩 ${fmt(body.serpLeft)} 次` : ''}。${other}</p>`;
+    <p class="hint">${body.mock ? '示範資料。' : ''}價格含稅、${nights} 晚總價，來自 Google 飯店；${body.cached ? '剛查過，這次沒有用到額度' : `用了 ${body.credits || 1} 次查價`}${body.serpLeft != null ? `，這個來源本月還剩 ${fmt(body.serpLeft)} 次` : ''}。${other}</p>`;
 }
 async function openHotelCash(id, card, src = 'serpapi', force = false) {
   const box = $('.hotel-cash', card);
