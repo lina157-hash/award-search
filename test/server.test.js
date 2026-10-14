@@ -589,3 +589,55 @@ test('hotel cash: SerpApi picks the right property and lists the official price;
   assert.ok(demo.mock && demo.prices.some((p) => p.official));
   assert.equal((await fetch(`${base}/api/hotels/cash?name=X&checkin=${isoIn(20)}&checkout=${isoIn(40)}`)).status, 400);
 });
+
+test('A8: alert and watch edits made during a run are kept (the list is locked around each change)', async () => {
+  const { createAlerts, memoryStore } = require('../lib/alerts');
+  const { createPriceWatch } = require('../lib/pricewatch');
+  const { memoryKv, waitLock } = require('../lib/kv');
+  const kv = memoryKv();
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // A store as slow as Upstash over REST, so unlocked load → save pairs would overlap.
+  const slow = (inner) => ({ async load() { await sleep(30); return inner.load(); }, async save(v) { await sleep(30); return inner.save(v); } });
+  const row = { id: 'r1', date: '2099-01-02', origin: 'TPE', destination: 'NRT', source: 'aeroplan', cabins: { J: { available: true, miles: 30000, seats: 2, airlines: 'BR', direct: true } } };
+  const al = createAlerts({ store: slow(memoryStore()), search: async () => [row], listLock: () => waitLock(kv, 'alerts-lock', 10, { pollMs: 5 }) });
+  const first = (await al.add({ origin: 'TPE', destination: 'NRT', start: '2099-01-01', end: '2099-01-05', cabin: 'J' })).alert;
+  const add = (d) => al.add({ origin: 'TPE', destination: d, start: '2099-01-01', end: '2099-01-05', cabin: 'J' }).then((x) => x.alert.id);
+  const [, ...ids] = await Promise.all([al.run(), add('KIX'), add('ICN'), add('HND')]);
+  assert.deepEqual((await al.list()).map((a) => a.id).sort(), [first.id, ...ids].sort());
+  const pw = createPriceWatch({ store: slow(memoryStore(null)), search: async () => ({ options: [{ price: 9000, segments: [] }] }), sendEmail: null, listLock: () => waitLock(kv, 'watch-lock', 10, { pollMs: 5 }) });
+  const w1 = { origin: 'TPE', destination: 'NRT', depart: isoIn(30), price: 9000 };
+  await Promise.all([pw.add(w1), pw.add({ ...w1, destination: 'KIX' }), pw.add({ ...w1, destination: 'ICN' })]);
+  assert.equal((await pw.list()).watches.length, 3);
+  // A list that stays busy is a clear error, not a lost edit.
+  const stuck = createAlerts({ store: memoryStore(), search: async () => [], listLock: async () => null });
+  await assert.rejects(stuck.remove('x'), /正在更新/);
+});
+
+test('A8: one deals refresh at a time', async () => {
+  const { createDeals } = require('../lib/deals');
+  const { memoryStore } = require('../lib/alerts');
+  const { memoryKv, takeLock } = require('../lib/kv');
+  const kv = memoryKv();
+  let calls = 0;
+  const deals = createDeals({ store: memoryStore(null), days: 30, lock: (name, s) => takeLock(kv, name, s), search: async () => { calls++; await new Promise((r) => setTimeout(r, 5)); return []; } });
+  const [a, b] = await Promise.all([deals.refresh(), deals.refresh()]);
+  assert.equal([a, b].filter((d) => d.busy).length, 1);
+  assert.equal(calls, deals.plan);
+});
+
+test('A5: unknown or repeated query parameters on public lookups are redirected away', async () => {
+  const r = await fetch(`${base}/api/search?origin=TPE&destination=NRT&start=2026-11-01&_=123`, { redirect: 'manual' });
+  assert.equal(r.status, 301);
+  assert.equal(r.headers.get('location'), '/api/search?origin=TPE&destination=NRT&start=2026-11-01');
+  assert.equal((await fetch(`${base}/api/explore?program=aeroplan&start=2026-11-01&cabin=J&cabin=F`, { redirect: 'manual' })).status, 301);
+  assert.equal((await fetch(`${base}/api/search?origin=TPE&destination=NRT&start=2026-11-01`, { redirect: 'manual' })).status, 200);
+  assert.equal((await fetch(`${base}/api/trips/abc?x=1`, { redirect: 'manual' })).headers.get('location'), '/api/trips/abc');
+});
+
+test('A12: the Accor debug outline needs the passcode', async () => {
+  process.env.CASH_PASSCODE = 'sunny';
+  try {
+    assert.equal((await fetch(`${base}/api/hotels/accor/debug`)).status, 401);
+    assert.equal((await fetch(`${base}/api/hotels/accor/debug`, { headers: { 'x-cash-pass': 'sunny' } })).status, 200);
+  } finally { delete process.env.CASH_PASSCODE; }
+});

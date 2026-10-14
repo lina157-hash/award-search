@@ -91,7 +91,7 @@ test('B2: watches added or deleted while a run is checking are kept as they are'
   assert.equal((await w.list()).watches.find((x) => x.id === a.id).lastPrice, 9000, 'the checked watch got its new price');
 });
 
-test('B2: seat alerts merge by id too, mark seen before mailing and skip what the cron already did today', async () => {
+test('B2: seat alerts merge by id too, mark seen only once mailed and skip what the cron already did today', async () => {
   const { createAlerts } = require('../lib/alerts');
   const row = (id) => ({ id, date: '2099-01-02', origin: 'TPE', destination: 'NRT', source: 'aeroplan', cabins: { J: { available: true, miles: 30000, seats: 2, airlines: 'BR', direct: true } } });
   let rows = [row('a')];
@@ -100,7 +100,8 @@ test('B2: seat alerts merge by id too, mark seen before mailing and skip what th
   let hold = false;
   const mails = [];
   const store = memoryStore();
-  const al = createAlerts({ store, search: async () => { if (hold) { hold = false; started.resolve(); await gate.promise; } return rows; }, sendEmail: async (m) => { mails.push(m); throw new Error('mail down'); } });
+  let mailDown = true;
+  const al = createAlerts({ store, search: async () => { if (hold) { hold = false; started.resolve(); await gate.promise; } return rows; }, sendEmail: async (m) => { mails.push(m); if (mailDown) throw new Error('mail down'); } });
   const x = (await al.add({ origin: 'TPE', destination: 'NRT', start: '2099-01-01', end: '2099-01-05', cabin: 'J', email: 'a@b.co' })).alert;
   const y = (await al.add({ origin: 'TPE', destination: 'NRT', start: '2099-02-01', end: '2099-02-05', cabin: 'J' })).alert;
   rows = [row('a'), row('b')];
@@ -113,8 +114,11 @@ test('B2: seat alerts merge by id too, mark seen before mailing and skip what th
   const r = await run;
   assert.deepEqual((await al.list()).map((a) => a.id).sort(), [x.id, z.id].sort());
   const rx = r.report.find((e) => e.id === x.id);
-  assert.deepEqual([rx.fresh, rx.mailed, rx.mailError], [1, false, 'mail down']);
-  // Seen was saved before the mail was tried, so a retry does not report 'b' again.
+  assert.deepEqual([rx.fresh, rx.mailed, rx.mailError, rx.retry], [1, false, 'mail down', true]);
+  // The mail failed, so 'b' is still news on the next run; once it is mailed it is seen.
+  mailDown = false;
+  const again = (await al.run()).report.find((e) => e.id === x.id);
+  assert.deepEqual([again.fresh, again.mailed, again.retry], [1, true, undefined]);
   assert.equal((await al.run()).report.find((e) => e.id === x.id).fresh, 0);
   const cron = await al.run({ force: false });
   assert.ok(cron.report.every((e) => e.skipped === 'done-today'), 'the cron skips watches checked today');

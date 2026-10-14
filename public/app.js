@@ -45,10 +45,12 @@ const airlineNameHtml = (name, flight) => {
 // Release version from this script's own URL (index.html loads it as app.js?v=1.15.0); keys the bundled data request.
 const ASSET_V = (() => { try { return new URL(document.currentScript.src).searchParams.get('v') || ''; } catch { return ''; } })();
 
-async function api(path, opts) {
+// x-requested-with tells the server the request comes from this page (another site cannot send it), so a signed-in,
+// unlocked account counts only here.
+async function api(path, opts = {}) {
   let res;
   try {
-    res = await fetch(path, opts);
+    res = await fetch(path, { ...opts, headers: { 'x-requested-with': 'fetch', ...(opts.headers || {}) } });
   } catch (err) {
     // fetch only throws on a network failure ("Failed to fetch"); say it in words people understand.
     throw Object.assign(new Error('連不上伺服器，請檢查網路後再試。'), { code: 'offline', cause: err });
@@ -1753,10 +1755,11 @@ function updateLockHint() {
 }
 // Fetch a cash-fare endpoint, asking for the passcode when the server wants one.
 async function cashApi(path, opts = {}) {
+  let wrong = '';
   for (let tries = 0; ; tries++) {
     let pass = store.get(PASS_KEY, '');
     if (cashCfg.locked && !pass) {
-      pass = await askPass(tries ? '密碼不對，請再試一次。' : '');
+      pass = await askPass(tries ? wrong || '密碼不對，請再試一次。' : '');
       if (pass == null) throw new Error('需要通關密碼才能查即時票價');
       store.set(PASS_KEY, pass);
     }
@@ -1766,6 +1769,8 @@ async function cashApi(path, opts = {}) {
       return body;
     } catch (err) {
       if (err.code !== 'passcode' || tries >= 3) throw err;
+      // 「通關密碼不對，還可以再試 N 次」 from the server, shown in the passcode prompt.
+      wrong = /還可以再試/.test(err.message) ? `${err.message}。` : '';
       cashCfg.locked = true;
       store.del(PASS_KEY);
       updateLockHint();

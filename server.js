@@ -14,7 +14,7 @@ const rapid = require('./lib/rapidflights');
 const { createTravelInfo } = require('./lib/travelinfo');
 const { createDirects, DirectsError } = require('./lib/aerodatabox');
 const hotelCash = require('./lib/hotelcash');
-const { redisKv, memoryKv, takeLock, sharedCache, hashKey, KvError } = require('./lib/kv');
+const { redisKv, memoryKv, takeLock, waitLock, sharedCache, hashKey, KvError } = require('./lib/kv');
 const { todayTW, monthTW, validDate } = require('./lib/day');
 const tg = require('./lib/telegram');
 const accor = require('./lib/accor');
@@ -109,7 +109,10 @@ async function liveCash(params, { allowSerp = async () => true } = {}) {
   // RapidAPI has no alliance filter, so it is applied here, on the outbound list and on the return leg alike.
   const inc = params.include_airlines;
   const allianceCarriers = !inc ? null : ALLIANCE_KEY[inc] ? ALLIANCE_CARRIERS[ALLIANCE_KEY[inc]] : new Set(inc.split(','));
-  if (rapid.isRapidToken(params.departure_token) || rapid.isRapidToken(params.booking_token)) return { ...(await rapidQuery({ ...params, allianceCarriers })), provider: 'rapid' };
+  if (rapid.isRapidToken(params.departure_token) || rapid.isRapidToken(params.booking_token)) {
+    if (!rapidQuery) throw new CashError('這個選項來自 RapidAPI，但網站目前沒有設定 RAPIDAPI_KEY，請重新搜尋一次', 400);
+    return { ...(await rapidQuery({ ...params, allianceCarriers })), provider: 'rapid' };
+  }
   if (params.departure_token || params.booking_token) return { ...(await cashQuery(params)), provider: 'serpapi' };
   let fallback = '';
   const single = /^[A-Z]{3}$/.test(params.departure_id) && /^[A-Z]{3}$/.test(params.arrival_id);
@@ -151,7 +154,7 @@ function cached(key, fn, ttlMs = CACHE_TTL_MS) {
 }
 // Paid lookups: the per-instance cache in front of one shared through Redis (see lib/kv.js sharedCache), so a refresh
 // on another instance or a double click costs no quota. `key` describes the query only, never the passcode.
-const shared = (key, ttlSec, fn) => cached(key, () => sharedCache(kv, key, ttlSec, fn), Math.min(ttlSec * 1000, CACHE_TTL_MS));
+const shared = (key, ttlSec, fn, opts) => cached(key, () => sharedCache(kv, key, ttlSec, fn, opts), Math.min(ttlSec * 1000, CACHE_TTL_MS));
 const lockFor = (name, seconds) => () => takeLock(kv, name, seconds);
 
 class BadRequest extends Error {}
@@ -194,6 +197,7 @@ const alerts = alertStore && createAlerts({
   store: alertStore,
   sendEmail: alertMailer,
   notify: (html) => telegram.notify(html),
+  listLock: () => waitLock(kv, 'award-alerts:v1:lock', 10),
   siteUrl: SITE_URL,
   programNames: SOURCE_NAMES,
   // Cheapest seats first, one page of 1,000 (two for ranges over four months): what an alert mail lists anyway.
@@ -221,6 +225,7 @@ const priceWatch = watchStore && createPriceWatch({
   store: watchStore,
   sendEmail: alertMailer,
   notify: (html) => telegram.notify(html),
+  listLock: () => waitLock(kv, 'price-watch:v1:lock', 10),
   siteUrl: SITE_URL,
   // Checks run on RapidAPI; the SerpApi reserve only matters when there is no RapidAPI key.
   quota: async () => (CASH_MODE !== 'live' || RAPIDAPI_KEY ? null : serpLeft()),
@@ -233,7 +238,8 @@ const priceWatch = watchStore && createPriceWatch({
 });
 async function handleWatch(req, q) {
   if (!priceWatch) return { configured: false, watches: [] };
-  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能管理降價追蹤', 401), { code: 'passcode' });
+  if (!cashPasscode() && !manageOpen()) throw noPasscode('降價追蹤');
+  if (!(await cashOk(req))) throw passError(req, '需要通關密碼才能管理降價追蹤');
   if (req.method === 'POST') return { configured: true, ...(await priceWatch.add(await readJson(req))) };
   if (req.method === 'DELETE') { await priceWatch.remove(String(q.get('id') || '')); return { ok: true }; }
   return { configured: true, email: Boolean(alertMailer), max: priceWatch.max, ...(await priceWatch.list()) };
@@ -247,10 +253,15 @@ async function handleDeals() {
 }
 
 const safeEqual = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
-// Vercel's cron calls the run endpoint with `Authorization: Bearer $CRON_SECRET`; people use the passcode (when one is set).
+// Without a passcode, alerts and price watches (which hold people's emails and spend seats.aero, RapidAPI and mail)
+// cannot be managed by anyone, like Telegram, except in the demo, which spends nothing.
+const manageOpen = () => MOCK && CASH_MODE !== 'live';
+const noPasscode = (what) => Object.assign(new CashError(`要先在 Vercel 設定 CASH_PASSCODE，才能管理${what}`, 401), { code: 'setup' });
+// Vercel's cron calls the run endpoint with `Authorization: Bearer $CRON_SECRET`; people use the passcode.
 async function alertsAllowed(req) {
   const secret = (process.env.CRON_SECRET || '').trim();
   if (secret && safeEqual(String(req.headers.authorization || ''), `Bearer ${secret}`)) return true;
+  if (!cashPasscode()) return manageOpen();
   return cashOk(req);
 }
 // Who may start the daily run, which spends seats.aero, RapidAPI and mail: the cron (its secret) or the owner (the
@@ -298,7 +309,7 @@ async function runDaily(req, q) {
   const fromVercel = /vercel-cron/i.test(String(req.headers['user-agent'] || ''));
   if (!who) {
     if (fromVercel) await kv.set('cron:denied', { at: new Date().toISOString(), auth: Boolean(req.headers.authorization) }, { ex: 40 * 86400 }).catch(() => {});
-    throw Object.assign(new CashError('需要通關密碼才能執行檢查', 401), { code: 'passcode' });
+    throw passError(req, '需要通關密碼才能執行檢查');
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
@@ -321,7 +332,7 @@ async function runDaily(req, q) {
 async function handleAlerts(req, q, sub) {
   if (sub === 'run') return runDaily(req, q);
   if (!alerts) return { configured: false, email: false, alerts: [] };
-  if (!(await alertsAllowed(req))) throw Object.assign(new CashError('需要通關密碼才能管理提醒', 401), { code: 'passcode' });
+  if (!(await alertsAllowed(req))) throw cashPasscode() ? passError(req, '需要通關密碼才能管理提醒') : noPasscode('提醒');
   if (req.method === 'POST') return { configured: true, ...(await alerts.add(await readJson(req))) };
   if (req.method === 'DELETE') { await alerts.remove(String(q.get('id') || '')); return { ok: true }; }
   return { configured: true, email: Boolean(alertMailer), alerts: await alerts.list() };
@@ -332,7 +343,7 @@ async function handleAlerts(req, q, sub) {
 // Linking decides where the owner's alerts go, so it needs the passcode to be set (except in the demo).
 async function handleTelegram(req, sub) {
   const ok = cashPasscode() ? await cashOk(req) : TELEGRAM_MOCK;
-  if (!ok) throw Object.assign(new CashError(cashPasscode() ? '需要通關密碼才能設定 Telegram' : '要先在 Vercel 設定 CASH_PASSCODE，才能連結 Telegram', 401), { code: 'passcode' });
+  if (!ok) throw passError(req, cashPasscode() ? '需要通關密碼才能設定 Telegram' : '要先在 Vercel 設定 CASH_PASSCODE，才能連結 Telegram');
   const mock = TELEGRAM_MOCK ? { mock: true } : {};
   if (sub === 'link') {
     if (req.method !== 'POST') throw new BadRequest('請用 POST');
@@ -350,32 +361,93 @@ async function handleTelegram(req, sub) {
 
 // Optional passcode that gates the cash-fare lookups (each one spends a SerpApi credit). Read per request so tests can set it.
 const cashPasscode = () => (process.env.CASH_PASSCODE || '').trim();
-function cashUnlocked(req) {
-  const want = cashPasscode();
-  if (!want) return true;
-  return safeEqual(String(req.headers['x-cash-pass'] || ''), want);
+
+// Too many / too fast: a 429 whose message the page shows as it is.
+class LimitError extends Error {
+  constructor(message, code = 'rate') { super(message); this.status = 429; this.code = code; }
+}
+// Guessing the passcode: 5 wrong tries per address (the x-cash-pass header on any endpoint, account unlock included),
+// then that address waits 15 minutes; the right passcode starts the count again. Everyone's wrong tries together are
+// capped per hour as a backstop (the owner hears about it on Telegram), which only stops header checks: signed-in
+// accounts that were unlocked before keep working.
+const PASS_MAX = 5;
+const PASS_LOCK_SEC = 900;
+const PASS_GLOBAL_MAX = 100;
+const passKey = (req) => `rl:pass:v1:${hashKey(clientIp(req) || 'unknown')}`;
+const lockedFor = (until) => `通關密碼錯太多次，請 ${Math.max(1, Math.ceil((until - Date.now()) / 60000))} 分鐘後再試`;
+async function passHeaderOk(req, want) {
+  const given = String(req.headers['x-cash-pass'] || '');
+  if (!given) return false;
+  const key = passKey(req);
+  const lock = await kv.get(key + ':lock').catch(() => null);
+  if (lock) throw new LimitError(lockedFor(lock.until || Date.now() + PASS_LOCK_SEC * 1000));
+  const globalKey = `rl:pass:v1:all:${Math.floor(Date.now() / 3600e3)}`;
+  if (Number(await kv.get(globalKey).catch(() => 0)) >= PASS_GLOBAL_MAX) throw new LimitError('通關密碼暫停驗證中（錯誤的嘗試太多），請過一小時再試');
+  // Counted before comparing, so a burst of guesses sent at once cannot all be compared before the count catches up;
+  // a few extra are let through for the owner's own requests running side by side.
+  const n = await kv.incr(key, 1, PASS_LOCK_SEC).catch(() => 0);
+  if (n > PASS_MAX + 3) throw new LimitError(lockedFor(Date.now() + PASS_LOCK_SEC * 1000));
+  if (safeEqual(given, want)) {
+    await kv.del(key).catch(() => {});
+    return true;
+  }
+  const all = await kv.incr(globalKey, 1, 3600).catch(() => 0);
+  if (all === PASS_GLOBAL_MAX) defer(telegram.notify(`⚠️ 一小時內有 ${all} 次輸錯通關密碼，已暫停用通關密碼驗證到下個整點。`));
+  if (n >= PASS_MAX) {
+    const until = Date.now() + PASS_LOCK_SEC * 1000;
+    await kv.set(key + ':lock', { until }, { ex: PASS_LOCK_SEC }).catch(() => {});
+    await kv.del(key).catch(() => {});
+    throw new LimitError(lockedFor(until));
+  }
+  req.passLeft = PASS_MAX - n;
+  return false;
+}
+// The 401 for a missing or wrong passcode; after a wrong one it says how many tries are left.
+const passError = (req, msg) => Object.assign(new CashError(req.passLeft != null ? `通關密碼不對，還可以再試 ${req.passLeft} 次` : msg, 401), { code: 'passcode' });
+
+// A request the site's own page made: fetch with the x-requested-with header (another site cannot add it without a
+// CORS preflight, which this server never grants), and not marked cross-site by the browser. A link, form or
+// image on another site that rides on the session cookie fails this.
+function fromPage(req) {
+  if (!req.headers['x-requested-with']) return false;
+  const site = req.headers['sec-fetch-site'];
+  return !site || site === 'same-origin' || site === 'none';
 }
 
 // Signed-in accounts that entered the passcode once count as unlocked from then on (see lib/accounts.js), next to the
-// x-cash-pass header. The header on a signed-in request is what marks the account.
-async function cashOk(req) {
-  if (!cashPasscode()) return true;
-  const sess = await sessionOf(req);
-  if (cashUnlocked(req)) {
-    if (sess) await accounts.markUnlocked(sess, cashPasscode()).catch((e) => console.error('unlock', e.message));
-    return true;
-  }
-  return sess ? accounts.isUnlocked(sess.user, cashPasscode()) : false;
+// x-cash-pass header. The header on a signed-in request is what marks the account. The cookie alone counts only on
+// requests from the page itself, so another site cannot make a signed-in browser spend the quota. Worked out once
+// per request.
+function cashOk(req) {
+  req.cashOkP ||= (async () => {
+    const want = cashPasscode();
+    if (!want) return true;
+    const sess = await sessionOf(req);
+    if (await passHeaderOk(req, want)) {
+      if (sess) await accounts.markUnlocked(sess, want).catch((e) => console.error('unlock', e.message));
+      return true;
+    }
+    return sess && fromPage(req) ? accounts.isUnlocked(sess.user, want) : false;
+  })();
+  return req.cashOkP;
 }
 
 // Accounts (optional): email + password, to carry one's own settings between devices. Needs Redis (in-memory in the
 // demo); verify and reset mails go through Resend, and the demo prints the links to the server log instead.
 const ACCOUNTS_ON = HAS_REDIS || MOCK;
-const accounts = ACCOUNTS_ON ? createAccounts({ kv, sendMail: alertMailer, log: MOCK && !alertMailer ? (m) => console.log(m) : null }) : null;
-const cookiesOf = (req) => Object.fromEntries(String(req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter(([k, v]) => k && v).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
+const accounts = ACCOUNTS_ON ? createAccounts({ kv, sendMail: alertMailer, log: MOCK && !alertMailer ? (m) => console.log(m) : null, defer, mailCap: Number(process.env.ACCOUNT_MAILS_PER_DAY) || undefined }) : null;
+// Only the sid cookie is read. Other cookies on the same host (analytics, a hand-written one with a stray %) are none
+// of this site's business and must not break sign-in; the sid itself is base64url and needs no decoding.
+function sidOf(req) {
+  for (const part of String(req.headers.cookie || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === 'sid') return part.slice(i + 1).trim();
+  }
+  return '';
+}
 function sessionOf(req) {
   if (!accounts) return Promise.resolve(null);
-  req.sessionPromise ||= accounts.session(cookiesOf(req).sid).catch(() => null);
+  req.sessionPromise ||= accounts.session(sidOf(req)).catch(() => null);
   return req.sessionPromise;
 }
 const sidCookie = (sid, maxAge) => `sid=${sid}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge != null ? `; Max-Age=${maxAge}` : ''}`;
@@ -431,8 +503,8 @@ async function handleAccount(req, res, sub) {
   if (sub === 'unlock') {
     need();
     if (!pass) return sendJson(res, 200, { unlocked: true });
-    if (!(await cashOk(req))) throw Object.assign(new CashError('通關密碼不對', 401), { code: 'passcode' });
-    return sendJson(res, 200, await status(await accounts.session(cookiesOf(req).sid)));
+    if (!(await cashOk(req))) throw passError(req, '通關密碼不對');
+    return sendJson(res, 200, await status(await accounts.session(sidOf(req))));
   }
   return sendJson(res, 404, { error: 'not found' });
 }
@@ -498,7 +570,45 @@ function dateRange(q) {
 // for every `per` days.
 const pagesFor = (p, base, per = 90) => base + Math.floor((new Date(p.end_date) - new Date(p.start_date)) / 864e5 / per);
 
-async function handleSearch(q) {
+// Daily budgets for visitors' seats.aero and rooms.aero calls (each has 1,000 per UTC day), so one visitor or script
+// cannot use up the day for everyone, and the morning cron (deals, alerts) always has calls left. Only cache misses
+// count. Per address, and for everyone together; the owner (unlocked with the passcode) has no per-address cap and
+// is never stopped by the shared one, but still counts toward it.
+const BUDGET = {
+  seats: { ip: Number(process.env.SEATS_DAILY_PER_IP) || 150, all: Number(process.env.SEATS_DAILY_VISITORS) || 700 },
+  rooms: { ip: Number(process.env.ROOMS_DAILY_PER_IP) || 150, all: Number(process.env.ROOMS_DAILY_VISITORS) || 700 },
+};
+// Takes `units` (the most calls the lookup may make) up front; resolves to `refund(n)` for the calls not made.
+async function spendBudget(req, kind, units) {
+  if (MOCK || !req) return () => {};
+  const day = new Date().toISOString().slice(0, 10);
+  const allKey = `budget:v1:${kind}:all:${day}`;
+  const ipKey = `budget:v1:${kind}:ip:${hashKey(clientIp(req) || 'unknown')}:${day}`;
+  const owner = Boolean(cashPasscode()) && (await cashOk(req).catch(() => false));
+  const all = await kv.incr(allKey, units, 2 * 86400).catch(() => null);
+  const mine = owner ? null : await kv.incr(ipKey, units, 2 * 86400).catch(() => null);
+  const refund = (n) => {
+    if (!(n > 0)) return;
+    kv.incr(allKey, -n).catch(() => {});
+    if (mine != null) kv.incr(ipKey, -n).catch(() => {});
+  };
+  const left = kind === 'rooms' ? '飯店點數' : '獎勵機位';
+  if (!owner && all != null && all > BUDGET[kind].all) { refund(units); throw new LimitError(`網站今天的${left}查詢額度快用完了，請明天早上 8 點（台灣時間）後再試`, 'budget'); }
+  if (mine != null && mine > BUDGET[kind].ip) { refund(units); throw new LimitError(`你今天的${left}查詢次數已經很多了，請明天早上 8 點（台灣時間）後再試`, 'budget'); }
+  return refund;
+}
+// seats.aero calls of one lookup, counted on their own so the unused part of the budget goes back.
+function seatsCalls() {
+  let n = 0;
+  return { client: createClient({ apiKey: API_KEY, onCall: () => { countCall(); n++; } }), used: () => n };
+}
+async function budgeted(req, kind, maxUnits, fn) {
+  const refund = await spendBudget(req, kind, maxUnits);
+  const calls = seatsCalls();
+  try { return await fn(calls.client); } finally { refund(maxUnits - (kind === 'seats' ? calls.used() : maxUnits)); }
+}
+
+async function handleSearch(q, req) {
   const params = {
     origin_airport: param(q, 'origin', IATA_LIST, { required: true, upper: true }),
     destination_airport: param(q, 'destination', IATA_LIST, { required: true, upper: true }),
@@ -513,13 +623,14 @@ async function handleSearch(q) {
   if ((new Date(params.end_date) - new Date(params.start_date)) / 864e5 <= 45) params.include_trips = true;
   // Pages of 1,000: one call up to five months, three for a whole year.
   const out = await cached('search:' + JSON.stringify(params), async () => {
-    const { items, hasMore } = MOCK ? { items: mock.mockSearch(params), hasMore: false } : await client.search({ ...params, take: 1000 }, { maxPages: pagesFor(params, 1, 150) });
+    const pages = pagesFor(params, 1, 150);
+    const { items, hasMore } = MOCK ? { items: mock.mockSearch(params), hasMore: false } : await budgeted(req, 'seats', pages, (c) => c.search({ ...params, take: 1000 }, { maxPages: pages }));
     return { truncated: hasMore, results: items.map(normalizeAvailability) };
   });
   return { mock: MOCK, truncated: out.truncated, withTaxes: Boolean(params.include_trips), results: out.results };
 }
 
-async function handleExplore(q) {
+async function handleExplore(q, req) {
   const params = {
     // `program`, not `source`: Vercel's rewrite drops a `source` query param.
     source: param(q, 'program', /^[a-z]+$/) || param(q, 'source', /^[a-z]+$/, { required: true }),
@@ -534,7 +645,8 @@ async function handleExplore(q) {
   params.cabin = CABIN_NAMES[cabin];
   // Ship one compact row per result for the requested cabin; the browser filters and sorts.
   return cached('explore:' + JSON.stringify(params), async () => {
-    const { items, hasMore } = MOCK ? { items: mock.mockAvailability(params), hasMore: false } : await client.availability(params, { maxPages: pagesFor(params, 3) });
+    const pages = pagesFor(params, 3);
+    const { items, hasMore } = MOCK ? { items: mock.mockAvailability(params), hasMore: false } : await budgeted(req, 'seats', pages, (c) => c.availability(params, { maxPages: pages }));
     const results = items.map(normalizeAvailability).filter((r) => r.cabins[cabin].available).map((r) => {
       const c = r.cabins[cabin];
       return { id: r.id, date: r.date, origin: r.origin, destination: r.destination, source: r.source, distance: r.distance, miles: c.miles, seats: c.seats, airlines: c.airlines, direct: c.direct, updatedAt: r.updatedAt };
@@ -550,7 +662,7 @@ const CABIN_CLASS = { Y: 1, W: 2, J: 3, F: 4 };
 
 async function handleCash(q, req) {
   if (CASH_MODE === 'off') return { configured: false, options: [] };
-  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw passError(req, '需要通關密碼才能查即時票價');
   const depart = param(q, 'depart', DATE, { required: true });
   const ret = param(q, 'return', DATE);
   const today = todayTW();
@@ -590,9 +702,10 @@ const DIRECTS_OPEN = new Set(['TPE', 'TSA', 'KHH', 'RMQ', 'TNN', 'HKG', 'NRT', '
 const DIRECTS_UNITS = Number(process.env.DIRECTS_MONTHLY_UNITS) || 400;
 const DIRECTS_RESERVE = 40;
 const directsQuota = { left: null, limit: null };
+const directsKey = () => `directs:units:${monthTW()}`;
 async function spendDirectsUnits(n) {
   if (directsQuota.left != null && directsQuota.left - n < DIRECTS_RESERVE) return false;
-  const key = `directs:units:${monthTW()}`;
+  const key = directsKey();
   const used = await kv.incr(key, n, 40 * 86400).catch(() => null);
   if (used != null && DIRECTS_UNITS - used < DIRECTS_RESERVE) { await kv.incr(key, -n).catch(() => {}); return false; }
   return true;
@@ -602,6 +715,7 @@ const directs = RAPIDAPI_KEY && createDirects({
   kv,
   legacy: HAS_REDIS ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'directs:v1' }) : null,
   spend: spendDirectsUnits,
+  refund: (n) => kv.incr(directsKey(), -n).catch(() => {}),
   onQuota: (q) => Object.assign(directsQuota, q),
 });
 async function handleDirects(q, req) {
@@ -623,7 +737,7 @@ async function handleDirects(q, req) {
 // Google Flights' lowest fare per departure day (RapidAPI, one request per call), for the month view in the cash tab.
 async function handleCashCalendar(q, req) {
   if (CASH_MODE === 'off') return { configured: false, days: [] };
-  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw passError(req, '需要通關密碼才能查即時票價');
   const { start_date: start, end_date: end } = dateRange(q);
   if (start < todayTW()) throw new BadRequest('開始日期不可早於今天');
   if ((Date.parse(end) - Date.parse(start)) / 864e5 > 61) throw new BadRequest('一次最多查 2 個月');
@@ -646,7 +760,7 @@ async function handleCashCalendar(q, req) {
 
 // A RapidAPI seller's booking page (one more request), fetched when the user presses its button.
 async function handleCashLink(q, req) {
-  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw passError(req, '需要通關密碼');
   const token = param(q, 'token', /^r:[\w\-+/=.:]{1,4000}$/, { required: true });
   if (CASH_MODE === 'mock') return { url: 'https://www.google.com/travel/flights' };
   if (!rapidQuery) throw new CashError('沒有設定 RapidAPI', 503);
@@ -676,21 +790,22 @@ function hotelPrograms(q) {
   return list.length ? list.join(',') : undefined;
 }
 // /api/hotels/search (an area), /calendar (one hotel's dates), /rooms (room types of one stay). Cached like the award searches.
-async function handleHotels(sub, q) {
+async function handleHotels(sub, q, req) {
+  const call = (fn) => budgeted(req, 'rooms', 1, fn);
   if (sub === 'search') {
     const where = (q.get('where') || '').trim().replace(/\s+/g, ' ');
     if (!where || where.length > 80 || /[<>{}\\]/.test(where)) throw new BadRequest('請輸入城市或地區');
     const params = { location: where, ...dateRange(q), nights: nightsParam(q), source: hotelPrograms(q), take: 100 };
     if ((Date.parse(params.end_date) - Date.parse(params.start_date)) / 864e5 > 92) throw new BadRequest('入住日期範圍最多 3 個月');
-    return cached('rooms:s:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeSearch(MOCK ? mock.mockRoomsSearch(params) : await roomsClient.search(params)) }));
+    return cached('rooms:s:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeSearch(MOCK ? mock.mockRoomsSearch(params) : await call(() => roomsClient.search(params))) }));
   }
   if (sub === 'calendar') {
     const params = { hotel_id: param(q, 'hotel', HOTEL_ID, { required: true }), ...dateRange(q), nights: nightsParam(q), rate_type: 'any', take: 500 };
-    return cached('rooms:c:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeAvailability(MOCK ? mock.mockRoomsAvailability(params) : await roomsClient.availability(params)) }));
+    return cached('rooms:c:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeAvailability(MOCK ? mock.mockRoomsAvailability(params) : await call(() => roomsClient.availability(params))) }));
   }
   if (sub === 'rooms') {
     const id = param(q, 'id', HOTEL_ID, { required: true });
-    return cached('rooms:r:' + id, async () => ({ mock: MOCK, ...rooms.normalizeDetail(MOCK ? mock.mockRoomsDetail(id) : await roomsClient.detail(id)) }));
+    return cached('rooms:r:' + id, async () => ({ mock: MOCK, ...rooms.normalizeDetail(MOCK ? mock.mockRoomsDetail(id) : await call(() => roomsClient.detail(id))) }));
   }
   throw new BadRequest('未知的飯店查詢');
 }
@@ -699,10 +814,26 @@ async function handleHotels(sub, q) {
 // src=serpapi: every booking site incl. the hotel's own (1–2 SerpApi credits); src=booking: Booking.com via RapidAPI (2 requests,
 // 1 for a hotel looked up before). SerpApi failing or missing falls back to Booking.com. Answers are shared for 30 minutes.
 const serpHotelLookup = SERPAPI_KEY && hotelCash.serpHotels({ apiKey: SERPAPI_KEY, onCall: () => countSerp('hotels') });
+// Booking.com requests left this month, as its last answer said; kept in Redis too, so every instance knows it.
 const bookingQuota = { left: null, limit: null };
-const bookingLookup = RAPIDAPI_KEY && hotelCash.bookingHotels({ apiKey: RAPIDAPI_KEY, kv, onQuota: (q) => Object.assign(bookingQuota, q) });
+const BOOKING_QUOTA_KEY = 'booking-quota:v1';
+const bookingLookup = RAPIDAPI_KEY && hotelCash.bookingHotels({
+  apiKey: RAPIDAPI_KEY,
+  kv,
+  onQuota: (q) => {
+    if (q.left === bookingQuota.left) return;
+    Object.assign(bookingQuota, q);
+    kv.set(BOOKING_QUOTA_KEY, q, { ex: 40 * 86400 }).catch(() => {});
+  },
+});
+// Below this many requests left, the Accor city search (many requests) stops, keeping the rest for hotel cash prices.
+const BOOKING_RESERVE = 60;
+async function bookingLeft() {
+  if (bookingQuota.left == null) Object.assign(bookingQuota, (await kv.get(BOOKING_QUOTA_KEY).catch(() => null)) || {});
+  return bookingQuota.left;
+}
 async function handleHotelCash(q, req) {
-  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能查飯店現金價', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw passError(req, '需要通關密碼才能查飯店現金價');
   const name = (q.get('name') || '').trim().replace(/\s+/g, ' ');
   if (!name || name.length > 120 || /[<>{}\\]/.test(name)) throw new BadRequest('缺少飯店名稱');
   const city = (q.get('city') || '').trim().replace(/\s+/g, ' ').slice(0, 60);
@@ -740,11 +871,14 @@ async function handleHotelCash(q, req) {
   return { ...body, cached: !spent, total: total ? Math.round(total) : null, currency: 'TWD', fallback, bookingLeft: bookingQuota.left, bookingLimit: bookingQuota.limit };
 }
 
-// Accor hotels in a city, priced in ALL points (lib/accor.js): one Booking.com city search (2 RapidAPI requests at most,
-// usually 1 page + a cached city id), Accor brands kept, the price turned into points. Never SerpApi. Answers are
-// shared for 6 hours. Behind the passcode because it spends the Booking.com quota.
+// Accor hotels in a city, priced in ALL points (lib/accor.js): one Booking.com city search, Accor brands kept, the price
+// turned into points. Never SerpApi. Requests per search: the city id and the city's brand list (each kept 30 days),
+// then up to 5 result pages, each with its Chinese-name twin unless the names are known (kept 90 days), and now and
+// then 2 more to learn brand ids from another city: about 5 to 12 for a new city, fewer on a repeat (the answer tells
+// how many). Paging stops near the reserve. Answers are shared for 6 hours (an empty one for 30 minutes). Behind the
+// passcode because it spends the Booking.com quota.
 async function handleAccor(q, req) {
-  if (!(await cashOk(req))) throw Object.assign(new CashError('需要通關密碼才能查雅高飯店', 401), { code: 'passcode' });
+  if (!(await cashOk(req))) throw passError(req, '需要通關密碼才能查雅高飯店');
   const city = (q.get('city') || '').trim().replace(/\s+/g, ' ');
   if (!city || city.length > 60 || /[<>{}\\]/.test(city)) throw new BadRequest('請輸入城市');
   const checkin = param(q, 'checkin', DATE, { required: true });
@@ -768,23 +902,61 @@ async function handleAccor(q, req) {
   if (!bookingLookup) throw new hotelCash.HotelCashError('雅高飯店價格要用 RapidAPI 的 Booking.com API，網站還沒設定 RAPIDAPI_KEY', 503);
   let spent = false;
   const key = 'accor:v8:' + JSON.stringify(want);
+  const lowQuota = () => bookingQuota.left != null && bookingQuota.left <= BOOKING_RESERVE;
   const body = await shared(key, 6 * 3600, async () => {
+    const left = await bookingLeft();
+    if (left != null && left <= BOOKING_RESERVE) throw new hotelCash.HotelCashError(`Booking.com 這個月只剩 ${left} 次查詢，先留給飯店現金價，雅高查詢暫停到下個月`, 429);
     spent = true;
-    const search = await bookingLookup.city(want, { brands: accor.isAccorTitle, brandIds: accor.BOOKING_CHAINS, mustIds: accor.BOOKING_MUST, zhNames: true, onlyIds: only.flatMap((b) => accor.BOOKING_BRAND_IDS[b]) });
+    const search = await bookingLookup.city(want, { brands: accor.isAccorTitle, brandIds: accor.BOOKING_CHAINS, mustIds: accor.BOOKING_MUST, zhNames: true, onlyIds: only.flatMap((b) => accor.BOOKING_BRAND_IDS[b]), stopPaging: lowQuota });
     // The last search's outline (city match, how many hotels, a few names; no prices or personal data) for /api/hotels/accor/debug.
     await kv.set('accor:debug', { at: new Date().toISOString(), asked: city, query: want.city, nights, ...(search.debug || {}) }, { ex: 7 * 86400 }).catch(() => {});
     const { debug, ...rest } = search;
     if (only.length) rest.hotels = (rest.hotels || []).filter((h) => only.includes(accor.brandOf(h.name)));
     return answer(rest);
-  });
-  // An empty answer is not kept, so the next try asks Booking.com again (and shows what it found, see the debug outline).
-  if (spent && !body.hotels.length) { uncache(key); await kv.del('cache:v1:' + hashKey(key)).catch(() => {}); }
+  }, { waitMs: 55000, lockSec: 120 });
+  // An empty answer is kept for 30 minutes only, so a retry later asks Booking.com again without each click paying.
+  if (spent && !body.hotels.length) await kv.set('cache:v1:' + hashKey(key), body, { ex: 1800 }).catch(() => {});
   return { ...body, brandsOnly: only, brandsSearchable: Object.keys(accor.BOOKING_BRAND_IDS), cached: !spent, bookingLeft: bookingQuota.left, bookingLimit: bookingQuota.limit };
 }
 
-async function handleTrips(id) {
-  if (!/^[\w-]{1,80}$/.test(id)) throw new BadRequest('ID 格式錯誤');
-  return cached('trips:' + id, async () => ({ mock: MOCK, ...normalizeTrips(MOCK ? mock.mockTrips(id) : await client.trips(id)) }));
+// seats.aero availability ids are short letters-and-digits strings. An id seats.aero does not know is remembered for
+// a day, so made-up ids cost one call each at most.
+const TRIP_ID = MOCK ? /^[\w-]{1,80}$/ : /^[A-Za-z0-9_-]{8,64}$/;
+async function handleTrips(id, req) {
+  if (!TRIP_ID.test(id)) throw new BadRequest('ID 格式錯誤');
+  return cached('trips:' + id, async () => {
+    if (MOCK) return { mock: true, ...normalizeTrips(mock.mockTrips(id)) };
+    const missKey = 'trips:miss:v1:' + hashKey(id);
+    if (await kv.get(missKey).catch(() => null)) throw new SeatsAeroError('找不到這筆行程，可能已經過期', 404);
+    try {
+      return { mock: false, ...normalizeTrips(await budgeted(req, 'seats', 1, (c) => c.trips(id))) };
+    } catch (e) {
+      if ([400, 404, 422].includes(e.upstream)) {
+        await kv.set(missKey, 1, { ex: 86400 }).catch(() => {});
+        throw new SeatsAeroError('找不到這筆行程，可能已經過期', 404);
+      }
+      throw e;
+    }
+  });
+}
+
+// Public lookups the CDN keeps by full URL: an address with parameters the endpoint does not read (or one twice) is
+// sent to the same address without them, so junk like `&_=123` cannot skip the CDN and cost a seats.aero call.
+const KNOWN_PARAMS = {
+  '/api/search': ['origin', 'destination', 'start', 'end', 'carriers', 'sources', 'direct', 'cabin'],
+  '/api/explore': ['program', 'source', 'start', 'end', 'origin_region', 'destination_region', 'cabin'],
+  '/api/hotels/search': ['where', 'start', 'end', 'nights', 'programs'],
+  '/api/hotels/calendar': ['hotel', 'start', 'end', 'nights'],
+  '/api/hotels/rooms': ['id'],
+};
+function canonicalUrl(p, q) {
+  const known = p.startsWith('/api/trips/') ? [] : KNOWN_PARAMS[p];
+  if (!known) return null;
+  const keys = [...q.keys()];
+  if (keys.every((k) => known.includes(k)) && new Set(keys).size === keys.length) return null;
+  const out = new URLSearchParams();
+  for (const k of known) if (q.has(k)) out.set(k, q.get(k));
+  return `${p}${[...out].length ? `?${out}` : ''}`;
 }
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
@@ -889,6 +1061,11 @@ async function route(req, res) {
     // HEAD only where the answer is a fixed file: the data files and the static site.
     const headOk = p.startsWith('/api/data/') || !p.startsWith('/api/');
     if (req.method !== 'GET' && !(req.method === 'HEAD' && headOk)) return sendJson(res, 405, { error: 'method not allowed' });
+    const canon = req.method === 'GET' && canonicalUrl(p, q);
+    if (canon) {
+      res.writeHead(301, { location: canon, 'cache-control': 'public, max-age=3600, s-maxage=86400' });
+      return res.end();
+    }
     if (p === '/api/config') {
       return sendJson(res, 200, {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
@@ -910,7 +1087,10 @@ async function route(req, res) {
     if (p === '/api/cash/quota') return sendJson(res, 200, await handleCashQuota());
     if (p === '/api/hotels/cash') return sendJson(res, 200, await handleHotelCash(q, req));
     if (p === '/api/hotels/accor') return sendJson(res, 200, await handleAccor(q, req));
-    if (p === '/api/hotels/accor/debug') return sendJson(res, 200, (await kv.get('accor:debug').catch(() => null)) || {});
+    if (p === '/api/hotels/accor/debug') {
+      if (!(await cashOk(req))) throw passError(req, '需要通關密碼');
+      return sendJson(res, 200, (await kv.get('accor:debug').catch(() => null)) || {});
+    }
     // Public.
     if (p === '/api/directs') {
       const { body, open } = await handleDirects(q, req);
@@ -921,7 +1101,7 @@ async function route(req, res) {
       return sendJson(res, 200, info, info.errors && Object.keys(info.errors).length ? CACHE.short : CACHE.tripInfo);
     }
     const hm = p.match(/^\/api\/hotels\/(search|calendar|rooms)$/);
-    if (hm) return sendJson(res, 200, await handleHotels(hm[1], q), CACHE.search);
+    if (hm) return sendJson(res, 200, await handleHotels(hm[1], q, req), CACHE.search);
     if (p === '/api/fx') {
       const fx = await handleFx();
       return sendJson(res, 200, fx, fx.live ? CACHE.fx : CACHE.short);
@@ -930,12 +1110,12 @@ async function route(req, res) {
       const d = await handleDeals();
       return sendJson(res, 200, d, d.groups?.length ? CACHE.deals : CACHE.short);
     }
-    if (p === '/api/search') return sendJson(res, 200, await handleSearch(q), CACHE.search);
-    if (p === '/api/explore') return sendJson(res, 200, await handleExplore(q), CACHE.search);
+    if (p === '/api/search') return sendJson(res, 200, await handleSearch(q, req), CACHE.search);
+    if (p === '/api/explore') return sendJson(res, 200, await handleExplore(q, req), CACHE.search);
     if (p.startsWith('/api/trips/')) {
       let id;
       try { id = decodeURIComponent(p.slice(11)); } catch { throw new BadRequest('網址編碼錯誤'); }
-      return sendJson(res, 200, await handleTrips(id), CACHE.search);
+      return sendJson(res, 200, await handleTrips(id, req), CACHE.search);
     }
     if (p === '/api/data/all') {
       return sendBody(req, res, { ...DATA_ALL, type: MIME['.json'], cache: q.get('v') === VERSION.version ? CACHE.immutable : CACHE.data });
@@ -947,7 +1127,7 @@ async function route(req, res) {
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
     if (e instanceof AccountError && e.current) return sendJson(res, e.status, { error: e.message, code: e.code, ...e.current });
-    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof AccountError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof LimitError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof AccountError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }
