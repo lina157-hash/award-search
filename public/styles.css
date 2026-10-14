@@ -652,3 +652,59 @@ details.release li { margin: 3px 0; }
   .detour-table tr { padding: 10px 12px; border-bottom: 1px solid var(--border); }
   .detour-table td { padding: 2px 0; border: 0; }
 }
+
+/* ---------- 查飯店 ---------- */
+.h-progs { flex-wrap: wrap; }
+.h-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: 6px 0 12px; }
+.h-bar > span { flex: 1 1 auto; }
+.hotel-list { display: grid; gap: 12px; }
+.hotel { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 8px 18px; align-items: start; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); }
+.hotel h3 { margin: 4px 0 2px; font-size: 1.05rem; }
+.hotel small { display: block; font-size: .8rem; }
+.hotel .muted, .hotel-days .muted { color: var(--muted); }
+.hotel .stale { color: var(--muted); opacity: .7; }
+.hotel-price b { font-size: 1.15rem; }
+.hotel-price .value-tag { display: inline-block; margin: 3px 0; }
+.hotel-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.hotel-cal { grid-column: 1 / -1; }
+.hotel-days td small { display: block; color: var(--muted); font-size: .76rem; }
+.hotel-days td .value-tag { display: block; width: fit-content; margin-top: 2px; }
+.h-rooms { margin: 4px 0; padding-left: 1.2em; line-height: 1.7; }
+.pill.h-marriott { background: #fde3e3; color: #8a1c1c; }
+.pill.h-hilton { background: #dfeafc; color: #1d3f78; }
+.pill.h-ihg { background: #e6f4e6; color: #22572a; }
+.pill.h-hyatt { background: #efe6f8; color: #4d2a78; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pill.h-marriott { background: #4a2020; color: #ffd6d6; }
+  :root:not([data-theme="light"]) .pill.h-hilton { background: #1e2f4d; color: #d2e2ff; }
+  :root:not([data-theme="light"]) .pill.h-ihg { background: #1f3a23; color: #d4f0d6; }
+  :root:not([data-theme="light"]) .pill.h-hyatt { background: #36264a; color: #ead9ff; }
+}
+:root[data-theme="dark"] .pill.h-marriott { background: #4a2020; color: #ffd6d6; }
+:root[data-theme="dark"] .pill.h-hilton { background: #1e2f4d; color: #d2e2ff; }
+:root[data-theme="dark"] .pill.h-ihg { background: #1f3a23; color: #d4f0d6; }
+:root[data-theme="dark"] .pill.h-hyatt { background: #36264a; color: #ead9ff; }
+@media (max-width: 640px) {
+  .hotel { grid-template-columns: minmax(0, 1fr); }
+  .hotel-actions { flex-direction: row; align-items: center; justify-content: space-between; }
+  .tabs { overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+}
+.hotel .value-tag, .hotel-days .value-tag { font-size: .8rem; color: var(--muted); }
+.hotel .value-tag.good, .hotel-days .value-tag.good { color: var(--accent); font-weight: 600; }
+.hotel > * { min-width: 0; }
+@media (max-width: 640px) {
+  .tabs button { font-size: .8rem; padding: 6px 2px; }
+  .hotel-days thead { display: none; }
+  .hotel-days, .hotel-days tbody, .hotel-days tr, .hotel-days td { display: block; width: 100%; }
+  .hotel-days tr { padding: 8px 4px; border-bottom: 1px solid var(--border); }
+  .hotel-days tr.h-rooms-row[hidden] { display: none; }
+  .hotel-days td { border: 0; padding: 1px 0; }
+  .hotel-days td[data-l]::before { content: attr(data-l) "　"; color: var(--muted); font-size: .8rem; }
+  .hotel-days td[data-l] b, .hotel-days td[data-l] .value-tag { display: inline; }
+  .hotel-days td[data-l] .value-tag { margin-left: 6px; }
+  .hotel-days td:first-child small { display: inline; margin-left: 6px; }
+}
+@media (max-width: 360px) {
+  .tabs button { font-size: .72rem; padding: 6px 1px; }
+}

@@ -9,6 +9,7 @@ const { createCashClient, normalizeCash, CashError } = require('./lib/cash');
 const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = require('./lib/alerts');
 const { createPriceWatch } = require('./lib/pricewatch');
 const { createDeals } = require('./lib/deals');
+const rooms = require('./lib/rooms');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -38,6 +39,16 @@ const cashQuery = createCashClient({
     const today = new Date().toISOString().slice(0, 10);
     if (cashUsage.day !== today) Object.assign(cashUsage, { day: today, calls: 0 });
     cashUsage.calls++;
+  },
+});
+// Hotel award availability (rooms.aero) takes the same seats.aero Pro key, with its own 1,000 calls per UTC day.
+const roomsUsage = { day: '', calls: 0 };
+const roomsClient = rooms.createRoomsClient({
+  apiKey: API_KEY,
+  onCall: () => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (roomsUsage.day !== today) Object.assign(roomsUsage, { day: today, calls: 0 });
+    roomsUsage.calls++;
   },
 });
 const cache = new Map();
@@ -280,6 +291,39 @@ async function handleCash(q, req) {
   return { configured: true, mock: CASH_MODE === 'mock', returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), ...normalizeCash(raw) };
 }
 
+const HOTEL_ID = /^[\w-]{1,64}$/;
+function nightsParam(q) {
+  const n = Number(q.get('nights') || 1);
+  if (!Number.isInteger(n) || n < 1 || n > 5) throw new BadRequest('晚數需為 1 到 5');
+  return n;
+}
+function hotelPrograms(q) {
+  const list = (param(q, 'programs', SOURCE_LIST) || '').split(',').filter((x) => rooms.PROGRAMS.includes(x));
+  return list.length ? list.join(',') : undefined;
+}
+// /api/hotels/search (an area), /calendar (one hotel's dates), /rooms (room types of one stay). Cached like the award searches.
+async function handleHotels(sub, q) {
+  if (sub === 'search') {
+    const where = (q.get('where') || '').trim().replace(/\s+/g, ' ');
+    if (!where || where.length > 80 || /[<>{}\\]/.test(where)) throw new BadRequest('請輸入城市或地區');
+    const params = { location: where, ...dateRange(q), nights: nightsParam(q), source: hotelPrograms(q), take: 100 };
+    if ((Date.parse(params.end_date) - Date.parse(params.start_date)) / 864e5 > 92) throw new BadRequest('入住日期範圍最多 3 個月');
+    const raw = await cached('rooms:s:' + JSON.stringify(params), () => (MOCK ? mock.mockRoomsSearch(params) : roomsClient.search(params)));
+    return { mock: MOCK, ...rooms.normalizeSearch(raw) };
+  }
+  if (sub === 'calendar') {
+    const params = { hotel_id: param(q, 'hotel', HOTEL_ID, { required: true }), ...dateRange(q), nights: nightsParam(q), rate_type: 'any', take: 500 };
+    const raw = await cached('rooms:c:' + JSON.stringify(params), () => (MOCK ? mock.mockRoomsAvailability(params) : roomsClient.availability(params)));
+    return { mock: MOCK, ...rooms.normalizeAvailability(raw) };
+  }
+  if (sub === 'rooms') {
+    const id = param(q, 'id', HOTEL_ID, { required: true });
+    const raw = await cached('rooms:r:' + id, () => (MOCK ? mock.mockRoomsDetail(id) : roomsClient.detail(id)));
+    return { mock: MOCK, ...rooms.normalizeDetail(raw) };
+  }
+  throw new BadRequest('未知的飯店查詢');
+}
+
 async function handleTrips(id) {
   if (!/^[\w-]{1,80}$/.test(id)) throw new BadRequest('ID 格式錯誤');
   const raw = await cached('trips:' + id, () => (MOCK ? mock.mockTrips(id) : client.trips(id)));
@@ -325,6 +369,7 @@ async function route(req, res) {
       return sendJson(res, 200, {
         mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
+        hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000 },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
         repo: process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG ? `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}` : '',
@@ -332,6 +377,8 @@ async function route(req, res) {
       });
     }
     if (p === '/api/cash') return sendJson(res, 200, await handleCash(q, req));
+    const hm = p.match(/^\/api\/hotels\/(search|calendar|rooms)$/);
+    if (hm) return sendJson(res, 200, await handleHotels(hm[1], q));
     if (p === '/api/fx') return sendJson(res, 200, await handleFx());
     if (p === '/api/deals') return sendJson(res, 200, await handleDeals());
     if (p === '/api/search') return sendJson(res, 200, await handleSearch(q));
@@ -350,7 +397,7 @@ async function route(req, res) {
     serveStatic(res, p);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
-    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

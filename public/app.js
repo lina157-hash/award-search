@@ -2167,12 +2167,13 @@ function renderVersion(config) {
   cashForm.depart.min = isoDate(0);
   cashForm.return.min = isoDate(0);
   initFeatures();
+  initHotels();
   renderRules();
   renderPoints();
 
   // Restore a shared search from the URL and run it.
   const share = new URLSearchParams(location.search);
-  const tab = ['search', 'explore', 'cash', 'points', 'rules'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'search';
+  const tab = ['search', 'explore', 'cash', 'hotels', 'points', 'rules'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'search';
   showTab(tab);
   if (share.get('x') && share.get('program')) applyExploreShare(share);
   else if (share.get('o') && share.get('d') && share.get('s')) applyShare(share);
