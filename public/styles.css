@@ -1076,3 +1076,10 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .rm-pop td small { display: block; color: #777; }
 .rm-pop td:last-child { text-align: right; white-space: nowrap; }
 @media (max-width: 640px) { .rmap { height: 440px; } .rmap-row > *, .rmap-row > .field.grow { flex: 1 1 100%; } }
+
+/* Maps when no tile server answers: sea and land drawn by the site itself */
+:root { --map-sea: #a9d3f0; --map-land: #f6f1e3; --map-coast: #b9ad94; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --map-sea: #16324a; --map-land: #2b3440; --map-coast: #4d5a68; } }
+:root[data-theme="dark"] { --map-sea: #16324a; --map-land: #2b3440; --map-coast: #4d5a68; }
+.leaflet-container.map-plain { background: var(--map-sea); }
+.map-plain path.map-land { fill: var(--map-land); stroke: var(--map-coast); }

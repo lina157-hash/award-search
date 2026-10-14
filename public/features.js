@@ -903,10 +903,7 @@ async function renderRmap() {
   if (rmapMap) { rmapMap.remove(); rmapMap = null; }
   const L = window.L;
   rmapMap = L.map(el, { worldCopyJump: true, scrollWheelZoom: false });
-  L.tileLayer(`https://{s}.basemaps.cartocdn.com/${isDark() ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, {
-    maxZoom: 12, subdomains: 'abcd',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  }).addTo(rmapMap);
+  addBaseMap(rmapMap);
   const mins = dests.map((d) => d.min).sort((a, b) => a - b);
   const tier = (m) => (mins.length < 2 ? 0 : Math.min(3, Math.floor((mins.indexOf(m) / (mins.length - 1)) * 4)));
   L.circleMarker([from.lat, from.lon], { radius: 7, color: '#fff', weight: 2, fillColor: '#2a9d4b', fillOpacity: 1 }).bindTooltip(`${rmap.origin} 出發`).addTo(rmapMap);
@@ -1007,17 +1004,53 @@ let leafletReady = null;
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
   leafletReady ||= new Promise((resolve, reject) => {
+    // Both the script and its stylesheet: a map drawn before the CSS arrives has its tiles out of place.
+    let left = 2;
+    const done = () => { if (!--left) resolve(); };
+    const fail = () => { leafletReady = null; reject(new Error('地圖元件載入失敗，請檢查網路後再試')); };
     const css = document.createElement('link');
     css.rel = 'stylesheet';
     css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css';
+    css.onload = done;
+    css.onerror = done; // markers still work without it
     document.head.append(css);
     const js = document.createElement('script');
     js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
-    js.onload = () => resolve();
-    js.onerror = () => { leafletReady = null; reject(new Error('地圖元件載入失敗，請檢查網路後再試')); };
+    js.onload = done;
+    js.onerror = fail;
     document.head.append(js);
   });
   return leafletReady;
+}
+// Map background: CARTO tiles; if they will not load (blocked network, an ad blocker, CARTO down), OpenStreetMap's own
+// tiles; if those fail too, a plain outline of the continents shipped with the site (Natural Earth, public domain).
+const BASEMAPS = [
+  () => ({ url: `https://{s}.basemaps.cartocdn.com/${isDark() ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, subdomains: 'abcd',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>' }),
+  () => ({ url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', subdomains: 'abc', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }),
+];
+let landJson = null;
+function addBaseMap(map, i = 0) {
+  const L = window.L;
+  if (i >= BASEMAPS.length) {
+    map.getContainer().classList.add('map-plain');
+    (landJson ||= fetch('/land.json').then((r) => r.json())).then((g) => {
+      if (!map.getContainer().isConnected) return;
+      L.geoJSON(g, { interactive: false, style: { className: 'map-land', weight: 0.8, fillOpacity: 1 } }).addTo(map).bringToBack();
+      map.attributionControl.addAttribution('Natural Earth');
+    }).catch(() => { landJson = null; });
+    return;
+  }
+  const b = BASEMAPS[i]();
+  const layer = L.tileLayer(b.url, { maxZoom: 12, subdomains: b.subdomains, attribution: b.attribution }).addTo(map);
+  let loaded = 0;
+  let failed = 0;
+  layer.on('tileload', () => { loaded++; });
+  layer.on('tileerror', () => {
+    if (loaded || ++failed < 4) return;
+    map.removeLayer(layer);
+    addBaseMap(map, i + 1);
+  });
 }
 const isDark = () => document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
 let exMap = null;
@@ -1043,10 +1076,7 @@ async function renderExploreMap(rows) {
   const origins = new Set(rows.map((r) => r.origin));
   const L = window.L;
   exMap = L.map('ex-map', { worldCopyJump: true, scrollWheelZoom: false });
-  L.tileLayer(`https://{s}.basemaps.cartocdn.com/${isDark() ? 'dark_all' : 'rastertiles/voyager'}/{z}/{x}/{y}{r}.png`, {
-    maxZoom: 12, subdomains: 'abcd',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  }).addTo(exMap);
+  addBaseMap(exMap);
   const pts = [];
   const mins = [...byDest.values()].map((g) => g.min).sort((a, b) => a - b);
   const tier = (m) => (mins.length < 2 ? 0 : Math.min(3, Math.floor((mins.indexOf(m) / (mins.length - 1)) * 4)));
