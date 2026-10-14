@@ -156,8 +156,11 @@ async function loadDirects(li, from, to) {
   if (!li) return;
   const span = li.lastElementChild;
   try {
-    const body = await api(`/api/directs?${new URLSearchParams({ from: from.split(',').slice(0, 3).join(','), to })}`);
-    if (!body.configured) { li.remove(); return; }
+    // The owner's passcode (when this device remembers it) unlocks airports beyond the public list.
+    const pass = store.get(PASS_KEY, '');
+    const body = await api(`/api/directs?${new URLSearchParams({ from: from.split(',').slice(0, 3).join(','), to })}`, pass ? { headers: { 'x-cash-pass': pass } } : undefined);
+    // Not set up, or an airport outside the list without the passcode (locked): leave the line out quietly.
+    if (!body.configured || body.locked) { li.remove(); return; }
     li.closest('.trip-info')?.querySelector('.ti-src-ad')?.removeAttribute('hidden');
     if (!body.airlines.length) {
       span.className = '';
@@ -165,7 +168,7 @@ async function loadDirects(li, from, to) {
       return;
     }
     span.className = 'ti-air';
-    span.innerHTML = body.airlines.map((a) => `<span class="pill" title="${esc(a.name)}${a.code ? `（${esc(a.code)}）` : ''}">${esc(a.zh || a.name)}</span>`).join('')
+    span.innerHTML = body.airlines.map((a) => `<span class="pill" title="${esc(a.name)}${a.code ? `（${esc(a.code)}）` : ''}">${esc(a.zh || (a.code && AL.zh.get(a.code)) || a.name)}</span>`).join('')
       + `<small class="hint">${body.perDay ? `合計每天約 ${body.perDay} 班` : ''}${body.mock ? '（示範資料）' : `，依最近 7 天實際航班統計（${esc(body.updated)} 更新）`}</small>`;
   } catch (err) {
     span.className = 'hint';

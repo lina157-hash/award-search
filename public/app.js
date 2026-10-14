@@ -16,6 +16,32 @@ const mmdd = (iso) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
 const hhmm = (iso) => (iso || '').slice(11, 16);
 const data = {};
 
+// Chinese airline names (data/airline-names.json): by IATA code, and by the English names fare sources write.
+const AL = { zh: new Map(), byName: new Map(), defunct: {} };
+const alKey = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+function indexAirlineNames(d) {
+  for (const [code, zh, ...en] of d?.airlines || []) {
+    if (!AL.zh.has(code)) AL.zh.set(code, zh);
+    for (const n of en) if (alKey(n) && !AL.byName.has(alKey(n))) AL.byName.set(alKey(n), code);
+  }
+  AL.defunct = d?.defunct || {};
+}
+// 長榮航空 for BR; falls back to airlines.json, then the code itself.
+const airlineZh = (code) => AL.zh.get(code) || data.airlines?.airlines.find((a) => a.code === code)?.name || code;
+// The code for an English name such as "EVA Air" (cash fares), or '' when unknown.
+const airlineCodeOf = (name) => AL.byName.get(alKey(name)) || '';
+// 「長榮航空（BR）」, or just the code when there is no Chinese name.
+const airlineLabel = (code) => (airlineZh(code) !== code ? `${airlineZh(code)}（${code}）` : code);
+// "BR, NH" → 長榮航空、全日空 with each code in a tooltip (compact places: cells, tables, cards).
+const carriersHtml = (list) => String(list || '').split(/[,\s]+/).filter(Boolean)
+  .map((c) => (airlineZh(c) !== c ? `<span class="al" title="${esc(c)}">${esc(airlineZh(c))}</span>` : esc(c))).join('、');
+// A fare source's English airline name → Chinese, with the original in a tooltip.
+const airlineNameHtml = (name, flight) => {
+  const code = airlineCodeOf(name) || (/^[A-Z0-9]{2}\s?\d/.test(flight || '') ? flight.slice(0, 2) : '');
+  const zh = code && AL.zh.get(code);
+  return zh ? `<span class="al" title="${esc(name || code)}">${esc(zh)}</span>` : esc(name || '');
+};
+
 // Release version from this script's own URL (index.html loads it as app.js?v=1.15.0); keys the bundled data request.
 const ASSET_V = (() => { try { return new URL(document.currentScript.src).searchParams.get('v') || ''; } catch { return ''; } })();
 
@@ -1117,7 +1143,7 @@ function renderSearch() {
       <div class="route">${esc(srcName(r.source))}</div>
       <div class="miles">${fmt(x.miles)} <small>哩起</small>${x.taxes ? `<small class="tax">＋ 稅 ${esc(taxText(x.taxes))}</small>` : ''}</div>
       <div class="meta">${dayLabel(r.date)} · ${esc(r.origin)} → ${esc(r.destination)}</div>
-      <div class="meta">${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}</div>
+      <div class="meta">${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}</div>
       ${valueTag(r, c)}
     </button>`;
   }).join('');
@@ -1132,7 +1158,7 @@ function renderSearch() {
     ${resultToolsHtml()}
     ${release}
     ${amReal.length ? `<div class="am-callout">
-      <div><b>國泰 亞洲萬里通</b>　最低 <b class="am-miles">${fmt(amReal[0].cabins[c].miles)} 哩</b>（${mmdd(amReal[0].date)} ${esc(amReal[0].origin)} → ${esc(amReal[0].destination)}，${esc(amReal[0].cabins[c].airlines)}），共 ${amReal.length} 個日期／航線有位</div>
+      <div><b>國泰 亞洲萬里通</b>　最低 <b class="am-miles">${fmt(amReal[0].cabins[c].miles)} 哩</b>（${mmdd(amReal[0].date)} ${esc(amReal[0].origin)} → ${esc(amReal[0].destination)}，${carriersHtml(amReal[0].cabins[c].airlines)}），共 ${amReal.length} 個日期／航線有位</div>
       <div class="hint">來自 seats.aero 的亞洲萬里通實際資料。可在下方表格「國泰 亞洲萬里通」欄點選看航班。</div>
     </div>` : ''}
     ${amRows.length ? `<div class="am-callout">
@@ -1269,11 +1295,11 @@ function matrixHtml(rows, sources) {
     const x = r && cab(r, c);
     if (!x) return '<td class="cell none">·</td>';
     if (r.estimate) {
-      return `<td class="cell est" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small>${esc(x.airlines)} · ${x.kind === 'cx' ? '國泰表' : '夥伴表'}</small></td>`;
+      return `<td class="cell est" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small>${carriersHtml(x.airlines)} · ${x.kind === 'cx' ? '國泰表' : '夥伴表'}</small></td>`;
     }
     const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : '', isOld(r.updatedAt) ? 'old' : ''].join(' ');
     const ph = phantomWarnings(r.source, x.airlines);
-    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}<small>${esc(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
+    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}<small>${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
   };
   return `<div class="table-wrap"><table>
     <thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}</th>`).join('')}</tr></thead>
@@ -1314,6 +1340,8 @@ function seatLinks(seg) {
   return links.length ? `<span class="seatmap">座位圖 ${links.join(' ')}</span>` : '';
 }
 
+// 「長榮航空・」 for a segment's flight number (the marketing carrier).
+const segAirline = (s) => { const c = (s.flight || '').slice(0, 2).toUpperCase(); return airlineZh(c) !== c ? `<span class="al" title="${esc(c)}">${esc(airlineZh(c))}</span>・` : ''; };
 function tripHtml(t, i) {
   const taxes = t.taxes != null ? `${esc(t.taxesSymbol || '')}${fmt(t.taxes / 100)} ${esc(t.taxesCurrency || '')}` : '稅金未提供';
   const dur = t.durationMin ? `${Math.floor(t.durationMin / 60)} 小時 ${t.durationMin % 60} 分` : '';
@@ -1324,7 +1352,7 @@ function tripHtml(t, i) {
     </div>
     ${phantomHtml(t.source, t.carriers)}
     ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
-      <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod">${esc(p.name)}</span>`).join('')}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
+      <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod">${esc(p.name)}</span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
     ${amTripLine(t)}
   </div>`;
@@ -1366,7 +1394,7 @@ async function openTrips(id, title, cabin) {
       (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map((t, i) => tripHtml(t, main.length + i)).join('')}</details>` : '') +
       (main.length && cashCfg.enabled ? `<div class="value-box" id="value-box"><button type="button" class="outline" id="value-btn">💵 和當天現金票比一比，算每哩價值（用 1 次查價）</button></div>` : '') +
       (links ? `<div class="links">${links}</div>` : '') +
-      (first ? howToBookHtml(first.source, first.miles * pax) : '');
+      (first ? homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
     $$('[data-plan]', $('#trip-body')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
   } catch (err) {
@@ -1403,7 +1431,7 @@ async function mileValue(t) {
     const taxNote = t.taxes == null ? '此計畫未提供稅金，先當 0 計算' : rate ? `稅金約 NT$${fmt(Math.round(taxesTwd))}（${esc(t.taxesSymbol || cur)}${fmt(t.taxes / 100)}，匯率${fx.live ? `為 ${fx.updated}` : '為概估'}）` : cur ? `稅金 ${esc(cur)} ${fmt(t.taxes / 100)} 無法換算，先當 0 計算` : `此計畫的稅金 ${fmt(t.taxes / 100)} 未標幣別，先當 0 計算`;
     box.innerHTML = `<div class="value-result ${verdict[0]}">
       <div class="value-head"><b>每哩約 NT$${per > 0 ? per.toFixed(2) : '0'}</b><span class="pill">${verdict[1]}</span></div>
-      <p class="hint">當天最便宜現金票 NT$${fmt(cheapest.price)}（${esc(cheapest.segments[0]?.airline || '')}${cheapest.segments.length > 1 ? '，轉機' : '，直飛'}，和獎勵票的航空公司、時間可能不同${body.mock ? '；示範資料' : ''}）－ ${taxNote} ＝ 省下 NT$${fmt(Math.round(Math.max(0, saved)))}，除以 ${fmt(t.miles)} 哩。一般常見估值：每哩 NT$0.35 以下不划算、0.6 以上划算，僅供參考。</p>
+      <p class="hint">當天最便宜現金票 NT$${fmt(cheapest.price)}（${airlineNameHtml(cheapest.segments[0]?.airline, cheapest.segments[0]?.flightNumber)}${cheapest.segments.length > 1 ? '，轉機' : '，直飛'}，和獎勵票的航空公司、時間可能不同${body.mock ? '；示範資料' : ''}）－ ${taxNote} ＝ 省下 NT$${fmt(Math.round(Math.max(0, saved)))}，除以 ${fmt(t.miles)} 哩。一般常見估值：每哩 NT$0.35 以下不划算、0.6 以上划算，僅供參考。</p>
     </div>`;
   } catch (err) {
     box.innerHTML = `<p class="status error">${esc(err.message)}</p>`;
@@ -1582,7 +1610,7 @@ function renderExplore() {
         <div class="opts-row">
           ${airportFilterHtml('origin', '出發機場', uniq((r) => [r.origin]))}
           ${airportFilterHtml('destination', '抵達機場', uniq((r) => [r.destination]))}
-          <label class="field">航空公司<select data-f="airline"><option value="">全部</option>${uniq((r) => r.airlines.split(/,\s*/)).map((c) => opt(c, c)).join('')}</select></label>
+          <label class="field">航空公司<select data-f="airline"><option value="">全部</option>${uniq((r) => r.airlines.split(/,\s*/)).map((c) => opt(c, airlineLabel(c))).join('')}</select></label>
         </div>
         <div class="opts-row">
           <label class="field">哩數上限<input type="number" data-f="maxMiles" min="0" step="5000" placeholder="例：80000"></label>
@@ -1631,7 +1659,7 @@ function renderExplore() {
       <td><span class="d">${dayLabel(r.date)}</span></td>
       <td><b>${esc(r.origin)}</b> → <b>${esc(r.destination)}</b></td>
       <td><b class="ex-miles">${fmt(r.miles)}</b></td>
-      <td>${esc(r.airlines)}</td><td>${r.direct ? '✓' : ''}</td><td>${r.seats || '—'}</td><td>${r.distance ? fmt(r.distance) : '—'}</td><td class="${isStale(r.updatedAt) ? 'stale' : ''}">${ago(r.updatedAt) || '—'}</td></tr>`).join('')}</tbody>
+      <td>${carriersHtml(r.airlines)}</td><td>${r.direct ? '✓' : ''}</td><td>${r.seats || '—'}</td><td>${r.distance ? fmt(r.distance) : '—'}</td><td class="${isStale(r.updatedAt) ? 'stale' : ''}">${ago(r.updatedAt) || '—'}</td></tr>`).join('')}</tbody>
   </table></div>
   ${rows.length > ex.shown ? `<div class="more"><button type="button" class="outline" id="ex-more">再顯示 ${Math.min(PAGE, rows.length - ex.shown)} 筆（還有 ${fmt(rows.length - ex.shown)} 筆）</button></div>` : ''}`;
 }
@@ -1760,7 +1788,7 @@ const apName = (code, fallback) => airportCity(code) || fallback || '';
 const whenLabel = (t) => `${dayLabel(t.slice(0, 10))} ${t.slice(11, 16)}`;
 
 function fareHtml(o, i, mode) {
-  const airlines = [...new Set(o.segments.map((s) => s.airline))].join('、');
+  const airlines = [...new Map(o.segments.map((s) => [s.airline, airlineNameHtml(s.airline, s.flightNumber)])).values()].join('、');
   const stops = o.layovers.length ? `轉機 ${o.layovers.length} 次・${o.layovers.map((l) => `${esc(l.code)} ${dur(l.duration)}`).join('、')}` : '直飛';
   const action = mode === 'out' && o.departureToken ? `<button type="button" class="primary small" data-ret="${i}">選這班去程，看回程</button>`
     : mode === 'out' && o.bookingToken ? `<button type="button" class="primary small" data-pick="${i}">選這班</button>`
@@ -1770,14 +1798,14 @@ function fareHtml(o, i, mode) {
     <div class="fare-main" role="button" tabindex="0" aria-expanded="${final}">
       <div class="fare-logo">${o.logo ? `<img src="${esc(o.logo)}" alt="" loading="lazy">` : '✈'}</div>
       ${fareTimes(o)}
-      <div class="fare-dur"><b>${dur(o.totalDuration)}</b><span>${airlines ? esc(airlines) : ''}</span></div>
+      <div class="fare-dur"><b>${dur(o.totalDuration)}</b><span>${airlines}</span></div>
       <div class="fare-stops ${o.layovers.length ? '' : 'direct'}">${stops}</div>
       ${final ? '' : `<div class="fare-price"><b>${money(o.price)}</b><span>${esc(o.type || '')}${cash.req.adults > 1 ? `・${cash.req.adults} 人總價` : ''}</span></div>`}
     </div>
     <div class="fare-detail" ${final ? '' : 'hidden'}>
       ${o.segments.map((s, j) => `
         <div class="seg-line"><b>${esc(s.flightNumber)}</b><span>${esc(whenLabel(s.from.time))} ${esc(s.from.code)} ${esc(apName(s.from.code, s.from.name))} → ${esc(s.to.time.slice(11, 16))} ${esc(s.to.code)} ${esc(apName(s.to.code, s.to.name))}・${dur(s.duration)}</span>
-          <span></span><span class="ac">${esc(s.airline)}・✈ ${esc(s.airplane || '機型未提供')}${s.travelClass ? `・${esc(s.travelClass)}` : ''}${s.legroom ? `・腿部空間 ${esc(s.legroom)}` : ''}${s.oftenDelayed ? '・<span class="warn">常延誤 30 分以上</span>' : ''}　${seatLinks({ flight: (s.flightNumber || '').replace(/\s/g, ''), aircraft: s.airplane })}</span></div>
+          <span></span><span class="ac">${airlineNameHtml(s.airline, s.flightNumber)}・✈ ${esc(s.airplane || '機型未提供')}${s.travelClass ? `・${esc(s.travelClass)}` : ''}${s.legroom ? `・腿部空間 ${esc(s.legroom)}` : ''}${s.oftenDelayed ? '・<span class="warn">常延誤 30 分以上</span>' : ''}　${seatLinks({ flight: (s.flightNumber || '').replace(/\s/g, ''), aircraft: s.airplane })}</span></div>
         ${o.layovers[j] ? `<div class="layover">在 ${esc(apName(o.layovers[j].code, o.layovers[j].name || o.layovers[j].code))} 轉機 ${dur(o.layovers[j].duration)}${o.layovers[j].overnight ? '（過夜）' : ''}</div>` : ''}`).join('')}
       ${o.emissions ? `<div class="hint">碳排放約 ${fmt(Math.round(o.emissions.thisFlight / 1000))} 公斤，${o.emissions.diffPct > 0 ? `比一般高 ${o.emissions.diffPct}%` : o.emissions.diffPct < 0 ? `比一般低 ${-o.emissions.diffPct}%` : '與一般相當'}</div>` : ''}
     </div>
@@ -1942,7 +1970,7 @@ function cashMonthHtml() {
   const cheapest = m.days.filter((d) => d.price === low).map((d) => dayLabel(d.date)).slice(0, 3).join('、');
   return `<div class="cash-month">
     <h2 class="section">每天最低價 <small>${m.round ? `來回、玩 ${tripDays(r)} 天的總價` : '單程價格'}${r.adults > 1 ? `，${r.adults} 人總價` : ''}；點日期用那天重新搜尋（再用 1 次查價）</small></h2>
-    <p class="hint">最便宜：${cheapest} NT$${fmt(low)}${m.roundFailed ? '。來回的每日價格查不到，先顯示單程價格。' : ''}${m.mock ? '（示範資料）' : ''}</p>
+    <p class="hint">最便宜：${cheapest} NT$${fmt(low)}${m.roundFailed ? '。來回的每日價格查不到，先顯示單程價格。' : ''}${m.mock ? '（示範資料）' : ''}${m.cached ? '（剛查過，這次沒有用到額度）' : ''}</p>
     <div class="cal-months">${months.join('')}</div>
     <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴${holidayLegend(HOL.cash)}</div>
   </div>`;
@@ -1958,7 +1986,7 @@ async function loadCashMonth() {
     if (r.ret) p.set('trip_days', String(tripDays(r)));
     const body = await cashApi(`/api/cash/calendar?${p}`);
     if (n !== seq.cashMonth) return;
-    cash.month = { start, end, days: body.days || [], round: body.round, roundFailed: Boolean(r.ret) && !body.round, mock: body.mock };
+    cash.month = { start, end, days: body.days || [], round: body.round, roundFailed: Boolean(r.ret) && !body.round, mock: body.mock, cached: Boolean(body.cached) };
     loadCashQuota();
     // Mark holidays across the whole grid, not just the trip dates; a newer search or grid drops this answer.
     fetchHolidays(r.destination, start, end).then((info) => {
@@ -2123,7 +2151,7 @@ async function loadReturns(outbound) {
     const body = await cashApi(`/api/cash?${cashParams(cash.req, outbound.departureToken)}`);
     if (!fresh()) return;
     Object.assign(cash, { outbound, returns: body.options, chosen: null, booking: null, googleUrl: body.googleUrl || cash.googleUrl, sort: 'best' });
-    status.textContent = `找到 ${body.options.length} 個回程選項${body.mock ? '（示範資料）' : ''}`;
+    status.textContent = `找到 ${body.options.length} 個回程選項${body.mock ? '（示範資料）' : ''}${cachedNote(body)}`;
     renderCash();
     status.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
@@ -2172,7 +2200,7 @@ cashForm.addEventListener('submit', async (e) => {
       rememberCashSearch(r, body.options);
       status.textContent = (body.options.length
         ? `找到 ${body.options.length} 個航班選項${body.mock ? '（示範資料）' : ''}${rt ? '，價格為來回總價，選去程後可看回程' : `，單程 ${r.adults} 人總價，選一班後可看預訂選項`}`
-        : body.message || '沒有找到航班') + (body.fallback ? `（${body.fallback}，這次改用備用來源）` : '');
+        : body.message || '沒有找到航班') + (body.fallback ? `（${body.fallback}，這次改用備用來源）` : '') + cachedNote(body);
       loadCashQuota();
     }
     renderCash();
@@ -2187,6 +2215,8 @@ cashForm.addEventListener('submit', async (e) => {
 });
 
 const PROVIDER_NAME = { rapid: 'RapidAPI', serpapi: 'SerpApi' };
+// A shared answer someone fetched a moment ago costs nothing; say so instead of counting it.
+const cachedNote = (body) => (body?.cached ? '・剛查過，這次沒有用到額度' : '');
 
 // Lookups left this month, as one number; which source has how many sits behind the ⓘ for the owner.
 async function loadCashQuota() {
@@ -2251,12 +2281,25 @@ function renderRules() {
   renderRulesBody();
 }
 
+// Dated membership changes under each alliance card (joined, leaving on a date, about to join, being watched).
+const MEMBER_STATUS = { joined: ['已加入', 'ok'], leaving: ['即將退出', 'warn'], left: ['已退出', 'warn'], upcoming: ['即將加入', 'soon'], watch: ['觀察中', ''] };
+// The notes also carry upkeep reminders for whoever edits the data (「退出後請從 members 移除 OZ」); visitors get the news only.
+const memberNoteText = (t) => String(t || '').replace(/^(即將加入|觀察中)：/, '').replace(/[，,]?\s*尚未列入 members/g, '').replace(/[^。]*members[^。]*。/g, '').trim();
+function memberNotesHtml(notes) {
+  if (!notes?.length) return '';
+  return `<ul class="member-notes">${notes.map((n) => {
+    const [label, cls] = MEMBER_STATUS[n.status] || [n.status || '', ''];
+    return `<li><span class="tag ${cls}">${esc(label)}${n.date ? ` ${esc(n.date)}` : ''}</span> <b>${esc(airlineZh(n.code))}</b>
+      <small>${esc(memberNoteText(n.note))}${n.source?.url ? ` <a href="${esc(n.source.url)}" target="_blank" rel="noopener">${esc(n.source.label || '來源')} ↗</a>` : ''}</small></li>`;
+  }).join('')}</ul>`;
+}
+
 function renderRulesBody() {
-  const { alliances, programs, glossary, airlines } = data;
-  const airlineName = Object.fromEntries(airlines.airlines.map((a) => [a.code, a.name]));
+  const { alliances, programs, glossary } = data;
   const allianceCards = alliances.alliances.map((a) => `
     <div class="card"><h3 class="alliance-head"><span class="dot ${a.id}"></span>${esc(a.name)}</h3><p>${esc(a.summary)}</p>
-    <p class="hint">成員：${a.members.map((m) => esc(airlineName[m] ? `${airlineName[m]}` : m)).join('、')}</p>
+    <p class="hint">成員：${a.members.map((m) => `<span title="${esc(m)}">${esc(airlineZh(m))}</span>`).join('、')}</p>
+    ${memberNotesHtml(a.memberNotes)}
     <p><a href="${esc(a.url)}" target="_blank" rel="noopener">官方成員名單 ↗</a></p></div>`).join('');
 
   $('#rules-body').innerHTML = `
@@ -2267,6 +2310,7 @@ function renderRulesBody() {
     <div class="filters" id="alliance-filter">
       <button type="button" class="chip ${rulesState.alliance ? '' : 'on'}" data-a="">全部</button>
       ${Object.entries(ALLIANCE_SHORT).map(([k, v]) => `<button type="button" class="chip ${rulesState.alliance === k ? 'on' : ''}" data-a="${k}"><span class="dot ${k}"></span> ${v}</button>`).join('')}
+      <button type="button" class="chip ${rulesState.alliance === 'none' ? 'on' : ''}" data-a="none" title="星宇、阿聯酋等沒有加入聯盟的航空">非聯盟</button>
     </div>
     <div class="cards" id="program-cards"></div></section>
     <section class="rules-sec">${releaseTableHtml()}</section>
@@ -2499,7 +2543,8 @@ function renderCalc() {
       if (!out.value) return `<td class="short"><span>${esc(out.short)}</span>${detail ? `<small>${ratioText(r)}</small>` : ''}</td>`;
       const tags = detail && r.secondary ? '<small class="warn">第三方比率</small>' : '';
       const extra = detail ? `<small>${ratioText(r)}</small>${out.note ? `<small>${esc(out.note)}</small>` : ''}${r.note ? `<small>${esc(r.note)}</small>` : ''}${tags}` : '';
-      return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${out.extra ? `<small class="bonus">🎁 含加贈 ${fmt(out.extra)} 哩</small>` : ''}${extra}</td>`;
+      const capped = view.kind === 'air' && cappedPromo(s, col);
+      return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${out.extra ? `<small class="bonus">🎁 含加贈 ${fmt(out.extra)} 哩</small>` : ''}${capped ? `<small class="bonus" title="${esc(capped.title)}">🎁 ${capText(promoCap(capped))}（未算進）</small>` : ''}${extra}</td>`;
     }
     // Other programs: group identical rates so 12 airlines at 1:1 take one line.
     const groups = new Map();
@@ -2515,7 +2560,7 @@ function renderCalc() {
     });
     return `<td class="others">${lines.join('')}</td>`;
   };
-  const rows = sources.map((s) => `<tr><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${detail && s.confidence === 'verify' ? '<span class="tag verify">待核實</span>' : ''}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}</th>${CALC_COLS.map(([col, label]) => cell(s, col).replace('<td', `<td data-l="${esc(label)}"`)).join('')}</tr>`);
+  const rows = sources.map((s) => `<tr><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${verifyTag(s)}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}</th>${CALC_COLS.map(([col, label]) => cell(s, col).replace('<td', `<td data-l="${esc(label)}"`)).join('')}</tr>`);
   table.innerHTML = `<thead><tr><th>${mine ? '我的點數可換' : mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} ${view.unit}需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`;
 }
 
@@ -2580,14 +2625,15 @@ function renderProgramCards() {
   const { programs } = data;
   const fieldRows = Object.entries(programs.fields);
   const q = rulesState.q;
-  const list = programs.programs.filter((p) => (!rulesState.alliance || p.alliance === rulesState.alliance) &&
+  const al = rulesState.alliance;
+  const list = programs.programs.filter((p) => (!al || (al === 'none' ? !p.alliance : p.alliance === al)) &&
     (!q || JSON.stringify(p).includes(q) || fieldRows.some(([, label]) => label.includes(q))));
   const mark = (text) => (q ? esc(text).split(esc(q)).join(`<mark>${esc(q)}</mark>`) : esc(text));
   // With a query, each card keeps only the fields that mention it (「中停」 shows every program's 中停 rule, nothing else).
   const fieldsOf = (p) => (q ? fieldRows.filter(([k, label]) => label.includes(q) || String(p[k] ?? '').includes(q)) : fieldRows);
   $('#program-cards').innerHTML = list.map((p) => `
-    <div class="card">
-      <h3><span class="dot ${p.alliance}"></span>${esc(p.name)} ${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? '<span class="tag">可查座位</span>' : ''}</h3>
+    <div class="card" id="prog-${esc(p.id)}">
+      <h3>${p.alliance ? `<span class="dot ${p.alliance}"></span>` : ''}${esc(p.name)} ${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? '<span class="tag">可查座位</span>' : ''}</h3>
       ${fieldsOf(p).length ? `<dl>${fieldsOf(p).map(([k, label]) => `<dt>${mark(label)}</dt><dd>${mark(p[k])}</dd>`).join('')}</dl>` : ''}
       ${!q || String(p.notes || '').includes(q) ? `<p class="hint">${mark(p.notes)}</p>` : ''}
       <div class="src">來源（${esc(p.lastVerified || '')} 查核）：${(p.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}
@@ -2613,14 +2659,15 @@ function renderVersion(config) {
 }
 
 // ---------- init ----------
-const DATA_NAMES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos'];
+const DATA_NAMES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames'];
 // All data files in one request, cached per release (?v=); the per-file endpoints are the fallback for older servers.
 async function loadData() {
   try {
     const all = await api(`/api/data/all${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);
     if (DATA_NAMES.every((n) => all[n])) return all;
   } catch { /* fall back below */ }
-  const files = await Promise.all(DATA_NAMES.map((n) => api(`/api/data/${n}`)));
+  // Chinese airline names are a nicety: without them the codes show as they are.
+  const files = await Promise.all(DATA_NAMES.map((n) => (n === 'airlinenames' ? api(`/api/data/${n}`).catch(() => null) : api(`/api/data/${n}`))));
   return Object.fromEntries(DATA_NAMES.map((n, i) => [n, files[i]]));
 }
 
@@ -2640,14 +2687,16 @@ tabInit.cash = () => loadCashQuota();
     $('#search-status').textContent = '正在搜尋各里程計畫的獎勵位…';
   }
   const [config, all] = await Promise.all([api('/api/config'), loadData()]);
-  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points, data.booking, data.charts, data.products, data.promos] = DATA_NAMES.map((n) => all[n]);
+  [data.airlines, data.alliances, data.airports, data.programs, data.glossary, data.asiamiles, data.sourceNames, data.points, data.booking, data.charts, data.products, data.promos, data.airlineNames] = DATA_NAMES.map((n) => all[n]);
   SOURCE_NAMES = data.sourceNames.names;
+  indexAirlineNames(data.airlineNames);
   $('#mock-banner').hidden = !config.mock;
   renderVersion(config);
   cashCfg.locked = Boolean(config.cashLocked);
   cashCfg.enabled = config.cash !== 'off';
   cashCfg.calendar = config.cash === 'mock' || Boolean(config.cashSources?.rapid);
   cashCfg.serp = config.cash === 'mock' || Boolean(config.cashSources?.serpapi);
+  cashCfg.accor = Boolean(config.hotels?.accor);
   watchCfg.on = Boolean(config.watch);
   loadWatches();
   Object.assign(alertCfg, config.alerts || {});
@@ -2657,7 +2706,7 @@ tabInit.cash = () => loadCashQuota();
   setCabin(store.get(CABIN_KEY_STORE, ''), { remember: false });
 
   const carrierSel = $('#search-form [name=carrier]');
-  carrierSel.insertAdjacentHTML('beforeend', data.airlines.airlines.map((a) => `<option value="${a.code}">${esc(a.name)}（${a.code}）</option>`).join(''));
+  carrierSel.insertAdjacentHTML('beforeend', data.airlines.airlines.filter((a) => !AL.defunct[a.code]).map((a) => `<option value="${a.code}">${esc(a.name)}（${a.code}）</option>`).join(''));
   carrierSel.addEventListener('change', () => {
     const a = data.airlines.airlines.find((x) => x.code === carrierSel.value);
     if (a) $('#search-form').alliance.value = a.alliance;

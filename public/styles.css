@@ -684,6 +684,62 @@ details.release li { margin: 3px 0; }
 .hotel .value-tag, .hotel-days .value-tag { font-size: .8rem; color: var(--muted); }
 .hotel .value-tag.good, .hotel-days .value-tag.good { color: var(--accent); font-weight: 600; }
 .hotel > * { min-width: 0; }
+/* ---------- 雅高 / 香格里拉 cards (查飯店) ---------- */
+.pill.h-accor { background: #e9e4f7; color: #3d2a73; }
+.pill.h-shangrila { background: #f6ecd7; color: #6b4a00; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pill.h-accor { background: #2e2650; color: #e2d9ff; }
+  :root:not([data-theme="light"]) .pill.h-shangrila { background: #3d3115; color: #f6e2b0; }
+}
+:root[data-theme="dark"] .pill.h-accor { background: #2e2650; color: #e2d9ff; }
+:root[data-theme="dark"] .pill.h-shangrila { background: #3d3115; color: #f6e2b0; }
+.hotel small.inline, .earn small.inline { display: inline; }
+.hotel .stars { color: var(--few-text); letter-spacing: 1px; }
+.hotel .h-pts b { font-size: inherit; }
+.hotel.sold-out .hotel-main h3 { color: var(--muted); }
+.h-chip span small { font-size: .7rem; font-weight: 400; opacity: .85; margin-left: 2px; }
+.h-rule { margin-top: 10px; }
+.h-sl .hotel-actions { gap: 8px; }
+.h-sl .hotel-actions > a:not(.btn) { display: inline-flex; align-items: center; min-height: 32px; font-size: .85rem; }
+@media (max-width: 640px) { .h-sl .hotel-actions { flex-direction: column; align-items: stretch; } .h-sl .hotel-actions a { justify-content: center; } }
+a.outline.btn.primary-link { border-color: var(--accent); color: var(--accent); font-weight: 700; min-height: 36px; }
+#h-accor-out h2.section small, #h-sl-out h2.section small { font-weight: 400; color: var(--muted); font-size: .8rem; margin-left: 6px; }
+
+/* ---------- 怎麼湊到這些哩 (flight details) ---------- */
+.home-prog { margin: 10px 0 0; }
+.home-prog a { padding: 7px 0; }
+/* Seat map links wrap on phones instead of running past the dialog edge. */
+.seg-line .seatmap { white-space: normal; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.seg-line .seatmap a { margin-left: 0; }
+.earn { background: var(--surface-2); border-radius: 12px; padding: 0 14px; margin: 10px 0 4px; }
+.earn > summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-height: 44px; padding: 10px 0; }
+.earn-title { font-weight: 700; }
+.earn-sum { color: var(--muted); font-size: .84rem; }
+.earn-sum .ok-text { font-size: inherit; }
+.earn-body { padding: 0 0 12px; font-size: .88rem; }
+.earn-body h4 { font-size: .88rem; margin: 12px 0 4px; }
+.earn-body h4 small { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.earn-goal { margin: 0; }
+.earn ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.earn-rates li { display: flex; flex-wrap: wrap; gap: 0 10px; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+.earn-rates li > small { flex-basis: 100%; color: var(--muted); font-size: .78rem; }
+.earn-need b { font-size: .95rem; }
+.earn li small, .earn-cob li small, .earn-promos li small { color: var(--muted); font-size: .78rem; }
+.earn-cob li small, .earn-promos li small { display: block; }
+.earn .tag { margin-left: 4px; }
+.earn .pill { display: inline-block; font-size: .74rem; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.earn-detour { margin: 0; }
+.earn .linklike, .earn .howto-more summary { min-height: 32px; }
+.earn-mine li { background: var(--surface); border-radius: 8px; padding: 4px 10px; }
+
+/* ---------- 規則庫: alliance membership notes ---------- */
+.member-notes { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; font-size: .86rem; }
+.member-notes small { display: block; color: var(--muted); font-size: .8rem; }
+.tag.warn { background: #fde5e8; color: #8c1f33; }
+.tag.soon { background: var(--accent-soft); color: var(--accent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.warn { background: #4a1f28; color: #ffc9d2; } }
+:root[data-theme="dark"] .tag.warn { background: #4a1f28; color: #ffc9d2; }
+#program-cards .card.flash { outline: 3px solid var(--accent); outline-offset: 2px; transition: outline-color .3s; }
 @media (max-width: 640px) {
   .hotel-days thead { display: none; }
   .hotel-days, .hotel-days tbody, .hotel-days tr, .hotel-days td { display: block; width: 100%; }
