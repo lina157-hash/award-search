@@ -1083,3 +1083,6 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 :root[data-theme="dark"] { --map-sea: #16324a; --map-land: #2b3440; --map-coast: #4d5a68; }
 .leaflet-container.map-plain { background: var(--map-sea); }
 .map-plain path.map-land { fill: var(--map-land); stroke: var(--map-coast); }
+.map-osm .leaflet-tile-pane { filter: saturate(0.75) brightness(1.03); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); } }
+:root[data-theme="dark"] .map-osm .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
