@@ -6,6 +6,7 @@ const { normalizeAvailability, createClient } = require('../lib/seats');
 const { createCashClient, normalizeCash } = require('../lib/cash');
 
 let base;
+const isoIn = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 before(() => new Promise((r) => server.listen(0, () => { base = `http://localhost:${server.address().port}`; r(); })));
 after(() => server.close());
 
@@ -405,4 +406,164 @@ test('hotel award search, calendar and rooms work in demo mode', async () => {
   assert.equal((await fetch(`${base}/api/hotels/search?where=Tokyo&start=2026-11-01&nights=9`)).status, 400);
   const quota = await (await fetch(`${base}/api/cash/quota`)).json();
   assert.ok(quota.rapid && quota.serpapi);
+});
+
+test('trip notes: forecast, climate averages, Taiwan long weekends and destination holidays', async () => {
+  const { createTravelInfo } = require('../lib/travelinfo');
+  const urls = [];
+  const days = (a, b) => { const out = []; for (let d = a; d <= b; d = new Date(Date.parse(d) + 864e5).toISOString().slice(0, 10)) out.push(d); return out; };
+  const fetchImpl = async (url) => {
+    const u = new URL(String(url));
+    urls.push(u.host);
+    const json = (b, status = 200) => new Response(JSON.stringify(b), { status });
+    if (u.host === 'api.open-meteo.com') { const t = days(u.searchParams.get('start_date'), u.searchParams.get('end_date')); return json({ daily: { time: t, weather_code: t.map(() => 61), temperature_2m_max: t.map(() => 20.4), temperature_2m_min: t.map(() => 11.6), precipitation_probability_max: t.map(() => 70) } }); }
+    if (u.host === 'archive-api.open-meteo.com') { const t = days(u.searchParams.get('start_date'), u.searchParams.get('end_date')); return json({ daily: { time: t, temperature_2m_max: t.map(() => 15), temperature_2m_min: t.map(() => 5), precipitation_sum: t.map((_, i) => (i % 3 ? 0 : 2)) } }); }
+    if (u.host === 'cdn.jsdelivr.net') {
+      const y = Number(u.pathname.match(/(\d{4})/)[1]);
+      return json(days(`${y}-01-01`, `${y}-12-31`).map((d) => {
+        const wk = [0, 6].includes(new Date(d).getUTCDay());
+        const name = { [`${y}-10-09`]: '補假', [`${y}-10-10`]: '國慶日', [`${y}-06-20`]: '' }[d] ?? '';
+        return { date: d.replace(/-/g, ''), isHoliday: (wk && d !== `${y}-06-20`) || Boolean(name), description: d === `${y}-06-20` ? '補行上班' : name };
+      }));
+    }
+    if (u.host === 'nagerholidays.com') return json({}, 503);
+    if (u.host === 'date.nager.at') return json([{ date: '2026-11-03', localName: '文化の日', name: 'Culture Day', counties: null, types: ['Public'] }, { date: '2026-11-04', name: 'Regional', counties: ['JP-01'], types: ['Public'] }]);
+    throw new Error('unexpected ' + u);
+  };
+  const ti = createTravelInfo({ fetchImpl, today: () => '2026-10-01', visa: { JP: { type: 'free', days: 90 } } });
+  const near = await ti.forTrip({ country: 'JP', lat: 35.7, lon: 140.4 }, '2026-10-05', '2026-10-12');
+  assert.equal(near.weather.kind, 'forecast');
+  assert.equal(near.weather.days.length, 7, 'forecast is capped at a week of the trip');
+  assert.deepEqual([near.weather.days[0].icon, near.weather.days[0].max, near.weather.days[0].min], ['🌧️', 20, 12]);
+  assert.deepEqual(near.taiwan.longWeekends.map((l) => [l.start, l.end, l.days, l.name]), [['2026-10-09', '2026-10-11', 3, '國慶日']]);
+  assert.equal(near.visa.days, 90);
+  const far = await ti.forTrip({ country: 'JP', lat: 35.7, lon: 140.4 }, '2026-11-01', '2026-11-30');
+  assert.equal(far.weather.kind, 'climate');
+  assert.deepEqual([far.weather.max, far.weather.min, far.weather.rainyDays, far.weather.years], [15, 5, 10, [2025, 2024, 2023]]);
+  assert.deepEqual(far.holidays, [{ date: '2026-11-03', name: 'Culture Day', local: '文化の日' }], 'regional holidays are dropped, v3 host is the fallback');
+  const summer = await ti.taiwan('2026-06-15', '2026-06-25');
+  assert.deepEqual(summer.days, [{ date: '2026-06-20', name: '補行上班', off: false, workday: true }]);
+  // A broken source only blanks its own part.
+  const broken = createTravelInfo({ fetchImpl: async () => { throw new Error('down'); }, today: () => '2026-10-01' });
+  const b = await broken.forTrip({ country: 'JP', lat: 1, lon: 1 }, '2026-11-01', '2026-11-02');
+  assert.equal(b.weather, null);
+  assert.ok(b.errors.weather && b.errors.taiwan);
+});
+
+test('cash month calendar: demo grid, validation and RapidAPI round-trip fallback', async () => {
+  const ok = await (await fetch(`${base}/api/cash/calendar?origin=TPE&destination=NRT&start=${isoIn(10)}&end=${isoIn(40)}&trip_days=5`)).json();
+  assert.equal(ok.days.length, 31);
+  assert.ok(ok.round && ok.days.every((d) => d.price > 0));
+  assert.equal((await fetch(`${base}/api/cash/calendar?origin=TPE&destination=NRT&start=${isoIn(10)}&end=${isoIn(100)}`)).status, 400);
+  assert.equal((await fetch(`${base}/api/cash/calendar?origin=TPE,TSA&destination=NRT&start=${isoIn(10)}`)).status, 400);
+  const { createRapidFlights } = require('../lib/rapidflights');
+  const seen = [];
+  const q = createRapidFlights({ apiKey: 'k', fetchImpl: async (url) => {
+    seen.push(String(url));
+    if (/trip_type=ROUND/.test(String(url))) return new Response(JSON.stringify({ status: false, message: 'Something went wrong' }));
+    return new Response(JSON.stringify({ status: true, data: [{ departure: '2026-11-01', price: 9000 }, { departure: '2026-11-02', price: 'unavailable' }] }));
+  } });
+  const cal = await q.calendar({ departure_id: 'TPE', arrival_id: 'NRT', start_date: '2026-11-01', end_date: '2026-11-30', trip_days: 5, travel_class: 1, adults: 1 });
+  assert.deepEqual(cal, { round: false, days: [{ date: '2026-11-01', price: 9000 }] });
+  assert.equal(seen.length, 2);
+  assert.match(seen[1], /getCalendarPicker\?.*start_date=2026-11-01/);
+  assert.doesNotMatch(seen[1], /outbound_date|trip_type/);
+});
+
+test('trip-info endpoint validates the airport', async () => {
+  assert.equal((await fetch(`${base}/api/trip-info?to=XXX&start=2026-11-01`)).status, 400);
+  assert.equal((await fetch(`${base}/api/trip-info?to=NRT`)).status, 400);
+});
+
+test('nonstop carriers: AeroDataBox route stats, name lookup, caching and quota', async () => {
+  const { createDirects } = require('../lib/aerodatabox');
+  const { memoryStore } = require('../lib/alerts');
+  let calls = 0;
+  const body = { routes: [
+    { destination: { iata: 'NRT', name: 'Narita' }, averageDailyFlights: 9.57, operators: [{ name: 'EVA Air' }, { name: 'China Airlines', iata: 'CI' }, { name: 'Some New Airline' }] },
+    { destination: { iata: 'HND', name: 'Haneda' }, averageDailyFlights: 4.14, operators: [{ name: 'EVA Air' }, { name: 'Starlux' }] },
+    { destination: { iata: 'LHR', name: 'Heathrow' }, averageDailyFlights: 2, operators: [{ name: 'EVA Air' }] },
+  ] };
+  const fetchImpl = async (url, opts) => {
+    calls++;
+    assert.match(String(url), /aerodatabox\.p\.rapidapi\.com\/airports\/iata\/TPE\/stats\/routes\/daily$/);
+    assert.equal(opts.headers['x-rapidapi-host'], 'aerodatabox.p.rapidapi.com');
+    return new Response(JSON.stringify(body), { status: 200, headers: { 'x-ratelimit-api-units-remaining': '394', 'x-ratelimit-api-units-limit': '400' } });
+  };
+  let quota;
+  const store = memoryStore();
+  const d = createDirects({ apiKey: 'k', fetchImpl, store, onQuota: (q) => { quota = q; } });
+  const [a, b] = await Promise.all([d.between(['TPE'], ['NRT', 'HND']), d.between(['TPE'], ['NRT', 'HND'])]);
+  assert.equal(calls, 1, 'concurrent lookups share one call');
+  assert.deepEqual(a, b);
+  assert.deepEqual(a.airlines.map((x) => [x.code, x.zh || x.name]), [['BR', '長榮航空'], ['CI', '中華航空'], ['', 'Some New Airline'], ['JX', '星宇航空']]);
+  assert.equal(a.perDay, 13.7);
+  assert.deepEqual(quota, { left: 394, limit: 400 });
+  // A fresh instance reads the shared store instead of spending units again.
+  const d2 = createDirects({ apiKey: 'k', fetchImpl, store });
+  assert.equal((await d2.between(['TPE'], ['LHR'])).airlines[0].code, 'BR');
+  assert.equal(calls, 1);
+  assert.equal((await d2.between(['TPE'], ['JFK'])).airlines.length, 0);
+  const none = createDirects({ apiKey: 'k', fetchImpl: async () => new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 }) });
+  await assert.rejects(none.between(['TPE'], ['NRT']), /還沒訂閱 AeroDataBox/);
+  const demo = await (await fetch(`${base}/api/directs?from=TPE&to=NRT,HND`)).json();
+  assert.ok(demo.configured && demo.mock && Array.isArray(demo.airlines));
+  assert.equal((await fetch(`${base}/api/directs?from=TPE,TSA,KHH,RMQ&to=NRT`)).status, 400);
+});
+
+test('hotel cash: SerpApi picks the right property and lists the official price; Booking.com fallback', async () => {
+  const { serpHotels, bookingHotels } = require('../lib/hotelcash');
+  const urls = [];
+  const serp = serpHotels({ apiKey: 's', fetchImpl: async (url) => {
+    const u = new URL(String(url));
+    urls.push(u);
+    if (u.searchParams.get('property_token')) {
+      return new Response(JSON.stringify({ name: 'Tokyo Marriott Hotel', link: 'https://www.marriott.com/x', typical_price_range: { extracted_lowest: 9000, extracted_highest: 14000 },
+        featured_prices: [{ source: 'Marriott', official: true, link: 'https://www.google.com/aclk?a', rate_per_night: { extracted_lowest: 10000 }, total_rate: { extracted_lowest: 20000 }, rooms: [{ rates: [{ free_cancellation: true }] }] }],
+        prices: [{ source: 'Agoda', link: 'https://www.google.com/travel/lodging/clk?b', rate_per_night: { extracted_lowest: 9500 }, total_rate: { extracted_lowest: 19000 } }, { source: 'Marriott', official: true, total_rate: { extracted_lowest: 20000 } }, { source: 'Sketchy', link: 'javascript:alert(1)', rate_per_night: { extracted_lowest: 9900 } }] }));
+    }
+    return new Response(JSON.stringify({ properties: [
+      { type: 'hotel', name: 'Marriott Hotel Somewhere Else', gps_coordinates: { latitude: 34.0, longitude: 135.0 }, property_token: 'far' },
+      { type: 'hotel', name: 'Tokyo Marriott Hotel', gps_coordinates: { latitude: 35.6205, longitude: 139.7372 }, property_token: 'tok' },
+    ] }));
+  } });
+  const r = await serp({ name: 'Tokyo Marriott Hotel', city: 'Tokyo', checkin: '2026-11-01', checkout: '2026-11-03', adults: 2, lat: 35.6206, lon: 139.7373 });
+  assert.equal(urls.length, 2);
+  assert.equal(urls[1].searchParams.get('property_token'), 'tok');
+  assert.equal(urls[0].searchParams.get('currency'), 'TWD');
+  assert.deepEqual(r.prices.map((p) => [p.source, p.total, p.official]), [['Agoda', 19000, false], ['Sketchy', 19800, false], ['Marriott', 20000, true]]);
+  assert.equal(r.prices[1].link, '', 'non-https links are dropped');
+  assert.ok(r.prices[2].freeCancel);
+  assert.equal(r.credits, 2);
+  const miss = serpHotels({ apiKey: 's', fetchImpl: async () => new Response(JSON.stringify({ properties: [{ type: 'hotel', name: 'Other Inn', gps_coordinates: { latitude: 1, longitude: 1 } }] })) });
+  assert.equal((await miss({ name: 'Tokyo Marriott Hotel', checkin: '2026-11-01', checkout: '2026-11-02', adults: 2, lat: 35.62, lon: 139.73 })).found, false);
+
+  // Booking.com: Tipsters' API first (the owner's subscription), DataCrawler's when the key only has that one.
+  const hosts = [];
+  const booking = bookingHotels({ apiKey: 'r', fetchImpl: async (url) => {
+    const u = new URL(String(url));
+    hosts.push(u.host + u.pathname);
+    if (u.host === 'booking-com15.p.rapidapi.com') return new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 });
+    if (u.pathname === '/v1/hotels/locations') return new Response(JSON.stringify([{ dest_id: '123', dest_type: 'hotel', name: 'Tokyo Marriott Hotel', latitude: 35.6205, longitude: 139.7372 }]));
+    return new Response(JSON.stringify({ result: [{ hotel_id: 123, hotel_name: 'Tokyo Marriott Hotel', min_total_price: 600, currencycode: 'USD', url: 'https://www.booking.com/hotel/jp/tokyo-marriott.html' }] }), { headers: { 'x-ratelimit-requests-remaining': '520' } });
+  } });
+  const b = await booking({ name: 'Tokyo Marriott Hotel', checkin: '2026-11-01', checkout: '2026-11-03', adults: 2, lat: 35.6206, lon: 139.7373 });
+  assert.deepEqual([b.found, b.total, b.currency, b.url], [true, 600, 'USD', 'https://www.booking.com/hotel/jp/tokyo-marriott.html']);
+  assert.deepEqual(hosts, ['booking-com.p.rapidapi.com/v1/hotels/locations', 'booking-com.p.rapidapi.com/v1/hotels/search']);
+  const dcHosts = [];
+  const dc = bookingHotels({ apiKey: 'r', fetchImpl: async (url) => {
+    const u = new URL(String(url));
+    dcHosts.push(u.host);
+    if (u.host === 'booking-com.p.rapidapi.com') return new Response(JSON.stringify({ message: 'You are not subscribed to this API.' }), { status: 403 });
+    if (u.pathname.endsWith('searchDestination')) return new Response(JSON.stringify({ status: true, data: [{ dest_id: '9', dest_type: 'hotel', name: 'Tokyo Marriott Hotel', latitude: 35.6205, longitude: 139.7372 }] }));
+    return new Response(JSON.stringify({ status: true, data: { hotel_name: 'Tokyo Marriott Hotel', url: 'https://www.booking.com/hotel/jp/x.html', composite_price_breakdown: { gross_amount: { value: 21000, currency: 'TWD' } } } }));
+  } });
+  const want = { name: 'Tokyo Marriott Hotel', checkin: '2026-11-01', checkout: '2026-11-03', adults: 2, lat: 35.6206, lon: 139.7373 };
+  assert.equal((await dc(want)).total, 21000);
+  await dc(want);
+  assert.deepEqual(dcHosts, ['booking-com.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com', 'booking-com15.p.rapidapi.com'], 'remembers which API the key has');
+
+  const demo = await (await fetch(`${base}/api/hotels/cash?name=Tokyo%20Marriott&checkin=${isoIn(20)}&checkout=${isoIn(22)}`)).json();
+  assert.ok(demo.mock && demo.prices.some((p) => p.official));
+  assert.equal((await fetch(`${base}/api/hotels/cash?name=X&checkin=${isoIn(20)}&checkout=${isoIn(40)}`)).status, 400);
 });

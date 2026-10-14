@@ -1,0 +1,1164 @@
+{
+ "note": "Visa rules for Republic of China (Taiwan) passport holders, curated from the Bureau of Consular Affairs PDF list; countries it omits come from ilyankou/passport-index-dataset. Notes are our own wording. Re-check when the BOCA list changes (data.gov.tw dataset 30749 RSS).",
+ "source": "外交部領事事務局",
+ "sourceDetail": "外交部領事事務局「國人可以免簽證、落地簽證及電子簽證前往之國家與地區」(2026-10-07 版 PDF)；未列國家以 ilyankou/passport-index-dataset 補足",
+ "sourceUrl": "https://www.boca.gov.tw/cp-37-220-9f130-1.html",
+ "asOf": "2026-10-07",
+ "countries": {
+  "AD": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "AE": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先經航空公司或當地擔保辦理簽證；阿聯酋航空轉機可申請 96 小時過境簽"
+  },
+  "AF": {
+   "type": "evisa",
+   "days": 30,
+   "note": ""
+  },
+  "AG": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "AI": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "AL": {
+   "type": "free",
+   "days": 90,
+   "note": "6 個月內最多 90 天，不與申根合併"
+  },
+  "AM": {
+   "type": "evisa",
+   "days": 120,
+   "note": "電子簽證 21 或 120 天"
+  },
+  "AO": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "AR": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "AT": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "AU": {
+   "type": "eta",
+   "days": 90,
+   "note": "需事先以 AustraliaETA App 申請，效期 1 年、每次最多 3 個月"
+  },
+  "AW": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "AZ": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "BA": {
+   "type": "free",
+   "days": 90,
+   "note": "6 個月內最多 90 天，不與申根合併"
+  },
+  "BB": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "BD": {
+   "type": "arrival",
+   "days": 30,
+   "note": ""
+  },
+  "BE": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "BF": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "BG": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "BH": {
+   "type": "arrival",
+   "days": 30,
+   "note": "有條件落地簽；亦可申請電子簽證最長 90 天"
+  },
+  "BI": {
+   "type": "arrival",
+   "days": null,
+   "note": "領事局清單未列，請再確認"
+  },
+  "BJ": {
+   "type": "evisa",
+   "days": 30,
+   "note": ""
+  },
+  "BL": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "BM": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "BN": {
+   "type": "free",
+   "days": 14,
+   "note": ""
+  },
+  "BO": {
+   "type": "arrival",
+   "days": null,
+   "note": "領事局清單未列，請再確認"
+  },
+  "BQ": {
+   "type": "free",
+   "days": 90,
+   "note": "波奈、沙巴、聖佑達修斯合計"
+  },
+  "BR": {
+   "type": "required",
+   "days": null,
+   "note": ""
+  },
+  "BS": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "BT": {
+   "type": "evisa",
+   "days": 90,
+   "note": ""
+  },
+  "BW": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "BY": {
+   "type": "arrival",
+   "days": null,
+   "note": "需事先辦理預審落地簽"
+  },
+  "BZ": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "CA": {
+   "type": "eta",
+   "days": 180,
+   "note": "需事先線上申請 eTA"
+  },
+  "CD": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "CF": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "CG": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "CH": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "CI": {
+   "type": "evisa",
+   "days": 90,
+   "note": "需線上登記付費，抵達阿必尚機場取得簽證"
+  },
+  "CK": {
+   "type": "free",
+   "days": 31,
+   "note": ""
+  },
+  "CL": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "CM": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "CN": {
+   "type": "required",
+   "days": null,
+   "note": "需持台胞證（台灣居民來往大陸通行證）"
+  },
+  "CO": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "CR": {
+   "type": "free",
+   "days": 30,
+   "note": "可向移民局延長至 90 天"
+  },
+  "CU": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請 eVisa-Cuba"
+  },
+  "CV": {
+   "type": "arrival",
+   "days": 30,
+   "note": ""
+  },
+  "CW": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "CY": {
+   "type": "free",
+   "days": 90,
+   "note": "6 個月內最多 90 天，不與申根合併"
+  },
+  "CZ": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "DE": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "DJ": {
+   "type": "evisa",
+   "days": 90,
+   "note": ""
+  },
+  "DK": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "DM": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "DO": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "DZ": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "EC": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "EE": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "EG": {
+   "type": "arrival",
+   "days": 30,
+   "note": "亦可事先申請電子簽證"
+  },
+  "ER": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "ES": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "ET": {
+   "type": "arrival",
+   "days": null,
+   "note": ""
+  },
+  "FI": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "FJ": {
+   "type": "free",
+   "days": 120,
+   "note": ""
+  },
+  "FK": {
+   "type": "free",
+   "days": null,
+   "note": "24 個月內累計最多 12 個月"
+  },
+  "FM": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "FO": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "FR": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "GA": {
+   "type": "evisa",
+   "days": 30,
+   "note": "可申請電子簽證或落地簽"
+  },
+  "GB": {
+   "type": "eta",
+   "days": 180,
+   "note": "需事先申請英國 ETA；12 個月內最多 6 個月"
+  },
+  "GD": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "GE": {
+   "type": "required",
+   "days": null,
+   "note": "對我國護照入境受限，行前務必洽詢"
+  },
+  "GF": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "GH": {
+   "type": "arrival",
+   "days": null,
+   "note": "領事局清單未列，請再確認"
+  },
+  "GI": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "GL": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "GM": {
+   "type": "free",
+   "days": 90,
+   "note": "領事局清單未列，請再確認"
+  },
+  "GN": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "GP": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "GQ": {
+   "type": "evisa",
+   "days": 90,
+   "note": ""
+  },
+  "GR": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "GT": {
+   "type": "free",
+   "days": 90,
+   "note": "停留 30～90 天，依移民官核定"
+  },
+  "GU": {
+   "type": "free",
+   "days": 45,
+   "note": "持 ESTA 可停留 90 天"
+  },
+  "GW": {
+   "type": "arrival",
+   "days": null,
+   "note": "領事局清單未列，請再確認"
+  },
+  "GY": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "HK": {
+   "type": "eta",
+   "days": 30,
+   "note": "需事先網上預辦入境登記（免費），或持台胞證"
+  },
+  "HN": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "HR": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "HT": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "HU": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "ID": {
+   "type": "arrival",
+   "days": 30,
+   "note": "可事先線上申請 e-VOA"
+  },
+  "IE": {
+   "type": "free",
+   "days": 90,
+   "note": "不屬申根區，另計"
+  },
+  "IL": {
+   "type": "eta",
+   "days": 90,
+   "note": "需事先申請 ETA-IL"
+  },
+  "IN": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證，至少出發前 4 天"
+  },
+  "IQ": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "IR": {
+   "type": "arrival",
+   "days": 90,
+   "note": "需事先辦理預審落地簽"
+  },
+  "IS": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "IT": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "JM": {
+   "type": "arrival",
+   "days": 30,
+   "note": "需事先向牙買加使領館取得身分宣誓書，否則可能無法登機"
+  },
+  "JO": {
+   "type": "arrival",
+   "days": 30,
+   "note": ""
+  },
+  "JP": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "KE": {
+   "type": "eta",
+   "days": 90,
+   "note": "需事先申請 eTA，至少出發前 3 天"
+  },
+  "KG": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "KH": {
+   "type": "arrival",
+   "days": 30,
+   "note": "亦可事先申請電子簽證"
+  },
+  "KI": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "KM": {
+   "type": "arrival",
+   "days": 45,
+   "note": ""
+  },
+  "KN": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "KP": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "KR": {
+   "type": "free",
+   "days": 90,
+   "note": "K-ETA 對台灣暫免申請至 2026/12/31，之後請再確認"
+  },
+  "KW": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "KY": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "KZ": {
+   "type": "evisa",
+   "days": 30,
+   "note": "可申請電子簽證或預審落地簽"
+  },
+  "LA": {
+   "type": "arrival",
+   "days": 30,
+   "note": "落地簽 14～30 天，亦可申請電子簽證"
+  },
+  "LB": {
+   "type": "arrival",
+   "days": 30,
+   "note": "需事先申請預審觀光簽證"
+  },
+  "LC": {
+   "type": "free",
+   "days": 42,
+   "note": ""
+  },
+  "LI": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "LK": {
+   "type": "eta",
+   "days": 30,
+   "note": "需事先線上申請 ETA"
+  },
+  "LR": {
+   "type": "arrival",
+   "days": null,
+   "note": "需事先登記落地簽"
+  },
+  "LS": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "LT": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "LU": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "LV": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "LY": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "MA": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "MC": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "MD": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "ME": {
+   "type": "free",
+   "days": 90,
+   "note": "6 個月內最多 90 天，不與申根合併"
+  },
+  "MF": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "MG": {
+   "type": "arrival",
+   "days": 30,
+   "note": ""
+  },
+  "MH": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "MK": {
+   "type": "free",
+   "days": 90,
+   "note": "6 個月內最多 90 天（措施至 2030/3/31）"
+  },
+  "ML": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "MM": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "MN": {
+   "type": "evisa",
+   "days": 30,
+   "note": ""
+  },
+  "MO": {
+   "type": "free",
+   "days": 30,
+   "note": "可持台胞證入境；最新規定以陸委會公告為準"
+  },
+  "MP": {
+   "type": "free",
+   "days": 45,
+   "note": ""
+  },
+  "MQ": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "MR": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "MS": {
+   "type": "free",
+   "days": 180,
+   "note": ""
+  },
+  "MT": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "MU": {
+   "type": "arrival",
+   "days": null,
+   "note": "停留天數由移民官核定"
+  },
+  "MV": {
+   "type": "arrival",
+   "days": 30,
+   "note": ""
+  },
+  "MW": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "MX": {
+   "type": "required",
+   "days": null,
+   "note": "一般需簽證；持有效美加日英申根等簽證可免簽"
+  },
+  "MY": {
+   "type": "free",
+   "days": 30,
+   "note": "入境前需線上填寫 MDAC 入境卡"
+  },
+  "MZ": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "NA": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "NC": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "NE": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "NG": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "NI": {
+   "type": "free",
+   "days": 90,
+   "note": "資料來源為第三方，請再確認"
+  },
+  "NL": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "NO": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "NP": {
+   "type": "arrival",
+   "days": 30,
+   "note": ""
+  },
+  "NR": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "NU": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "NZ": {
+   "type": "eta",
+   "days": 90,
+   "note": "需事先線上申請並付費 NZeTA"
+  },
+  "OM": {
+   "type": "free",
+   "days": 14,
+   "note": "30 天可辦落地簽或電子簽證"
+  },
+  "PA": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "PE": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "PF": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "PG": {
+   "type": "eta",
+   "days": null,
+   "note": "需事先線上申請"
+  },
+  "PH": {
+   "type": "free",
+   "days": 14,
+   "note": "試行至 2027/6/30；或申請 ETA 停留 30 天"
+  },
+  "PK": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "PL": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "PM": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "PR": {
+   "type": "eta",
+   "days": 90,
+   "note": "美國領土，需事先申請 ESTA"
+  },
+  "PS": {
+   "type": "free",
+   "days": null,
+   "note": "需經以色列入境"
+  },
+  "PT": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "PW": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "PY": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "QA": {
+   "type": "arrival",
+   "days": 30,
+   "note": ""
+  },
+  "RE": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "RO": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "RS": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "RU": {
+   "type": "evisa",
+   "days": 30,
+   "note": "電子簽證，入境後停留 30 天"
+  },
+  "RW": {
+   "type": "arrival",
+   "days": null,
+   "note": "亦可申請電子簽證"
+  },
+  "SA": {
+   "type": "evisa",
+   "days": 90,
+   "note": ""
+  },
+  "SB": {
+   "type": "arrival",
+   "days": null,
+   "note": "領事局清單未列，請再確認"
+  },
+  "SC": {
+   "type": "arrival",
+   "days": 30,
+   "note": "免簽證制度，抵達時核發入境許可"
+  },
+  "SD": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "SE": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "SG": {
+   "type": "free",
+   "days": 30,
+   "note": "入境前需線上填寫 SG Arrival Card"
+  },
+  "SH": {
+   "type": "evisa",
+   "days": null,
+   "note": ""
+  },
+  "SI": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "SK": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "SL": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "SM": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "SN": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "SO": {
+   "type": "arrival",
+   "days": null,
+   "note": "領事局清單未列，請再確認"
+  },
+  "SR": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先線上繳交入境費"
+  },
+  "SS": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "ST": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "SV": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證；領事局清單未列，請再確認"
+  },
+  "SX": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "SY": {
+   "type": "evisa",
+   "days": 15,
+   "note": ""
+  },
+  "SZ": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "TC": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "TD": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "TG": {
+   "type": "evisa",
+   "days": 15,
+   "note": ""
+  },
+  "TH": {
+   "type": "free",
+   "days": 30,
+   "note": "入境前需線上填寫 TDAC"
+  },
+  "TJ": {
+   "type": "evisa",
+   "days": 60,
+   "note": "電子簽證最長 60 天；亦有落地簽 45 天"
+  },
+  "TL": {
+   "type": "arrival",
+   "days": 30,
+   "note": ""
+  },
+  "TM": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "TN": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "TO": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "TR": {
+   "type": "evisa",
+   "days": 30,
+   "note": "需事先申請電子簽證，180 天內累計 30 天"
+  },
+  "TT": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先以電郵向移民局申請電子簽證"
+  },
+  "TV": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "TW": {
+   "type": "home",
+   "days": null,
+   "note": ""
+  },
+  "TZ": {
+   "type": "arrival",
+   "days": 90,
+   "note": ""
+  },
+  "UA": {
+   "type": "evisa",
+   "days": 30,
+   "note": ""
+  },
+  "UG": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  },
+  "US": {
+   "type": "eta",
+   "days": 90,
+   "note": "需事先申請 ESTA"
+  },
+  "UY": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "UZ": {
+   "type": "arrival",
+   "days": null,
+   "note": "需事先辦理預審落地簽"
+  },
+  "VA": {
+   "type": "free",
+   "days": 90,
+   "note": "申根區 180 天內累計 90 天"
+  },
+  "VC": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "VE": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "VG": {
+   "type": "free",
+   "days": 30,
+   "note": ""
+  },
+  "VI": {
+   "type": "eta",
+   "days": 90,
+   "note": "美國領土，需事先申請 ESTA"
+  },
+  "VN": {
+   "type": "evisa",
+   "days": 90,
+   "note": "需事先申請電子簽證（單次 25 美元／多次 50 美元）"
+  },
+  "VU": {
+   "type": "arrival",
+   "days": 120,
+   "note": ""
+  },
+  "WF": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "WS": {
+   "type": "free",
+   "days": 60,
+   "note": ""
+  },
+  "XK": {
+   "type": "free",
+   "days": 90,
+   "note": ""
+  },
+  "YE": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "YT": {
+   "type": "free",
+   "days": 90,
+   "note": "法國海外領地，與申根區合併計算 90 天"
+  },
+  "ZA": {
+   "type": "required",
+   "days": null,
+   "note": "需事先申請簽證"
+  },
+  "ZM": {
+   "type": "free",
+   "days": 30,
+   "note": "每次給予 30 天，一年內最多 90 天"
+  },
+  "ZW": {
+   "type": "evisa",
+   "days": null,
+   "note": "需事先申請電子簽證"
+  }
+ }
+}

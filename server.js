@@ -11,6 +11,9 @@ const { createPriceWatch, RESERVE } = require('./lib/pricewatch');
 const { createDeals } = require('./lib/deals');
 const rooms = require('./lib/rooms');
 const rapid = require('./lib/rapidflights');
+const { createTravelInfo } = require('./lib/travelinfo');
+const { createDirects, DirectsError } = require('./lib/aerodatabox');
+const hotelCash = require('./lib/hotelcash');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -112,6 +115,20 @@ async function cached(key, fn) {
 }
 
 class BadRequest extends Error {}
+
+// Airport → country and coordinates, for the pre-trip notes.
+const AIRPORTS = new Map(require('./public/airports.min.json').airports.map(([code, , , country, , , , , lat, lon]) => [code, { country, lat, lon }]));
+const VISA = require('./data/visa.json');
+const WARNINGS = require('./data/warnings.json');
+const travelInfo = createTravelInfo({ visa: VISA.countries, warnings: WARNINGS.countries });
+async function handleTripInfo(q) {
+  const to = param(q, 'to', /^[A-Z]{3}$/, { required: true, upper: true });
+  const { start_date: start, end_date: end } = dateRange(q);
+  const place = AIRPORTS.get(to);
+  if (!place) throw new BadRequest('找不到這個機場');
+  const info = await travelInfo.forTrip(place, start, end, { withWeather: q.get('only') !== 'holidays' });
+  return { airport: to, ...info, sources: { visa: { name: VISA.source, url: VISA.sourceUrl, asOf: VISA.asOf }, warning: { name: WARNINGS.source, url: WARNINGS.sourceUrl, asOf: WARNINGS.asOf } } };
+}
 
 // Seat alerts: Upstash Redis (Vercel Storage tab) keeps the watches, Resend sends the mail. Demo mode keeps them in memory.
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '';
@@ -338,6 +355,45 @@ async function handleCash(q, req) {
   return { configured: true, mock: CASH_MODE === 'mock', returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), provider: raw.provider || 'mock', fallback: raw.fallback || '', ...normalizeCash(raw) };
 }
 
+// Who flies nonstop (AeroDataBox). Each origin airport costs 6 of ~400 monthly units, then stays cached for two weeks in Redis.
+const directsQuota = { left: null, limit: null };
+const directs = RAPIDAPI_KEY && createDirects({
+  apiKey: RAPIDAPI_KEY,
+  store: REDIS_URL && REDIS_TOKEN ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'directs:v1' }) : null,
+  onQuota: (q) => Object.assign(directsQuota, q),
+});
+async function handleDirects(q) {
+  const from = param(q, 'from', /^[A-Z]{3}(,[A-Z]{3}){0,2}$/, { required: true, upper: true }).split(',');
+  const to = param(q, 'to', IATA_LIST, { required: true, upper: true }).split(',');
+  if (MOCK && !directs) return { configured: true, mock: true, ...mock.mockDirects(from, to) };
+  if (!directs) return { configured: false };
+  return { configured: true, ...(await directs.between(from, to)), quota: directsQuota.left };
+}
+
+// Google Flights' lowest fare per departure day (RapidAPI, one request per call), for the month view in the cash tab.
+async function handleCashCalendar(q, req) {
+  if (CASH_MODE === 'off') return { configured: false, days: [] };
+  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查即時票價', 401), { code: 'passcode' });
+  const { start_date: start, end_date: end } = dateRange(q);
+  const today = new Date().toISOString().slice(0, 10);
+  if (start < today) throw new BadRequest('開始日期不可早於今天');
+  if ((Date.parse(end) - Date.parse(start)) / 864e5 > 61) throw new BadRequest('一次最多查 2 個月');
+  const tripDays = Number(q.get('trip_days') || 0);
+  if (!Number.isInteger(tripDays) || tripDays < 0 || tripDays > 60) throw new BadRequest('天數參數錯誤');
+  const adults = Number(q.get('adults') || 1);
+  if (!Number.isInteger(adults) || adults < 1 || adults > 9) throw new BadRequest('人數需為 1 到 9');
+  const params = {
+    departure_id: param(q, 'origin', /^[A-Z]{3}$/, { required: true, upper: true }),
+    arrival_id: param(q, 'destination', /^[A-Z]{3}$/, { required: true, upper: true }),
+    start_date: start, end_date: end, trip_days: tripDays || undefined,
+    travel_class: CABIN_CLASS[param(q, 'cabin', /^[YWJF]$/, { upper: true }) || 'Y'], adults,
+  };
+  if (CASH_MODE === 'mock') return { configured: true, mock: true, ...mock.mockCashCalendar(params) };
+  if (!rapidQuery) throw new CashError('整月價格要用 RapidAPI 的 Google Flights API，網站還沒設定 RAPIDAPI_KEY', 503);
+  const body = await cached('cashcal:' + JSON.stringify(params), () => rapidQuery.calendar(params));
+  return { configured: true, provider: 'rapid', ...body };
+}
+
 // A RapidAPI seller's booking page (one more request), fetched when the user presses its button.
 async function handleCashLink(q, req) {
   if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼', 401), { code: 'passcode' });
@@ -389,6 +445,49 @@ async function handleHotels(sub, q) {
     return { mock: MOCK, ...rooms.normalizeDetail(raw) };
   }
   throw new BadRequest('未知的飯店查詢');
+}
+
+// One hotel's cash prices for the stay a points price was shown for. Spends paid lookups, so it sits behind the passcode.
+// src=serpapi: every booking site incl. the hotel's own (1–2 SerpApi credits); src=booking: Booking.com via RapidAPI (2 requests).
+// SerpApi failing or missing falls back to Booking.com.
+const serpHotelLookup = SERPAPI_KEY && hotelCash.serpHotels({ apiKey: SERPAPI_KEY });
+const bookingQuota = { left: null, limit: null };
+const bookingLookup = RAPIDAPI_KEY && hotelCash.bookingHotels({ apiKey: RAPIDAPI_KEY, onQuota: (q) => Object.assign(bookingQuota, q) });
+async function handleHotelCash(q, req) {
+  if (!cashUnlocked(req)) throw Object.assign(new CashError('需要通關密碼才能查飯店現金價', 401), { code: 'passcode' });
+  const name = (q.get('name') || '').trim().replace(/\s+/g, ' ');
+  if (!name || name.length > 120 || /[<>{}\\]/.test(name)) throw new BadRequest('缺少飯店名稱');
+  const city = (q.get('city') || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+  const checkin = param(q, 'checkin', DATE, { required: true });
+  const checkout = param(q, 'checkout', DATE, { required: true });
+  const n = (Date.parse(checkout) - Date.parse(checkin)) / 864e5;
+  if (n < 1 || n > 14) throw new BadRequest('住宿晚數需為 1 到 14 晚');
+  if (checkin < new Date().toISOString().slice(0, 10)) throw new BadRequest('入住日期不可早於今天');
+  const adults = Number(q.get('adults') || 2);
+  if (!Number.isInteger(adults) || adults < 1 || adults > 6) throw new BadRequest('人數需為 1 到 6');
+  const lat = Number(q.get('lat')); const lon = Number(q.get('lon'));
+  const want = { name, city: /[<>{}]/.test(city) ? '' : city, checkin, checkout, adults, lat: Number.isFinite(lat) && q.get('lat') ? lat : null, lon: Number.isFinite(lon) && q.get('lon') ? lon : null };
+  const src = q.get('src') === 'booking' ? 'booking' : 'serpapi';
+  if (MOCK && !SERPAPI_KEY && !RAPIDAPI_KEY) return { mock: true, ...mock.mockHotelCash(want, src) };
+  const key = `hcash:${src}:` + JSON.stringify(want);
+  let fallback = '';
+  if (src === 'serpapi' && serpHotelLookup) {
+    try {
+      return { ...(await cached(key, () => serpHotelLookup(want))), serpLeft: await serpLeft() };
+    } catch (e) {
+      if (!(e instanceof hotelCash.HotelCashError) || !bookingLookup) throw e;
+      fallback = e.message;
+    }
+  } else if (src === 'serpapi') fallback = '沒有設定 SerpApi';
+  if (!bookingLookup) throw new hotelCash.HotelCashError('沒有設定飯店現金價的資料來源', 503);
+  const body = await cached(`hcash:booking:` + JSON.stringify(want), () => bookingLookup(want));
+  // Booking.com may answer in another currency; convert with the same daily rates as the award taxes.
+  let total = body.total;
+  if (total && body.currency && body.currency !== 'TWD') {
+    const rate = (await handleFx()).rates[body.currency];
+    total = rate ? total * rate : null;
+  }
+  return { ...body, total: total ? Math.round(total) : null, currency: 'TWD', fallback, bookingLeft: bookingQuota.left, bookingLimit: bookingQuota.limit };
 }
 
 async function handleTrips(id) {
@@ -444,8 +543,12 @@ async function route(req, res) {
       });
     }
     if (p === '/api/cash') return sendJson(res, 200, await handleCash(q, req));
+    if (p === '/api/cash/calendar') return sendJson(res, 200, await handleCashCalendar(q, req));
+    if (p === '/api/directs') return sendJson(res, 200, await handleDirects(q));
+    if (p === '/api/trip-info') return sendJson(res, 200, await handleTripInfo(q));
     if (p === '/api/cash/link') return sendJson(res, 200, await handleCashLink(q, req));
     if (p === '/api/cash/quota') return sendJson(res, 200, await handleCashQuota());
+    if (p === '/api/hotels/cash') return sendJson(res, 200, await handleHotelCash(q, req));
     const hm = p.match(/^\/api\/hotels\/(search|calendar|rooms)$/);
     if (hm) return sendJson(res, 200, await handleHotels(hm[1], q));
     if (p === '/api/fx') return sendJson(res, 200, await handleFx());
@@ -466,7 +569,7 @@ async function route(req, res) {
     serveStatic(res, p);
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
-    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

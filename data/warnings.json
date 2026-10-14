@@ -1,0 +1,896 @@
+{
+ "note": "MOFA travel warning levels (gray/yellow/orange/red) snapshot from the BOCA list page; CN/HK/MO come from the Mainland Affairs Council. Notes are our own wording.",
+ "source": "外交部領事事務局",
+ "sourceUrl": "https://www.boca.gov.tw/sp-trwa-list-1.html",
+ "asOf": "2026-10-13",
+ "countries": {
+  "AD": {
+   "level": "gray",
+   "note": ""
+  },
+  "AE": {
+   "level": "orange",
+   "note": ""
+  },
+  "AF": {
+   "level": "red",
+   "note": ""
+  },
+  "AG": {
+   "level": "yellow",
+   "note": ""
+  },
+  "AI": {
+   "level": "yellow",
+   "note": ""
+  },
+  "AL": {
+   "level": "gray",
+   "note": ""
+  },
+  "AM": {
+   "level": "orange",
+   "note": ""
+  },
+  "AO": {
+   "level": "orange",
+   "note": ""
+  },
+  "AR": {
+   "level": "gray",
+   "note": ""
+  },
+  "AT": {
+   "level": "gray",
+   "note": ""
+  },
+  "AU": {
+   "level": "gray",
+   "note": ""
+  },
+  "AW": {
+   "level": "yellow",
+   "note": ""
+  },
+  "AZ": {
+   "level": "orange",
+   "note": ""
+  },
+  "BA": {
+   "level": "gray",
+   "note": ""
+  },
+  "BB": {
+   "level": "gray",
+   "note": ""
+  },
+  "BD": {
+   "level": "yellow",
+   "note": ""
+  },
+  "BE": {
+   "level": "yellow",
+   "note": ""
+  },
+  "BF": {
+   "level": "red",
+   "note": ""
+  },
+  "BG": {
+   "level": "gray",
+   "note": ""
+  },
+  "BH": {
+   "level": "orange",
+   "note": ""
+  },
+  "BI": {
+   "level": "red",
+   "note": ""
+  },
+  "BJ": {
+   "level": "red",
+   "note": ""
+  },
+  "BL": {
+   "level": "yellow",
+   "note": ""
+  },
+  "BM": {
+   "level": "gray",
+   "note": ""
+  },
+  "BN": {
+   "level": "gray",
+   "note": ""
+  },
+  "BO": {
+   "level": "orange",
+   "note": ""
+  },
+  "BQ": {
+   "level": "yellow",
+   "note": "沙巴、聖佑達修斯"
+  },
+  "BR": {
+   "level": "orange",
+   "note": ""
+  },
+  "BS": {
+   "level": "gray",
+   "note": ""
+  },
+  "BT": {
+   "level": "yellow",
+   "note": ""
+  },
+  "BW": {
+   "level": "orange",
+   "note": ""
+  },
+  "BY": {
+   "level": "red",
+   "note": ""
+  },
+  "BZ": {
+   "level": "yellow",
+   "note": ""
+  },
+  "CA": {
+   "level": "gray",
+   "note": ""
+  },
+  "CD": {
+   "level": "red",
+   "note": ""
+  },
+  "CF": {
+   "level": "red",
+   "note": ""
+  },
+  "CG": {
+   "level": "red",
+   "note": ""
+  },
+  "CH": {
+   "level": "gray",
+   "note": ""
+  },
+  "CI": {
+   "level": "yellow",
+   "note": "北部及西部邊境為橙色避免前往"
+  },
+  "CK": {
+   "level": "gray",
+   "note": ""
+  },
+  "CL": {
+   "level": "yellow",
+   "note": ""
+  },
+  "CM": {
+   "level": "red",
+   "note": ""
+  },
+  "CN": {
+   "level": "orange",
+   "note": "陸委會發布（非外交部分級表），2024/6/27 起"
+  },
+  "CO": {
+   "level": "orange",
+   "note": ""
+  },
+  "CR": {
+   "level": "yellow",
+   "note": ""
+  },
+  "CU": {
+   "level": "orange",
+   "note": ""
+  },
+  "CV": {
+   "level": "yellow",
+   "note": ""
+  },
+  "CW": {
+   "level": "yellow",
+   "note": ""
+  },
+  "CY": {
+   "level": "gray",
+   "note": ""
+  },
+  "CZ": {
+   "level": "gray",
+   "note": ""
+  },
+  "DE": {
+   "level": "gray",
+   "note": ""
+  },
+  "DJ": {
+   "level": "red",
+   "note": ""
+  },
+  "DK": {
+   "level": "gray",
+   "note": ""
+  },
+  "DM": {
+   "level": "gray",
+   "note": ""
+  },
+  "DO": {
+   "level": "yellow",
+   "note": ""
+  },
+  "DZ": {
+   "level": "orange",
+   "note": ""
+  },
+  "EC": {
+   "level": "orange",
+   "note": ""
+  },
+  "EE": {
+   "level": "gray",
+   "note": ""
+  },
+  "EG": {
+   "level": "orange",
+   "note": "西奈半島及利比亞、蘇丹邊境為紅色儘速離境"
+  },
+  "ER": {
+   "level": "red",
+   "note": ""
+  },
+  "ES": {
+   "level": "gray",
+   "note": ""
+  },
+  "ET": {
+   "level": "red",
+   "note": ""
+  },
+  "FI": {
+   "level": "gray",
+   "note": ""
+  },
+  "FJ": {
+   "level": "gray",
+   "note": ""
+  },
+  "FM": {
+   "level": "gray",
+   "note": ""
+  },
+  "FR": {
+   "level": "gray",
+   "note": ""
+  },
+  "GA": {
+   "level": "red",
+   "note": ""
+  },
+  "GB": {
+   "level": "gray",
+   "note": ""
+  },
+  "GD": {
+   "level": "gray",
+   "note": ""
+  },
+  "GE": {
+   "level": "orange",
+   "note": ""
+  },
+  "GF": {
+   "level": "gray",
+   "note": ""
+  },
+  "GH": {
+   "level": "orange",
+   "note": ""
+  },
+  "GM": {
+   "level": "orange",
+   "note": ""
+  },
+  "GN": {
+   "level": "red",
+   "note": ""
+  },
+  "GP": {
+   "level": "gray",
+   "note": ""
+  },
+  "GQ": {
+   "level": "red",
+   "note": ""
+  },
+  "GR": {
+   "level": "gray",
+   "note": ""
+  },
+  "GT": {
+   "level": "yellow",
+   "note": ""
+  },
+  "GW": {
+   "level": "orange",
+   "note": ""
+  },
+  "GY": {
+   "level": "orange",
+   "note": ""
+  },
+  "HK": {
+   "level": "orange",
+   "note": "陸委會發布（非外交部分級表），2024/6/27 起"
+  },
+  "HN": {
+   "level": "yellow",
+   "note": ""
+  },
+  "HR": {
+   "level": "gray",
+   "note": ""
+  },
+  "HT": {
+   "level": "red",
+   "note": ""
+  },
+  "HU": {
+   "level": "gray",
+   "note": ""
+  },
+  "ID": {
+   "level": "yellow",
+   "note": "中巴布亞及高地巴布亞省為橙色避免前往"
+  },
+  "IE": {
+   "level": "gray",
+   "note": ""
+  },
+  "IL": {
+   "level": "yellow",
+   "note": "以黎邊界為紅色儘速離境"
+  },
+  "IN": {
+   "level": "yellow",
+   "note": "鄰近巴基斯坦地區為橙色避免前往"
+  },
+  "IQ": {
+   "level": "red",
+   "note": ""
+  },
+  "IR": {
+   "level": "red",
+   "note": ""
+  },
+  "IS": {
+   "level": "yellow",
+   "note": ""
+  },
+  "IT": {
+   "level": "gray",
+   "note": ""
+  },
+  "JM": {
+   "level": "yellow",
+   "note": ""
+  },
+  "JO": {
+   "level": "orange",
+   "note": "敘伊邊境為紅色儘速離境"
+  },
+  "JP": {
+   "level": "gray",
+   "note": ""
+  },
+  "KE": {
+   "level": "orange",
+   "note": ""
+  },
+  "KG": {
+   "level": "yellow",
+   "note": "與塔、烏接壤邊界為橙色避免前往"
+  },
+  "KH": {
+   "level": "orange",
+   "note": "西北邊境六省為紅色儘速離境"
+  },
+  "KI": {
+   "level": "gray",
+   "note": ""
+  },
+  "KM": {
+   "level": "orange",
+   "note": ""
+  },
+  "KN": {
+   "level": "gray",
+   "note": ""
+  },
+  "KP": {
+   "level": "red",
+   "note": ""
+  },
+  "KR": {
+   "level": "gray",
+   "note": ""
+  },
+  "KW": {
+   "level": "orange",
+   "note": ""
+  },
+  "KY": {
+   "level": "yellow",
+   "note": ""
+  },
+  "KZ": {
+   "level": "yellow",
+   "note": ""
+  },
+  "LA": {
+   "level": "orange",
+   "note": ""
+  },
+  "LB": {
+   "level": "red",
+   "note": ""
+  },
+  "LC": {
+   "level": "gray",
+   "note": ""
+  },
+  "LI": {
+   "level": "gray",
+   "note": ""
+  },
+  "LK": {
+   "level": "yellow",
+   "note": ""
+  },
+  "LR": {
+   "level": "orange",
+   "note": ""
+  },
+  "LS": {
+   "level": "orange",
+   "note": ""
+  },
+  "LT": {
+   "level": "gray",
+   "note": ""
+  },
+  "LU": {
+   "level": "gray",
+   "note": ""
+  },
+  "LV": {
+   "level": "gray",
+   "note": ""
+  },
+  "LY": {
+   "level": "red",
+   "note": ""
+  },
+  "MA": {
+   "level": "orange",
+   "note": ""
+  },
+  "MC": {
+   "level": "gray",
+   "note": ""
+  },
+  "MD": {
+   "level": "orange",
+   "note": ""
+  },
+  "ME": {
+   "level": "gray",
+   "note": ""
+  },
+  "MF": {
+   "level": "yellow",
+   "note": "聖馬丁"
+  },
+  "MG": {
+   "level": "orange",
+   "note": ""
+  },
+  "MH": {
+   "level": "gray",
+   "note": ""
+  },
+  "MK": {
+   "level": "gray",
+   "note": ""
+  },
+  "ML": {
+   "level": "red",
+   "note": ""
+  },
+  "MM": {
+   "level": "orange",
+   "note": "全國橙色；克欽、若開、撣北等邦省為紅色儘速離境；仰光、奈比都為黃色"
+  },
+  "MN": {
+   "level": "yellow",
+   "note": ""
+  },
+  "MO": {
+   "level": "orange",
+   "note": "陸委會發布（非外交部分級表），2024/6/27 起"
+  },
+  "MQ": {
+   "level": "gray",
+   "note": ""
+  },
+  "MR": {
+   "level": "red",
+   "note": ""
+  },
+  "MS": {
+   "level": "yellow",
+   "note": ""
+  },
+  "MT": {
+   "level": "gray",
+   "note": ""
+  },
+  "MU": {
+   "level": "yellow",
+   "note": ""
+  },
+  "MV": {
+   "level": "gray",
+   "note": ""
+  },
+  "MW": {
+   "level": "orange",
+   "note": ""
+  },
+  "MX": {
+   "level": "yellow",
+   "note": ""
+  },
+  "MY": {
+   "level": "gray",
+   "note": "沙巴東部沿海為黃色注意"
+  },
+  "MZ": {
+   "level": "yellow",
+   "note": "Cabo Delgado 省為紅色儘速離境"
+  },
+  "NA": {
+   "level": "yellow",
+   "note": ""
+  },
+  "NC": {
+   "level": "yellow",
+   "note": ""
+  },
+  "NE": {
+   "level": "red",
+   "note": ""
+  },
+  "NG": {
+   "level": "red",
+   "note": ""
+  },
+  "NI": {
+   "level": "orange",
+   "note": ""
+  },
+  "NL": {
+   "level": "gray",
+   "note": ""
+  },
+  "NO": {
+   "level": "yellow",
+   "note": ""
+  },
+  "NP": {
+   "level": "orange",
+   "note": ""
+  },
+  "NR": {
+   "level": "yellow",
+   "note": ""
+  },
+  "NU": {
+   "level": "gray",
+   "note": ""
+  },
+  "NZ": {
+   "level": "gray",
+   "note": ""
+  },
+  "OM": {
+   "level": "orange",
+   "note": ""
+  },
+  "PA": {
+   "level": "yellow",
+   "note": ""
+  },
+  "PE": {
+   "level": "yellow",
+   "note": ""
+  },
+  "PF": {
+   "level": "gray",
+   "note": ""
+  },
+  "PG": {
+   "level": "red",
+   "note": ""
+  },
+  "PH": {
+   "level": "gray",
+   "note": "民答那峨島為橙色避免前往"
+  },
+  "PK": {
+   "level": "red",
+   "note": ""
+  },
+  "PL": {
+   "level": "gray",
+   "note": ""
+  },
+  "PR": {
+   "level": "yellow",
+   "note": ""
+  },
+  "PS": {
+   "level": "red",
+   "note": "約旦河西岸、加薩走廊"
+  },
+  "PT": {
+   "level": "gray",
+   "note": ""
+  },
+  "PW": {
+   "level": "gray",
+   "note": ""
+  },
+  "PY": {
+   "level": "gray",
+   "note": ""
+  },
+  "QA": {
+   "level": "orange",
+   "note": ""
+  },
+  "RE": {
+   "level": "gray",
+   "note": ""
+  },
+  "RO": {
+   "level": "gray",
+   "note": ""
+  },
+  "RS": {
+   "level": "gray",
+   "note": ""
+  },
+  "RU": {
+   "level": "red",
+   "note": ""
+  },
+  "RW": {
+   "level": "orange",
+   "note": ""
+  },
+  "SA": {
+   "level": "orange",
+   "note": "與葉門邊界納季蘭為紅色儘速離境"
+  },
+  "SB": {
+   "level": "orange",
+   "note": ""
+  },
+  "SC": {
+   "level": "orange",
+   "note": ""
+  },
+  "SD": {
+   "level": "red",
+   "note": ""
+  },
+  "SE": {
+   "level": "yellow",
+   "note": ""
+  },
+  "SG": {
+   "level": "gray",
+   "note": ""
+  },
+  "SI": {
+   "level": "gray",
+   "note": ""
+  },
+  "SK": {
+   "level": "gray",
+   "note": ""
+  },
+  "SL": {
+   "level": "orange",
+   "note": ""
+  },
+  "SM": {
+   "level": "gray",
+   "note": ""
+  },
+  "SN": {
+   "level": "red",
+   "note": ""
+  },
+  "SO": {
+   "level": "red",
+   "note": "含索馬利蘭"
+  },
+  "SR": {
+   "level": "yellow",
+   "note": ""
+  },
+  "SS": {
+   "level": "red",
+   "note": ""
+  },
+  "ST": {
+   "level": "orange",
+   "note": ""
+  },
+  "SV": {
+   "level": "yellow",
+   "note": ""
+  },
+  "SX": {
+   "level": "yellow",
+   "note": "聖馬丁（荷屬）"
+  },
+  "SY": {
+   "level": "red",
+   "note": ""
+  },
+  "SZ": {
+   "level": "yellow",
+   "note": ""
+  },
+  "TC": {
+   "level": "yellow",
+   "note": ""
+  },
+  "TD": {
+   "level": "red",
+   "note": ""
+  },
+  "TG": {
+   "level": "red",
+   "note": ""
+  },
+  "TH": {
+   "level": "yellow",
+   "note": "泰柬邊境七府為橙色避免前往"
+  },
+  "TJ": {
+   "level": "yellow",
+   "note": "與阿富汗、吉、烏接壤邊界為橙色避免前往"
+  },
+  "TL": {
+   "level": "yellow",
+   "note": ""
+  },
+  "TM": {
+   "level": "yellow",
+   "note": ""
+  },
+  "TN": {
+   "level": "orange",
+   "note": "中西部山區及阿、利邊界為紅色儘速離境"
+  },
+  "TO": {
+   "level": "gray",
+   "note": ""
+  },
+  "TR": {
+   "level": "yellow",
+   "note": "土敘邊界 10 公里內為紅色儘速離境"
+  },
+  "TT": {
+   "level": "orange",
+   "note": ""
+  },
+  "TV": {
+   "level": "gray",
+   "note": ""
+  },
+  "TZ": {
+   "level": "orange",
+   "note": "南部及西部邊境省區為紅色儘速離境"
+  },
+  "UA": {
+   "level": "red",
+   "note": ""
+  },
+  "UG": {
+   "level": "red",
+   "note": ""
+  },
+  "US": {
+   "level": "gray",
+   "note": "夏威夷州為黃色注意"
+  },
+  "UY": {
+   "level": "gray",
+   "note": ""
+  },
+  "UZ": {
+   "level": "yellow",
+   "note": ""
+  },
+  "VA": {
+   "level": "gray",
+   "note": ""
+  },
+  "VC": {
+   "level": "gray",
+   "note": ""
+  },
+  "VE": {
+   "level": "red",
+   "note": ""
+  },
+  "VG": {
+   "level": "yellow",
+   "note": ""
+  },
+  "VI": {
+   "level": "yellow",
+   "note": ""
+  },
+  "VN": {
+   "level": "gray",
+   "note": ""
+  },
+  "VU": {
+   "level": "yellow",
+   "note": ""
+  },
+  "WF": {
+   "level": "gray",
+   "note": ""
+  },
+  "WS": {
+   "level": "gray",
+   "note": ""
+  },
+  "XK": {
+   "level": "gray",
+   "note": ""
+  },
+  "YE": {
+   "level": "red",
+   "note": ""
+  },
+  "YT": {
+   "level": "gray",
+   "note": ""
+  },
+  "ZA": {
+   "level": "orange",
+   "note": ""
+  },
+  "ZM": {
+   "level": "orange",
+   "note": ""
+  },
+  "ZW": {
+   "level": "red",
+   "note": ""
+  }
+ }
+}
