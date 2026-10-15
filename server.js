@@ -528,31 +528,18 @@ async function handleExpiry(req) {
   const body = await readJson(req, 20_000);
   try { return await expiry.saveOwner(body); } catch (e) { throw new BadRequest(e.message); }
 }
-// 國泰官網實查 (lib/cxcal-store.js): the owner's own Cathay award calendar uploaded by tools/cathay-runner (or the
-// bookmarklet), the routes it should sweep, an on-demand queue and its heartbeat. Reading is public; writing takes the passcode.
+// 國泰官網實查 (lib/cxcal-store.js): the owner's own Cathay award calendar saved from the bookmarklet. Reading is public;
+// writing takes the passcode.
 const cxcalStore = createCxcalStore({ kv });
-async function handleCxcal(req, q, sub) {
+async function handleCxcal(req, q) {
   const m = req.method;
-  if (sub === 'status') return cxcalStore.status();
-  if (sub === '' && m === 'GET') {
+  if (m === 'GET') {
     const routes = await cxcalStore.find(q.get('origin'), q.get('destination'));
     return routes.length ? { found: true, ...routes[0], routes } : { found: false };
   }
-  if (sub === 'wanted' && m === 'GET' && !cashPasscode() && !manageOpen()) return { routes: [], queue: [], configured: false };
-  if (!(await alertsAllowed(req))) throw cashPasscode() ? passError(req, '需要通關密碼才能管理國泰定時查詢') : noPasscode('國泰定時查詢');
-  if (sub === 'wanted') {
-    if (m === 'POST') {
-      const body = await readJson(req);
-      const routes = body.action === 'remove' ? await cxcalStore.removeWanted(body) : await cxcalStore.addWanted(body);
-      return { configured: true, routes, queue: await cxcalStore.queue() };
-    }
-    return { configured: true, routes: await cxcalStore.wanted(), queue: await cxcalStore.queue() };
-  }
+  if (!(await alertsAllowed(req))) throw cashPasscode() ? passError(req, '需要通關密碼才能儲存國泰日曆') : noPasscode('國泰日曆');
   if (m !== 'POST') throw new BadRequest('method not allowed');
-  const body = await readJson(req, sub === '' ? 70_000 : 10_000);
-  if (sub === 'queue') return { queue: body.action === 'done' ? await cxcalStore.dequeue(body) : await cxcalStore.enqueue(body) };
-  if (sub === 'heartbeat') return cxcalStore.heartbeat(body);
-  return cxcalStore.save(body);
+  return cxcalStore.save(await readJson(req, 70_000));
 }
 const sidCookie = (sid, maxAge) => `sid=${sid}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge != null ? `; Max-Age=${maxAge}` : ''}`;
 const clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
@@ -1177,10 +1164,9 @@ async function route(req, res) {
       if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleExpiry(req));
     }
-    const cm = p.match(/^\/api\/cxcal(?:\/(wanted|queue|heartbeat|status))?$/);
-    if (cm) {
+    if (p === '/api/cxcal') {
       if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
-      return sendJson(res, 200, await handleCxcal(req, q, cm[1] || ''));
+      return sendJson(res, 200, await handleCxcal(req, q));
     }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
