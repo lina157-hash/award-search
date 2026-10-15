@@ -1029,7 +1029,22 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- daily deals (shown on the search page before searching) ----------
-const dealsState = { cabin: 'J', body: null };
+const dealsState = { cabin: 'J', body: null, busy: false, timer: 0 };
+// 立即更新 can run once an hour; after this device's own update the button waits, saying until when.
+const DEALS_WAIT_KEY = 'dealsManualAt';
+const hhmmLocal = (t) => new Date(t).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+function dealsRefreshHtml() {
+  // Shown as soon as the passcode is entered and gone after 清除密碼 (app.js lockChanged redraws this).
+  if (!store.get('cashPass', '') && cashCfg.locked) return '';
+  if (dealsState.busy) return ' <button type="button" class="linkish" disabled>更新中…（約半分鐘）</button>';
+  const until = Number(store.get(DEALS_WAIT_KEY, 0)) + 3600e3;
+  clearTimeout(dealsState.timer);
+  if (Date.now() < until) {
+    dealsState.timer = setTimeout(renderDeals, until - Date.now() + 1000);
+    return ` <span>已手動更新，${hhmmLocal(until)} 後可再更新</span>`;
+  }
+  return ' <button type="button" class="linkish" id="deals-refresh">立即更新（用約 8 次查詢，每小時一次）</button>';
+}
 async function loadDeals() {
   const host = $('#deals');
   if (!host) return;
@@ -1061,24 +1076,27 @@ function renderDeals() {
         <span class="dm-miles">${fmt(d.miles)} <small>哩</small>${d.direct ? '<small class="dm-direct">直飛</small>' : ''}</span>
         <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>
       </button>`).join('')}</div></div>`).join('') || '<p class="hint">這個艙等今天沒有整理到好康。</p>'}
-    <p class="hint">每 12 小時整理一次（早上 8 點多、晚上 9 點多），座位可能已被訂走；點卡片會查那一天前後三天。${store.get('cashPass', '') || !cashCfg.locked ? ' <button type="button" class="linkish" id="deals-refresh">立即更新（用約 8 次查詢，每小時一次）</button>' : ''}</p>`;
+    <p class="hint">每 12 小時整理一次（早上 8 點多、晚上 9 點多），座位可能已被訂走；點卡片會查那一天前後三天。${dealsRefreshHtml()}</p>`;
   $$('input[name=deal-cabin]', host).forEach((i) => i.addEventListener('change', () => { dealsState.cabin = i.value; renderDeals(); }));
   $('#deals-refresh', host)?.addEventListener('click', async (e) => {
     const b = e.currentTarget;
     b.disabled = true;
     b.textContent = '更新中…（約半分鐘）';
+    dealsState.busy = true;
     try {
-      const d = await cashApi('/api/deals', { method: 'POST' });
+      const d = await cashApi('/api/deals', { pass: '今日好康的立即更新', method: 'POST' });
+      dealsState.busy = false;
       dealsState.body = d;
       if (d.refreshed && d.generatedAt) store.set('dealsAt', d.generatedAt);
+      if (d.refreshed) store.set(DEALS_WAIT_KEY, Date.now());
       renderDeals();
       // Say what actually happened; when nothing was updated, the hour's turn was not used.
       const why = d.groups?.find((g) => g.error)?.error;
       toast(d.busy ? '另一個更新正在進行，這次沒有更新，請過幾分鐘再試' : !d.refreshed ? `今日好康沒有更新${why ? `（${why}）` : ''}，這次不算，可以稍後再試` : d.failedGroups ? `已更新 ${d.refreshed} 組，${d.failedGroups} 組沒更新成功，先保留舊資料` : '今日好康已更新');
     } catch (err) {
+      dealsState.busy = false;
       toast(err.message);
-      b.disabled = false;
-      b.textContent = '立即更新（用約 8 次查詢，每小時一次）';
+      renderDeals();
     }
   });
   $$('[data-deal]', host).forEach((b) => b.addEventListener('click', () => {
@@ -1415,7 +1433,7 @@ function bindWatchButton(box) {
       try {
         const email = f.email.value.trim();
         store.set(ALERT_EMAIL_KEY, email);
-        const body = await cashApi('/api/watch', { method: 'POST', headers: { 'content-type': 'application/json' },
+        const body = await cashApi('/api/watch', { pass: '降價追蹤', method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ origin: r.origin, destination: r.destination, depart: r.depart, ret: r.ret, cabin: r.cabin, adults: r.adults, stops: r.stops, flights: cash.chosen.out.segments.map((x) => (x.flightNumber || '').replace(/\s/g, '')).join('+'), email,
             // The fare on screen becomes the starting price, so starting a watch costs no lookup. For a round trip that is the
             // outbound list's "from" price, which is what each later check measures too.
@@ -1435,9 +1453,14 @@ async function loadWatches() {
   if (!panel || !box) return;
   panel.hidden = !watchCfg.on;
   if (!watchCfg.on || !panel.open) return;
+  if (passNeeded()) {
+    box.innerHTML = lockNoteHtml('降價追蹤');
+    $('[data-unlock]', box).addEventListener('click', () => unlockFor('降價追蹤', loadWatches));
+    return;
+  }
   box.innerHTML = '<p class="hint">載入中…</p>';
   try {
-    const body = await cashApi('/api/watch');
+    const body = await cashApi('/api/watch', { pass: '降價追蹤' });
     const list = body.watches || [];
     $('#watch-count').textContent = list.length ? `（${list.length}）` : '';
     box.innerHTML = list.length ? `<ul class="alert-list">${list.map((w) => {
@@ -1449,7 +1472,7 @@ async function loadWatches() {
       </li>`;
     }).join('')}</ul><p class="hint">本月追蹤已用 ${body.used || 0} / ${body.cap} 次查價額度。</p>` : '<p class="hint">還沒有追蹤。在查現金票選好航班後，按「📉 追蹤降價」。</p>';
     $$('[data-wdel]', box).forEach((b) => b.addEventListener('click', async () => {
-      try { await cashApi(`/api/watch?id=${encodeURIComponent(b.dataset.wdel)}`, { method: 'DELETE' }); toast('已停止追蹤'); loadWatches(); } catch (err) { toast(err.message); }
+      try { await cashApi(`/api/watch?id=${encodeURIComponent(b.dataset.wdel)}`, { pass: '降價追蹤', method: 'DELETE' }); toast('已停止追蹤'); loadWatches(); } catch (err) { toast(err.message); }
     }));
   } catch (err) {
     box.innerHTML = `<p class="status error">${esc(err.message)}</p>`;

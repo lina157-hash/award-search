@@ -1031,7 +1031,7 @@ $('#alert-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   try {
     store.set(ALERT_EMAIL_KEY, f.email.value.trim());
-    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), pax: f.pax.value, email: f.email.value.trim(), ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
+    const body = await cashApi('/api/alerts', { pass: '機位提醒', method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), pax: f.pax.value, email: f.email.value.trim(), ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
     $('#alert-dialog').close();
     toast(`已建立提醒，目前有 ${body.found} 筆有位`);
     $('#alerts-panel').open = true;
@@ -1045,16 +1045,21 @@ $('#alert-form').addEventListener('submit', async (e) => {
 async function loadAlerts() {
   const box = $('#alerts-body');
   if (!alertCfg.store) { box.innerHTML = ALERT_SETUP; $('#alerts-count').textContent = ''; return; }
+  if (passNeeded()) {
+    box.innerHTML = lockNoteHtml('機位提醒');
+    $('[data-unlock]', box).addEventListener('click', () => unlockFor('機位提醒', loadAlerts));
+    return;
+  }
   box.innerHTML = '<p class="hint">載入中…</p>';
   try {
-    const body = await cashApi('/api/alerts');
+    const body = await cashApi('/api/alerts', { pass: '機位提醒' });
     const list = body.alerts || [];
     $('#alerts-count').textContent = list.length ? `（${list.length}）` : '';
     box.innerHTML = (list.length ? `<ul class="alert-list">${list.map((a) => `<li>
         <div><b>${esc(alertSummary(a))}</b>${alertFilterText(a) ? `<small>${esc(alertFilterText(a))}</small>` : ''}${a.email ? `<small>→ ${esc(a.email)}</small>` : '<small>只在網站顯示</small>'}</div>
         <div class="hint">${a.lastRun ? `上次檢查 ${ago(a.lastRun)}：有位 ${a.lastFound ?? '—'} 筆${a.lastNew ? `，<b class="new">新增 ${a.lastNew} 筆</b>` : ''}` : '尚未檢查'}${a.lastError ? `　⚠ ${esc(a.lastError)}` : ''}</div>
         <div class="alert-actions"><button type="button" class="outline" data-open="${esc(alertShare(a))}">查看</button><button type="button" class="outline" data-edit="${esc(a.id)}" aria-expanded="false">修改</button><button type="button" class="outline" data-del="${esc(a.id)}">刪除</button></div>
-      </li>`).join('')}</ul>` : '<p class="hint">還沒有提醒。搜尋一條航線後，按結果上方的「🔔 有新機位通知我」。</p>')
+      </li>`).join('')}</ul>` : '<p class="hint">還沒有提醒。搜尋一條航線後，按結果上方的「🔔 新機位通知」。</p>')
       + `<div class="alert-foot">${list.length ? '<button type="button" class="outline" id="alerts-run">立即檢查全部</button>' : ''}<span class="hint">每天早上 8 點多（台灣時間）自動檢查${body.email ? '並寄信' : '；尚未設定寄信服務，只會顯示在這裡'}。</span></div>`;
     $$('[data-open]', box).forEach((b) => b.addEventListener('click', () => applyShare(new URLSearchParams(b.dataset.open))));
     $$('[data-edit]', box).forEach((b) => b.addEventListener('click', () => {
@@ -1081,7 +1086,7 @@ async function loadAlerts() {
       btn.disabled = true;
       try {
         const codes = (v) => v.toUpperCase().split(/[\s,，、]+/).filter(Boolean).join(',');
-        const r = await cashApi(`/api/alerts?id=${encodeURIComponent(f.dataset.id)}`, { method: 'PUT', body: JSON.stringify({ origin: codes(f.origin.value), destination: codes(f.destination.value), start: f.start.value, end: f.end.value, pax: f.pax.value, ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
+        const r = await cashApi(`/api/alerts?id=${encodeURIComponent(f.dataset.id)}`, { pass: '機位提醒', method: 'PUT', body: JSON.stringify({ origin: codes(f.origin.value), destination: codes(f.destination.value), start: f.start.value, end: f.end.value, pax: f.pax.value, ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
         toast(`已更新提醒，目前有 ${r.found} 筆有位，之後只通知新出現的`);
         loadAlerts();
       } catch (err) {
@@ -1090,14 +1095,17 @@ async function loadAlerts() {
       }
     };
     $$('[data-del]', box).forEach((b) => b.addEventListener('click', async () => {
-      try { await cashApi(`/api/alerts?id=${encodeURIComponent(b.dataset.del)}`, { method: 'DELETE' }); toast('已刪除提醒'); loadAlerts(); } catch (err) { toast(err.message); }
+      // Its record of the seats already seen goes too (a new one would start counting from today's seats), so ask first.
+      const a = list.find((x) => x.id === b.dataset.del);
+      if (!confirm(`刪除這個機位提醒？\n${a ? alertSummary(a) : ''}`)) return;
+      try { await cashApi(`/api/alerts?id=${encodeURIComponent(b.dataset.del)}`, { pass: '機位提醒', method: 'DELETE' }); toast('已刪除提醒'); loadAlerts(); } catch (err) { toast(err.message); }
     }));
     $('#alerts-run')?.addEventListener('click', async () => {
       const b = $('#alerts-run');
       b.disabled = true;
       b.textContent = '檢查中…';
       try {
-        const r = await cashApi('/api/alerts/run');
+        const r = await cashApi('/api/alerts/run', { pass: '機位提醒' });
         const fresh = r.report.reduce((n, x) => n + (x.fresh || 0), 0);
         toast(fresh ? `檢查完成，新增 ${fresh} 筆機位` : '檢查完成，沒有新機位');
         loadAlerts();
@@ -2078,6 +2086,7 @@ function askPass(message) {
 }
 $('#pass-cancel').addEventListener('click', () => $('#pass-dialog').close(''));
 function updateLockHint() {
+  lockChanged();
   const el = $('#cash-lock');
   el.hidden = !cashCfg.locked;
   if (!cashCfg.locked) return;
@@ -2086,14 +2095,37 @@ function updateLockHint() {
     : '🔒 即時查價會用付費額度，需要通關密碼（不是登入密碼），按「搜尋票價」時會請你輸入。';
   $('#pass-forget')?.addEventListener('click', () => { store.del(PASS_KEY); updateLockHint(); toast('已清除通關密碼'); });
 }
-// Fetch a cash-fare endpoint, asking for the passcode when the server wants one.
-async function cashApi(path, opts = {}) {
+// What follows the passcode as soon as it is entered or cleared: 今日好康's 立即更新 and the lock note in an open
+// 機位提醒 / 降價追蹤 panel.
+function lockChanged() {
+  if (typeof renderDeals === 'function') renderDeals();
+  const stale = (box) => Boolean($('[data-unlock]', box)) === !passNeeded();
+  if ($('#alerts-panel')?.open && stale($('#alerts-body'))) loadAlerts();
+  if ($('#watch-panel')?.open && $('#watch-body') && stale($('#watch-body')) && typeof loadWatches === 'function') loadWatches();
+}
+// What the passcode prompt says for a feature other than live fares (`pass` in cashApi's options, e.g. 「機位提醒」).
+const passMsg = (what) => (what ? `${what}會用到網站的查詢額度，所以要輸入站長給的通關密碼（不是帳號的登入密碼）。輸入一次後這台裝置會記住。` : '');
+// A locked site with no passcode on this device: alerts and price tracking show a note with a button instead of
+// asking by themselves.
+const passNeeded = () => cashCfg.locked && !store.get(PASS_KEY, '');
+const lockNoteHtml = (what) => `<p class="hint lock-note">🔒 ${what}要先輸入通關密碼才能管理。<button type="button" class="linklike" data-unlock>輸入通關密碼</button></p>`;
+// The note's button: ask (saying what it is for), remember it, then `then()` draws the panel (a wrong one is asked again there).
+async function unlockFor(what, then) {
+  const pass = await askPass(passMsg(what));
+  if (pass == null) return;
+  store.set(PASS_KEY, pass);
+  updateLockHint();
+  then();
+}
+// Fetch a cash-fare endpoint, asking for the passcode when the server wants one. `opts.pass`: the feature's name for
+// the prompt and the error (live fares when absent).
+async function cashApi(path, { pass: what = '', ...opts } = {}) {
   let wrong = '';
   for (let tries = 0; ; tries++) {
     let pass = store.get(PASS_KEY, '');
     if (cashCfg.locked && !pass) {
-      pass = await askPass(tries ? wrong || '密碼不對，請再試一次。' : '');
-      if (pass == null) throw new Error('需要通關密碼才能查即時票價');
+      pass = await askPass(tries ? wrong || '密碼不對，請再試一次。' : passMsg(what));
+      if (pass == null) throw new Error(what ? `需要通關密碼才能使用${what}` : '需要通關密碼才能查即時票價');
       store.set(PASS_KEY, pass);
     }
     try {
