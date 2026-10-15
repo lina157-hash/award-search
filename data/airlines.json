@@ -1,6 +1,6 @@
 {
   "lastReviewed": "2026-10-15",
-  "note": "bookableVia 是 seats.aero 有收錄、且通常可換到該航司座位的里程計畫，實際以查詢結果為準。seats.aero 已收錄亞洲萬里通（asiamiles）、哥倫比亞航空 LifeMiles（lifemiles）與阿提哈德 Etihad Guest（etihad；只有經濟與商務艙），但長榮、華航、日航、全日空自家計畫仍未收錄。homeProgram 是該航司自家里程計畫的代碼：有 seats.aero 收錄的用來源代碼（如 singapore、british），沒有的用 programs.json 的 id（evainfinity、dynastyflyer、jal、ana）；各檔案代碼對照見 programs.json 的 idMap。",
+  "note": "bookableVia 是 seats.aero 有收錄、且通常可換到該航司座位的里程計畫，實際以查詢結果為準。seats.aero 已收錄亞洲萬里通（asiamiles）、哥倫比亞航空 LifeMiles（lifemiles）與阿提哈德 Etihad Guest（etihad；只有經濟與商務艙），但長榮、華航、日航、全日空、星宇自家計畫仍未收錄。星宇座位可用阿拉斯加 Atmos 與阿提哈德 Etihad Guest 兌換（兩家官方夥伴頁與新聞稿，2026-10-15 確認），seats.aero 結果的這兩欄也看得到星宇航班；大韓航空也在阿拉斯加官方夥伴頁上（可線上兌換）。homeProgram 是該航司自家里程計畫的代碼：有 seats.aero 收錄的用來源代碼（如 singapore、british），沒有的用 programs.json 的 id（evainfinity、dynastyflyer、jal、ana）；各檔案代碼對照見 programs.json 的 idMap。",
   "airlines": [
     {
       "code": "CX",
@@ -187,7 +187,8 @@
         "delta",
         "flyingblue",
         "virginatlantic",
-        "etihad"
+        "etihad",
+        "alaska"
       ]
     },
     {
@@ -223,6 +224,16 @@
         "etihad",
         "american",
         "aeroplan"
+      ]
+    },
+    {
+      "code": "JX",
+      "name": "星宇航空",
+      "alliance": null,
+      "homeProgram": "starlux",
+      "bookableVia": [
+        "alaska",
+        "etihad"
       ]
     }
   ]
