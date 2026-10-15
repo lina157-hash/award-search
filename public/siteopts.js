@@ -63,7 +63,11 @@ const cronState = { at: 0, busy: false };
 async function renderCronLine() {
   const el = $('#cron-line');
   if (!el) return;
-  if (typeof ownerHere !== 'function' || !ownerHere()) { el.hidden = true; return; }
+  const owner = typeof ownerHere === 'function' && ownerHere();
+  // 帳號管理 also from here, so the owner needn't sign in to an account to reach it (the passcode is enough).
+  const adm = $('#foot-admin');
+  if (adm) adm.hidden = !owner || typeof admOpen !== 'function';
+  if (!owner) { el.hidden = true; return; }
   if (cronState.busy || (!el.hidden && Date.now() - cronState.at < 60e3)) return;
   cronState.busy = true;
   try {
@@ -76,7 +80,8 @@ async function renderCronLine() {
   } catch { el.hidden = true; } finally { cronState.busy = false; }
 }
 function mountCronLine() {
-  $('#version-line')?.insertAdjacentHTML('afterend', '<p class="cron-line" id="cron-line" hidden></p>');
+  $('#version-line')?.insertAdjacentHTML('afterend', '<p class="cron-line" id="cron-line" hidden></p><p class="cron-line"><button type="button" class="linkish" id="foot-admin" hidden>🗂️ 帳號管理</button></p>');
+  $('#foot-admin')?.addEventListener('click', () => admOpen());
   whenReady().then(renderCronLine);
   // Follows the passcode and the account's unlock, like 今日好康's 立即更新.
   const base = updateLockHint;
