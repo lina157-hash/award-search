@@ -49,12 +49,14 @@ async function histShow(share) {
   if (!box) return;
   const n = ++histSeq.n;
   box.innerHTML = '';
+  histSeq.body = null; // also read by weekday.js
   if (!share) return;
   let body;
   try {
     body = await api(`/api/history?${new URLSearchParams({ origin: share.get('o'), destination: share.get('d') })}`);
   } catch { return; }
   if (n !== histSeq.n || !body.routes?.length) return;
+  histSeq.body = body;
   const cabin = share.get('c') || 'J';
   const days = Math.max(...body.routes.map((r) => (r.observed.length ? histDayNum(r.observed.at(-1)) - histDayNum(r.observed[0]) + 1 : 0)));
   box.innerHTML = `<details class="hist">
@@ -65,4 +67,5 @@ async function histShow(share) {
       <p class="hint">每天排程（每日精選、機位提醒）查這條航線時順手記下的：那天看到幾個出發日有位、最低幾哩。不另外花查詢額度；只有排程查過的航線才有紀錄。</p>
     </div>
   </details>`;
+  if (typeof wkRender === 'function' && $('#cal-fold')) wkRender();
 }

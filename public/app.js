@@ -1384,6 +1384,7 @@ function renderSearch() {
   renderCalendar(rows);
   renderMatrix(rows, allSources);
   $('#cal-fold').addEventListener('toggle', (e) => { calOpen = e.target.open; });
+  if (typeof wkRender === 'function') wkRender();
 }
 
 // The results calendar starts folded (it is tall); opening it is remembered while this page is open.
