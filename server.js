@@ -528,8 +528,9 @@ async function handleExpiry(req) {
   const body = await readJson(req, 20_000);
   try { return await expiry.saveOwner(body); } catch (e) { throw new BadRequest(e.message); }
 }
-// 國泰官網實查 (lib/cxcal-store.js): the owner's own Cathay award calendar saved from the bookmarklet. Reading is public;
-// writing takes the passcode.
+// 國泰官網實查 (lib/cxcal-store.js): the owner's own award calendars (Cathay from the bookmarklet, any airline of
+// data/muse-templates.json from the AI assistant). Reading is public; writing takes the passcode. The airline templates
+// of 「請 AI 助理查官網」 (cxmuse.js) are served on their own at /api/data/musetemplates, fetched when the tool opens.
 const cxcalStore = createCxcalStore({ kv });
 async function handleCxcal(req, q) {
   const m = req.method;
@@ -1106,6 +1107,8 @@ const DATA_BUNDLES = { all: dataBundle(DATA_FILES), core: dataBundle(DATA_PARTS.
 // Stopover/open-jaw rules and positioning hubs (etrips.js), fetched only when those tools open, so not in a bundle.
 const ROUTING_BODY = fs.readFileSync(path.join(DATA_DIR, 'routing.json'));
 const ROUTING = { body: ROUTING_BODY, etag: etagOf(ROUTING_BODY) };
+const MUSE_TPL_BODY = fs.readFileSync(path.join(DATA_DIR, 'muse-templates.json')); // cxmuse.js's airline templates
+const MUSE_TPL = { body: MUSE_TPL_BODY, etag: etagOf(MUSE_TPL_BODY) };
 
 function staticPolicy(rel, q) {
   if (rel.endsWith('.html')) return 'no-cache';
@@ -1242,6 +1245,7 @@ async function route(req, res) {
       return sendBody(req, res, { ...DATA_BUNDLES[dm[1]], type: MIME['.json'], cache: q.get('v') === VERSION.version ? CACHE.immutable : CACHE.data });
     }
     if (p === '/api/data/routing') return sendBody(req, res, { ...ROUTING, type: MIME['.json'], cache: CACHE.data });
+    if (p === '/api/data/musetemplates') return sendBody(req, res, { ...MUSE_TPL, type: MIME['.json'], cache: CACHE.data });
     const m = p.match(/^\/api\/data\/(\w+)$/);
     if (m && DATA_FILES.includes(m[1])) return sendBody(req, res, { ...DATA[m[1]], type: MIME['.json'], cache: CACHE.data });
     if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'not found' });

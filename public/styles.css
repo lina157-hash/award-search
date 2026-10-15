@@ -1422,3 +1422,44 @@ dialog.cx-dlg { width: min(560px, calc(100vw - 24px)); overflow: auto; }
 .cxm-out > .hint { margin: 6px 0 0; }
 .cxm-save { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 0; }
 .cxm-save .hint { flex: 1 1 260px; font-size: .8rem; }
+
+/* ---------- musex: 請 AI 助理查官網 — airline picker, fields and status colours (public/cxmuse.js, cxlive.js) ---------- */
+.cxm { grid-template-columns: minmax(0, 1fr); }
+.cxm .cx-auto-c { white-space: normal; }
+.cxm-body { display: grid; gap: 8px; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.cxm-air { display: flex; flex-wrap: wrap; gap: 6px; }
+.cxm-chip { font: inherit; font-size: .84rem; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 12px; min-height: 32px; cursor: pointer; }
+.cxm-chip[aria-checked="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.cxm-tips { margin: 0; padding-left: 1.2em; color: var(--muted); font-size: .8rem; }
+.cxm-form { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: end; }
+.cxm-form label { display: grid; gap: 2px; font-size: .76rem; color: var(--muted); }
+.cxm-form input, .cxm-form select { font: inherit; font-size: .86rem; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; min-height: 32px; }
+.cxm-form input[data-cxm-f="from"], .cxm-form input[data-cxm-f="to"] { width: 7.5em; text-transform: uppercase; }
+.cxm-form input[data-cxm-f="pax"] { width: 4.2em; }
+.cxm-form .cxm-x { display: flex; align-items: center; gap: 6px; font-size: .84rem; color: var(--text); min-height: 32px; white-space: nowrap; }
+.cxm-form .cxm-x input { width: 16px; height: 16px; min-height: 0; padding: 0; margin: 0; accent-color: var(--accent); }
+.cxm-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cxm-acts .ai-ok { font-size: .8rem; color: var(--accent); }
+.cxm-cap { margin: 0; font-size: .8rem; }
+.cxm-body .ai-text { margin: 0; }
+.cxp .cx-d.cxm-p { background: var(--accent-soft); }
+.cxp .cx-d.cxm-l { background: var(--few); box-shadow: inset 0 -3px 0 var(--sun); }
+.cxp .cx-d.cxm-n { background: transparent; border-color: var(--border); }
+.cxp .cx-d.cxm-n.sel { border-color: var(--accent); }
+.cxp .cx-d.cxm-l .cx-m b { color: var(--few-text); }
+.cxp .cx-d.cxm-w { background: var(--surface); border: 1.5px dashed var(--muted); }
+.cxp .cx-d.cxm-w .cx-na { color: var(--text); }
+.cxp .cx-d.cxm-w.sel { border-style: solid; border-color: var(--accent); }
+.cxm-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 6px 0 0; font-size: .76rem; color: var(--muted); }
+.cxm-k { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-left: 6px; }
+.cxm-k:first-child { margin-left: 0; }
+.cxm-k.cxm-p { background: var(--accent-soft); border: 1px solid var(--accent); }
+.cxm-k.cxm-l { background: var(--few); border: 1px solid var(--few-text); box-shadow: inset 0 -3px 0 var(--sun); }
+.cxm-k.cxm-w { background: var(--surface); border: 1.5px dashed var(--muted); }
+.cxm-k.cxm-n { background: transparent; border: 1px solid var(--border); }
+@media (max-width: 560px) {
+  .cxm-body { padding: 8px 10px; }
+  .cxm-form label { flex: 1 1 40%; }
+  .cxm-form .cxm-x { flex-basis: 100%; }
+  .cxm-form input, .cxm-form select, .cxm-form input[data-cxm-f="from"], .cxm-form input[data-cxm-f="to"], .cxm-form input[data-cxm-f="pax"] { width: 100%; }
+}
