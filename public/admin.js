@@ -55,7 +55,7 @@ function admRender() {
       <div><b>${fmt(t.accounts)}</b><span>帳號</span></div>
       <div><b>${fmt(t.verified)}</b><span>已驗證</span></div>
       <div><b>${fmt(t.last7)}</b><span>近 7 天新註冊</span></div>
-    </div>` : ''}
+    </div>${t.digest != null ? `<p class="adm-note adm-digest">📬 今日好康每日信：${fmt(t.digest)} 人訂閱</p>` : ''}` : ''}
     ${L?.accounts.length > 5 ? '<div class="adm-tools"><input type="search" id="adm-q" placeholder="搜尋 Email" aria-label="搜尋 Email" autocomplete="off"></div>' : ''}
     <div id="adm-rows">${adm.err ? `<p class="adm-err">${esc(adm.err)} <button type="button" class="linkish" data-adm="reload">再試一次</button></p>` : L ? '' : skeleton(3)}</div>`;
   const q = $('#adm-q');
