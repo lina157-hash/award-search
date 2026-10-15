@@ -216,6 +216,17 @@ const visible = async (loc) => { try { return await loc.first().isVisible({ time
 async function firstVisible(cands) { for (const c of cands) if (await visible(c)) return c.first(); return null; }
 const anyText = (page, re) => page.getByText(re);
 
+// A click that something on Cathay's page may intercept (an overlay, a toggle's thumb): a normal click, then the
+// keyboard, then the element's own DOM click, until done() says it worked.
+async function sureClick(page, loc, done) {
+  const ways = [() => loc.click({ timeout: 5000 }), async () => { await loc.focus({ timeout: 3000 }); await page.keyboard.press('Enter'); }, () => loc.evaluate((e) => e.click())];
+  for (const w of ways) {
+    try { await w(); } catch { /* try the next way */ }
+    for (let i = 0; i < 8; i++) { await sleep(1000); if (await done().catch(() => false)) return true; }
+  }
+  return false;
+}
+
 // The field under a small label (出發地點 / 目的地 / 旅程類別 …): the smallest box holding the label and something
 // else (the value), as the page's own code — not Cathay's class names — tells it apart. In the page: { box, input,
 // value } elements, or null.
@@ -390,9 +401,11 @@ async function searchFromHome(page, route, date) {
   const home = await page.evaluate(() => { const m = document.body.innerText.match(/里數低至\s*₳?\s*([\d,]{4,8})/); return m ? +m[1].replace(/,/g, '') : 0; }).catch(() => 0);
   if (home) log(`　首頁顯示 ${date} 每位乘客里數低至 ${fmt(home)}`);
   await step('兌換機票', async () => {
-    const b = await firstVisible([page.getByRole('button', { name: /兌換機票|搜尋航班|搜尋|redeem flights?|search flights?|search/i }), anyText(page, /^兌換機票$/)]);
+    const b = await firstVisible([page.getByRole('button', { name: /^兌換機票$|^redeem flights?$/i }), page.getByRole('link', { name: /^兌換機票$|^redeem flights?$/i }), anyText(page, /^兌換機票$/),
+      page.getByRole('button', { name: /兌換機票|搜尋航班|redeem flights?|search flights?/i })]);
     if (!b) return false;
-    await b.click();
+    const url = page.url();
+    if (!(await sureClick(page, b, async () => page.url() !== url || (await readPage(page)).r.strip.length > 0))) return false;
     await page.waitForLoadState('domcontentloaded').catch(() => {});
     return true;
   });
@@ -595,7 +608,19 @@ async function sweepRoute(route, mode) {
   const maxTurns = Math.ceil(cfg.daysAhead / 7) + 2;
   let ci = 0;
   for (const cabin of route.cabins) {
-    if (!(await selectCabin(page, cabin))) { log(`　${CABIN_NAME[cabin]}艙：頁面上沒有這個艙等的選項，跳過。`); continue; }
+    // The cabin cards follow the day on show: on a day without this cabin Cathay leaves its card out, so try the other
+    // open days of the strip before giving up.
+    let can = await selectCabin(page, cabin);
+    if (!can) {
+      const here = await stripInfo(page);
+      for (const s of here.info.r.strip.filter((x) => !x.na).slice(0, 7)) {
+        if (!(await clickDay(page, s.date))) continue;
+        await pause();
+        await waitIdle(page);
+        if ((can = await selectCabin(page, cabin))) break;
+      }
+    }
+    if (!can) { log(`　${CABIN_NAME[cabin]}艙：頁面上沒有這個艙等的選項，跳過。`); await saveDebug(page, 'cabin-' + cabin + '-' + route.fc + route.tc, 'results'); continue; }
     const forward = ci++ % 2 === 0; // the second cabin sweeps back toward the start: half the clicks
     let st = await stripInfo(page);
     if (!st.n) { await saveDebug(page, 'strip-' + route.fc + route.tc, 'results'); throw new Error('讀不到日期列（已存診斷資料）'); }
@@ -611,7 +636,21 @@ async function sweepRoute(route, mode) {
           const info = await readPage(page);
           const r = info.r;
           if (r.date !== s.date) { log(`　（點了 ${s.date} 但頁面顯示 ${r.date || '不明'}，先不記航班）`); continue; }
-          if (r.cabin && r.cabin !== cabin) { log(`　（點了 ${s.date} 但頁面選的是${CABIN_NAME[r.cabin]}艙，先不記航班）`); continue; }
+          if (r.cabin && r.cabin !== cabin) {
+            // Cathay opens a day on another cabin when this one has no seats that day: this cabin is 無位 there, and
+            // the flights on show belong to the other cabin.
+            const x = day(s.date);
+            x.c = x.c || {};
+            if (!r.tiles.some((t) => t.c === cabin && !t.na)) x.c[cabin] = { na: 1, t: Date.now() };
+            if (route.cabins.includes(r.cabin) && r.low[r.cabin]) {
+              const fl = r.flights.filter((f) => (f.mc ? f.mc[r.cabin] : !f.mc)).slice(0, 15).map((f) => { const o = { ...f }; if (o.mc) { o.m = o.mc[r.cabin]; delete o.mc; } return o; });
+              x.c[r.cabin] = { ...(x.c[r.cabin] || {}), m: r.low[r.cabin], t: Date.now(), ...(fl.length ? { f: fl } : {}) };
+              delete x.c[r.cabin].na;
+              if (!x.lo || r.low[r.cabin] < x.lo) x.lo = r.low[r.cabin];
+            }
+            log(`　（${s.date} 沒有${CABIN_NAME[cabin]}艙，國泰改顯示${CABIN_NAME[r.cabin]}艙）`);
+            continue;
+          }
           const fl = r.flights.filter((f) => (f.mc ? f.mc[cabin] : !f.mc)).slice(0, 15).map((f) => { const o = { ...f }; if (o.mc) { o.m = o.mc[cabin]; delete o.mc; } return o; });
           const low = r.low[cabin] || (fl.length ? Math.min(...fl.map((f) => f.m).filter(Boolean)) : 0);
           const x = day(s.date);
@@ -631,7 +670,7 @@ async function sweepRoute(route, mode) {
       await pause();
       await waitIdle(page);
       const nx = await stripInfo(page);
-      if (!nx.n || nx.first === st.first) { await sleep(3000); const again = await stripInfo(page); if (!again.n || again.first === st.first) { log('　日期列沒有往前，停在這裡。'); break; } st = again; } else st = nx;
+      if (!nx.n || nx.first === st.first) { await sleep(3000); const again = await stripInfo(page); if (!again.n || again.first === st.first) { log('　日期列沒有往前，停在這裡。'); await saveDebug(page, 'stuck-' + route.fc + route.tc, 'results'); break; } st = again; } else st = nx;
       if (blockedKind(st.info)) { await ensureNotBlocked(page, { route: tag }); st = await stripInfo(page); }
     }
     const n = Object.keys(days).filter((d) => within(d) && days[d].c && days[d].c[cabin] && !days[d].c[cabin].na).length;
