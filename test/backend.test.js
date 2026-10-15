@@ -151,7 +151,7 @@ test('B4: a failed refresh keeps the last good deals; a refresh where everything
   assert.equal(all.failed, true);
   assert.equal(JSON.stringify(await store.load()), savedBefore, 'nothing saved when every group failed');
   assert.ok(all.groups.every((g) => g.items.length === 1), 'still serving the old items');
-  // Groups fetched in the last 20 hours are not fetched again by a second run.
+  // Groups fetched in the last 6 hours are not fetched again by a second run.
   fail = () => false;
   calls = 0;
   await deals.refresh({ skipFresh: true });
@@ -442,4 +442,14 @@ test('P06: a search only carries details for cabins that have seats', async () =
 test('P08: SerpApi credits are counted for the quota line', async () => {
   const q = await (await fetch(`${base}/api/cash/quota`)).json();
   assert.equal(typeof q.serpapi.used, 'number');
+});
+
+test('deals: a morning run refreshes groups fetched the previous afternoon', async () => {
+  const { createDeals } = require('../lib/deals');
+  const at = new Date(Date.now() - 18 * 3600e3).toISOString();
+  const saved = { generatedAt: at, origin: 'TPE', groups: [{ id: 'na', name: '北美', cabin: 'J', at, items: [{ destination: 'YVR', miles: 1 }] }] };
+  let calls = 0;
+  const deals = createDeals({ store: memoryStore(saved), search: async () => { calls++; return []; }, lock: async () => () => {} });
+  await deals.refresh({ skipFresh: true });
+  assert.ok(calls >= 1, 'an 18-hour-old group is fetched again');
 });
