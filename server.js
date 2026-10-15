@@ -25,6 +25,7 @@ const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
 const { createExpiry } = require('./lib/expiry');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
+const { createNlSearch, NlError } = require('./lib/nlsearch');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -1163,6 +1164,34 @@ function canonicalUrl(p, q) {
   return `${p}${[...out].length ? `?${out}` : ''}`;
 }
 
+// 一句話搜尋 (lib/nlsearch.js): Claude Haiku turns one sentence into the search form's conditions. Only with
+// ANTHROPIC_API_KEY (the demo uses a rule-based stand-in); without it the endpoint is a 404 and the box never shows.
+// Owner only (the passcode, like the cash fares), NL_DAILY_LIMIT calls a Taiwan day, the same sentence cached a day.
+const ANTHROPIC_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
+const NL_MODE = ANTHROPIC_KEY ? 'live' : MOCK ? 'mock' : 'off';
+const nlSearch = createNlSearch({
+  mode: NL_MODE,
+  apiKey: ANTHROPIC_KEY,
+  kv,
+  today: () => todayTW(),
+  taiwan: (start, end) => travelInfo.taiwan(start, end),
+  airportCodes: new Set(AIRPORTS.keys()),
+  groups: AIRPORT_FILE.groups || [],
+  // One entry per program name (copa / connectmiles share one), without the estimate-only source.
+  programs: Object.entries(SOURCE_NAMES).filter(([id, name], i, all) => !id.endsWith('_est') && all.findIndex(([, n]) => n === name) === i).map(([id, name]) => ({ id, name })),
+  regions: require('./data/airports.json').regions,
+  limit: Number(process.env.NL_DAILY_LIMIT) || 100,
+  timeoutMs: 15000,
+});
+async function handleNl(req) {
+  if (!fromPage(req)) throw new NlError('請從網站頁面使用一句話搜尋', 403);
+  if ((await runCaller(req)) !== 'owner') {
+    throw cashPasscode() ? passError(req, '需要通關密碼才能使用一句話搜尋') : Object.assign(new CashError('要先在 Vercel 設定 CASH_PASSCODE，才能使用一句話搜尋', 401), { code: 'setup' });
+  }
+  const body = await readJson(req, 2000);
+  return nlSearch.parse(body.text);
+}
+
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8', '.webmanifest': 'application/manifest+json' };
 
 // Cache policies. Public answers may sit in Vercel's CDN (s-maxage), keyed by the full URL, so a repeated search costs
@@ -1291,6 +1320,11 @@ async function route(req, res) {
       return sendJson(res, 200, await handleCxcal(req, q), req.method === 'GET' ? CACHE.short : null);
     }
     if (p === '/api/deals' && req.method === 'POST') return sendJson(res, 200, await refreshDealsNow(req));
+    if (p === '/api/nl') {
+      if (!nlSearch.enabled) return sendJson(res, 404, { error: 'not found' });
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleNl(req));
+    }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleWatch(req, q));
@@ -1308,6 +1342,7 @@ async function route(req, res) {
         // callsToday: this instance's seats.aero calls; callsTodayAll: every instance's (visitors' lookups and the daily jobs).
         mock: MOCK, callsToday: usage.calls, callsTodayAll: Number(await kv.get(seatsAllKey()).catch(() => 0)) || 0, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
+        nl: nlSearch.enabled,
         accounts: Boolean(accounts), accountEmail: Boolean(accounts?.mailOn && alertMailer),
         line: await line.status().then((s) => ({ configured: s.configured, linked: s.linked, ...(s.missing ? { missing: s.missing } : {}), ...(s.configured ? { tokenOk: s.tokenOk } : {}) })).catch(() => ({ configured: line.configured })),
         searchCache: await searchCache.stats(),
@@ -1376,7 +1411,7 @@ async function route(req, res) {
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
     if (e instanceof AccountError && e.current) return sendJson(res, e.status, { error: e.message, code: e.code, ...e.current });
-    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError || e instanceof AdminError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError || e instanceof AdminError || e instanceof NlError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

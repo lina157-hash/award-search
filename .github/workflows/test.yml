@@ -17,6 +17,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
+      # The one dependency (@anthropic-ai/sdk, for 一句話搜尋), exactly as package-lock.json pins it.
+      - run: npm ci
       - name: Check data files parse
         run: for f in data/*.json public/*.json; do node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" || exit 1; done
       - name: Check scripts parse

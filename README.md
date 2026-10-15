@@ -24,9 +24,10 @@ node scripts/bump-version.js minor "新增 XX 功能"   # 新功能：1.9.0 → 
 它會更新 `data/version.json` 的版本號、日期（台北時間）與更新紀錄，再一起 commit 即可。
 
 ## 執行
-需要 Node.js 20 以上，沒有其他相依套件。
+需要 Node.js 20 以上。唯一的相依套件是一句話搜尋用的 `@anthropic-ai/sdk`（版本鎖在 `package-lock.json`），第一次先執行 `npm ci`。
 
 ```bash
+npm ci
 cp .env.example .env          # 填入 SEATS_AERO_API_KEY
 export $(grep -v '^#' .env | xargs)
 npm start                     # http://localhost:3000
@@ -58,5 +59,6 @@ npm test
 7. （選用）「誰飛直航」用同一把 `RAPIDAPI_KEY` 的 AeroDataBox（每月約 400 單位，每個出發機場 6 單位，存兩週）。台灣各機場與香港、東京、大阪、首爾、曼谷、新加坡任何人都能查；其他出發機場要通關密碼。每月剩 40 單位時自動停止查新機場；如果你的方案額度不同，可設 `DIRECTS_MONTHLY_UNITS`。
 8. （選用）Telegram 通知：在 Telegram 找 @BotFather，傳 `/newbot` 建立自己的機器人，複製它給的金鑰，在 Vercel 新增環境變數 `TELEGRAM_BOT_TOKEN` 後重新部署（需要已設定 `CASH_PASSCODE` 和 Upstash Redis）。接著在 Telegram 打開你的機器人按「開始」（傳送 `/start`），再回網站按「連結 Telegram」；收到「機票搜索雷達已連結」就完成了。之後新機位提醒和降價通知除了 Email 也會傳到 Telegram。
 9. （選用）帳號同步：有 Upstash Redis 就能用 Email＋密碼註冊，在不同裝置同步點數、收藏、最近搜尋、行程等個人設定（不登入也一切照舊）。驗證信和重設密碼信透過同一個 `RESEND_API_KEY` 寄出；沒設定寄信時帳號直接啟用、無法用「忘記密碼」。登入後輸入過一次通關密碼，同一個帳號在其他裝置也算已解鎖（只存加鹽雜湊，改了 `CASH_PASSCODE` 就要重新輸入）。
+10. （選用）一句話搜尋：到 platform.claude.com 建立 API 金鑰（建議在 Console 設每月花費上限），在 Vercel 新增 `ANTHROPIC_API_KEY` 後重新部署。航線查詢上方會多一個輸入框，只有輸入過通關密碼（或已解鎖帳號）的裝置看得到；用 Claude Haiku 5.5 把一句中文變成表單條件，每次約 US$0.0004，不花 seats.aero 額度（按「搜尋機位」才會查）。每天最多 100 次（`NL_DAILY_LIMIT` 可改），同一句話一天內重打不重複計費。沒設定金鑰時輸入框不會出現。
 
 前端放在 `public/`，`/api/*` 由 `api/index.js` 這支 serverless function 處理，金鑰不會出現在瀏覽器端。
