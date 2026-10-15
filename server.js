@@ -23,6 +23,7 @@ const lineLib = require('./lib/line');
 const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
 const { createExpiry } = require('./lib/expiry');
+const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -526,6 +527,32 @@ async function handleExpiry(req) {
   if (req.method !== 'POST') return expiry.getOwner();
   const body = await readJson(req, 20_000);
   try { return await expiry.saveOwner(body); } catch (e) { throw new BadRequest(e.message); }
+}
+// 國泰官網實查 (lib/cxcal-store.js): the owner's own Cathay award calendar uploaded by tools/cathay-runner (or the
+// bookmarklet), the routes it should sweep, an on-demand queue and its heartbeat. Reading is public; writing takes the passcode.
+const cxcalStore = createCxcalStore({ kv });
+async function handleCxcal(req, q, sub) {
+  const m = req.method;
+  if (sub === 'status') return cxcalStore.status();
+  if (sub === '' && m === 'GET') {
+    const routes = await cxcalStore.find(q.get('origin'), q.get('destination'));
+    return routes.length ? { found: true, ...routes[0], routes } : { found: false };
+  }
+  if (sub === 'wanted' && m === 'GET' && !cashPasscode() && !manageOpen()) return { routes: [], queue: [], configured: false };
+  if (!(await alertsAllowed(req))) throw cashPasscode() ? passError(req, '需要通關密碼才能管理國泰定時查詢') : noPasscode('國泰定時查詢');
+  if (sub === 'wanted') {
+    if (m === 'POST') {
+      const body = await readJson(req);
+      const routes = body.action === 'remove' ? await cxcalStore.removeWanted(body) : await cxcalStore.addWanted(body);
+      return { configured: true, routes, queue: await cxcalStore.queue() };
+    }
+    return { configured: true, routes: await cxcalStore.wanted(), queue: await cxcalStore.queue() };
+  }
+  if (m !== 'POST') throw new BadRequest('method not allowed');
+  const body = await readJson(req, sub === '' ? 70_000 : 10_000);
+  if (sub === 'queue') return { queue: body.action === 'done' ? await cxcalStore.dequeue(body) : await cxcalStore.enqueue(body) };
+  if (sub === 'heartbeat') return cxcalStore.heartbeat(body);
+  return cxcalStore.save(body);
 }
 const sidCookie = (sid, maxAge) => `sid=${sid}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge != null ? `; Max-Age=${maxAge}` : ''}`;
 const clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
@@ -1150,6 +1177,11 @@ async function route(req, res) {
       if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleExpiry(req));
     }
+    const cm = p.match(/^\/api\/cxcal(?:\/(wanted|queue|heartbeat|status))?$/);
+    if (cm) {
+      if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleCxcal(req, q, cm[1] || ''));
+    }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleWatch(req, q));
@@ -1231,7 +1263,7 @@ async function route(req, res) {
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
     if (e instanceof AccountError && e.current) return sendJson(res, e.status, { error: e.message, code: e.code, ...e.current });
-    if (e instanceof LimitError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

@@ -1,0 +1,18 @@
+{
+  "site": "https://award-search-zeta.vercel.app",
+  "passcode": "把網站的通關密碼填在這裡（不是國泰密碼！腳本從不處理國泰密碼）",
+  "cabins": ["Y", "J"],
+  "pax": 1,
+  "daysAhead": 60,
+  "maxRoutes": 3,
+  "startDate": "",
+  "detailDays": false,
+  "dailyAt": "07:30",
+  "pollSeconds": 60,
+  "pace": [3, 7],
+  "headless": false,
+  "searchUrl": "",
+  "routes": [
+    { "fc": "TPE", "tc": "NRT", "fromName": "台北", "toName": "東京" }
+  ]
+}

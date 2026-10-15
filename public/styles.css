@@ -1387,3 +1387,26 @@ dialog.cx-dlg { width: min(560px, calc(100vw - 24px)); overflow: auto; }
   .cx-land .cxp .cx-d { min-height: 46px; font-size: .64rem; padding: 2px; }
 }
 #cx-card .gf-how .hint { margin: 6px 0 10px; }
+
+/* ---------- cxlive: 國泰官網實查 card, runner buttons and the 國泰定時查詢 panel (public/cxlive.js) — cxrunner ---------- */
+.cx-live-card { margin: 10px 0 6px; padding: 10px 14px 8px; border-left: 3px solid var(--cx); background: var(--surface); border-radius: 0 10px 10px 0; box-shadow: var(--shadow); font-size: .9rem; max-width: 860px; }
+.cx-live-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.cx-live-head small { color: var(--muted); }
+.cx-live-sum { margin: 6px 0 4px; }
+.cx-live-sum b { color: var(--cx); }
+.cx-live-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cx-live-actions .outline, .cx-live-line .outline { font-size: .82rem; padding: 4px 10px; min-height: 30px; }
+.cx-live-btns { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.cx-live-pair { font-variant-numeric: tabular-nums; color: var(--muted); }
+.cx-live-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 0 4px; font-size: .9rem; }
+.cx-live-note { margin: 6px 0 0; }
+.cx-live-wait { color: var(--cx); }
+.cx-live-cal.cxp { --cb: var(--surface); --ct: var(--text); --cm: var(--muted); --cl: var(--border); --ca: var(--accent); --cs: var(--accent-soft); --cn: var(--surface-2); font-size: .88rem; max-width: 560px; margin-top: 8px; }
+.cx-live-cal.cxp .cx-d { min-height: 54px; font-size: .74rem; }
+.cxw-status { margin: 0 0 6px; font-weight: 600; }
+.cxw-status.on { color: var(--accent); }
+.cxw-list li small { display: block; color: var(--muted); font-size: .78rem; font-weight: 400; }
+@media (max-width: 480px) {
+  .cx-live-cal.cxp .cx-d { min-height: 46px; font-size: .64rem; padding: 2px; }
+  .cx-live-card { padding: 10px 10px 8px; }
+}

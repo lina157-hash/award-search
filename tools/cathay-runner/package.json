@@ -1,0 +1,16 @@
+{
+  "name": "cathay-runner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "國泰獎勵機位定時查詢腳本：在自己的電腦上沿著國泰官網的日期列讀最低里數，上傳到機票搜索雷達",
+  "main": "run.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node run.js",
+    "watch": "node run.js --watch",
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}

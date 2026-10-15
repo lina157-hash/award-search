@@ -1,0 +1,7 @@
+node_modules/
+profile/
+data/
+runner-debug/
+runner.log
+state.json
+config.json

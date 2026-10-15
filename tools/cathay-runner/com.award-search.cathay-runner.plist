@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS launchd：登入時自動啟動監看模式（node run.js ‐‐watch）。
+  1. 把下面三處 /Users/你的帳號/cathay-runner 改成這個資料夾的實際路徑；/usr/local/bin/node 改成 `which node` 的結果
+     （Apple Silicon 常是 /opt/homebrew/bin/node）。
+  2. cp com.award-search.cathay-runner.plist ~/Library/LaunchAgents/
+  3. launchctl load ~/Library/LaunchAgents/com.award-search.cathay-runner.plist
+  取消：launchctl unload ~/Library/LaunchAgents/com.award-search.cathay-runner.plist
+  注意：launchd 背景執行時沒有終端機可以按 Enter，所以需要登入國泰時請先在終端機手動跑一次 `node run.js --route TPE-NRT`
+  登入好（profile/ 會記住），之後背景模式才查得到。想每天固定時間查一輪而不是監看，把 RunAtLoad 改成 false、加上
+  StartCalendarInterval（Hour 7、Minute 30）並把 ‐‐watch 拿掉。
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.award-search.cathay-runner</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/node</string>
+    <string>/Users/你的帳號/cathay-runner/run.js</string>
+    <string>--watch</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/你的帳號/cathay-runner</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><false/>
+  <key>StandardOutPath</key><string>/Users/你的帳號/cathay-runner/launchd.log</string>
+  <key>StandardErrorPath</key><string>/Users/你的帳號/cathay-runner/launchd.log</string>
+</dict>
+</plist>

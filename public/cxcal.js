@@ -214,9 +214,12 @@
       b.append(E('i', '', d));
       const cs = r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && r.c[c].m) : [];
       cs.forEach((c) => { const s = E('span', 'cx-m'); s.append(E('b', '', LB[c]), document.createTextNode(short(r.c[c].m))); b.append(s); });
+      // The runner's strip sweep knows a cabin has seats (no 不適用) before any miles are read: 「有位」.
+      const open = !cs.length && r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && !r.c[c].na) : [];
       if (!cs.length && r && r.na) b.append(E('span', 'cx-na', '無位'));
       else if (!cs.length && r && r.lo) b.append(E('span', 'cx-m', '低' + short(r.lo)));
-      if (cs.length || (r && r.lo)) b.classList.add('has');
+      else if (open.length) b.append(E('span', 'cx-m', open.map((c) => LB[c]).join('') + '有位'));
+      if (cs.length || (r && r.lo) || open.length) b.classList.add('has');
       else if (r && r.na) b.classList.add('na');
       if (st.sel === iso) b.classList.add('sel');
       b.onclick = () => { st.sel = iso; cxView(box, db, st); };
@@ -228,7 +231,10 @@
     const r = days[st.sel];
     det.append(E('b', 'cx-dh', +st.sel.slice(5, 7) + '/' + +st.sel.slice(8) + '（' + '日一二三四五六'[new Date(st.sel).getUTCDay()] + '）'));
     const cs = r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && r.c[c].m) : [];
-    if (!r || (!cs.length && !r.na)) det.append(E('p', 'cx-mut', r && r.lo ? '國泰日期列顯示最低 ' + fmt(r.lo) + ' 哩；在國泰頁面點這天就會記下航班。' : '這天還沒有紀錄：在國泰頁面點這天，就會記下來。'));
+    const open = r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && !r.c[c].na) : [];
+    const shut = r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && r.c[c].na) : [];
+    if (!cs.length && (open.length || shut.length)) det.append(E('p', 'cx-mut', (open.length ? '國泰日期列顯示' + open.map((c) => CN[c]).join('、') + '有位（哩數要點進那天才看得到）' : '') + (shut.length ? (open.length ? '；' : '') + shut.map((c) => CN[c]).join('、') + '「不適用」' : '') + '。'));
+    else if (!r || (!cs.length && !r.na)) det.append(E('p', 'cx-mut', r && r.lo ? '國泰日期列顯示最低 ' + fmt(r.lo) + ' 哩；在國泰頁面點這天就會記下航班。' : '這天還沒有紀錄：在國泰頁面點這天，就會記下來。'));
     else if (!cs.length) det.append(E('p', 'cx-mut', '國泰顯示「不適用」：這天沒有獎勵位。'));
     cs.forEach((c) => {
       const x = r.c[c];
@@ -563,7 +569,7 @@
     } catch { return null; }
   }
 
-  const api = { parseCathayText, bookmarkletCode, cxMin, decodeExport };
+  const api = { parseCathayText, bookmarkletCode, cxMin, decodeExport, cxView, cxCss };
   if (typeof module === 'object' && module.exports) { module.exports = api; return; }
   root.CXCAL = api;
 
@@ -595,6 +601,8 @@
     $('#cx-src').textContent = `這些資料來自你自己在國泰官網的查詢畫面${when ? `（${when} 匯出，共 ${n} 天有哩程）` : ''}，本站只負責顯示，沒有向國泰查詢。機位隨時會變，開票前請到國泰官網確認。`;
     const ks = Object.keys(d.days).filter((k) => d.days[k].c).sort();
     cxView($('#cx-view'), d, { ym: '', sel: ks[0] || '' });
+    // cxlive.js: 「儲存到網站」 so the route search shows this calendar (passcode).
+    if (typeof cxLiveSave === 'function') cxLiveSave($('#cx-src'), d);
     if (!dlg.open) dlg.showModal();
   }
 
