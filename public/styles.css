@@ -1265,25 +1265,69 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .field-err { margin: 2px 0 0; color: var(--danger); font-size: .82rem; font-weight: 500; }
 .chips-box[aria-invalid], .ac-host:has(.field-err) .chips-box, .field:has(.field-err) > .dp-btn, .field:has(.field-err) > input { border-color: var(--danger); }
 
-/* rules: chapter chips stay under the header; sections and program cards fold (folded by default on phones) */
+/* rules (rules4): chapter chips stay under the header; every chapter and card folds to one line, opened by hand */
 .rules-nav { position: sticky; top: var(--hdr-h, 62px); z-index: 5; margin: 0 -16px 4px; padding: 8px 16px; background: var(--bg); box-shadow: 0 6px 8px -8px rgb(0 0 0 / .25); }
-details.rules-fold > summary, .prog-card > summary { list-style: none; cursor: pointer; margin-top: 0; color: inherit; }
-details.rules-fold > summary::-webkit-details-marker, .prog-card > summary::-webkit-details-marker { display: none; }
-details.rules-fold > summary h2.section { display: flex; align-items: center; gap: 8px; }
-details.rules-fold > summary h2.section::after { content: "▾"; color: var(--muted); font-size: .85rem; font-weight: 400; }
-details.rules-fold[open] > summary h2.section::after { content: "▴"; }
-.prog-card { min-width: 0; }
-.prog-card > summary h3 { margin-bottom: 2px; }
-.prog-sum { display: block; color: var(--muted); font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prog-sum::before { content: "▸ "; }
+.rules-tools { display: flex; align-items: center; gap: 10px; min-height: 28px; }
+@media (min-width: 641px) { .rules-top { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); align-items: end; } }
+.rules-tools .hint { margin: 0; }
+.rules-all { margin-left: auto; font: inherit; font-size: .84rem; border: 0; background: none; color: var(--accent); cursor: pointer; padding: 4px 2px; min-height: 32px; white-space: nowrap; }
+.rules-all:hover { text-decoration: underline; }
+#rules-body { margin-top: 6px; border-top: 1px solid var(--border); }
+details.rules-fold > summary, .prog-card > summary, .al-card > summary, details.sub-fold > summary { list-style: none; cursor: pointer; margin-top: 0; color: inherit; }
+details.rules-fold > summary::-webkit-details-marker, .prog-card > summary::-webkit-details-marker, .al-card > summary::-webkit-details-marker, details.sub-fold > summary::-webkit-details-marker { display: none; }
+details.rules-fold { border-bottom: 1px solid var(--border); }
+details.rules-fold > summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; padding: 14px 2px; }
+details.rules-fold > summary h2.section { margin: 0; font-size: 1.05rem; }
+.sec-sum { display: block; margin-top: 3px; color: var(--muted); font-size: .84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+details.rules-fold > summary::after, .prog-card > summary::after, .al-card > summary::after { content: "▾"; color: var(--muted); font-size: .8rem; transition: transform .15s; }
+details.rules-fold > summary::after { grid-column: 2; grid-row: 1 / span 2; }
+details.rules-fold[open] > summary::after, .prog-card[open] > summary::after, .al-card[open] > summary::after { transform: rotate(180deg); }
+details.rules-fold > summary:hover h2.section, .prog-card > summary:hover h3, .al-card > summary:hover h3 { color: var(--accent); }
+.sec-body { padding: 0 0 22px; }
+.sec-body > .hint:first-child { margin-top: 0; }
+#rules-body .cards { gap: 10px; align-items: start; }
+/* program and alliance cards: logo, name, one muted line */
+.prog-card, .al-card { min-width: 0; padding: 12px 14px; }
+.prog-card > summary, .al-card > summary { display: flex; align-items: center; gap: 12px; }
+.prog-card > summary::after, .al-card > summary::after { margin-left: auto; }
+.card-head { flex: 1; min-width: 0; }
+.card-head h3 { margin: 0; font-size: .98rem; }
+.prog-sum, .card-sum { display: block; margin-top: 2px; color: var(--muted); font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prog-card[open] .prog-sum { display: none; }
+.prog-card[open] > summary, .al-card[open] > summary { padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px dashed var(--border); }
+.prog-card .src .tag { margin-right: 4px; }
+/* logos on a light rounded backdrop (so dark marks read in dark mode too); badge with the code when there is no file */
+.alogo { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: #fff; box-shadow: 0 0 0 1px rgb(0 0 0 / .08); overflow: hidden; vertical-align: middle; }
+.alogo img { display: block; width: 84%; height: 84%; object-fit: contain; }
+.alogo.xs { width: 18px; height: 18px; border-radius: 50%; }
+.alogo.sm { width: 20px; height: 20px; border-radius: 5px; }
+.alogo.md { width: 36px; height: 36px; border-radius: 10px; }
+.alogo.lg { width: 40px; height: 40px; }
+.alogo-al { border-radius: 50%; }
+.alogo-al img { width: 92%; height: 92%; }
+.alogo-code { border-radius: 50%; background: var(--lc); color: #fff; font-size: .58rem; font-weight: 700; letter-spacing: .02em; box-shadow: none; line-height: 1; }
+.alogo-code.md { font-size: .78rem; }
+.al-logos { display: inline-flex; gap: 3px; margin-right: 8px; vertical-align: -3px; }
+#alliance-filter .chip { display: inline-flex; align-items: center; gap: 6px; }
+.member-grid { list-style: none; margin: 10px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 7px 10px; font-size: .84rem; }
+.member-grid li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.member-grid li > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-notes .alogo { margin-right: 4px; vertical-align: -5px; }
+.logo-credit { font-size: .74rem; margin: 10px 0 0; }
+/* glossary groups fold too */
+details.sub-fold > summary { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; }
+details.sub-fold > summary::before { content: "▸"; color: var(--muted); font-size: .8rem; }
+details.sub-fold[open] > summary::before { content: "▾"; }
+details.sub-fold > summary h3.sub { margin: 0; font-size: .95rem; }
+details.sub-fold > summary small { color: var(--muted); font-size: .8rem; }
+details.sub-fold > .cards { margin: 6px 0 12px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .alogo:not(.alogo-code) { background: #eef1f4; box-shadow: none; } }
+:root[data-theme="dark"] .alogo:not(.alogo-code) { background: #eef1f4; box-shadow: none; }
 @media (max-width: 640px) {
   .rules-nav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; padding: 6px 16px; }
   .rules-nav button { min-width: 0; min-height: 36px; padding: 4px 0; white-space: nowrap; }
-  details.rules-fold { border-bottom: 1px solid var(--border); }
-  details.rules-fold > summary h2.section { margin: 0; padding: 14px 0; font-size: 1.02rem; justify-content: space-between; }
-  details.rules-fold[open] > summary h2.section { padding-bottom: 8px; }
-  .prog-card { padding: 12px 14px; }
+  details.rules-fold > summary h2.section { font-size: 1.02rem; }
+  .alogo.md { width: 32px; height: 32px; border-radius: 9px; }
 }
 
 /* results scrolled into view land below the sticky header */
