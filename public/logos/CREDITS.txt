@@ -1,0 +1,28 @@
+Airline and alliance logos in this folder (規則庫)
+=================================================
+
+The marks are trademarks of their airlines and alliances. They are shown only to
+identify each airline / alliance next to its name; no affiliation or endorsement.
+Every file was re-rendered to a 64x64 WebP (trimmed, centred, transparent).
+
+Airline logos (<IATA code>.webp)
+- soaring-symbols 0.1.0-alpha.12 (npm, MIT, Anh Thang Bui,
+  https://github.com/anhthang/soaring-symbols), the icon.svg (or logo.svg for SK) of:
+  A3 AC AF AM AR AT AV AY BR CA CM CX DL EK ET FJ GA IB JL JX KE KL KQ LH LO LX
+  MF MH NZ OZ PR QR RO SK SN SQ SV TG TK TP UA UX VN VS WY
+- airlogos 1.0.7 (npm, MIT, https://www.npmjs.com/package/airlogos), the png or svg of:
+  AA AI AS AZ BA CI EY HA ME MS MU NH OS OU QF RJ SA UL ZH
+
+Alliance logos, via FlightAtlas (https://github.com/H15teve/FlightAtlas,
+plugins/flight-atlas/assets/alliances, provenance checked 2026-10-05):
+- star.webp: the star symbol from "Star Alliance Logo.svg", Wikimedia Commons,
+  marked PD-textlogo. https://commons.wikimedia.org/wiki/File:Star_Alliance_Logo.svg
+- oneworld.webp: "Oneworld Logo.svg", Wikimedia Commons, marked PD-textlogo.
+  https://commons.wikimedia.org/wiki/File:Oneworld_Logo.svg
+- skyteam.webp: "Skyteam Logo Alliance.svg" by Väsk (Wikimedia Commons, uploader
+  Josh0108), CC BY 2.5 https://creativecommons.org/licenses/by/2.5/ ; black matte
+  removed by FlightAtlas, re-rendered here.
+  https://commons.wikimedia.org/wiki/File:Skyteam_Logo_Alliance.svg
+
+An airline without a file here is drawn as a round badge with its IATA code
+(public/logos.js, AIRLINE_COLOR).

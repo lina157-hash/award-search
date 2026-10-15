@@ -2481,18 +2481,22 @@ const rulesState = { alliance: '', q: '' };
 // The search box and chapter links sit at the top; the search covers every section, not just the program cards.
 // [anchor, label, short label for phones]
 const RULES_CHAPTERS = [['r-alliances', '航空聯盟', '聯盟'], ['am-chart', '亞萬哩數表', '亞萬表'], ['r-programs', '計畫規則', '計畫'], ['release-dates', '開票日', '開票'], ['points-rules', '信用卡轉點', '轉點'], ['r-glossary', '名詞解釋', '名詞']];
-// On phones every section and program card starts folded (the page was 40,000 px tall); the chapter chips stay on screen.
-const rulesFolded = () => matchMedia('(max-width: 640px)').matches;
-// A section whose html starts with its <h2>: the heading becomes the summary of a <details>.
-function rulesSection(html, cls = '') {
+// Every chapter and every card starts folded to one line (a heading and a short summary), so the page reads as a short
+// index; the search, the chapter chips and 「全部展開」 open what they point at. The chapter chips stay on screen.
+// A section whose html starts with its <h2>: the heading and `sum` (one line, html) become the summary of a <details>.
+function rulesSection(html, cls = '', sum = '') {
   const m = /^\s*(<h2[\s\S]*?<\/h2>)([\s\S]*)$/.exec(html);
   if (!m) return html ? `<section class="rules-sec ${cls}">${html}</section>` : '';
-  return `<details class="rules-sec rules-fold ${cls}" ${rulesFolded() && !rulesState.q ? '' : 'open'}><summary>${m[1]}</summary>${m[2]}</details>`;
+  return `<details class="rules-sec rules-fold ${cls}" ${rulesState.q ? 'open' : ''}><summary>${m[1]}${sum ? `<small class="sec-sum">${sum}</small>` : ''}</summary><div class="sec-body">${m[2]}</div></details>`;
+}
+function syncRulesAll() {
+  const b = $('#rules-all');
+  if (b) b.textContent = $$('#rules-body details').some((d) => !d.open) ? '全部展開' : '全部收合';
 }
 function renderRules() {
   $('#rules').innerHTML = `<div class="rules-top">
       <label class="rules-search"><span>搜尋規則庫</span><input type="search" id="rules-q" placeholder="例如：中停、燃油、效期、稅金" value="${esc(rulesState.q)}"></label>
-      <p class="hint" id="rules-count" aria-live="polite"></p>
+      <div class="rules-tools"><p class="hint" id="rules-count" aria-live="polite"></p><button type="button" class="rules-all" id="rules-all">全部展開</button></div>
     </div>
     <nav class="rules-nav" aria-label="規則庫章節">${RULES_CHAPTERS.map(([id, t, s]) => `<button type="button" data-jump="${id}"><span class="tl">${t}</span><span class="ts" aria-hidden="true">${s}</span></button>`).join('')}</nav>
     <div id="rules-body"></div>`;
@@ -2510,6 +2514,14 @@ function renderRules() {
     const offset = $('.top').offsetHeight + $('.rules-nav').offsetHeight + 12;
     window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: 'smooth' });
   });
+  // 全部展開 opens every chapter and card; once everything is open it reads 全部收合.
+  $('#rules-all').addEventListener('click', () => {
+    const all = $$('#rules-body details');
+    const open = all.some((d) => !d.open);
+    all.forEach((d) => (d.open = open));
+    syncRulesAll();
+  });
+  $('#rules-body').addEventListener('toggle', syncRulesAll, true);
   renderRulesBody();
 }
 
@@ -2521,34 +2533,48 @@ function memberNotesHtml(notes) {
   if (!notes?.length) return '';
   return `<ul class="member-notes">${notes.map((n) => {
     const [label, cls] = MEMBER_STATUS[n.status] || [n.status || '', ''];
-    return `<li><span class="tag ${cls}">${esc(label)}${n.date ? ` ${esc(n.date)}` : ''}</span> <b>${esc(airlineZh(n.code))}</b>
+    return `<li><span class="tag ${cls}">${esc(label)}${n.date ? ` ${esc(n.date)}` : ''}</span> ${airlineLogo(n.code, 'sm')}<b>${esc(airlineZh(n.code))}</b>
       <small>${esc(memberNoteText(n.note))}${n.source?.url ? ` <a href="${esc(n.source.url)}" target="_blank" rel="noopener">${esc(n.source.label || '來源')} ↗</a>` : ''}</small></li>`;
   }).join('')}</ul>`;
 }
 
 function renderRulesBody() {
   const { alliances, programs, glossary } = data;
+  const q = rulesState.q;
+  // Each alliance folds to its logo, name and member count; open, it shows every member with its logo.
   const allianceCards = alliances.alliances.map((a) => `
-    <div class="card"><h3 class="alliance-head"><span class="dot ${a.id}"></span>${esc(a.name)}</h3><p>${esc(a.summary)}</p>
-    <p class="hint">成員：${a.members.map((m) => `<span title="${esc(m)}">${esc(airlineZh(m))}</span>`).join('、')}</p>
-    ${memberNotesHtml(a.memberNotes)}
-    <p><a href="${esc(a.url)}" target="_blank" rel="noopener">官方成員名單 ↗</a></p></div>`).join('');
+    <details class="card al-card" id="al-${esc(a.id)}" ${q ? 'open' : ''}>
+      <summary>${allianceLogo(a.id, 'lg')}<span class="card-head"><h3>${esc(a.name)}</h3>
+        <small class="card-sum">${a.members.length} 家成員${a.memberNotes?.length ? `・${a.memberNotes.length} 則近期異動` : ''}</small></span></summary>
+      <p>${esc(a.summary)}</p>
+      <ul class="member-grid" aria-label="成員">${a.members.map((m) => `<li title="${esc(m)}">${airlineLogo(m, 'sm')}<span>${esc(airlineZh(m))}</span></li>`).join('')}</ul>
+      ${memberNotesHtml(a.memberNotes)}
+      <p class="src"><a href="${esc(a.url)}" target="_blank" rel="noopener">官方成員名單 ↗</a></p>
+    </details>`).join('');
+  const pts = data.points;
+  const terms = glossary.sections.flatMap((s) => s.items.map((i) => i.term.replace(/\s*[（(].*$/, '')));
 
   $('#rules-body').innerHTML = [
-    rulesSection(`<h2 class="section" id="r-alliances">航空聯盟</h2><div class="cards">${allianceCards}</div>`),
-    rulesSection(amChartHtml()),
+    rulesSection(`<h2 class="section" id="r-alliances">航空聯盟</h2><div class="cards">${allianceCards}</div>
+      <p class="hint logo-credit">標誌僅供辨識，商標屬各航空公司與聯盟（<a href="/logos/CREDITS.txt" target="_blank" rel="noopener">來源與授權</a>）。</p>`, '',
+      `<span class="al-logos">${ALLIANCE_LOGOS.map((id) => allianceLogo(id, 'xs')).join('')}</span>三大聯盟的成員與近期異動`),
+    rulesSection(amChartHtml(), '', '國泰與夥伴航空的單程獎勵哩數，依飛行距離分區'),
     rulesSection(`<h2 class="section" id="r-programs">哩程計畫規則</h2>
     <p class="hint">${esc(programs.disclaimer)}（最後整理：${esc(programs.lastReviewed)}）</p>
     <div class="filters" id="alliance-filter">
       <button type="button" class="chip ${rulesState.alliance ? '' : 'on'}" data-a="">全部</button>
-      ${Object.entries(ALLIANCE_SHORT).map(([k, v]) => `<button type="button" class="chip ${rulesState.alliance === k ? 'on' : ''}" data-a="${k}"><span class="dot ${k}"></span> ${v}</button>`).join('')}
+      ${Object.entries(ALLIANCE_SHORT).map(([k, v]) => `<button type="button" class="chip ${rulesState.alliance === k ? 'on' : ''}" data-a="${k}">${allianceLogo(k, 'xs')}${v}</button>`).join('')}
       <button type="button" class="chip ${rulesState.alliance === 'none' ? 'on' : ''}" data-a="none" title="星宇、阿聯酋等沒有加入聯盟的航空">非聯盟</button>
     </div>
-    <div class="cards" id="program-cards"></div>`, 'rules-programs'),
-    rulesSection(releaseTableHtml()),
-    rulesSection(pointsHtml()),
-    rulesSection(`<h2 class="section" id="r-glossary">名詞解釋</h2>${glossary.sections.map((s) => `<h3 class="sub">${esc(s.title)}</h3><div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div>`).join('')}`),
+    <div class="cards" id="program-cards"></div>`, 'rules-programs', `${programs.programs.length} 個哩程計畫：計價、中停、燃油附加費、效期`),
+    rulesSection(releaseTableHtml(), '', '各計畫最早在出發前幾天開放訂位'),
+    rulesSection(pointsHtml(), '', pts ? `${pts.transfers.length} 條銀行點數轉哩程管道、${pts.cobrand.length} 張聯名卡` : ''),
+    rulesSection(`<h2 class="section" id="r-glossary">名詞解釋</h2>${glossary.sections.map((s) => `<details class="sub-fold" ${q ? 'open' : ''}><summary><h3 class="sub">${esc(s.title)}</h3><small>${s.items.length} 個</small></summary>
+      <div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div></details>`).join('')}`,
+    '', `${terms.length} 個常見名詞，例如${terms.slice(0, 3).map(esc).join('、')}`),
   ].join('');
+  // The section itself folds now, so its table opens with it instead of needing a second tap.
+  $$('#rules-body .release-wrap').forEach((d) => (d.open = true));
 
   $$('#alliance-filter .chip').forEach((b) => b.addEventListener('click', () => {
     rulesState.alliance = b.dataset.a;
@@ -2575,11 +2601,8 @@ function filterRules() {
       if (ok) n++;
       if (ok && q) markText(it, q);
     }
-    // Glossary groups: hide a group heading whose cards are all hidden.
-    for (const h of $$('h3.sub', sec)) {
-      const cards = h.nextElementSibling?.matches('.cards') ? $$('.card', h.nextElementSibling) : null;
-      if (cards) h.hidden = h.nextElementSibling.hidden = Boolean(q) && cards.every((c) => c.hidden);
-    }
+    // Glossary groups: hide a group whose cards are all hidden.
+    for (const g of $$('details.sub-fold', sec)) g.hidden = Boolean(q) && $$('.card', g).every((c) => c.hidden);
     sec.hidden = Boolean(q) && !n && items.length > 0;
     if (q && n) $$('details', sec).forEach((d) => (d.open = true));
     if (q) hits += n;
@@ -2867,17 +2890,20 @@ function renderProgramCards() {
   const mark = (text) => (q ? esc(text).split(esc(q)).join(`<mark>${esc(q)}</mark>`) : esc(text));
   // With a query, each card keeps only the fields that mention it (「中停」 shows every program's 中停 rule, nothing else).
   const fieldsOf = (p) => (q ? fieldRows.filter(([k, label]) => label.includes(q) || String(p[k] ?? '').includes(q)) : fieldRows);
-  // Each card folds to its name and the first line of its pricing rule (folded on phones unless searching).
-  const open = !rulesFolded() || q ? 'open' : '';
+  // Each card folds to the airline's logo, the program name and one line: its alliance and the first sentence of its
+  // pricing rule. The data-quality and seats tags sit with the sources inside.
+  const open = q ? 'open' : '';
   $('#program-cards').innerHTML = list.map((p) => `
     <details class="card prog-card" id="prog-${esc(p.id)}" ${open}>
-      <summary><h3>${p.alliance ? `<span class="dot ${p.alliance}"></span>` : ''}${esc(p.name)} ${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? '<span class="tag">可查座位</span>' : ''}${programChangeTag(p.id)}</h3>
-      <small class="prog-sum">${esc(String(p.pricing || '').split('。')[0])}</small></summary>
+      <summary>${airlineLogo(p.airline, 'md')}<span class="card-head"><h3>${esc(p.name)}${programChangeTag(p.id)}</h3>
+      <small class="prog-sum">${esc(ALLIANCE_SHORT[p.alliance] || '非聯盟')}・${esc(String(p.pricing || '').split('。')[0])}</small></span></summary>
       ${fieldsOf(p).length ? `<dl>${fieldsOf(p).map(([k, label]) => `<dt>${mark(label)}</dt><dd>${mark(p[k])}</dd>`).join('')}</dl>` : ''}
       ${!q || String(p.notes || '').includes(q) ? `<p class="hint">${mark(p.notes)}</p>` : ''}
-      <div class="src">來源（${esc(p.lastVerified || '')} 查核）：${(p.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}
+      <div class="src">${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? ' <span class="tag">可查座位</span>' : ''}
+      來源（${esc(p.lastVerified || '')} 查核）：${(p.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}
       ・<a href="${esc(p.officialUrl)}" target="_blank" rel="noopener">官方網站 ↗</a></div>
     </details>`).join('') || '<p class="hint">沒有符合的計畫。</p>';
+  syncRulesAll();
 }
 
 // ---------- footer version line ----------

@@ -1055,7 +1055,7 @@ function canonicalUrl(p, q) {
   return `${p}${[...out].length ? `?${out}` : ''}`;
 }
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8', '.webmanifest': 'application/manifest+json' };
 
 // Cache policies. Public answers may sit in Vercel's CDN (s-maxage), keyed by the full URL, so a repeated search costs
 // no function call and no seats.aero call from any instance. Never for anything behind the passcode: the CDN key does
@@ -1110,7 +1110,7 @@ const ROUTING = { body: ROUTING_BODY, etag: etagOf(ROUTING_BODY) };
 
 function staticPolicy(rel, q) {
   if (rel.endsWith('.html')) return 'no-cache';
-  if (rel === '/airports.min.json' || /^\/icon-[\w-]+\.png$/.test(rel)) return 'public, max-age=86400, stale-while-revalidate=604800';
+  if (rel === '/airports.min.json' || /^\/icon-[\w-]+\.png$/.test(rel) || /^\/logos\/\w+\.webp$/.test(rel)) return 'public, max-age=86400, stale-while-revalidate=604800';
   // Script and style URLs carry ?v=<version> when the page links them that way; otherwise revalidate (cheap with the ETag).
   if (/\.(js|css)$/.test(rel)) return q.has('v') ? CACHE.immutable : 'public, max-age=0, must-revalidate';
   return 'public, max-age=3600';
