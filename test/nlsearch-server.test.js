@@ -1,9 +1,10 @@
-// 一句話搜尋 over HTTP in the demo (no seats.aero key, no ANTHROPIC_API_KEY: the demo parser): the page-only and
+// 一句話搜尋 over HTTP in the demo (no seats.aero key, no model key: the demo parser): the page-only and
 // passcode gates, and that the Anthropic SDK is never loaded for it. Own file (own process) for its environment.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 delete process.env.SEATS_AERO_API_KEY;
 delete process.env.ANTHROPIC_API_KEY;
+delete process.env.OPENAI_API_KEY;
 delete process.env.CASH_PASSCODE;
 delete process.env.CRON_SECRET;
 delete process.env.MOCK;
@@ -22,7 +23,7 @@ const nl = async (text, headers = page, method = 'POST') => {
 test('config says the box may show; the demo parser answers from the page', async () => {
   const cfg = await (await fetch(base + '/api/config')).json();
   assert.equal(cfg.nl, true);
-  assert.ok(!JSON.stringify(cfg).includes('ANTHROPIC'));
+  assert.ok(!/ANTHROPIC|OPENAI/.test(JSON.stringify(cfg)));
   const r = await nl('十二月兩個人去大阪，經濟艙直飛就好');
   assert.equal(r.status, 200);
   assert.deepEqual([r.json.origin, r.json.destination, r.json.cabin, r.json.pax, r.json.direct, r.json.mock], [['TPE'], ['KIX'], 'Y', 2, true, true]);

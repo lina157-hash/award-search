@@ -27,7 +27,7 @@ const { createExpiry } = require('./lib/expiry');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 const { cronParts, cronSlot } = require('./lib/cronreport');
 const { createDealSub, DealSubError } = require('./lib/dealsub');
-const { createNlSearch, NlError } = require('./lib/nlsearch');
+const { createNlSearch, pickProvider, NlError } = require('./lib/nlsearch');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -1225,14 +1225,15 @@ function canonicalUrl(p, q) {
   return `${p}${[...out].length ? `?${out}` : ''}`;
 }
 
-// 一句話搜尋 (lib/nlsearch.js): Claude Haiku turns one sentence into the search form's conditions. Only with
-// ANTHROPIC_API_KEY (the demo uses a rule-based stand-in); without it the endpoint is a 404 and the box never shows.
+// 一句話搜尋 (lib/nlsearch.js): a small model (OpenAI GPT-6 Luna or Claude Haiku) turns one sentence into the search
+// form's conditions. Only with OPENAI_API_KEY or ANTHROPIC_API_KEY (NL_PROVIDER picks when both are set; the demo uses
+// a rule-based stand-in); without either the endpoint is a 404 and the box never shows.
 // Owner only (the passcode, like the cash fares), NL_DAILY_LIMIT calls a Taiwan day, the same sentence cached a day.
-const ANTHROPIC_KEY = (process.env.ANTHROPIC_API_KEY || '').trim();
-const NL_MODE = ANTHROPIC_KEY ? 'live' : MOCK ? 'mock' : 'off';
+const NL = pickProvider(process.env, MOCK);
 const nlSearch = createNlSearch({
-  mode: NL_MODE,
-  apiKey: ANTHROPIC_KEY,
+  mode: NL.mode,
+  provider: NL.provider || undefined,
+  apiKey: NL.apiKey,
   kv,
   today: () => todayTW(),
   taiwan: (start, end) => travelInfo.taiwan(start, end),

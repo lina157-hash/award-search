@@ -1,9 +1,10 @@
-// 一句話搜尋 on a live site without ANTHROPIC_API_KEY: invisible. /api/config says nl: false and /api/nl is a 404.
+// 一句話搜尋 on a live site without OPENAI_API_KEY or ANTHROPIC_API_KEY: invisible. /api/config says nl: false and /api/nl is a 404.
 // Own file (own process): the server reads its keys when it loads. No request here reaches seats.aero.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
 process.env.SEATS_AERO_API_KEY = 'test-not-a-real-key';
 delete process.env.ANTHROPIC_API_KEY;
+delete process.env.OPENAI_API_KEY;
 delete process.env.MOCK;
 delete process.env.CASH_PASSCODE;
 const { server } = require('../server');

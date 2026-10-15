@@ -1,8 +1,8 @@
 // 一句話搜尋 (lib/nlsearch.js): the model's answer checked field by field, holidays to dates, the demo parser on the
-// design doc's examples, the daily cap, the one-day cache and the request sent to Claude (a fake client: no network).
+// design doc's examples, the daily cap, the one-day cache and the request sent to Claude or OpenAI (fakes: no network).
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { createNlSearch, validate, mockParse, holidayRange, normalize, MODEL } = require('../lib/nlsearch');
+const { createNlSearch, pickProvider, validate, mockParse, holidayRange, normalize, MODEL, OPENAI_MODEL } = require('../lib/nlsearch');
 const { memoryKv } = require('../lib/kv');
 const AIRPORTS = require('../public/airports.min.json');
 const names = require('../data/source-names.json').names;
@@ -230,4 +230,87 @@ test('the real SDK client, made on first use, sends the documented request (to a
     else process.env.ANTHROPIC_BASE_URL = before;
     srv.close();
   }
+});
+
+// A stand-in for fetch to OpenAI: records each request and answers with `reply` ({ status, body }) or throws it.
+function fakeFetch(reply) {
+  const calls = [];
+  const f = async (url, init) => {
+    calls.push({ url, init, body: JSON.parse(init.body) });
+    const r = typeof reply === 'function' ? reply() : reply;
+    if (r instanceof Error) throw r;
+    return { ok: (r.status || 200) < 400, status: r.status || 200, json: async () => r.body };
+  };
+  f.calls = calls;
+  return f;
+}
+const chat = (content, extra = {}) => ({ body: { choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: typeof content === 'string' ? content : JSON.stringify(content), refusal: null }, ...extra }] } });
+const openai = (fetchImpl, o = {}) => service({ provider: 'openai', apiKey: 'test-key-not-real', fetchImpl, ...o });
+
+test('OpenAI request: GPT-6 Luna, strict JSON schema, only the sentence and the date', async () => {
+  const f = fakeFetch(chat(answer({ origin: ['TPE'], destination: ['YVR'], date_start: '2027-03-01', date_end: '2027-03-31', cabin: 'J', passengers: 2 })));
+  const r = await openai(f).parse('明年三月兩個人商務艙去溫哥華');
+  assert.equal(f.calls.length, 1);
+  const { url, init, body } = f.calls[0];
+  assert.equal(url, 'https://api.openai.com/v1/chat/completions');
+  assert.equal(init.method, 'POST');
+  assert.equal(init.headers.authorization, 'Bearer test-key-not-real');
+  assert.ok(init.signal);
+  assert.equal(OPENAI_MODEL, 'gpt-6-luna');
+  assert.deepEqual(Object.keys(body).sort(), ['max_completion_tokens', 'messages', 'model', 'reasoning_effort', 'response_format', 'store']);
+  assert.deepEqual([body.model, body.reasoning_effort, body.store, body.max_completion_tokens], ['gpt-6-luna', 'none', false, 1024]);
+  const fmt = body.response_format;
+  assert.deepEqual([fmt.type, fmt.json_schema.name, fmt.json_schema.strict], ['json_schema', 'search_conditions', true]);
+  assert.equal(fmt.json_schema.schema.additionalProperties, false);
+  assert.deepEqual(fmt.json_schema.schema.required.sort(), Object.keys(EMPTY).sort());
+  assert.deepEqual(body.messages.map((m) => m.role), ['system', 'user']);
+  assert.doesNotMatch(body.messages[0].content, /2026-10-15/); // the static part stays the same every day (OpenAI caches it)
+  assert.equal(body.messages[1].content, '今天是 2026-10-15（星期四），台灣時間。\n句子：明年三月兩個人商務艙去溫哥華');
+  assert.ok(!JSON.stringify(body).includes('test-key-not-real'));
+  assert.deepEqual([r.origin, r.destination, r.start, r.end, r.cabin, r.pax, r.mock, r.cached, r.used], [['TPE'], ['YVR'], '2027-03-01', '2027-03-31', 'J', 2, false, false, 1]);
+});
+
+test('OpenAI failures become plain Chinese errors, without the key', async () => {
+  const quiet = console.error;
+  const logged = [];
+  console.error = (...a) => logged.push(a.join(' '));
+  try {
+    const err = (status, code) => ({ status, body: { error: { message: 'Incorrect API key provided: test-key-not-real', type: 'x', code } } });
+    await assert.rejects(openai(fakeFetch(err(401, 'invalid_api_key'))).parse('去大阪'), (e) => e.status === 503 && e.code === 'setup' && /OPENAI_API_KEY/.test(e.message));
+    await assert.rejects(openai(fakeFetch(err(429, 'insufficient_quota'))).parse('去大阪'), (e) => e.status === 503 && e.code === 'setup' && /餘額不足/.test(e.message));
+    await assert.rejects(openai(fakeFetch(err(429, 'rate_limit_exceeded'))).parse('去大阪'), (e) => e.status === 503 && /忙碌/.test(e.message));
+    await assert.rejects(openai(fakeFetch(err(404, 'model_not_found'))).parse('去大阪'), (e) => e.status === 503 && /gpt-6-luna/.test(e.message));
+    await assert.rejects(openai(fakeFetch(err(500))).parse('去大阪'), (e) => e.status === 502);
+    await assert.rejects(openai(fakeFetch(chat('', { message: { content: null, refusal: 'I cannot help' } }))).parse('去大阪'), (e) => e.status === 422 && e.code === 'refusal');
+    await assert.rejects(openai(fakeFetch(chat('{"origin":', { finish_reason: 'length' }))).parse('去大阪'), (e) => e.status === 502 && /不完整/.test(e.message));
+    await assert.rejects(openai(fakeFetch(chat('not json'))).parse('去大阪'), (e) => e.status === 502);
+    await assert.rejects(openai(fakeFetch(Object.assign(new Error('t'), { name: 'TimeoutError' }))).parse('去大阪'), (e) => e.status === 504);
+    await assert.rejects(openai(fakeFetch(new TypeError('fetch failed'))).parse('去大阪'), (e) => e.status === 502 && /連不上/.test(e.message));
+  } finally { console.error = quiet; }
+  assert.equal(logged.length, 7); // the HTTP and network failures; refusals and bad JSON are not logged
+  assert.ok(!logged.some((l) => l.includes('test-key-not-real')));
+});
+
+test('the cache keeps each provider\'s answers apart', async () => {
+  const kv = memoryKv();
+  const f = fakeFetch(chat(answer({ destination: ['KIX'] })));
+  const client = fakeClient(answer({ destination: ['ITM'] }));
+  assert.deepEqual((await openai(f, { kv }).parse('十二月去大阪')).destination, ['KIX']);
+  assert.deepEqual((await service({ client, kv }).parse('十二月去大阪')).destination, ['ITM']);
+  assert.equal((await openai(f, { kv }).parse('十二月去大阪')).cached, true);
+  assert.equal(f.calls.length, 1);
+  assert.equal(client.calls.length, 1);
+});
+
+test('pickProvider: whichever key is set; NL_PROVIDER picks when both are', () => {
+  const pick = (env, demo = false) => { const p = pickProvider(env, demo); return [p.mode, p.provider, p.apiKey]; };
+  assert.deepEqual(pick({}), ['off', null, '']);
+  assert.deepEqual(pick({}, true), ['mock', null, '']);
+  assert.deepEqual(pick({ OPENAI_API_KEY: ' sk-a ' }), ['live', 'openai', 'sk-a']);
+  assert.deepEqual(pick({ ANTHROPIC_API_KEY: 'sk-ant-b' }, true), ['live', 'anthropic', 'sk-ant-b']);
+  assert.deepEqual(pick({ OPENAI_API_KEY: 'sk-a', ANTHROPIC_API_KEY: 'sk-ant-b' }), ['live', 'openai', 'sk-a']);
+  assert.deepEqual(pick({ OPENAI_API_KEY: 'sk-a', ANTHROPIC_API_KEY: 'sk-ant-b', NL_PROVIDER: 'Claude' }), ['live', 'anthropic', 'sk-ant-b']);
+  assert.deepEqual(pick({ OPENAI_API_KEY: 'sk-a', NL_PROVIDER: 'claude' }), ['live', 'openai', 'sk-a']); // the named one has no key
+  assert.deepEqual(pick({ ANTHROPIC_API_KEY: 'sk-ant-b', NL_PROVIDER: 'chatgpt' }), ['live', 'anthropic', 'sk-ant-b']);
+  assert.deepEqual(pick({ OPENAI_API_KEY: '   ' }), ['off', null, '']);
 });

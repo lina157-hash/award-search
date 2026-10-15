@@ -1,8 +1,8 @@
-// 一句話搜尋: a one-line box above the 航線查詢 form. The sentence goes to /api/nl (Claude Haiku on the server, a demo
+// 一句話搜尋: a one-line box above the 航線查詢 form. The sentence goes to /api/nl (GPT-6 Luna or Claude Haiku on the server, a demo
 // parser in demo mode); what comes back fills the form and shows as a row of chips the owner can click to fix or
 // remove. Parsing spends no seats.aero: the search still runs only when 搜尋機位 is pressed.
-// Shown only when the server has it on (config.nl, i.e. ANTHROPIC_API_KEY is set) and on the owner's device (the
-// passcode stored here or an unlocked account), like 帳號管理. Classic script loaded after features.js; uses app.js's
+// Shown only when the server has it on (config.nl, i.e. OPENAI_API_KEY or ANTHROPIC_API_KEY is set) and on the owner's
+// device (the passcode stored here or an unlocked account), like 帳號管理. Classic script loaded after features.js; uses app.js's
 // globals ($, $$, esc, store, PASS_KEY, cashCfg, cashApi, pickers, datePickers, setCabin, carrierHint, loadAirports, AP,
 // toast, showTab, state, refreshPrograms, srcName, ymd, CABIN_SHORT, updateLockHint).
 
