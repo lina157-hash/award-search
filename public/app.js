@@ -1507,7 +1507,7 @@ function matrixHtml(rows, sources) {
     const x = r && cab(r, c);
     if (!x) return '<td class="cell none">·</td>';
     if (r.estimate) {
-      return `<td class="cell est" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small>${carriersHtml(x.airlines)} · ${x.kind === 'cx' ? '國泰表' : '夥伴表'}</small></td>`;
+      return `<td class="cell est" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small class="mx-meta">${carrierLogosHtml(x.airlines)}<span>${x.kind === 'cx' ? '國泰表' : '夥伴表'}</span></small></td>`;
     }
     const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : '', isOld(r.updatedAt) ? 'old' : ''].join(' ');
     const ph = phantomWarnings(r.source, x.airlines);
