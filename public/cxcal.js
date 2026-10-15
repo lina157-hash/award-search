@@ -410,25 +410,67 @@
   }
 
   // 外掛模式: the 「Unelevated Award Search」 userscript's panel, if it is on the page → { root, text, hints } or null.
-  // root is the smallest element holding its title (or batch button) and the dated results; hints come from its form
-  // (From / To / Date inputs, the 直飛 and cabin checkboxes) and an error line anywhere on the page.
+  // The panel may sit in the page itself, in an open shadow root or in a same-origin iframe, so every one of those is
+  // searched (a closed shadow root cannot be read; 貼上外掛結果 covers that). root is the smallest element (or shadow
+  // root) holding its title and the dated results; without a readable title, the smallest one holding all the dated
+  // results. hints come from its form (From / To / Date inputs, the 直飛 and cabin checkboxes) and an error line.
   function cxUnFind() {
-    const TT = /^(Unelevated Award Search|批次搜尋\s*\d*\s*天可兌換航班)$/i;
-    const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let n;
+    const TT = /^(Unelevated\s+Award\s+Search\b.{0,20}|批次搜尋\s*\d*\s*天可兌換航班)$/i;
+    const DT = /\b\d{4}-\d{2}-\d{2}\b/;
+    const RT = /\b[A-Z]{3}\s*[-–—]\s*[A-Z]{3}\b/;
+    const CH = /\b[A-Z]{2}\s?\d{2,4}\b[\s\S]{0,60}?\b[FJWY]\s?\d\b/;
+    const me = window.__cxcal && window.__cxcal.host;
+    const roots = [];
+    const add = (r) => {
+      if (!r || roots.includes(r)) return;
+      roots.push(r);
+      for (const e of r.querySelectorAll('*')) {
+        if (e === me) continue;
+        if (e.shadowRoot) add(e.shadowRoot);
+        if (e.tagName === 'IFRAME' || e.tagName === 'FRAME') { try { add(e.contentDocument); } catch (x) { /* cross-origin */ } }
+      }
+    };
+    add(document);
+    const tx = (e) => (e.nodeType === 11 ? [].map.call(e.children, (c) => c.innerText || '').join('\n') : e.innerText || '');
+    const up = (e) => e.parentElement || (e.parentNode && e.parentNode.nodeType === 11 ? e.parentNode : null);
+    const top = (e) => e.nodeType === 11 || e.nodeName === 'HTML';
+    const vis = (e) => e && e.getClientRects().length;
     let t = null;
-    while ((n = tw.nextNode())) if (TT.test(n.nodeValue.trim()) && n.parentElement && n.parentElement.getClientRects().length) { t = n.parentElement; break; }
-    if (!t) return null;
+    let first = null;
+    for (const r of roots) {
+      const tw = (r.ownerDocument || r).createTreeWalker(r.body || r, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = tw.nextNode())) {
+        const v = n.nodeValue.replace(/\s+/g, ' ').trim();
+        if (TT.test(v) && vis(n.parentElement)) { t = n.parentElement; break; }
+        if (!first && DT.test(v) && vis(n.parentElement)) first = n.parentElement;
+      }
+      if (t) break;
+    }
     let panel = null;
     let root = null;
-    for (let e = t; e && e !== document.documentElement; e = e.parentElement) {
-      const x = e.innerText || '';
-      if (!panel && /Unelevated Award Search/i.test(x) && /批次搜尋/.test(x)) panel = e;
-      if (!root && /\b\d{4}-\d{2}-\d{2}\b/.test(x) && /\b[A-Z]{3}\s*[-–—]\s*[A-Z]{3}\b/.test(x)) root = e;
-      if (root && panel) break;
+    if (t) {
+      for (let e = t; e; e = top(e) ? null : up(e)) {
+        const x = tx(e);
+        if (!panel && /Unelevated\s+Award\s+Search/i.test(x) && /搜尋/.test(x)) panel = e;
+        if (!root && DT.test(x) && RT.test(x)) root = e;
+        if (root && panel) break;
+      }
+      panel = panel || t.parentElement || t;
+      root = root || panel;
+    } else {
+      // No title: the results table alone, if it looks like the userscript's (dates, 「TPE - NRT」 headers, flight chips).
+      if (!first) return null;
+      const all = (x) => (x.match(/\b\d{4}-\d{2}-\d{2}\b/g) || []).length;
+      let e = first;
+      while (!top(e) && !(RT.test(tx(e)) && CH.test(tx(e)))) e = up(e);
+      const rn = e.getRootNode();
+      const base = rn.body || rn;
+      const want = all(tx(base));
+      while (!top(e) && all(tx(e)) < want) e = up(e);
+      if (!RT.test(tx(e)) || !CH.test(tx(e))) return null;
+      root = panel = e;
     }
-    panel = panel || t.parentElement || t;
-    root = root || panel;
     const lab = (i) => ((i.labels && i.labels[0] && i.labels[0].innerText) || i.getAttribute('aria-label') || i.getAttribute('placeholder') || i.name || (i.previousElementSibling && i.previousElementSibling.innerText) || (i.parentElement && i.parentElement.innerText) || '').trim();
     const hints = { cabins: '' };
     const CB = { 頭等: 'F', 商務: 'J', 豪經: 'W', 經濟: 'Y' };
@@ -444,10 +486,31 @@
       else if (/^date\b/i.test(l)) hints.date = i.value.trim();
     }
     if (boxes < 4) delete hints.cabins;
-    const er = (document.body.innerText || '').match(/Error\s*[:：]\s*([^\n]*)/);
+    const text = tx(root);
+    const er = (text + '\n' + (document.body.innerText || '')).match(/Error\s*[:：]\s*([^\n]*)/);
     if (er) hints.err = er[1].replace(/\s*\(?\s*Login\s*\)?\s*$/i, '').trim();
     hints.found = true;
-    return { root, text: root.innerText || '', hints };
+    return { root, text, hints };
+  }
+
+  // For 複製診斷資料 when the userscript's panel was not found: where text could be hiding (counts only, no content).
+  function cxUnProbe() {
+    const me = window.__cxcal && window.__cxcal.host;
+    let open = 0;
+    let fr = 0;
+    let xfr = 0;
+    let hosts = 0;
+    const walk = (r) => {
+      for (const e of r.querySelectorAll('*')) {
+        if (e === me) continue;
+        if (e.shadowRoot) { open++; walk(e.shadowRoot); }
+        if (e.tagName === 'IFRAME' || e.tagName === 'FRAME') { fr++; try { if (e.contentDocument) walk(e.contentDocument); else xfr++; } catch (x) { xfr++; } }
+        if (e.tagName.includes('-') && !e.shadowRoot && !e.children.length && e.getClientRects().length && e.getBoundingClientRect().height > 100) hosts++;
+      }
+    };
+    walk(document);
+    const b = document.body.innerText || '';
+    return { v: 3, open, iframes: fr, xorigin: xfr, emptyHosts: hosts, title: /Unelevated/i.test(document.body.textContent || ''), dates: (b.match(/\b\d{4}-\d{2}-\d{2}\b/g) || []).length, routes: (b.match(/\b[A-Z]{3}\s*[-–—]\s*[A-Z]{3}\b/g) || []).length };
   }
 
   // The results section only (from the 出發 heading down through the flight list), never the header/account area.
@@ -481,6 +544,7 @@
       if (size > 60000) return;
       const pad = ' '.repeat(dep);
       if (e.nodeType === 3) { const t = e.nodeValue.replace(/\s+/g, ' ').trim(); if (t) { out.push(pad + clean(t)); size += t.length; } return; }
+      if (e.nodeType === 11) { for (const c of e.childNodes) walk(c, dep); return; }
       if (e.nodeType !== 1) return;
       const tag = e.tagName.toLowerCase();
       if (/^(script|style|noscript|iframe|template|link|meta)$/.test(tag)) return;
@@ -533,7 +597,9 @@
     const bClr = E('button', '', '清除');
     const bExp = E('button', 'cx-pri', '匯出到機票搜索雷達');
     const bDia = E('button', '', '複製診斷資料');
-    [bClr, bExp, bDia].forEach((b) => { b.type = 'button'; btns.append(b); });
+    const bPas = E('button', '', '貼上外掛結果');
+    bPas.hidden = true;
+    [bClr, bExp, bDia, bPas].forEach((b) => { b.type = 'button'; btns.append(b); });
     const outBox = E('div', 'cx-out');
     const NT = '只讀取你畫面上已顯示的內容：不會自動點選或查詢，密碼不會離開你的瀏覽器。在國泰頁面點其他日期或艙等，日曆會自己補上。';
     const NTU = '外掛模式：只讀取 Unelevated 外掛畫面上已顯示的批次結果，不會替你按任何按鈕；外掛還在跑時，結果會自己補上。';
@@ -606,13 +672,21 @@
       let f = null;
       try {
         f = cxUnFind();
+        const rn = f && f.root.getRootNode();
+        if (rn && rn !== document && !seen.includes(rn)) { seen.push(rn); mo.observe(rn, OBS); }
         const u = f ? parseUnelevatedText(f.text, f.hints) : null;
-        if (u && u.routes.length) { readUn(f, u); return; }
+        if (u && u.routes.length) { pasted = false; bPas.hidden = true; readUn(f, u); return; }
+        if (pasted) return;
       } catch (e) { stat.textContent = '外掛模式讀取失敗：' + e.message + '。請按「複製診斷資料」傳給我們。'; return; }
       if (un) { un = null; unList = []; key = ''; db = null; nt.textContent = NT + (note ? ' ' + note : ''); }
       try { hints = cxHints(); r = parseCathayText(document.body.innerText, hints); } catch (e) { stat.textContent = '讀取失敗：' + e.message + '。請按「複製診斷資料」傳給我們。'; return; }
       last = { r, hints, f };
-      if (!r.from && !r.fc) { stat.textContent = f ? '外掛模式：還沒有結果。請先按外掛的「批次搜尋 20 天可兌換航班」，跑完會自動讀進來。' : '還讀不到航線：請在國泰「選擇航班」的結果頁使用。'; draw(); return; }
+      if ((!r.from && !r.fc) || (r.issues.includes('nohead') && !r.flights.length && !r.strip.length)) {
+        bPas.hidden = !!f;
+        stat.textContent = f ? '外掛模式：還沒有結果。請先按外掛的「批次搜尋」，跑完會自動讀進來。' : '還讀不到航線：請在國泰「選擇航班」的結果頁使用。裝了 Unelevated 外掛但讀不到它的結果時，可以按「貼上外掛結果」。';
+        draw();
+        return;
+      }
       const k = 'cxcal:' + (r.from && r.to ? r.from + '>' + r.to : r.fc + '>' + r.tc);
       if (k !== key) { key = k; db = ld(k) || { from: r.from || r.fc, to: r.to || r.tc, days: {} }; st.ym = ''; st.sel = ''; }
       if (r.fc) { db.fc = r.fc; db.tc = r.tc; }
@@ -648,9 +722,12 @@
     };
     let timer = 0;
     let waits = 0;
+    let pasted = false;
+    const seen = [];
     const later = () => { clearTimeout(timer); timer = setTimeout(read, 800); };
     const mo = new MutationObserver(later);
-    mo.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'aria-selected', 'aria-pressed', 'aria-current', 'aria-checked'] });
+    const OBS = { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'aria-selected', 'aria-pressed', 'aria-current', 'aria-checked'] };
+    mo.observe(document.body, OBS);
     const shout = (t, x) => {
       outBox.textContent = '';
       outBox.append(E('p', 'cx-note', t));
@@ -704,7 +781,25 @@
       }
       const r = last && last.r;
       const sum = r ? JSON.stringify({ route: [r.from, r.to, r.fc, r.tc], head: r.head, date: r.date, cabin: r.cabin, strip: r.strip.length, tiles: r.tiles, flights: r.flights.length, low: r.low, issues: r.issues, hints: last.hints }) : '';
-      copy(cxDiag(cxRoot(), '解析結果：' + sum), '已複製診斷資料（不含姓名、會員號碼與哩程餘額），可以直接貼給我們。');
+      let pr = '';
+      try { pr = JSON.stringify(cxUnProbe()); } catch (e) { pr = e.message; }
+      copy(cxDiag(cxRoot(), '解析結果：' + sum + '\n外掛偵測：' + pr), '已複製診斷資料（不含姓名、會員號碼與哩程餘額），可以直接貼給我們。');
+    };
+    // When the userscript's panel cannot be read (a closed shadow root): the owner selects its results with the mouse,
+    // copies them and pastes them here; the text is parsed the same way.
+    bPas.onclick = () => {
+      const ta = E('textarea');
+      ta.placeholder = '用滑鼠從外掛結果表的第一個日期拖到最後一班航班，按 Ctrl+C（Mac：⌘C），再在這裡按 Ctrl+V（Mac：⌘V）。';
+      ta.oninput = () => {
+        const u = parseUnelevatedText(ta.value, {});
+        if (!u.routes.length) { stat.textContent = '貼上的文字裡找不到日期和航線（例如 2027-03-01、TPE - NRT），請再選一次。'; return; }
+        pasted = true;
+        bPas.hidden = true;
+        outBox.textContent = '';
+        readUn({ hints: {} }, u);
+      };
+      shout('貼上外掛結果：', ta);
+      ta.focus();
     };
     sw.onclick = () => { const l = host.style.left === '12px'; host.style.left = l ? 'auto' : '12px'; host.style.right = l ? '12px' : 'auto'; };
     mn.onclick = () => { body.hidden = !body.hidden; mn.textContent = body.hidden ? '+' : '–'; mn.title = body.hidden ? '展開' : '縮小'; };
@@ -764,7 +859,7 @@
   // The bookmark: the parser, the calendar and the panel in one javascript: URL (no script is loaded from anywhere,
   // so no script host has to be allowed by Cathay's page). One line, with % and # escaped for the URL.
   function bookmarkletCode(origin, note) {
-    const fns = [parseCathayText, parseUnelevatedText, cxView, cxCss, cxHints, cxUnFind, cxRoot, cxDiag, cxRun].map(String).join('\n');
+    const fns = [parseCathayText, parseUnelevatedText, cxView, cxCss, cxHints, cxUnFind, cxUnProbe, cxRoot, cxDiag, cxRun].map(String).join('\n');
     const src = '(function(){' + fns + '\ncxRun(' + JSON.stringify(String(origin || '').replace(/\/$/, '')) + ',' + JSON.stringify(note || '') + ')})()';
     return 'javascript:' + cxMin(src).replace(/%/g, '%25').replace(/#/g, '%23');
   }

@@ -161,3 +161,18 @@ test('cxunelev: the store keeps seat counts and chips, refuses unknown fields, a
   for (const v of Object.values(big.days)) for (const x of Object.values(v.c)) x.t = Date.now();
   assert.doesNotThrow(() => validatePayload(body(big.days)));
 });
+
+test('cxunelev: the bookmark looks inside shadow roots and iframes, and offers pasting when the panel is unreadable', () => {
+  const code = decodeURIComponent(CX.bookmarkletCode('https://example.test'));
+  assert.ok(code.includes('shadowRoot') && code.includes('contentDocument'));
+  assert.ok(code.includes('function cxUnProbe(') && code.includes('貼上外掛結果'));
+  // The owner's 2027-03-01 screenshot, as innerText splits the chips (cabin letter and seats on their own lines).
+  const text = '2027-03-01\nMon\n♥ TPE - NRT\nBook »\nCX450\nJ\n1\nY\n2\n›\nCX461\nHKG\nCX500\nJ\n4\nY\n9\n›\n2027-03-02\nTue\n♥ TPE - NRT\nBook »\nCX450\nJ\n2\n›';
+  const u = CX.parseUnelevatedText(text, {});
+  assert.deepEqual(u.dates, ['2027-03-01', '2027-03-02']);
+  const d = u.routes[0].days;
+  assert.equal(d['2027-03-01'].c.J.seats, 4);
+  assert.equal(d['2027-03-01'].c.Y.n, 2);
+  assert.equal(d['2027-03-02'].c.J.seats, 2);
+  assert.equal(d['2027-03-02'].c.Y, undefined);
+});
