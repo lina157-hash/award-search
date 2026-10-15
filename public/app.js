@@ -35,6 +35,13 @@ const airlineLabel = (code) => (airlineZh(code) !== code ? `${airlineZh(code)}�
 // "BR, NH" → 長榮航空、全日空 with each code in a tooltip (compact places: cells, tables, cards).
 const carriersHtml = (list) => String(list || '').split(/[,\s]+/).filter(Boolean)
   .map((c) => (airlineZh(c) !== c ? `<span class="al" title="${esc(c)}">${esc(airlineZh(c))}</span>` : esc(c))).join('、');
+// The comparison table's compact form: each operating airline as a small logo (name on hover), at most 3 then 「+N」.
+const carrierLogosHtml = (list) => {
+  const codes = [...new Set(String(list || '').split(/[,\s]+/).filter(Boolean))];
+  if (typeof airlineLogo !== 'function') return carriersHtml(list);
+  const one = (c) => { const logo = airlineLogo(c, 'xs'); return logo ? `<span class="mx-al" title="${esc(airlineZh(c))}">${logo}</span>` : `<span class="mx-al" title="${esc(airlineZh(c))}">${esc(c)}</span>`; };
+  return codes.length ? `<span class="mx-als" title="${esc(codes.map(airlineZh).join('、'))}">${codes.slice(0, 3).map(one).join('')}${codes.length > 3 ? `<span class="mx-more">+${codes.length - 3}</span>` : ''}</span>` : '';
+};
 // A fare source's English airline name → Chinese, with the original in a tooltip.
 const airlineNameHtml = (name, flight) => {
   const code = airlineCodeOf(name) || (/^[A-Z0-9]{2}\s?\d/.test(flight || '') ? flight.slice(0, 2) : '');
@@ -1504,9 +1511,9 @@ function matrixHtml(rows, sources) {
     }
     const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : '', isOld(r.updatedAt) ? 'old' : ''].join(' ');
     const ph = phantomWarnings(r.source, x.airlines);
-    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}${costCellHtml(r, c)}<small>${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · ${x.seats}位` : ''}</small></td>`;
+    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}${costCellHtml(r, c)}<small class="mx-meta">${carrierLogosHtml(x.airlines)}${x.direct ? '<span>直飛</span>' : ''}${x.seats ? `<span>${x.seats}位</span>` : ''}</small></td>`;
   };
-  return `<div class="table-wrap"><table>
+  return `<div class="table-wrap"><table class="mx">
     <thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}${feeHeadHtml(s)}</th>`).join('')}</tr></thead>
     <tbody>${keys.map((k) => {
       const [date, o, d] = k.split('|');
