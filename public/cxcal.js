@@ -185,7 +185,8 @@
   //     err, missing: [iso], chips }. A date shown with no chips for a route counts as no seats.
   function parseUnelevatedText(text, hints) {
     hints = hints || {};
-    const s = String(text || '');
+    // A copied page runs the route header into the link after it (「TPE - NRTBook »」): keep them apart.
+    const s = String(text || '').replace(/\s*(Book\s*»)/g, '\n$1');
     const add = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
     const RE = /(Error\s*[:：][^\n]*)|\b(\d{4})-(\d{2})-(\d{2})\b|\b([A-Z]{3})\s*[-–—]\s*([A-Z]{3})\b|\b([A-Z]{2})\s?(\d{2,4})\b|\b([FJWY])\s?(\d)\b|\b([A-Z]{3})\b/g;
     const shown = 'FJWY'.split('').filter((c) => !hints.cabins || hints.cabins.includes(c));
@@ -411,7 +412,7 @@
 
   // 外掛模式: the 「Unelevated Award Search」 userscript's panel, if it is on the page → { root, text, hints } or null.
   // The panel may sit in the page itself, in an open shadow root or in a same-origin iframe, so every one of those is
-  // searched (a closed shadow root cannot be read; 貼上外掛結果 covers that). root is the smallest element (or shadow
+  // searched (a closed shadow root cannot be read; 讀取外掛結果 covers that). root is the smallest element (or shadow
   // root) holding its title and the dated results; without a readable title, the smallest one holding all the dated
   // results. hints come from its form (From / To / Date inputs, the 直飛 and cabin checkboxes) and an error line.
   function cxUnFind() {
@@ -597,7 +598,7 @@
     const bClr = E('button', '', '清除');
     const bExp = E('button', 'cx-pri', '匯出到機票搜索雷達');
     const bDia = E('button', '', '複製診斷資料');
-    const bPas = E('button', '', '貼上外掛結果');
+    const bPas = E('button', '', '讀取外掛結果');
     bPas.hidden = true;
     [bClr, bExp, bDia, bPas].forEach((b) => { b.type = 'button'; btns.append(b); });
     const outBox = E('div', 'cx-out');
@@ -683,7 +684,7 @@
       last = { r, hints, f };
       if ((!r.from && !r.fc) || (r.issues.includes('nohead') && !r.flights.length && !r.strip.length)) {
         bPas.hidden = !!f;
-        stat.textContent = f ? '外掛模式：還沒有結果。請先按外掛的「批次搜尋」，跑完會自動讀進來。' : '還讀不到航線：請在國泰「選擇航班」的結果頁使用。裝了 Unelevated 外掛但讀不到它的結果時，可以按「貼上外掛結果」。';
+        stat.textContent = f ? '外掛模式：還沒有結果。請先按外掛的「批次搜尋」，跑完會自動讀進來。' : '還讀不到航線：請在國泰「選擇航班」的結果頁使用。裝了 Unelevated 外掛但讀不到它的結果時，請按「讀取外掛結果」。';
         draw();
         return;
       }
@@ -785,21 +786,38 @@
       try { pr = JSON.stringify(cxUnProbe()); } catch (e) { pr = e.message; }
       copy(cxDiag(cxRoot(), '解析結果：' + sum + '\n外掛偵測：' + pr), '已複製診斷資料（不含姓名、會員號碼與哩程餘額），可以直接貼給我們。');
     };
-    // When the userscript's panel cannot be read (a closed shadow root): the owner selects its results with the mouse,
-    // copies them and pastes them here; the text is parsed the same way.
-    bPas.onclick = () => {
+    // When the userscript's panel cannot be read (it sits in a closed shadow root, as on the owner's page): the browser
+    // still copies its text when the whole page is selected. On a click: select the page body (our panel lives outside
+    // it), copy, read the clipboard back (the browser asks once) and parse that. If any step is refused, the owner does
+    // the same by hand: Ctrl+A, Ctrl+C on the page, Ctrl+V into the box here.
+    const usePasted = (t) => {
+      const u = parseUnelevatedText(t, {});
+      if (!u.routes.length) return false;
+      pasted = true;
+      bPas.hidden = true;
+      outBox.textContent = '';
+      readUn({ hints: {} }, u);
+      return true;
+    };
+    const byHand = (why) => {
       const ta = E('textarea');
-      ta.placeholder = '用滑鼠從外掛結果表的第一個日期拖到最後一班航班，按 Ctrl+C（Mac：⌘C），再在這裡按 Ctrl+V（Mac：⌘V）。';
-      ta.oninput = () => {
-        const u = parseUnelevatedText(ta.value, {});
-        if (!u.routes.length) { stat.textContent = '貼上的文字裡找不到日期和航線（例如 2027-03-01、TPE - NRT），請再選一次。'; return; }
-        pasted = true;
-        bPas.hidden = true;
-        outBox.textContent = '';
-        readUn({ hints: {} }, u);
-      };
-      shout('貼上外掛結果：', ta);
+      ta.placeholder = '在國泰頁面的空白處點一下，按 Ctrl+A、再按 Ctrl+C（Mac：⌘A、⌘C），然後回到這個框按 Ctrl+V（Mac：⌘V）。';
+      ta.oninput = () => { if (!usePasted(ta.value)) stat.textContent = '貼上的文字裡找不到外掛的結果（例如 2027-03-01、TPE - NRT），請確認外掛已經查完再試一次。'; };
+      shout((why ? why + '請改用手動：' : '') + '在國泰頁面全選、複製，再貼到下面：', ta);
       ta.focus();
+    };
+    bPas.onclick = async () => {
+      const sel = window.getSelection();
+      let text = '';
+      try {
+        sel.removeAllRanges();
+        sel.selectAllChildren(document.body);
+        const ok = document.execCommand('copy');
+        sel.removeAllRanges();
+        if (ok && navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText();
+      } catch (e) { sel.removeAllRanges(); }
+      if (text && usePasted(text)) { shout('已從頁面讀到外掛的結果（剪貼簿裡現在是這頁的文字）。外掛再查新的結果時，請再按一次「讀取外掛結果」。'); bPas.hidden = false; return; }
+      byHand(text ? '頁面上找不到外掛的結果，' : '瀏覽器沒有允許讀取剪貼簿，');
     };
     sw.onclick = () => { const l = host.style.left === '12px'; host.style.left = l ? 'auto' : '12px'; host.style.right = l ? '12px' : 'auto'; };
     mn.onclick = () => { body.hidden = !body.hidden; mn.textContent = body.hidden ? '+' : '–'; mn.title = body.hidden ? '展開' : '縮小'; };

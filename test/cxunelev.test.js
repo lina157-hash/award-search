@@ -165,7 +165,7 @@ test('cxunelev: the store keeps seat counts and chips, refuses unknown fields, a
 test('cxunelev: the bookmark looks inside shadow roots and iframes, and offers pasting when the panel is unreadable', () => {
   const code = decodeURIComponent(CX.bookmarkletCode('https://example.test'));
   assert.ok(code.includes('shadowRoot') && code.includes('contentDocument'));
-  assert.ok(code.includes('function cxUnProbe(') && code.includes('貼上外掛結果'));
+  assert.ok(code.includes('function cxUnProbe(') && code.includes('讀取外掛結果') && code.includes('selectAllChildren'));
   // The owner's 2027-03-01 screenshot, as innerText splits the chips (cabin letter and seats on their own lines).
   const text = '2027-03-01\nMon\n♥ TPE - NRT\nBook »\nCX450\nJ\n1\nY\n2\n›\nCX461\nHKG\nCX500\nJ\n4\nY\n9\n›\n2027-03-02\nTue\n♥ TPE - NRT\nBook »\nCX450\nJ\n2\n›';
   const u = CX.parseUnelevatedText(text, {});
@@ -175,4 +175,7 @@ test('cxunelev: the bookmark looks inside shadow roots and iframes, and offers p
   assert.equal(d['2027-03-01'].c.Y.n, 2);
   assert.equal(d['2027-03-02'].c.J.seats, 2);
   assert.equal(d['2027-03-02'].c.Y, undefined);
+  // Copied from the page (select all, copy): the route header runs into 「Book »」.
+  const copied = CX.parseUnelevatedText(text.replace(/TPE - NRT\nBook »/g, 'TPE - NRTBook »'), {});
+  assert.deepEqual(copied.routes, u.routes);
 });
