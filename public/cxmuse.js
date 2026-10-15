@@ -4,7 +4,8 @@
 // This site never sees a password and calls no AI: it only writes the instruction (copied to the clipboard) and reads
 // back the assistant's text answer (「貼上 AI 助理的結果」), drawn with cxcal.js's calendar (CXCAL.cxView) and saved, on
 // request and with the passcode, to /api/cxcal as source 'ai' with the airline (cxlive.js's 「<航空>官網實查」 card).
-// No quota is spent. Loaded after cxauto.js; uses aihelper.js's aiCopy and app.js's globals.
+// No quota is spent. An action of the 國泰／亞洲萬里通 card (cxcard.js), shown only where the passcode is (owner).
+// Loaded after cxauto.js; uses aihelper.js's aiCopy and app.js's globals.
 
 // ---------- pure logic (test/cxmuse.test.js) ----------
 const MUSE_MAX_PAIRS = 3;
@@ -289,7 +290,7 @@ function museTemplates() {
 }
 
 if (typeof document !== 'undefined' && document.getElementById('search-results') && typeof CXCAL === 'object') {
-  const st = { open: false, paste: false, text: '', parsed: null, view: new Map(), prompt: '', mode: 'web', air: store.get('museAir', 'cx'), f: {}, extras: new Set(), tpls: null, loading: false };
+  const st = { paste: false, text: '', parsed: null, view: new Map(), prompt: '', mode: 'web', air: store.get('museAir', 'cx'), f: {}, extras: new Set(), tpls: null, loading: false };
   const codes = (s) => [...new Set(String(s || '').toUpperCase().split(/[,\s]+/).filter((c) => /^[A-Z]{3}$/.test(c)))];
   const nameOf = (c) => (typeof airportCity === 'function' ? airportCity(c) : '') || c;
   const ends = () => { const [o, d] = String(state.route || '').split('→'); return { os: codes(o), ds: codes(d) }; };
@@ -316,12 +317,12 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     const { os, ds } = ends();
     return { from: os.join(','), to: ds.join(','), start: state.start || '', end: state.end || '', cabin: state.cabin || 'J', pax: state.pax || 1 }[k];
   };
-  // The pairs to ask about: for 國泰 the cxauto cards' pairs (Cathay seats already seen) first; then the pairs that
+  // The pairs to ask about: for 國泰 the pairs cxauto shows (Cathay seats already seen) first; then the pairs that
   // touch the airline's hubs; then the rest.
-  function pairsFor(t, autoHtml) {
+  function pairsFor(t) {
     const os = codes(field('from'));
     const ds = codes(field('to'));
-    const keys = t.id === 'cx' ? [...String(autoHtml || '').matchAll(/data-cxa="([A-Z]{3})&gt;([A-Z]{3})"/g)].map((m) => `${m[1]}>${m[2]}`).filter((k) => os.includes(k.slice(0, 3)) && ds.includes(k.slice(4))) : [];
+    const keys = t.id === 'cx' ? (window.cxAutoPart?.keys() || []).filter((k) => os.includes(k.slice(0, 3)) && ds.includes(k.slice(4))) : [];
     const all = os.flatMap((o) => ds.map((d) => `${o}>${d}`)).filter((k) => k.slice(0, 3) !== k.slice(4));
     const hub = all.filter((k) => (t.hubs || []).some((h) => k.includes(h)));
     const list = [...new Set([...keys, ...hub, ...all])];
@@ -329,12 +330,11 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     out.dropped = list.slice(MUSE_MAX_PAIRS).map((k) => k.replace('>', '→')); // past the cap: said in the note
     return out;
   }
-  let lastAuto = '';
   // → { text, note } for the instruction on show, or { text: '', note } saying what is missing.
   function promptNow() {
     const t = tplOf(st.air);
     if (!t) return { text: '', note: '' };
-    const pairs = pairsFor(t, lastAuto);
+    const pairs = pairsFor(t);
     const start = field('start');
     if (!pairs.length) return { text: '', note: '請填出發和抵達的機場代碼（例如 TPE、HKG）。' };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return { text: '', note: '請填出發日期。' };
@@ -431,32 +431,27 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     el.querySelectorAll('[data-cxm-copy]').forEach((b) => { b.disabled = !text; });
   }
 
-  function boxHtml() {
+  // The 「🤖 請 AI 助理查官網」 panel of the 國泰／亞洲萬里通 card (cxcard.js, which shows it to the owner only).
+  function panelHtml() {
     const { os, ds } = ends();
     if (!os.length || !ds.length) return '';
-    return `<div id="cx-muse" class="cxm${st.open ? ' open' : ''}">
-      <div class="ai-head"><button type="button" class="outline" data-cxm-ask aria-expanded="${st.open}">🤖 請 AI 助理查官網</button></div>
+    loadTpls(); // 載入中… until they come (then redrawBody)
+    return `<div id="cx-muse" class="cxm open">
       <p class="hint cxm-note">國泰、華航、長榮、星宇、日航、ANA：只會複製一段指示，貼到 Muse、ChatGPT 或 Gemini；密碼只交給你的 AI 助理，本站看不到，也不花查詢額度。</p>
-      <div class="cxm-body" ${st.open ? '' : 'hidden'}>${st.open ? bodyHtml() : ''}</div>
+      <div class="cxm-body">${bodyHtml()}</div>
       <details class="cxm-paste" ${st.paste ? 'open' : ''}><summary>貼上 AI 助理的結果</summary>
         <textarea class="cxm-in" rows="5" spellcheck="false" placeholder="把 AI 助理回覆的整段文字貼在這裡，例如：&#10;華航查票結果 TPE-NRT&#10;2027-08-01 | 商務 | 充足 | 50000 | CI100&#10;2027-08-02 | 商務 | 候補">${esc(st.text)}</textarea>
         <div class="cxm-out">${outHtml()}</div>
       </details>
     </div>`;
   }
-
-  // Hook: after cxauto's cards (or where they would be), before the one-line 國泰補查 badge.
-  const prev = window.cxBadgeHtml;
-  window.cxBadgeHtml = (c) => {
-    const s = typeof prev === 'function' ? prev(c) : '';
-    lastAuto = s.match(/<div id="cx-auto">[\s\S]*$/)?.[0] || '';
-    const mine = boxHtml();
-    if (mine && st.parsed) queueMicrotask(() => { const el = document.getElementById('cx-muse'); if (el) drawCals(el); });
-    const i = s.indexOf('<details class="cx-badge"');
-    return i < 0 ? s + mine : s.slice(0, i) + mine + s.slice(i);
+  window.cxMusePart = {
+    available: () => Boolean(ends().os.length && ends().ds.length),
+    html: panelHtml,
+    after: (el) => { if (st.parsed && el) drawCals(el); },
   };
 
-  document.addEventListener('search:start', () => { Object.assign(st, { open: false, paste: false, text: '', parsed: null, prompt: '', mode: 'web', f: {} }); st.view.clear(); });
+  document.addEventListener('search:start', () => { Object.assign(st, { paste: false, text: '', parsed: null, prompt: '', mode: 'web', f: {} }); st.view.clear(); });
 
   const results = document.getElementById('search-results');
   const parseNow = async (ta) => {
@@ -483,17 +478,6 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   });
   results.addEventListener('toggle', (e) => { if (e.target.matches?.('.cxm-paste')) st.paste = e.target.open; }, true);
   results.addEventListener('click', async (e) => {
-    const ask = e.target.closest('[data-cxm-ask]');
-    if (ask) {
-      const box = ask.closest('#cx-muse');
-      st.open = !st.open;
-      box.classList.toggle('open', st.open);
-      ask.setAttribute('aria-expanded', String(st.open));
-      const body = box.querySelector('.cxm-body');
-      body.hidden = !st.open;
-      if (st.open) { body.innerHTML = bodyHtml(); loadTpls(); }
-      return;
-    }
     const pick = e.target.closest('[data-cxm-air]');
     if (pick) {
       st.air = pick.dataset.cxmAir;

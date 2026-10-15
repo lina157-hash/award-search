@@ -1,7 +1,7 @@
-// 國泰座位日曆（自動）: Cathay-operated seats the route search already loaded, one card per origin→destination pair.
+// 國泰座位日曆（自動）: Cathay-operated seats the route search already loaded, by origin→destination pair.
 // seats.aero shows Cathay under oneworld partners (Qantas, Alaska, American…) and, on a few routes, Asia Miles itself;
 // each row lists the operating airlines per cabin. We sort those rows by day and cabin into the record cxcal.js's
-// calendar (CXCAL.cxView) draws, with a one-line summary per cabin and a 「看日曆」 toggle. No extra calls: only the
+// calendar (CXCAL.cxView) draws, behind the 國泰／亞洲萬里通 card's 「看日曆」 (cxcard.js). No extra calls: only the
 // results of the current search. Loaded after cxlive.js; uses cxfill.js's helpers (cxPartnerSources, cxHas, cxOnly,
 // cxSeatsOk) and app.js's amPrice for the 「約」 Asia Miles price.
 
@@ -65,10 +65,12 @@ function cxAutoPick(routes, max = CXA_MAX) {
 }
 
 // ---------- page ----------
+// The 「看日曆」 panel of the 國泰／亞洲萬里通 card (cxcard.js): one airport pair at a time (chips when there are
+// several), its line per cabin and the calendar. The card's own cabin lines add the days of all pairs up.
 if (typeof document !== 'undefined' && document.getElementById('search-results') && typeof CXCAL === 'object') {
   const CN = { Y: '經濟', W: '豪華經濟', J: '商務', F: '頭等' };
   const LB = { Y: '經', W: '豪', J: '商', F: '頭' };
-  const st = { cal: new Set(), view: new Map() }; // open calendars, and each calendar's { ym, sel }
+  const st = { sel: '', view: new Map() }; // the pair on show, and each calendar's { ym, sel }
   let memo = { res: null, pax: null, routes: [] };
   const nameOf = (c) => (typeof airportCity === 'function' ? airportCity(c) : '') || c;
   const routesNow = () => {
@@ -90,26 +92,23 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     document.head.append(s);
   };
 
-  // The note is said once, on the last card.
-  function cardHtml(r, i, list) {
-    const total = totalDays();
-    const stats = cxAutoStats(r);
-    const sum = stats.map((x, i) => `<span class="cx-auto-c">${CN[x.c]} <b>${x.days}</b>/${total} 天${i ? '' : '有國泰位'}${price(x) ? `・${price(x)}` : ''}</span>`).join('；');
-    const progs = [...new Set(Object.values(r.days).flatMap((d) => Object.values(d.c).flatMap((x) => x.progs.map((p) => p.source))))];
-    const open = st.cal.has(r.key);
-    return `<section class="cx-live-card cx-auto-card" data-cxa="${esc(r.key)}">
-      <div class="cx-live-head"><span class="cx-tag">國泰座位日曆</span><b>${esc(nameOf(r.fc))} → ${esc(nameOf(r.tc))}</b><small>${esc(r.fc)}→${esc(r.tc)}</small><span class="hint">由${esc(progs.map((s) => (s === 'asiamiles' ? '亞洲萬里通' : srcName(s).split(' ')[0])).join('、'))}的資料自動整理</span></div>
-      <p class="cx-live-sum">${sum}</p>
-      <div class="cx-live-actions"><button type="button" class="linklike" data-cxa-cal="${esc(r.key)}" aria-expanded="${open}">${open ? '收起日曆' : '看日曆'}</button></div>
-      <div class="cxp cx-live-cal" ${open ? '' : 'hidden'}></div>
-      ${i < list.length - 1 ? '' : `<p class="hint cx-live-note">來自 seats.aero 上夥伴計畫查到的國泰航班：有位的日期通常也能用亞洲萬里通訂到，沒有位的日期國泰官網仍可能有位。只涵蓋這次查詢的日期；「約」依亞洲萬里通國泰航班獎勵表與距離估算，每人單程，未含稅金與附加費。</p>`}
-    </section>`;
-  }
-
-  function cardsHtml() {
+  function panelHtml() {
     const { shown, more } = cxAutoPick(routesNow());
     if (!shown.length) return '';
-    return `<div id="cx-auto">${shown.map(cardHtml).join('')}${more ? `<p class="hint cx-auto-more">另有 ${more} 組機場也有國泰位，縮小出發或抵達機場就能看到。</p>` : ''}</div>`;
+    if (!shown.some((r) => r.key === st.sel)) st.sel = shown[0].key;
+    const r = shown.find((x) => x.key === st.sel);
+    const total = totalDays();
+    const progs = [...new Set(Object.values(r.days).flatMap((d) => Object.values(d.c).flatMap((x) => x.progs.map((p) => p.source))))];
+    const from = `由${esc(progs.map((s) => (s === 'asiamiles' ? '亞洲萬里通' : srcName(s).split(' ')[0])).join('、'))}的資料整理`;
+    // One pair: the card's lines already say it all. Several: this pair's own line per cabin.
+    const sum = shown.length > 1 ? cxAutoStats(r).map((x) => `<span class="cx-auto-c">${CN[x.c]} <b>${x.days}</b>/${total} 天${price(x) ? `・${price(x)}` : ''}</span>`).join('；') : '';
+    const chips = shown.length > 1 ? `<div class="cxm-air" role="radiogroup" aria-label="哪一組機場">${shown.map((x) => `<button type="button" role="radio" class="cxm-chip" aria-checked="${x.key === r.key}" data-cxa-pick="${esc(x.key)}">${esc(x.fc)}→${esc(x.tc)} <small>${Object.keys(x.days).length} 天</small></button>`).join('')}</div>` : '';
+    return `${chips}<section class="cx-auto-card" data-cxa="${esc(r.key)}">
+      <p class="cx-live-sum"><b>${esc(nameOf(r.fc))} → ${esc(nameOf(r.tc))}</b> <small class="hint">${from}</small>${sum ? `<br>${sum}` : ''}</p>
+      <div class="cxp cx-live-cal"></div>
+    </section>
+    ${more ? `<p class="hint cx-auto-more">另有 ${more} 組機場也有國泰位，縮小出發或抵達機場就能看到。</p>` : ''}
+    <p class="hint cx-live-note">來自 seats.aero 上夥伴計畫查到的國泰航班：有位的日期通常也能用亞洲萬里通訂到，沒有位的日期國泰官網仍可能有位。只涵蓋這次查詢的日期。</p>`;
   }
 
   // cxView draws the grid; cells show seats per cabin (「商J2」) or 「有位」. Two touch-ups after each draw: a cabin no
@@ -143,41 +142,33 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   }
 
   function drawCal(sec) {
-    const k = sec.dataset.cxa;
-    const box = sec.querySelector('.cx-live-cal');
+    const k = sec?.dataset.cxa;
+    const box = sec?.querySelector('.cx-live-cal');
     const r = routesNow().find((x) => x.key === k);
-    if (!box || !r || !st.cal.has(k)) return;
+    if (!box || !r) return;
     ensureCss();
     if (!st.view.has(k)) st.view.set(k, { ym: '', sel: Object.keys(r.days).sort()[0] || '' });
     const vs = st.view.get(k);
     CXCAL.cxView(box, r, vs);
     touchUp(box, r, vs);
   }
-  const drawOpen = () => { for (const sec of document.querySelectorAll('#cx-auto .cx-auto-card')) drawCal(sec); };
 
-  // Hook: renderSearch asks for cxBadgeHtml (cxfill's badge, wrapped by cxlive's card). Our cards go after cxlive's
-  // 國泰官網實查 card and before the one-line 國泰補查 badge; open calendars are drawn once the page holds them.
-  const prev = window.cxBadgeHtml;
-  window.cxBadgeHtml = (c) => {
-    const s = typeof prev === 'function' ? prev(c) : '';
-    const mine = cardsHtml();
-    if (mine && st.cal.size) queueMicrotask(drawOpen);
-    const i = s.indexOf('<details class="cx-badge"');
-    return i < 0 ? s + mine : s.slice(0, i) + mine + s.slice(i);
+  // For the card: every pair (its cabin lines), the pairs on show (cxmuse asks about these first), the panel.
+  window.cxAutoPart = {
+    routes: routesNow,
+    keys: () => cxAutoPick(routesNow()).shown.map((r) => r.key),
+    total: totalDays,
+    html: panelHtml,
+    after: (el) => drawCal(el?.querySelector('.cx-auto-card')),
   };
 
-  document.addEventListener('search:start', () => { st.cal.clear(); st.view.clear(); });
+  document.addEventListener('search:start', () => { st.sel = ''; st.view.clear(); });
   document.getElementById('search-results').addEventListener('click', (e) => {
-    const t = e.target.closest('[data-cxa-cal]');
-    if (t) {
-      const k = t.dataset.cxaCal;
-      const sec = t.closest('.cx-auto-card');
-      const open = !st.cal.has(k);
-      if (open) st.cal.add(k); else st.cal.delete(k);
-      t.textContent = open ? '收起日曆' : '看日曆';
-      t.setAttribute('aria-expanded', String(open));
-      sec.querySelector('.cx-live-cal').hidden = !open;
-      if (open) drawCal(sec);
+    const pick = e.target.closest('[data-cxa-pick]');
+    if (pick) {
+      st.sel = pick.dataset.cxaPick;
+      const panel = pick.closest('.cxc-panel');
+      if (panel) { panel.innerHTML = panelHtml(); drawCal(panel.querySelector('.cx-auto-card')); panel.querySelector(`[data-cxa-pick="${CSS.escape(st.sel)}"]`)?.focus(); }
       return;
     }
     // A click on a day or a month arrow: cxView has already redrawn the calendar (its own handler runs first).

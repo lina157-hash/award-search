@@ -1,6 +1,6 @@
 // 國泰官網實查: the owner's own Cathay (Asia Miles) award calendar, saved from the 國泰哩程日曆 bookmarklet and kept on
-// the server (lib/cxcal-store.js). When a route search renders, one call to our own /api/cxcal shows a card above the
-// 國泰補查 badge with each cabin's lowest miles and open days and a 「看日曆」 toggle (the cxcal calendar). Calendars of
+// the server (lib/cxcal-store.js). When a route search renders, one call to our own /api/cxcal shows a block in the
+// 國泰／亞洲萬里通 card with each cabin's lowest miles and open days and a 「看日曆」 toggle (the cxcal calendar). Calendars of
 // the other airlines saved by 「請 AI 助理查官網」 (cxmuse.js) show the same way as 「<航空>官網實查」, one card per
 // airline and route, named from cxmuse.js's templates (museTemplates) and coloured by its museTint. Spends no paid
 // quota: everything here is our own server. Loaded after cxcal.js (CXCAL.cxView).
@@ -105,7 +105,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
 
   function draw() {
     const el = host();
-    if (!el) return;
+    if (!el) { if (html()) window.cxCardRedraw?.(); return; }
     el.innerHTML = html();
     ensureCss();
     for (const sec of el.querySelectorAll('.cx-live-card')) {
@@ -124,10 +124,9 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   // The AI assistant's days: status colours and its words for the chosen day (cxmuse.js).
   const tint = (box, r, vs) => { if (r.source === 'ai' && typeof museTint === 'function') museTint(box, r, vs); };
 
-  // Hook: renderSearch asks cxfill's cxBadgeHtml for the badge; we put our card right above it, and redraw it from
-  // state on every render (cabin switches re-render).
-  const badge = window.cxBadgeHtml;
-  window.cxBadgeHtml = (c) => `<div id="cx-live">${html()}</div>${typeof badge === 'function' ? badge(c) : ''}`;
+  // The 國泰／亞洲萬里通 card (cxcard.js) holds the #cx-live box under its cabin lines and asks for it on every render
+  // (cabin switches re-render); with no card on the page yet (nothing else to say), the card is drawn for this.
+  window.cxLivePart = { html, after: () => draw() };
 
   async function fetchRoutes(share) {
     const o = share.get('o');

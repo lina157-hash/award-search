@@ -1278,6 +1278,13 @@ $('#search-results').addEventListener('click', (e) => {
   }
   const card = t.closest('.deal, td.cell[data-id]');
   if (card) { openTrips(card.dataset.id, card.dataset.title, state.cabin, card); return; }
+  if (t.closest('#prog-toggle')) {
+    progOpen = !progOpen;
+    $('#prog-chips')?.classList.toggle('open', progOpen);
+    $('#prog-toggle').outerHTML = progToggleHtml([...new Set(state.results.map((r) => r.source))]);
+    $('#prog-toggle').focus();
+    return;
+  }
   const bulk = t.closest('[data-chips]');
   if (bulk) {
     const all = bulk.dataset.chips === 'all';
@@ -1394,7 +1401,8 @@ function resultParts(rows) {
     </button>`;
   }).join('');
 
-  parts.am = `${amReal.length ? `<div class="am-callout">
+  // With the 國泰 scripts loaded these numbers are in their 國泰／亞洲萬里通 card (cxcard.js) instead.
+  parts.am = typeof cxBadgeHtml === 'function' ? '' : `${amReal.length ? `<div class="am-callout">
       <div><b>國泰 亞洲萬里通</b>　最低 <b class="am-miles">${fmt(amReal[0].cabins[c].miles)} 哩</b>（${mmdd(amReal[0].date)} ${esc(amReal[0].origin)} → ${esc(amReal[0].destination)}，${carriersHtml(amReal[0].cabins[c].airlines)}），共 ${amReal.length} 個日期／航線有位</div>
       <div class="hint">來自 seats.aero 的亞洲萬里通實際資料。可在下方表格「國泰 亞洲萬里通」欄點選看航班。</div>
     </div>` : ''}
@@ -1446,7 +1454,8 @@ function renderSearch() {
       <div id="cal-host"></div>
     </details>
     ${matrixTitle}
-    <div class="filters">${p.chips}</div>
+    ${progToggleHtml(p.allSources)}
+    <div class="filters prog-chips${progOpen ? ' open' : ''}" id="prog-chips">${p.chips}</div>
     <div class="res-part" id="legend-host">${p.legend}</div>
     <div id="matrix-host"></div>`;
   renderCalendar(rows);
@@ -1455,7 +1464,7 @@ function renderSearch() {
 }
 
 // A program chip or 全部勾選／全部取消: redraw only what follows the ticked programs (chips, cards, calendar, legend,
-// table). The cabin switch, the filters and the 國泰 cards above stay as they are. `focusSel`: the button to keep focus on.
+// table). The cabin switch, the filters and the 國泰 card above stay as they are. `focusSel`: the button to keep focus on.
 function refreshPrograms(focusSel) {
   const hadFocus = $('#search-results').contains(document.activeElement);
   const rows = visibleRows();
@@ -1464,6 +1473,7 @@ function refreshPrograms(focusSel) {
     $('#am-host').innerHTML = p.am;
     $('#deals-host').innerHTML = p.deals;
     $('#search-results .filters').innerHTML = p.chips;
+    if ($('#prog-toggle')) $('#prog-toggle').outerHTML = progToggleHtml(p.allSources);
     $('#legend-host').innerHTML = p.legend;
     renderCalendar(rows);
     renderMatrix(rows, p.allSources);
@@ -1473,6 +1483,13 @@ function refreshPrograms(focusSel) {
 
 // The results calendar starts folded (it is tall); opening it is remembered while this page is open.
 let calOpen = false;
+// Phones only (CSS): the program chips fold behind 「計畫 (N) ▾」, N = the ticked programs (「12/15」 when not all).
+// Open or not is remembered like the calendar.
+let progOpen = false;
+function progToggleHtml(sources) {
+  const on = sources.filter((s) => !state.hidden.has(s)).length;
+  return `<button type="button" class="chip prog-toggle" id="prog-toggle" aria-expanded="${progOpen}" aria-controls="prog-chips">計畫 (${on === sources.length ? on : `${on}/${sources.length}`}) ${progOpen ? '▴' : '▾'}</button>`;
+}
 // Calendar block only (holidays arriving later redraw just this, not the whole result page). Folded, its heading
 // still says the lowest price and how many days have seats.
 function renderCalendar(rows = visibleRows()) {
@@ -2095,10 +2112,11 @@ function updateLockHint() {
     : '🔒 即時查價會用付費額度，需要通關密碼（不是登入密碼），按「搜尋票價」時會請你輸入。';
   $('#pass-forget')?.addEventListener('click', () => { store.del(PASS_KEY); updateLockHint(); toast('已清除通關密碼'); });
 }
-// What follows the passcode as soon as it is entered or cleared: 今日好康's 立即更新 and the lock note in an open
-// 機位提醒 / 降價追蹤 panel.
+// What follows the passcode as soon as it is entered or cleared: 今日好康's 立即更新, the 國泰 card's AI tool and the
+// lock note in an open 機位提醒 / 降價追蹤 panel.
 function lockChanged() {
   if (typeof renderDeals === 'function') renderDeals();
+  if (typeof cxCardRedraw === 'function') cxCardRedraw(); // its 🤖 請 AI 助理查官網 is the owner's
   const stale = (box) => Boolean($('[data-unlock]', box)) === !passNeeded();
   if ($('#alerts-panel')?.open && stale($('#alerts-body'))) loadAlerts();
   if ($('#watch-panel')?.open && $('#watch-body') && stale($('#watch-body')) && typeof loadWatches === 'function') loadWatches();
@@ -3141,10 +3159,10 @@ function loadMore() {
 // Start on the first sign of a search (a tap or focus on the search page), so the results don't wait for it.
 const warmMore = () => { loadMore().catch(() => {}); loadSearchScripts(); };
 for (const ev of ['pointerdown', 'focusin']) $('#tab-search').addEventListener(ev, warmMore, { once: true });
-// Scripts only the route results use (國泰 cards and calendars, 請 AI 助理查官網, seat history; about 55 KB gzipped):
+// Scripts only the route results use (the 國泰 card and calendars, 請 AI 助理查官網, seat history; about 55 KB gzipped):
 // fetched on the first sign of a search instead of with the page. In this order: each one builds on the one before.
 // The 規則庫 tab (cxcal.js's bookmarklet card) and a #cxcal= landing link load them too.
-const SEARCH_SCRIPTS = ['seathistory', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'cxmuse'];
+const SEARCH_SCRIPTS = ['seathistory', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'cxmuse', 'cxcard'];
 let searchScriptsP = null;
 function loadSearchScripts() {
   searchScriptsP ||= Promise.all(SEARCH_SCRIPTS.map((name) => new Promise((resolve) => {
