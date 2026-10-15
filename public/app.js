@@ -2701,8 +2701,8 @@ function renderCalc() {
     }
     const lines = [...groups.values()].map(({ rate, names }) => {
       const out = calcConvert(rate, amountOf(s), mode);
-      const label = names.length > 3 ? `${names.slice(0, 3).join('、')}等 ${names.length} 家` : names.join('、');
-      return `<div><b>${out.value ? `${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}` : esc(out.short)}</b><small>${esc(label)}${detail ? `，${ratioText(rate)}` : ''}</small></div>`;
+      const label = names.length > 3 && !detail ? `${names.slice(0, 3).join('、')}等 ${names.length} 家` : names.join('、');
+      return `<div><b>${out.value ? `${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}` : esc(out.short)}</b><small title="${esc(names.join('、'))}">${esc(label)}${detail ? `，${ratioText(rate)}` : ''}</small></div>`;
     });
     return `<td class="others">${lines.join('')}</td>`;
   };
@@ -2878,7 +2878,7 @@ tabInit.cash = () => loadCashQuota();
   carrierSel.insertAdjacentHTML('beforeend', data.airlines.airlines.filter((a) => !AL.defunct[a.code]).map((a) => `<option value="${a.code}">${esc(a.name)}（${a.code}）</option>`).join(''));
   carrierSel.addEventListener('change', () => {
     const a = data.airlines.airlines.find((x) => x.code === carrierSel.value);
-    if (a) $('#search-form').alliance.value = a.alliance;
+    if (a) $('#search-form').alliance.value = a.alliance || '';
     carrierHint();
   });
   $('#search-form').alliance.addEventListener('change', (e) => {

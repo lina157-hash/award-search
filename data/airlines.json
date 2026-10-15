@@ -1,6 +1,6 @@
 {
-  "lastReviewed": "2026-10-14",
-  "note": "bookableVia 是 seats.aero 有收錄、且通常可換到該航司座位的里程計畫，實際以查詢結果為準。seats.aero 已收錄亞洲萬里通（asiamiles），但長榮、華航、日航、全日空自家計畫仍未收錄。homeProgram 是該航司自家里程計畫的代碼：有 seats.aero 收錄的用來源代碼（如 singapore、british），沒有的用 programs.json 的 id（evainfinity、dynastyflyer、jal、ana）；各檔案代碼對照見 programs.json 的 idMap。",
+  "lastReviewed": "2026-10-15",
+  "note": "bookableVia 是 seats.aero 有收錄、且通常可換到該航司座位的里程計畫，實際以查詢結果為準。seats.aero 已收錄亞洲萬里通（asiamiles）、哥倫比亞航空 LifeMiles（lifemiles）與阿提哈德 Etihad Guest（etihad；只有經濟與商務艙），但長榮、華航、日航、全日空自家計畫仍未收錄。homeProgram 是該航司自家里程計畫的代碼：有 seats.aero 收錄的用來源代碼（如 singapore、british），沒有的用 programs.json 的 id（evainfinity、dynastyflyer、jal、ana）；各檔案代碼對照見 programs.json 的 idMap。",
   "airlines": [
     {
       "code": "CX",
@@ -23,7 +23,8 @@
         "flyingblue",
         "delta",
         "virginatlantic",
-        "aeromexico"
+        "aeromexico",
+        "etihad"
       ]
     },
     {
@@ -36,7 +37,9 @@
         "united",
         "lufthansa",
         "turkish",
-        "ethiopian"
+        "ethiopian",
+        "lifemiles",
+        "etihad"
       ]
     },
     {
@@ -48,7 +51,8 @@
         "aeroplan",
         "united",
         "lufthansa",
-        "turkish"
+        "turkish",
+        "lifemiles"
       ]
     },
     {
@@ -70,7 +74,8 @@
       "bookableVia": [
         "flyingblue",
         "delta",
-        "virginatlantic"
+        "virginatlantic",
+        "etihad"
       ]
     },
     {
@@ -94,7 +99,9 @@
         "aeroplan",
         "united",
         "virginatlantic",
-        "lufthansa"
+        "lufthansa",
+        "lifemiles",
+        "etihad"
       ]
     },
     {
@@ -106,7 +113,8 @@
         "singapore",
         "aeroplan",
         "united",
-        "lufthansa"
+        "lufthansa",
+        "lifemiles"
       ]
     },
     {
@@ -118,7 +126,8 @@
         "united",
         "aeroplan",
         "lufthansa",
-        "turkish"
+        "turkish",
+        "lifemiles"
       ]
     },
     {
@@ -165,7 +174,8 @@
       "bookableVia": [
         "turkish",
         "aeroplan",
-        "united"
+        "united",
+        "lifemiles"
       ]
     },
     {
@@ -176,7 +186,8 @@
       "bookableVia": [
         "delta",
         "flyingblue",
-        "virginatlantic"
+        "virginatlantic",
+        "etihad"
       ]
     },
     {
@@ -188,7 +199,8 @@
         "lufthansa",
         "aeroplan",
         "united",
-        "turkish"
+        "turkish",
+        "lifemiles"
       ]
     },
     {
@@ -200,6 +212,17 @@
         "alaska",
         "american",
         "qantas"
+      ]
+    },
+    {
+      "code": "EY",
+      "name": "阿提哈德航空",
+      "alliance": null,
+      "homeProgram": "etihad",
+      "bookableVia": [
+        "etihad",
+        "american",
+        "aeroplan"
       ]
     }
   ]
