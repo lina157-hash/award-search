@@ -130,7 +130,8 @@ test('cxcal: export payload round trip; bad input is refused', () => {
   assert.equal(CX.decodeExport(Buffer.from('[1,2]').toString('base64url')), null);
 });
 
-test('cxcal: index.html loads cxcal.js', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  assert.match(html, /<script src="\/cxcal\.js\?v=[\w.-]+"><\/script>/);
+test('cxcal: the page loads cxcal.js (on the first search or the 規則庫 tab)', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  assert.match(app, /const SEARCH_SCRIPTS = \[[^\]]*'cxcal'/);
+  assert.match(app, /tabInit\.rules = \(\) => \{ renderRules\(\); loadSearchScripts\(\); \};/);
 });

@@ -122,9 +122,11 @@ test('several airport pairs: one route each, the most Cathay days first, capped 
   assert.deepEqual(plain(cx.cxAutoPick([])), { shown: [], more: 0 });
 });
 
+// The route-result scripts load on the first search (app.js SEARCH_SCRIPTS, in that order), not from index.html.
+const searchScripts = () => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8').match(/const SEARCH_SCRIPTS = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
 test('the page loads cxauto.js after cxlive.js', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const a = html.indexOf('/cxlive.js');
-  const b = html.indexOf('/cxauto.js');
+  const list = searchScripts();
+  const a = list.indexOf('cxlive');
+  const b = list.indexOf('cxauto');
   assert.ok(a > 0 && b > a);
 });

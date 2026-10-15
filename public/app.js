@@ -1169,7 +1169,7 @@ async function runSearch(share, pre, autoRange = false) {
   const done = busy($('#search-form button[type=submit]'), '搜尋中…');
   reveal(status);
   try {
-    const [body] = await Promise.all([pre || api(`/api/search?${params}`), loadMore()]);
+    const [body] = await Promise.all([pre || api(`/api/search?${params}`), loadMore(), loadSearchScripts()]);
     if (!fresh()) return;
     done();
     state.results = [...body.results, ...asiaMilesRows(body.results)];
@@ -3139,10 +3139,25 @@ function loadMore() {
   return moreP;
 }
 // Start on the first sign of a search (a tap or focus on the search page), so the results don't wait for it.
-const warmMore = () => { loadMore().catch(() => {}); };
+const warmMore = () => { loadMore().catch(() => {}); loadSearchScripts(); };
 for (const ev of ['pointerdown', 'focusin']) $('#tab-search').addEventListener(ev, warmMore, { once: true });
+// Scripts only the route results use (國泰 cards and calendars, 請 AI 助理查官網, seat history; about 55 KB gzipped):
+// fetched on the first sign of a search instead of with the page. In this order: each one builds on the one before.
+// The 規則庫 tab (cxcal.js's bookmarklet card) and a #cxcal= landing link load them too.
+const SEARCH_SCRIPTS = ['seathistory', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'cxmuse'];
+let searchScriptsP = null;
+function loadSearchScripts() {
+  searchScriptsP ||= Promise.all(SEARCH_SCRIPTS.map((name) => new Promise((resolve) => {
+    const el = document.createElement('script');
+    el.src = `/${name}.js${ASSET_V ? `?v=${ASSET_V}` : ''}`;
+    el.async = false; // run in list order
+    el.onload = el.onerror = resolve; // one that fails to load leaves its card out, not the results
+    document.body.append(el);
+  })));
+  return searchScriptsP;
+}
 
-tabInit.rules = () => renderRules();
+tabInit.rules = () => { renderRules(); loadSearchScripts(); };
 tabInit.points = () => renderPoints();
 tabInit.map = () => initRmap();
 tabInit.hotels = () => initHotels();
@@ -3160,6 +3175,7 @@ tabInit.cash = () => loadCashQuota();
   }
   // A link that opens results or a tab drawn from the second part fetches it alongside the first.
   if (isShare || NEEDS_MORE[currentTab]) warmMore();
+  if (BOOT_HASH.startsWith('#cxcal=')) loadSearchScripts();
   const [config, core] = await Promise.all([api('/api/config'), loadPart('core', DATA_CORE)]);
   putData(core, DATA_CORE);
   SOURCE_NAMES = data.sourceNames.names;
