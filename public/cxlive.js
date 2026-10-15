@@ -17,7 +17,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   const host = () => document.getElementById('cx-live');
   const hasPass = () => Boolean(store.get('cashPass', '')) || !cashCfg.locked;
   const nameOf = (c) => (typeof airportCity === 'function' ? airportCity(c) : '') || '';
-  const SRC = { unelevated: '來自國泰查票外掛（你自己的瀏覽器）', bookmarklet: '來自你的書籤', runner: '來自你的腳本', ai: '來自你的 AI 助理' };
+  const SRC = { unelevated: '來自國泰查票外掛（你自己的瀏覽器）', bookmarklet: '來自你的書籤', ai: '來自你的 AI 助理' };
 
   // 外掛模式 (cxcal.js) records seats but no miles: the Asia Miles price of a Cathay itinerary ("TPE-HKG-NRT") on the
   // chart by summed sector distance, or 0 while the chart or the airport list (loaded on demand: cxEstReady) is missing.
@@ -91,7 +91,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     const from = un ? nameOf(r.fc) || r.fc : r.from || r.fc;
     const to = un ? nameOf(r.tc) || r.tc : r.to || r.tc;
     return `<section class="cx-live-card" data-route="${esc(k)}">
-      <div class="cx-live-head"><span class="cx-tag">${esc(name)}${/[A-Za-z]$/.test(name) ? ' ' : ''}官網實查</span><b>${esc(from)} → ${esc(to)}</b><small>${esc(r.fc)}→${esc(r.tc)}</small>${when ? `<span class="hint">${SRC[r.source] || SRC.runner}・${esc(when)}${old ? '（有點舊了）' : ''}</span>` : ''}</div>
+      <div class="cx-live-head"><span class="cx-tag">${esc(name)}${/[A-Za-z]$/.test(name) ? ' ' : ''}官網實查</span><b>${esc(from)} → ${esc(to)}</b><small>${esc(r.fc)}→${esc(r.tc)}</small>${when ? `<span class="hint">${SRC[r.source] || SRC.bookmarklet}・${esc(when)}${old ? '（有點舊了）' : ''}</span>` : ''}</div>
       <p class="cx-live-sum">${parts.length ? parts.join('、') : '沒有讀到任何艙等的資料'}</p>
       <div class="cx-live-actions"><button type="button" class="linklike" data-cx-cal="${esc(k)}">${st.cal.has(k) ? '收起日曆' : '看日曆'}</button></div>
       <div class="cxp cx-live-cal" ${st.cal.has(k) ? '' : 'hidden'}></div>${st.cal.has(k) && r.source === 'ai' && typeof museHasLevels === 'function' && museHasLevels(r) ? museLegendHtml(r) : ''}

@@ -19,7 +19,7 @@ const call = async (p, { method = 'GET', body, headers = {} } = {}) => {
 };
 
 const payload = (extra = {}) => ({
-  v: 1, from: '台北', to: '東京', fc: 'TPE', tc: 'NRT', at: 1760000000000, source: 'runner',
+  v: 1, from: '台北', to: '東京', fc: 'TPE', tc: 'NRT', at: 1760000000000, source: 'bookmarklet',
   days: {
     '2026-11-01': { na: 1 },
     '2026-11-03': { lo: 13000, c: { Y: { m: 13000, f: [{ n: 'CX450', d: '07:30', a: '11:45', p: 'TPE-NRT', s: 0, m: 13000, du: '3小時15分' }], t: 1760000000000 }, J: { m: 38000 } } },
@@ -28,9 +28,9 @@ const payload = (extra = {}) => ({
   ...extra,
 });
 
-test('cxcal-store: a runner payload is kept as is; names are trimmed and codes upper-cased', () => {
+test('cxcal-store: a bookmarklet payload is kept as is; names are trimmed and codes upper-cased', () => {
   const r = validatePayload(payload({ fc: 'tpe ', tc: 'nrt' }));
-  assert.deepEqual([r.fc, r.tc, r.from, r.source], ['TPE', 'NRT', '台北', 'runner']);
+  assert.deepEqual([r.fc, r.tc, r.from, r.source], ['TPE', 'NRT', '台北', 'bookmarklet']);
   assert.deepEqual(r.days['2026-11-03'].c.Y.f[0], { n: 'CX450', d: '07:30', a: '11:45', p: 'TPE-NRT', s: 0, m: 13000, du: '3小時15分' });
   assert.deepEqual(r.days['2026-11-04'], { c: { Y: { m: 0 }, J: { m: 0, na: 1 } } });
   assert.deepEqual(r.days['2026-11-01'], { na: 1 });
@@ -134,4 +134,16 @@ test('cxcal-store: the site loads the card script', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.match(html, /<script src="\/cxlive\.js\?v=[\w.-]+"><\/script>/);
   assert.ok(!fs.existsSync(path.join(__dirname, '..', 'tools', 'cathay-runner')), 'the runner was removed at the owner\'s request (2026-10-15)');
+});
+
+test('cxcal-store: records left by the removed PC runner are refused, hidden and deleted', async () => {
+  assert.throws(() => validatePayload(payload({ source: 'runner' })), CxcalError);
+  assert.equal(validatePayload(payload({ source: undefined })).source, 'bookmarklet');
+  const kv = memoryKv();
+  const st = createCxcalStore({ kv });
+  await kv.set('cxcal:v1:TPE>NRT', { ...payload(), source: 'runner', air: 'cx' });
+  assert.deepEqual(await st.find('TPE', 'NRT'), []);
+  assert.equal(await kv.get('cxcal:v1:TPE>NRT'), null);
+  await st.save(payload());
+  assert.equal((await st.find('TPE', 'NRT'))[0].source, 'bookmarklet');
 });
