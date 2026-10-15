@@ -1680,3 +1680,17 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .wk-head > span:first-child { display: none; }
   .wk-label { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin-top: 4px; }
 }
+
+/* ---------- deals-sub: 今日好康每日信 (dealsub.js) ---------- */
+.dsub-link { font-size: .82rem; font-weight: 400; margin-left: 4px; white-space: nowrap; text-decoration: none; }
+.dsub-link:hover, .dsub-link:focus-visible { text-decoration: underline; }
+.dsub-dlg .acct-sec h3 { font-size: .92rem; }
+.dsub-dlg .acct-sec:first-of-type { margin-top: 2px; }
+.dsub-dlg h2#dsub-title:not(.center) { padding-right: 32px; }
+.dsub-tag { font-size: .74rem; font-weight: 400; color: var(--muted); margin-left: 4px; }
+.dsub-muted { color: var(--muted); font-size: .8rem; margin-left: 2px; }
+.dsub-note { font-size: .82rem; }
+#dsub-settings label.chk, .dsub-dlg label.chk { align-items: flex-start; line-height: 1.5; }
+#dsub-settings label.chk input, .dsub-dlg label.chk input { margin-top: 2px; flex: none; }
+#dsub-settings label.chk b, .dsub-dlg label.chk b { overflow-wrap: anywhere; }
+.adm-digest { margin: -4px 0 0; }

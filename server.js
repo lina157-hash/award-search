@@ -14,7 +14,7 @@ const rapid = require('./lib/rapidflights');
 const { createTravelInfo } = require('./lib/travelinfo');
 const { createDirects, DirectsError } = require('./lib/aerodatabox');
 const hotelCash = require('./lib/hotelcash');
-const { redisKv, memoryKv, takeLock, waitLock, sharedCache, hashKey, KvError } = require('./lib/kv');
+const { redisKv, memoryKv, takeLock, waitLock, sharedCache, getMany, hashKey, KvError } = require('./lib/kv');
 const { todayTW, monthTW, validDate } = require('./lib/day');
 const tg = require('./lib/telegram');
 const accor = require('./lib/accor');
@@ -26,6 +26,7 @@ const { createSearchCache } = require('./lib/searchcache');
 const { createExpiry } = require('./lib/expiry');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 const { cronParts, cronSlot } = require('./lib/cronreport');
+const { createDealSub, DealSubError } = require('./lib/dealsub');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -257,8 +258,9 @@ const alerts = alertStore && createAlerts({
 });
 // Daily deals from Taipei, refreshed by the daily cron and kept in the same Redis. The demo looks two months ahead
 // (its made-up searches are slow over a whole year).
+const dealsStore = HAS_REDIS ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'award-deals:v1' }) : memoryStore(null);
 const deals = createDeals({
-  store: HAS_REDIS ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'award-deals:v1' }) : memoryStore(null),
+  store: dealsStore,
   days: MOCK ? 60 : 330,
   lock: (name, seconds) => takeLock(kv, name, seconds),
   defer,
@@ -375,14 +377,15 @@ function readJson(req, limit = 10_000) {
 // (expiry: the miles expiry reminders, which spend no quota, go first). The budgets say when each part stops starting
 // new items; `end` is when every seats.aero or cash lookup must have answered, short of Vercel's 60-second limit, so
 // a slow upstream ends in a timeout the run records instead of the function being killed mid-way.
-const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, alerts: 48e3, end: 54e3 };
+// digest: 今日好康每日信 (lib/dealsub.js), right after the deals, one Resend batch call; what is left goes in the evening run.
+const RUN_BUDGET = { expiry: 6e3, deals: 20e3, digest: 26e3, watches: 28e3, alerts: 48e3, end: 54e3 };
 // Whether CRON_SECRET is set (never its value), when Vercel's run last got in or was turned away, and when the last
 // one finished, how long it took and how many items failed or were left for later.
 async function cronStatus() {
   const [last, denied, done] = await Promise.all(['cron:last', 'cron:denied', 'cron:done'].map((k) => kv.get(k).catch(() => null)));
   return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null, lastDone: done?.at || null, lastDoneMs: done?.ms ?? null, lastProblems: done?.problems ?? null };
 }
-const runProblems = (out) => [out.expiry?.error, out.dealsError, out.watches?.error, out.alertsError].filter(Boolean).length
+const runProblems = (out) => [out.expiry?.error, out.dealsError, out.digest?.error, out.digest?.errors ? 'digest' : '', out.watches?.error, out.alertsError].filter(Boolean).length
   + [...(out.report || []), ...(out.watches?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
 async function runDaily(req, q) {
   const who = await runCaller(req);
@@ -394,7 +397,7 @@ async function runDaily(req, q) {
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
-  const parts = new Set((q.get('part') || 'expiry,deals,watches,alerts').split(','));
+  const parts = new Set((q.get('part') || 'expiry,deals,digest,watches,alerts').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
   if (parts.has('expiry')) out.expiry = await expiry.run({ deadline: t0 + RUN_BUDGET.expiry, lock: lockFor('expiry:run', 60) }).catch((e) => ({ error: e.message }));
   if (parts.has('deals')) {
@@ -405,6 +408,7 @@ async function runDaily(req, q) {
       if (errs.length) out.dealsError = `${errs.length} 組更新失敗：${errs[0].error}`;
     } catch (e) { out.dealsError = e.message; }
   }
+  if (parts.has('digest') && dealSub) out.digest = await dealSub.run({ deadline: t0 + RUN_BUDGET.digest, base: SITE_URL || siteBase(req) }).catch((e) => ({ error: e.message }));
   if (parts.has('watches') && priceWatch) {
     out.watches = await priceWatch.run({ deadline: t0 + RUN_BUDGET.watches, until: t0 + RUN_BUDGET.end, lock: lockFor('price-watch:run', 120) }).catch((e) => ({ error: e.message }));
   }
@@ -695,6 +699,7 @@ async function handleAccount(req, res, sub) {
 const admin = accounts && createAdmin({
   kv, accounts, passcode: cashPasscode,
   alertEmails: async () => [...(alerts ? (await alerts.list()).map((a) => a.email) : []), ...(priceWatch ? (await priceWatch.list()).watches.map((w) => w.email) : [])],
+  digestEmails: async () => (dealSub ? dealSub.members() : []),
 });
 async function handleAdmin(req, res, sub) {
   if (!admin) return sendJson(res, 404, { error: '這個網站沒有開啟帳號功能', code: 'off' });
@@ -709,6 +714,57 @@ async function handleAdmin(req, res, sub) {
   if (sub === 'delete') return sendJson(res, 200, await admin.remove(email));
   if (sub === 'signout') return sendJson(res, 200, await admin.signOut(email));
   return sendJson(res, 404, { error: 'not found' });
+}
+
+// 今日好康每日信 (lib/dealsub.js): verified accounts subscribe by email; the owner may add the linked Telegram / LINE.
+const AIRPORT_ZH = require('./data/airport-names-zh.json').names;
+const dealSub = ACCOUNTS_ON ? createDealSub({
+  kv,
+  loadDeals: () => dealsStore.load(),
+  sendEmail: alertMailer,
+  log: MOCK && !alertMailer ? (m) => console.log(m) : null,
+  notify: { telegram: (html) => telegram.notify(html), line: (html) => line.notify(html) },
+  accountsOk: async (emails) => (await getMany(kv, emails.map(accounts.store.userKey))).map((u) => Boolean(u?.verified)),
+  names: { program: (s) => SOURCE_NAMES[s], city: (c) => AIRPORT_ZH[c] },
+  siteUrl: SITE_URL,
+  cap: Number(process.env.DEALS_DIGEST_MAX) || undefined,
+  lock: lockFor('dealsub:run', 60),
+}) : null;
+// GET: this visitor's subscription (and, for the owner, the count and the Telegram / LINE choices); POST: subscribe or
+// not (signed in); POST /owner: the owner's chats; /unsubscribe: the mail's one-click link (signed token, no sign-in),
+// POSTed by the page (JSON) or by the mail app (RFC 8058 form post, token in the address).
+async function handleDealSub(req, res, sub, q) {
+  if (!dealSub) return sendJson(res, 200, { configured: false });
+  const m = req.method;
+  if (sub === 'unsubscribe') {
+    // A plain visit (a mail app that opens the address): the page asks first, so link scanners unsubscribe nobody.
+    if (m === 'GET') {
+      res.writeHead(302, { location: `/#unsub=${encodeURIComponent(q.get('t') || '')}`, 'cache-control': 'no-store' });
+      return res.end();
+    }
+    const json = /^application\/json\b/i.test(String(req.headers['content-type'] || ''));
+    const body = json ? await readJson(req) : (await lineLib.readRaw(req, 2000), {});
+    return sendJson(res, 200, await dealSub.unsubscribe(q.get('t') || body.t));
+  }
+  if (m !== 'GET' && !sameSite(req)) return sendJson(res, 403, { error: '請從網站本身操作', code: 'origin' });
+  const sess = await sessionOf(req);
+  if (m === 'POST' && sub === 'owner') {
+    const who = await runCaller(req);
+    if (who !== 'owner') throw cashPasscode() ? passError(req, '只有站長（輸入通關密碼）可以設定') : noPasscode('今日好康通知');
+    await dealSub.setOwner(await readJson(req));
+  } else if (m === 'POST') {
+    if (!sess) throw new DealSubError('請先登入', 401, 'login-required');
+    if (!sess.user.verified) throw new DealSubError('Email 還沒驗證，請先到信箱點驗證連結', 403, 'unverified');
+    await dealSub.subscribe(sess.email, Boolean((await readJson(req)).on));
+  } else if (m !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
+  const st = await dealSub.status(sess?.email);
+  const owner = (await runCaller(req).catch(() => null)) === 'owner';
+  const out = { configured: true, signedIn: Boolean(sess), email: sess?.email || '', mail: st.mail, cap: st.cap, full: st.full, subscribed: st.subscribed };
+  if (owner) {
+    const [prefs, t, l] = await Promise.all([dealSub.ownerPrefs(), telegram.status().catch(() => ({})), line.status().catch(() => ({}))]);
+    out.owner = { count: st.count, telegram: { configured: telegram.configured, linked: Boolean(t.linked), name: t.name || '', on: prefs.telegram }, line: { configured: Boolean(l.configured), linked: Boolean(l.linked), on: prefs.line } };
+  }
+  return sendJson(res, 200, out);
 }
 
 // TWD per unit of each currency, for converting award taxes. Refreshed daily from a free rate feed; the table is the fallback.
@@ -1274,6 +1330,11 @@ async function route(req, res) {
       if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return await handleAccount(req, res, am[1] || '');
     }
+    const dsm = p.match(/^\/api\/dealsub(?:\/(owner|unsubscribe))?$/);
+    if (dsm) {
+      if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return await handleDealSub(req, res, dsm[1] || '', q);
+    }
     const adm = p.match(/^\/api\/admin\/accounts(?:\/(delete|signout))?$/);
     if (adm) {
       if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
@@ -1388,7 +1449,7 @@ async function route(req, res) {
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
     if (e instanceof AccountError && e.current) return sendJson(res, e.status, { error: e.message, code: e.code, ...e.current });
-    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError || e instanceof AdminError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError || e instanceof AdminError || e instanceof DealSubError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }
@@ -1398,4 +1459,4 @@ const server = http.createServer(route);
 if (require.main === module) {
   server.listen(PORT, () => console.log(`http://localhost:${PORT}  ${MOCK ? '(示範資料模式：未設定 SEATS_AERO_API_KEY)' : '(使用 seats.aero API)'}`));
 }
-module.exports = { server, route, cached, passBucket, VERSION_STRING: VERSION.version };
+module.exports = { server, route, cached, passBucket, dealSub, VERSION_STRING: VERSION.version };

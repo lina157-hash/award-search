@@ -1104,6 +1104,7 @@ function renderDeals() {
     const s = date < isoDateFrom(isoDate(0), 3) ? isoDate(0) : isoDateFrom(date, -3);
     applyShare(new URLSearchParams({ o, d, s, e: isoDateFrom(date, 3), c: dealsState.cabin }));
   }));
+  if (typeof dealSubMount === 'function') dealSubMount(host); // 📬 每天寄給我 (dealsub.js)
 }
 
 // ---------- explore map (Leaflet, loaded on first use) ----------

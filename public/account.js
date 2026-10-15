@@ -609,6 +609,7 @@ function settingsHtml() {
     </section>
     <section class="acct-sec" aria-labelledby="tg-h"><h3 id="tg-h">📨 連結 Telegram</h3><div class="tg-box" id="tg-settings"></div></section>
     <section class="acct-sec" aria-labelledby="line-h"><h3 id="line-h">💬 連結 LINE</h3><div class="tg-box" id="line-settings"></div></section>
+    <section class="acct-sec" aria-labelledby="dsub-h"><h3 id="dsub-h">📬 今日好康每日信</h3><div class="tg-box" id="dsub-settings"></div></section>
     <section class="acct-sec" aria-labelledby="del-h"><h3 id="del-h">刪除帳號</h3>
       <p class="hint">會刪掉帳號和存在雲端的資料；這台裝置上的資料不會被刪。</p>
       <label>輸入密碼確認<input type="password" name="delpw" autocomplete="current-password"></label>
@@ -647,6 +648,7 @@ function bindSettings(form) {
   });
   tgRender($('#tg-settings', form));
   if (typeof lineRender === 'function') lineRender($('#line-settings', form));
+  if (typeof dsubRender === 'function') dsubRender($('#dsub-settings', form));
 }
 
 // ---------- Telegram (passcode-gated, not account-gated) ----------

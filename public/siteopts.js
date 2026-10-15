@@ -33,7 +33,7 @@ function mountTheme() {
 }
 
 // ---------- the owner's status line (daily run, seats.aero calls) ----------
-const CRON_PART = { expiry: '哩程到期', deals: '好康', watches: '降價', alerts: '提醒' };
+const CRON_PART = { expiry: '哩程到期', deals: '好康', digest: '好康信', watches: '降價', alerts: '提醒' };
 const CRON_MARK = { ok: '✓', some: '△', fail: '✗' };
 // Taiwan date and time of an ISO stamp: ['2026-10-15', '08:12'].
 const twParts = (iso) => { const s = new Date(Date.parse(iso) + 8 * 3600e3).toISOString(); return [s.slice(0, 10), s.slice(11, 16)]; };

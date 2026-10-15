@@ -94,6 +94,10 @@ test('R10: cronParts says how each part of a run went', () => {
   assert.deepEqual(cronParts({ configured: true, dealsError: 'down', watches: { error: 'kv' }, alertsError: 'kv', expiry: { error: 'x' } }), { expiry: 'fail', deals: 'fail', watches: 'fail', alerts: 'fail' });
   assert.deepEqual(cronParts({ configured: true, busy: true, report: [] }), { alerts: 'some' });
   assert.deepEqual(cronParts({ configured: false }), {}, 'parts that did not run are left out');
+  assert.deepEqual(cronParts({ digest: { mailed: 3, done: true } }), { digest: 'ok' });
+  assert.deepEqual(cronParts({ digest: { mailed: 1, left: 2 } }), { digest: 'some' });
+  assert.deepEqual(cronParts({ digest: { error: 'kv' } }), { digest: 'fail' });
+  assert.deepEqual(cronParts({ digest: { skipped: 'no-deals' } }), {}, 'a digest with nothing to send is left out');
   assert.equal(cronSlot('2026-10-15T00:12:00Z'), 'morning');
   assert.equal(cronSlot('2026-10-15T13:11:00Z'), 'evening');
 });
