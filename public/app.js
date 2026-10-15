@@ -537,7 +537,10 @@ const pickers = { origin: createAirportPicker($('#search-form'), 'origin'), dest
 // Pick departure dates by clicking a range on a calendar, or one date plus ± days (like seats.aero).
 // Writes the hidden `start` / `end` inputs that the form submits.
 const MAX_AHEAD_DAYS = 365; // seats.aero publishes award space about a year out
-const FLEX_DAYS = [0, 1, 3, 7, 10, 14, 28, 60, 120, 150, 180];
+// Longer spans go to 「選擇日期範圍」 (its presets reach a year); a link or saved search with a wider ± opens there.
+const FLEX_DAYS = [0, 1, 3, 7, 14, 28];
+// The ± of a range that is one day ± a FLEX_DAYS option, else null (it opens as a plain range).
+const flexHalf = (s, e) => { const half = (dayCount(s, e) - 1) / 2; return FLEX_DAYS.includes(half) ? half : null; };
 const RANGE_PRESETS = [['未來 2 週', 13], ['未來 1 個月', 30], ['未來 3 個月', 91], ['未來半年', 182], ['一年內全部', MAX_AHEAD_DAYS]];
 const dayCount = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1;
 const clampIso = (iso, lo, hi) => (iso < lo ? lo : iso > hi ? hi : iso);
@@ -705,6 +708,7 @@ function createDatePicker(form, label, opts = {}) {
     if (t.name === `${uid}-mode`) {
       st.mode = t.value;
       st.anchor = null;
+      updateButton(); // 「11/20 ±7 天」 becomes the range it covers, and back
       if (st.mode === 'flex' && startIn.value) {
         // Centre on the middle of the current range, rounded to a ± option that covers it.
         const s = startIn.value;
@@ -765,10 +769,10 @@ function createDatePicker(form, label, opts = {}) {
     set(s, e = s) {
       if (!s) { st.center = null; return write('', ''); } // cleared (a search whose dates have passed)
       if (single || e < s) e = s;
-      const half = (dayCount(s, e) - 1) / 2;
+      const half = flexHalf(s, e);
       st.center = null;
       if (!single) {
-        st.mode = FLEX_DAYS.includes(half) ? 'flex' : 'range';
+        st.mode = half == null ? 'range' : 'flex';
         if (st.mode === 'flex') { st.center = isoDateFrom(s, half); st.flex = half; }
       }
       write(s, e);
@@ -904,11 +908,13 @@ function applyShare(share, run = true, pre = null) {
 const RECENT_KEY = 'recentSearches';
 const FAV_KEY = 'favSearches';
 const shareKey = (share) => { const p = new URLSearchParams(share); p.sort(); return p.toString(); };
+// The route with the filters that tell two saves apart (「TPE → HKG・寰宇一家・直飛」), then the dates, cabin and seats.
+const shareRoute = (p) => [`${p.get('o')} → ${p.get('d')}`, p.get('al') ? ALLIANCE_SHORT[p.get('al')] || p.get('al') : '', (p.get('a') || '').split(',').filter(Boolean).join('、'), p.get('direct') === '1' ? '直飛' : ''].filter(Boolean).join('・');
 function shareLabel(q) {
   const p = new URLSearchParams(q);
   const s = p.get('s');
   const e = p.get('e') || s;
-  return `${p.get('o')} → ${p.get('d')}　${ymd(s)}${e !== s ? ` – ${ymd(e)}` : ''}　${CABIN_LABEL[p.get('c')] || '商務艙'}${p.get('n') ? `　${p.get('n')}+ 位` : ''}`;
+  return `${shareRoute(p)}　${ymd(s)}${e !== s ? ` – ${ymd(e)}` : ''}　${CABIN_LABEL[p.get('c')] || '商務艙'}${p.get('n') ? `　${p.get('n')}+ 位` : ''}`;
 }
 function remember(share) {
   const key = shareKey(share);
@@ -927,7 +933,8 @@ function toggleFav(share) {
 function renderMine() {
   const favs = store.get(FAV_KEY, []);
   const recent = store.get(RECENT_KEY, []).filter((k) => !favs.includes(k));
-  const chip = (q, rm) => `<span class="mine-chip"><button type="button" data-q="${esc(q)}">${esc(shareLabel(q))}</button>${rm ? `<button type="button" class="rm" data-rm="${esc(q)}" aria-label="移除">✕</button>` : ''}</span>`;
+  // On phones a long chip wraps between its parts (route, dates, cabin), never inside one.
+  const chip = (q, rm) => `<span class="mine-chip"><button type="button" data-q="${esc(q)}">${shareLabel(q).split('　').map((x) => `<span class="mc-part">${esc(x)}</span>`).join('　')}</button>${rm ? `<button type="button" class="rm" data-rm="${esc(q)}" aria-label="${esc(`從常用移除 ${shareRoute(new URLSearchParams(q))}`)}">✕</button>` : ''}</span>`;
   $('#mine').innerHTML = (favs.length ? `<div class="presets"><span class="presets-label">★ 我的常用</span>${favs.map((q) => chip(q, true)).join('')}</div>` : '')
     + (recent.length ? `<div class="presets"><span class="presets-label">最近查過</span>${recent.map((q) => chip(q, false)).join('')}<button type="button" class="rm-all" id="recent-clear">清除</button></div>` : '');
   $$('#mine [data-q]').forEach((b) => b.addEventListener('click', () => applyShare(new URLSearchParams(b.dataset.q))));

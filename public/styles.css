@@ -13,7 +13,9 @@
   --page-glow: #ffe3a8;
   --shadow: 0 1px 2px rgb(120 72 20 / .06), 0 4px 16px rgb(120 72 20 / .08);
   --radius: 14px;
-  font-family: "Noto Sans TC", system-ui, -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  /* The device's own fonts (no web font to download): San Francisco + 蘋方 on Apple, Segoe UI + 微軟正黑體 on Windows,
+     Roboto + Noto Sans CJK (思源黑體) on Android. */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", "Noto Sans CJK TC", "Source Han Sans TC", system-ui, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -1615,3 +1617,8 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .adm-act { text-align: left; display: flex; gap: 8px; padding-top: 4px; }
   .adm-act button { flex: 1; min-height: 36px; }
 }
+
+/* ---------- ui5: 外觀 switch and the owner's status line in the footer (siteopts.js) ---------- */
+.foot .theme-pick button { font-size: inherit; min-height: 32px; }
+.foot .cron-line { margin: 8px 0 0; font-variant-numeric: tabular-nums; }
+.mine-chip .mc-part { white-space: nowrap; }

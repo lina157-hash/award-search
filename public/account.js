@@ -289,6 +289,7 @@ async function applyUnlock() {
 const baseLockHint = updateLockHint;
 updateLockHint = function () {
   baseLockHint();
+  tgGate();
   if (!acct.lockFlipped || cashCfg.locked) return;
   const el = $('#cash-lock');
   el.hidden = false;
@@ -656,6 +657,9 @@ const TG_STEPS = `<ol class="tg-steps">
 const TG_ERR = { 'no-start': '機器人還沒收到你的訊息：請先照第 1 步打開機器人按「開始」（或隨便傳一句話給它），再按一次連結。', token: 'Telegram 不接受網站設定的機器人金鑰（TELEGRAM_BOT_TOKEN），請到 @BotFather 重新複製後更新到 Vercel 並重新部署。', 'not-configured': '網站還沒設定 Telegram 機器人，請照上面的步驟設定。', blocked: '機器人被封鎖了：請在 Telegram 解除封鎖、按「開始」後再試一次。', 'not-linked': '還沒連結 Telegram，請先按「連結 Telegram」。' };
 // Can the gated status be read without asking for the passcode?
 const tgOpen = () => !cashCfg.locked || Boolean(store.get(PASS_KEY, ''));
+// The owner is here: this device has the passcode, or the account was unlocked with it (the demo, with no passcode
+// set, counts too). Same gate as 帳號管理 (admin.js).
+const ownerHere = () => Boolean(store.get(PASS_KEY, '') || acct.status?.unlocked || (!cashCfg.locked && !$('#mock-banner').hidden));
 // Through the passcode prompt only when the site has a passcode. Without one the server refuses Telegram with a note
 // for the owner (set CASH_PASSCODE); cashApi would read that as a wrong passcode, ask every visitor for one and lock
 // 即時查價 for the rest of the visit.
@@ -712,15 +716,21 @@ function mountTelegram() {
   const add = (after, id) => {
     const at = $(`#${after}`);
     if (!at) return;
-    at.insertAdjacentHTML('afterend', `<details class="alerts-panel tg-panel" id="${id}"><summary>📨 Telegram／LINE 通知 <span class="tg-count"></span></summary><div class="alerts-body nf-body"><h4 class="nf-h">Telegram</h4><div class="tg-box"></div><h4 class="nf-h">LINE</h4><div class="tg-box line-box"></div></div></details>`);
+    at.insertAdjacentHTML('afterend', `<details class="alerts-panel tg-panel" id="${id}" hidden><summary>📨 Telegram／LINE 通知 <span class="tg-count"></span></summary><div class="alerts-body nf-body"><h4 class="nf-h">Telegram</h4><div class="tg-box"></div><h4 class="nf-h">LINE</h4><div class="tg-box line-box"></div></div></details>`);
     const d = $(`#${id}`);
     d.addEventListener('toggle', () => { if (d.open) { tgRender($('.tg-box', d)); if (typeof lineRender === 'function') lineRender($('.line-box', d)); } });
     return d;
   };
   add('alerts-panel', 'tg-panel');
-  const cashPanel = add('watch-panel', 'tg-panel-cash');
-  // Next to 降價追蹤 only when price tracking is on.
-  whenReady().then(() => { if (cashPanel) cashPanel.hidden = $('#watch-panel').hidden; });
+  add('watch-panel', 'tg-panel-cash');
+  whenReady().then(tgGate);
+}
+// The panels hold the owner's setup steps (the bot, the LINE account), so visitors don't see them; 帳號設定 still has
+// both. Next to 降價追蹤 only when price tracking is on. Follows the passcode (updateLockHint below).
+function tgGate() {
+  const own = ownerHere();
+  if ($('#tg-panel')) $('#tg-panel').hidden = !own;
+  if ($('#tg-panel-cash')) $('#tg-panel-cash').hidden = !own || $('#watch-panel').hidden;
 }
 
 // ---------- links from the mails: /#verify=<token> and /#reset=<token> ----------

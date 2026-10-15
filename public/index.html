@@ -6,11 +6,8 @@
   <title>機票搜索雷達｜哩程票與現金票查詢</title>
   <meta name="description" content="一次查詢多個哩程計畫的獎勵機位與現金票價：國泰、長榮、華航、法航、加航等，附航空聯盟與開票規則整理。">
   <meta name="theme-color" content="#0a6a96">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Web font loads after first paint; system fonts show meanwhile. -->
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet"></noscript>
+  <!-- 外觀 (siteopts.js): a saved 淺色／深色 applies before the first paint, so the page doesn't flash. -->
+  <script>try { var t = JSON.parse(localStorage.getItem('theme')); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <link rel="stylesheet" href="/styles.css?v=1.30.1">
   <!-- What the first screen needs, fetched while the scripts download (app.js asks for the same URLs). -->
   <link rel="preload" as="fetch" href="/api/data/core?v=1.30.1" crossorigin>
@@ -345,5 +342,6 @@
   <script src="/account.js?v=1.30.1"></script>
   <script src="/admin.js?v=1.30.1"></script>
   <script src="/line.js?v=1.30.1"></script>
+  <script src="/siteopts.js?v=1.30.1"></script>
 </body>
 </html>
