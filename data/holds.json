@@ -1,5 +1,5 @@
 {
-  "lastReviewed": "2026-10-14",
+  "lastReviewed": "2026-10-15",
   "note": "保留座位（先訂位、晚點才付哩程開票）與台灣銀行轉點入帳時間，給航班明細的「先保留還是先轉點」提醒用。台灣銀行轉點多半要 1 至 6 週，美國那種即時轉點很少；不能保留座位的計畫，看到座位才轉點，等哩程入帳時座位可能已被訂走。保留規定多來自第三方整理，常依客服而定，不保證成功。",
   "fields": {
     "programs": "鍵是 seats.aero 來源代碼或 booking.json 的鍵（eva、ci、jal、ana、starlux）。hold：true 可保留、false 不能、null 未確認；days 最多保留天數；how 管道；fee 保留費用；confidence：official 官方、secondary 第三方整理、verify 來源互相矛盾或較舊。",
@@ -41,8 +41,8 @@
     { "bank": "滙豐", "days": [10, 20], "text": "約 7 至 14 個工作天", "confidence": "verify" },
     { "bank": "星展 DBS", "sources": ["dbs-flight"], "days": [7, 7], "text": "約 5 個工作天", "confidence": "official" },
     { "bank": "星展 DBS", "days": [7, 14], "text": "約 5 個工作天以上", "confidence": "verify" },
-    { "bank": "國泰世華", "cols": ["eva"], "days": [28, 42], "text": "約 4 至 6 週", "confidence": "official" },
-    { "bank": "國泰世華", "days": [28, 42], "text": "約 4 至 6 週", "confidence": "verify" },
+    { "bank": "國泰世華", "cols": ["asiamiles", "ci"], "days": [4, 20], "text": "約 3 至 14 個工作天", "confidence": "official" },
+    { "bank": "國泰世華", "days": [0, 0], "instant": true, "text": "CUBE App 兌換原則上即時入帳（權益公告另寫最慢 4 至 6 週）", "confidence": "official" },
     { "bank": "中國信託", "days": [14, 21], "text": "約 2 至 3 週", "confidence": "official" },
     { "bank": "台新", "days": [7, 21], "text": "約 1 至 3 週", "confidence": "typical" },
     { "bank": "玉山", "days": [7, 21], "text": "約 1 至 3 週", "confidence": "typical" },
@@ -54,10 +54,10 @@
     { "bank": "第一銀行", "cols": ["asiamiles"], "days": [14, 28], "text": "約 2 至 4 週", "confidence": "official" },
     { "bank": "第一銀行", "days": [14, 28], "text": "約 2 至 4 週", "confidence": "verify" },
     { "bank": "上海商銀", "days": [14, 28], "text": "約 2 至 4 週", "confidence": "official" },
+    { "bank": "兆豐", "days": [14, 14], "text": "約 10 個工作天", "confidence": "official" },
     { "bank": "台灣樂天", "cols": ["eva"], "days": [0, 30], "text": "最快可即時，一般 12 至 21 個工作天", "confidence": "verify" },
     { "bank": "台灣樂天", "days": [17, 30], "text": "12 至 21 個工作天", "confidence": "verify" },
-    { "bank": "渣打", "cols": ["asiamiles"], "days": [56, 56], "text": "約 8 週", "confidence": "verify" },
-    { "bank": "渣打", "cols": ["ci"], "days": [14, 28], "text": "約 2 至 4 週", "confidence": "verify" },
-    { "bank": "渣打", "cols": ["sq"], "days": [42, 56], "text": "約 6 至 8 週", "confidence": "verify" }
+    { "bank": "渣打", "cols": ["ci"], "days": [14, 28], "text": "約 2 至 4 週", "confidence": "official" },
+    { "bank": "渣打", "cols": ["asiamiles", "sq"], "days": [42, 56], "text": "約 6 至 8 週", "confidence": "official" }
   ]
 }

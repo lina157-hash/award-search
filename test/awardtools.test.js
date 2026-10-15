@@ -47,26 +47,29 @@ test('holds.json: transfer times name real banks and points programs, and cover 
   for (const [k, h] of Object.entries(holds.programs)) assert.ok(h.hold === null || typeof h.hold === 'boolean', k);
 });
 
-test('hold advice: HSBC app transfers are instant, Cathay United Bank points to EVA are not, and CI is unknown', () => {
+test('hold advice: HSBC and 國泰世華 app transfers are instant (not to CI or Asia Miles), and CI is unknown', () => {
   // HSBC 旅人卡 posts instantly in the app, except China Airlines, KrisFlyer, JAL and Hainan.
   const hsbc = calc.find((s) => s.id === 'hsbc-travel');
   assert.equal(T.transferTimeFor(holds, hsbc, { to: 'eva' }).instant, true);
   assert.equal(T.transferTimeFor(holds, hsbc, { to: 'ci' }).instant, undefined);
   assert.equal(T.transferTimeFor(holds, hsbc, { to: 'other', name: '日航' }).text, '7 至 21 個工作天');
   assert.equal(T.holdAdvice(holds, calc, MAP, 'eva').kind, 'instant');
-  // With only 國泰世華 points, EVA takes 4–6 weeks and EVA holds for about a day.
+  // 國泰世華 小樹點 post instantly in the CUBE App except to 華航 and 亞洲萬里通 (3–14 working days); Asia Miles holds 3 days.
   const mine = T.holdAdvice(holds, calc, MAP, 'eva', ['cathay-tree']);
-  assert.equal(mine.kind, 'hold-short');
+  assert.equal(mine.kind, 'instant');
   assert.equal(mine.mine, true);
-  assert.equal(mine.fastest.time.text, '約 4 至 6 週');
+  const am = T.holdAdvice(holds, calc, MAP, 'asiamiles', ['cathay-tree']);
+  assert.equal(am.kind, 'hold-short');
+  assert.equal(am.fastest.time.text, '約 3 至 14 個工作天');
   // Wallet banks that can't reach the program don't narrow the choice.
   assert.equal(T.holdAdvice(holds, calc, MAP, 'eva', ['hncb-bonus-theone']).mine, false);
   const ci = T.holdAdvice(holds, calc, MAP, 'ci');
   assert.equal(ci.kind, 'unknown');
-  assert.equal(ci.fastest.bank, '星展 DBS');
-  // Aeroplan can't be held: HSBC points move in instantly in the app, 國泰世華 points take 4–6 weeks.
+  assert.equal(ci.fastest.bank, '國泰世華', 'CUBE: 3 to 14 working days beats 星展 5');
+  // Aeroplan can't be held: HSBC and 國泰世華 points move in instantly in the app.
   assert.equal(T.holdAdvice(holds, calc, MAP, 'aeroplan').kind, 'instant');
-  assert.equal(T.holdAdvice(holds, calc, MAP, 'aeroplan', ['cathay-tree']).kind, 'no-hold');
+  assert.equal(T.holdAdvice(holds, calc, MAP, 'aeroplan', ['cathay-tree']).kind, 'instant');
+  assert.equal(T.holdAdvice(holds, calc, MAP, 'aeroplan', ['dbs-flight']).kind, 'instant', 'a wallet bank that cannot reach the program does not narrow the choice');
   assert.equal(T.holdAdvice(holds, calc, MAP, 'singapore', ['ctbc-bonus']).kind, 'hold-short');
   assert.equal(T.holdAdvice(holds, calc, MAP, 'united', ['hsbc-premier']).kind, 'instant');
   assert.equal(T.holdAdvice(holds, calc, MAP, 'alaska').kind, 'none');

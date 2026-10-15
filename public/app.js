@@ -2704,7 +2704,8 @@ function calcView(pts) {
   for (const r of h.rates) counts[r.to] = (counts[r.to] || 0) + 1;
   const cols = Object.keys(h.programs).filter((k) => counts[k]).sort((a, b) => counts[b] - counts[a]).map((k) => [k, h.programs[k]]);
   const all = [...pts.calc.sources, ...(h.extraSources || [])];
-  const sources = all.map((src) => ({ ...src, note: '', rates: h.rates.filter((r) => r.source === src.id).map((r) => ({ to: r.to, points: r.points, miles: r.hotelPoints, minPoints: r.minPoints || 0, stepPoints: r.stepPoints || 0, stepMiles: r.stepMiles || 0, secondary: r.confidence !== 'official', note: r.note })) }))
+  // A bank's airline-rate date does not cover its hotel rates; hotel rates carry their own validUntil.
+  const sources = all.map((src) => ({ ...src, note: '', validUntil: null, rates: h.rates.filter((r) => r.source === src.id).map((r) => ({ to: r.to, points: r.points, miles: r.hotelPoints, minPoints: r.minPoints || 0, stepPoints: r.stepPoints || 0, stepMiles: r.stepMiles || 0, secondary: r.confidence !== 'official', note: r.note, validUntil: r.validUntil })) }))
     .filter((src) => src.rates.length);
   return { kind: 'hotel', cols, sources, unit: '點', what: '飯店點數' };
 }
