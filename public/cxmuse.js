@@ -324,7 +324,10 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     const keys = t.id === 'cx' ? [...String(autoHtml || '').matchAll(/data-cxa="([A-Z]{3})&gt;([A-Z]{3})"/g)].map((m) => `${m[1]}>${m[2]}`).filter((k) => os.includes(k.slice(0, 3)) && ds.includes(k.slice(4))) : [];
     const all = os.flatMap((o) => ds.map((d) => `${o}>${d}`)).filter((k) => k.slice(0, 3) !== k.slice(4));
     const hub = all.filter((k) => (t.hubs || []).some((h) => k.includes(h)));
-    return [...new Set([...keys, ...hub, ...all])].slice(0, MUSE_MAX_PAIRS).map((k) => ({ fc: k.slice(0, 3), tc: k.slice(4), from: nameOf(k.slice(0, 3)), to: nameOf(k.slice(4)) }));
+    const list = [...new Set([...keys, ...hub, ...all])];
+    const out = list.slice(0, MUSE_MAX_PAIRS).map((k) => ({ fc: k.slice(0, 3), tc: k.slice(4), from: nameOf(k.slice(0, 3)), to: nameOf(k.slice(4)) }));
+    out.dropped = list.slice(MUSE_MAX_PAIRS).map((k) => k.replace('>', '→')); // past the cap: said in the note
+    return out;
   }
   let lastAuto = '';
   // → { text, note } for the instruction on show, or { text: '', note } saying what is missing.
@@ -337,7 +340,11 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return { text: '', note: '請填出發日期。' };
     if (st.mode === 'phone' && t.phone) return { text: musePhonePrompt({ tpl: t, pair: pairs[0], start, cabin: field('cabin'), pax: field('pax') }), note: '貼到 AI 助理之前，先把「（你的姓名）」「（你的會員號碼）」換成你自己的；本站不會問、也不會存你的會員號碼。' };
     const p = museBuildPrompt({ tpl: t, pairs, start, end: field('end'), cabin: field('cabin'), pax: field('pax'), extras: [...st.extras] });
-    return { text: p.text, note: p.capped ? `${t.name}一次最多查 ${t.monthsPerRun} 個月，這次查到 ${p.end}；之後再複製一次查下一段。` : '' };
+    const notes = [
+      p.capped ? `${t.name}一次最多查 ${t.monthsPerRun} 個月，這次查到 ${p.end}；之後再複製一次查下一段。` : '',
+      pairs.dropped.length ? `一次最多 ${MUSE_MAX_PAIRS} 組航線，這次沒查：${pairs.dropped.join('、')}（改上面的出發／抵達機場再複製一次）。` : '',
+    ];
+    return { text: p.text, note: notes.filter(Boolean).join('') };
   }
 
   // Per cabin of a parsed route: days reported, days with seats (and how many 充足), 候補 days, lowest miles.

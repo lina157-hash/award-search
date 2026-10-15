@@ -33,6 +33,21 @@
     color-scheme: dark;
   }
 }
+/* The same night palette when the page asks for it (data-theme="dark"; the [data-theme] rules below rely on these tokens). */
+:root[data-theme="dark"] {
+  --bg: #0e1620; --surface: #16212c; --surface-2: #1c2936; --text: #eef2f5; --muted: #a9b4bf; --border: #2a3846;
+  --accent: #4fd1e0; --accent-text: #052a31; --accent-soft: #123a44;
+  --sun: #ffc233; --sun-2: #ff9a52; --sun-text: #2f1f00; --danger: #ff8d9c;
+  --heat-1: #10303a; --heat-2: #155060; --heat-3: #176a7a; --heat-4: #34b3c6; --heat-text-strong: #04161b;
+  --few: #3a2e12; --few-text: #f2c66d; --none: #18222d;
+  --top-from: #07263a; --top-to: #0b3a55;
+  --hero-from: #08243a; --hero-mid: #0c4a63; --hero-pale: #1c6475; --hero-horizon: #8a5a3c; --hero-to: #b4603a; --hero-muted: #c7dde6;
+  --sun-core: #ffe9a3; --sun-glow: rgb(255 214 120 / .18);
+  --preset-bg: rgb(8 30 45 / .55); --preset-border: rgb(255 255 255 / .18); --preset-text: #eef6fa; --preset-label: #ffe2b8;
+  --page-glow: #1d2a36;
+  --shadow: 0 1px 2px rgb(0 0 0 / .4), 0 4px 16px rgb(0 0 0 / .3);
+  color-scheme: dark;
+}
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: radial-gradient(1100px 520px at 100% 0, var(--page-glow), transparent 70%) var(--bg); background-attachment: fixed; color: var(--text); line-height: 1.55; -webkit-font-smoothing: antialiased; }
@@ -299,6 +314,7 @@ td.cell.est { background: repeating-linear-gradient(135deg, var(--surface-2), va
 .am-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
 h3.sub { font-size: .95rem; margin: 8px 0; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) td.cell.est, :root:not([data-theme="light"]) .am-callout .am-miles, :root:not([data-theme="light"]) .am-line b { color: #f08aa8; } }
+:root[data-theme="dark"] td.cell.est, :root[data-theme="dark"] .am-callout .am-miles, :root[data-theme="dark"] .am-line b { color: #f08aa8; }
 .am-tables > div { min-width: 0; }
 @media (max-width: 640px) { .am-tables { grid-template-columns: minmax(0, 1fr); } }
 .seg-line .ac { color: var(--text); }
@@ -465,9 +481,9 @@ dialog.pass { width: min(380px, calc(100vw - 32px)); border-radius: 16px; }
 .alerts-panel { margin-top: 12px; color: var(--hero-text); }
 /* The panels sit side by side as pills; an open one takes the full width. */
 .alerts-panel:not([open]) { display: inline-block; vertical-align: top; margin-right: 6px; }
-.alerts-panel summary { cursor: pointer; font-weight: 700; font-size: .9rem; color: var(--preset-label); list-style: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; background: var(--preset-bg); border: 1px solid var(--preset-border); }
-.alerts-panel summary::-webkit-details-marker { display: none; }
-.alerts-panel summary span { font-weight: 400; }
+.alerts-panel > summary { cursor: pointer; font-weight: 700; font-size: .9rem; color: var(--preset-label); list-style: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; background: var(--preset-bg); border: 1px solid var(--preset-border); }
+.alerts-panel > summary::-webkit-details-marker { display: none; }
+.alerts-panel > summary span { font-weight: 400; }
 .alerts-body { margin-top: 10px; background: var(--surface); color: var(--text); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; }
 .alerts-body > .hint { margin: 0; }
 .alert-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
@@ -1001,7 +1017,7 @@ details.ti-src p { margin: 4px 0 0; }
   .calc-table tr { display: block; padding: 12px 14px 8px; border-bottom: 1px solid var(--border); }
   .calc-table tbody th, .calc-table tbody th:first-child, .calc-table td { display: block; min-width: 0 !important; max-width: none !important; padding: 0; border: 0; position: static; box-shadow: none; background: none; white-space: normal; }
   .calc-table tbody th { margin-bottom: 4px; }
-  .calc-table td[data-l] { display: grid; grid-template-columns: 5.6em minmax(0, 1fr); column-gap: 12px; align-items: baseline; padding: 5px 0; border-top: 1px dashed var(--border); }
+  .calc-table td[data-l] { display: grid; grid-template-columns: 5.6em minmax(0, 1fr); column-gap: 12px; row-gap: 0; align-items: baseline; padding: 5px 0; border-top: 1px dashed var(--border); }
   .calc-table td[data-l]::before { grid-row: 1 / span 9; font-size: .84rem !important; color: var(--muted); }
   .calc-table td[data-l] > * { grid-column: 2; min-width: 0; overflow-wrap: anywhere; }
   .calc-table td.short span, .calc-table.simple td.short span { white-space: normal; font-size: .86rem; }
@@ -1134,7 +1150,9 @@ dialog.acct-dlg { width: min(400px, calc(100vw - 24px)); max-height: calc(100dvh
 .hist-route { display: grid; gap: 6px; }
 .hist-title { margin: 0; font-weight: 600; font-size: .88rem; }
 .hist-row { display: grid; grid-template-columns: 10em minmax(0, 1fr) 13em; gap: 10px; align-items: center; font-size: .84rem; }
-.hist-row.other { opacity: .72; }
+/* Other cabins: faded strip and grey name, but the small text keeps its contrast (opacity on the row took it below 4.5:1). */
+.hist-row.other .hist-strip { opacity: .72; }
+.hist-row.other .hist-name { color: var(--muted); }
 .hist-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hist-name small { color: var(--muted); }
 .hist-sum { color: var(--muted); font-size: .8rem; white-space: nowrap; text-align: right; }
@@ -1350,13 +1368,13 @@ label.switch { min-height: 40px; }
 .presets button, .presets .mine-chip button { min-height: 36px; }
 .chip button { position: relative; }
 .chip button::after { content: ""; position: absolute; inset: -4px; }
-.alerts-panel summary { min-height: 36px; }
+.alerts-panel > summary { min-height: 36px; }
 
 /* 今日好康 keeps about its usual height while /api/deals loads, so the page below does not jump (desktop CLS). */
 @media (min-width: 641px) { #deals[aria-busy="true"] { min-height: 720px; } }
 /* ===== eresults: fee chips, hold vs transfer time, NT$ cost sort, upgrade calculator (award-tools.js) ===== */
 .deal .fee-chip { display: inline-block; margin: 6px 0 2px; font-size: .74rem; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 1px 9px; }
-th .fee-mini { display: block; font-size: .68rem; font-weight: 400; color: var(--muted); opacity: .85; white-space: nowrap; }
+th .fee-mini { display: block; font-size: .68rem; font-weight: 400; color: var(--muted); white-space: nowrap; }
 .deal .cost-line { font-size: .95rem; font-weight: 700; color: var(--text); margin: 2px 0 0; }
 .deal .cost-line small { display: block; font-size: .74rem; font-weight: 400; color: var(--muted); }
 td.cell i.cost { display: block; font-style: normal; font-size: .74rem; font-weight: 600; color: var(--text); }
