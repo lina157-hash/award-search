@@ -1658,3 +1658,25 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 .foot .theme-pick button { font-size: inherit; min-height: 32px; }
 .foot .cron-line { margin: 8px 0 0; font-variant-numeric: tabular-nums; }
 .mine-chip .mc-part { white-space: nowrap; }
+
+/* ---------- weekday: 星期幾比較有位 under the results calendar (public/weekday.js) ---------- */
+.wk-grid { display: grid; gap: 4px; max-width: 620px; }
+.wk-row { display: grid; grid-template-columns: 11em repeat(7, minmax(0, 1fr)); gap: 4px; align-items: center; }
+.wk-head span { text-align: center; font-size: .78rem; color: var(--muted); }
+.wk-label { display: flex; flex-direction: column; font-size: .84rem; font-weight: 600; line-height: 1.3; }
+.wk-label small { font-weight: 400; color: var(--muted); font-size: .74rem; }
+.wk-cell { text-align: center; font-size: .78rem; font-variant-numeric: tabular-nums; padding: 6px 0; border-radius: 6px; color: var(--muted); }
+.wk-cell.h0 { background: color-mix(in srgb, var(--muted) 12%, transparent); }
+.wk-cell.h1 { background: var(--heat-1); color: var(--text); }
+.wk-cell.h2 { background: var(--heat-2); color: var(--text); }
+.wk-cell.h3 { background: var(--heat-3); color: var(--text); }
+.wk-cell.h4 { background: var(--heat-4); color: var(--heat-text-strong); }
+.wk-cell.top { font-weight: 700; box-shadow: inset 0 0 0 2px var(--heat-4); }
+.wk-cell.h4.top { box-shadow: inset 0 0 0 2px var(--text); }
+.wk-how { margin: 8px 0 4px; font-size: .8rem; }
+.wk-small { margin: 0; font-size: .8rem; }
+@media (max-width: 640px) {
+  .wk-row { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .wk-head > span:first-child { display: none; }
+  .wk-label { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; gap: 0 8px; align-items: baseline; margin-top: 4px; }
+}
