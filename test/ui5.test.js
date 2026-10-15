@@ -139,7 +139,8 @@ test('R10: /api/cron/status is for the owner only and has each slot\'s parts; /a
     const st = await res.json();
     assert.equal(st.secret, true);
     assert.equal(st.runs.length, 1);
-    assert.deepEqual(Object.keys(st.runs[0].parts).sort(), ['alerts', 'deals', 'expiry', 'watches']);
+    // The daily deals mail shows up only when it had something to send (depends on the hour and the demo's subscribers).
+    assert.deepEqual(Object.keys(st.runs[0].parts).filter((k) => k !== 'digest').sort(), ['alerts', 'deals', 'expiry', 'watches']);
     assert.equal(typeof st.callsTodayAll, 'number');
     assert.equal(st.dailyLimit, 1000);
     const cfg = await (await fetch(`${base}/api/config`)).json();
