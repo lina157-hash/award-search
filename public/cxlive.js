@@ -25,6 +25,29 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     return out.slice(0, 4);
   };
   const nameOf = (c) => (typeof airportCity === 'function' ? airportCity(c) : '') || '';
+  const SRC = { unelevated: '來自國泰查票外掛（你自己的瀏覽器）', bookmarklet: '來自你的書籤', runner: '來自你的腳本' };
+
+  // 外掛模式 (cxcal.js) records seats but no miles: the Asia Miles price of a Cathay itinerary ("TPE-HKG-NRT") on the
+  // chart by summed sector distance, or 0 while the chart or the airport list (loaded on demand: cxEstReady) is missing.
+  // Shown as 「約」.
+  const estMemo = new Map();
+  window.cxEst = function cxEst(c, p) {
+    const k = `${c}|${p}`;
+    if (estMemo.has(k)) return estMemo.get(k);
+    const a = String(p || '').split('-');
+    let dist = 0;
+    for (let i = 1; i < a.length; i++) {
+      const x = AP.byCode.get(a[i - 1]);
+      const y = AP.byCode.get(a[i]);
+      if (!x || !y || x.lat == null || y.lat == null) return 0;
+      dist += haversineMiles(x, y);
+    }
+    const miles = (a.length > 1 && amPrice('cx', dist, c, a[0], a.at(-1))?.miles) || 0;
+    if (data.asiamiles && AP.loaded) estMemo.set(k, miles);
+    return miles;
+  };
+  window.cxEstReady = () => Promise.all([data.asiamiles || loadMore(), AP.loaded || loadAirports()]);
+  const usesSeats = (routes) => (routes || []).some((r) => Object.values(r.days || {}).some((d) => Object.values(d.c || {}).some((x) => x.seats)));
 
   const ensureCss = () => {
     if (document.getElementById('cx-css')) return;
@@ -43,9 +66,18 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     const cabins = r.cabins?.length ? r.cabins : 'YWJF'.split('').filter((c) => ds.some((d) => r.days[d].c?.[c]));
     return { total: ds.length, cabins: cabins.map((c) => {
       const seen = ds.filter((d) => r.days[d].c?.[c]);
-      const open = seen.filter((d) => !r.days[d].c[c].na);
+      const open = seen.filter((d) => !r.days[d].c[c].na && r.days[d].c[c].seats !== 0);
       const ms = open.map((d) => r.days[d].c[c].m).filter(Boolean);
-      return { c, seen: seen.length, open: open.length, min: ms.length ? Math.min(...ms) : 0 };
+      // Seat counts without miles (外掛模式): the most seats on one day and the 「約」 price of the cheapest itinerary.
+      const seats = Math.max(0, ...open.map((d) => r.days[d].c[c].seats || 0));
+      let est = 0;
+      if (seats && !ms.length) {
+        const paths = new Set(open.flatMap((d) => (r.days[d].c[c].f || []).map((f) => f.p)));
+        if (!paths.size) paths.add(`${r.fc}-${r.tc}`);
+        const es = [...paths].map((p) => window.cxEst(c, p)).filter(Boolean);
+        est = es.length ? Math.min(...es) : 0;
+      }
+      return { c, seen: seen.length, open: open.length, min: ms.length ? Math.min(...ms) : 0, seats, est };
     }).filter((x) => x.seen) };
   }
 
@@ -67,15 +99,21 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   function cardHtml(r) {
     const k = key(r.fc, r.tc);
     const { total, cabins } = stats(r);
-    const parts = cabins.map((x) => `${CN[x.c]}${x.min ? `最低 <b>${fmt(x.min)}</b> 哩` : ''}（${x.open}/${total} 天有位${x.min ? '' : '，哩數要點進日期才看得到'}）`);
+    const LB = { Y: '經', W: '豪', J: '商', F: '頭' };
+    const parts = cabins.map((x) => (x.seats && !x.min
+      ? `<span class="cx-seat" title="${esc(`${CN[x.c]}：單日最多 ${x.seats >= 9 ? '9 位以上' : `${x.seats} 位`}`)}"><b>${LB[x.c]}</b> ${x.c}${x.seats}</span>${x.est ? `約 <b>${fmt(x.est)}</b> 哩起` : CN[x.c]}（${x.open}/${total} 天有位）`
+      : `${CN[x.c]}${x.min ? `最低 <b>${fmt(x.min)}</b> 哩` : ''}（${x.open}/${total} 天有位${x.min ? '' : '，哩數要點進日期才看得到'}）`));
     const when = r.savedAt ? ago(r.savedAt) : '';
     const old = r.savedAt && Date.now() - Date.parse(r.savedAt) > 2 * 86400e3;
+    const un = r.source === 'unelevated';
+    const from = un ? nameOf(r.fc) || r.fc : r.from || r.fc;
+    const to = un ? nameOf(r.tc) || r.tc : r.to || r.tc;
     return `<section class="cx-live-card" data-route="${esc(k)}">
-      <div class="cx-live-head"><span class="cx-tag">國泰官網實查</span><b>${esc(r.from || r.fc)} → ${esc(r.to || r.tc)}</b><small>${esc(r.fc)}→${esc(r.tc)}</small>${when ? `<span class="hint">你的${r.source === 'bookmarklet' ? '書籤' : '腳本'}於 ${esc(when)}查到${old ? '（有點舊了）' : ''}</span>` : ''}</div>
+      <div class="cx-live-head"><span class="cx-tag">國泰官網實查</span><b>${esc(from)} → ${esc(to)}</b><small>${esc(r.fc)}→${esc(r.tc)}</small>${when ? `<span class="hint">${SRC[r.source] || SRC.runner}・${esc(when)}${old ? '（有點舊了）' : ''}</span>` : ''}</div>
       <p class="cx-live-sum">${parts.length ? parts.join('、') : '沒有讀到任何艙等的資料'}</p>
       <div class="cx-live-actions"><button type="button" class="linklike" data-cx-cal="${esc(k)}">${st.cal.has(k) ? '收起日曆' : '看日曆'}</button>${buttonsHtml(r.fc, r.tc, false)}</div>
       <div class="cxp cx-live-cal" ${st.cal.has(k) ? '' : 'hidden'}></div>
-      <p class="hint cx-live-note">來自站長自己在國泰官網（亞洲萬里通）的查詢結果，不是即時資料，機位隨時會變；開票前請到國泰官網確認。</p>
+      <p class="hint cx-live-note">來自站長自己在國泰官網（亞洲萬里通）的查詢結果，不是即時資料，機位隨時會變；開票前請到國泰官網確認。${cabins.some((x) => x.est) ? '「約」是依亞洲萬里通國泰航班獎勵表與飛行距離估算，每人單程，未含稅金與附加費；9 表示 9 位以上。' : ''}</p>
     </section>`;
   }
 
@@ -104,7 +142,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
       if (!st.cal.has(k)) continue;
       const r = (st.body?.routes || []).find((x) => key(x.fc, x.tc) === k);
       const box = sec.querySelector('.cx-live-cal');
-      if (r && box) { const ks = Object.keys(r.days).filter((d) => r.days[d].c).sort(); CXCAL.cxView(box, r, { ym: '', sel: ks[0] || '' }); }
+      if (r && box) { const ks = Object.keys(r.days).filter((d) => r.days[d].c).sort(); CXCAL.cxView(box, r, { ym: '', sel: ks[0] || '', est: window.cxEst }); }
     }
   }
 
@@ -143,6 +181,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
       if (n !== st.seq) return;
       st.body = body;
       draw();
+      if (usesSeats(body.routes) && !(data.asiamiles && AP.loaded)) window.cxEstReady().then(() => { if (n === st.seq) draw(); }, () => {});
       if (html() && st.wanted == null && hasPass()) { await fetchWanted(); if (n === st.seq) draw(); }
     } catch { /* the card is optional */ }
   });
@@ -247,7 +286,49 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   fetchStatus().then((s) => { if (s?.seen || s?.wanted || hasPass()) panelShow(); });
 
   // The bookmarklet's export landing (cxcal.js): save the calendar to the server too, so the route search shows it.
+  // A v2 export (外掛模式) holds several routes: each is posted on its own. A route over the server's 64 KB cap keeps
+  // fewer flights per cabin (the seat counts stay).
+  const fitRoute = (body) => {
+    for (const cap of [20, 10, 5, 2, 0]) {
+      const days = {};
+      for (const [k, v] of Object.entries(body.days)) {
+        if (!v.c) { days[k] = v; continue; }
+        days[k] = { ...v, c: Object.fromEntries(Object.entries(v.c).map(([c, x]) => [c, x.f ? { ...x, f: x.f.slice(0, cap) } : x])) };
+      }
+      const out = { ...body, days };
+      if (new TextEncoder().encode(JSON.stringify(out)).length < 60000) return out;
+    }
+    return body;
+  };
   window.cxLiveSave = function cxLiveSave(hintEl, d) {
+    if (d?.routes) {
+      if (!hintEl || !hasPass()) return;
+      const list = d.routes.filter((r) => r.fc && r.tc);
+      if (!list.length) return;
+      hintEl.querySelector('#cx-save')?.remove();
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'outline';
+      b.id = 'cx-save';
+      b.textContent = `儲存到網站（${list.length} 條航線，查這些航線時顯示）`;
+      b.addEventListener('click', async () => {
+        const done = busy(b, '儲存中…');
+        const ok = [];
+        const bad = [];
+        for (const r of list) {
+          try {
+            const body = fitRoute({ v: 1, from: nameOf(r.fc) || r.from, to: nameOf(r.tc) || r.to, fc: r.fc, tc: r.tc, at: d.at || Date.now(), days: r.days, source: d.source === 'unelevated' ? 'unelevated' : 'bookmarklet' });
+            const x = await cashApi('/api/cxcal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+            ok.push(`${x.fc}→${x.tc}（${x.days} 天）`);
+          } catch (err) { bad.push(`${r.fc}→${r.tc}：${err.message}`); }
+        }
+        cache.clear();
+        toast([ok.length ? `已儲存 ${ok.join('、')}` : '', bad.join('；')].filter(Boolean).join('；'));
+        done();
+      });
+      hintEl.append(' ', b);
+      return;
+    }
     if (!hintEl || !d?.fc || !d?.tc || !hasPass()) return;
     hintEl.querySelector('#cx-save')?.remove();
     const b = document.createElement('button');

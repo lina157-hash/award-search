@@ -1410,3 +1410,8 @@ dialog.cx-dlg { width: min(560px, calc(100vw - 24px)); overflow: auto; }
   .cx-live-cal.cxp .cx-d { min-height: 46px; font-size: .64rem; padding: 2px; }
   .cx-live-card { padding: 10px 10px 8px; }
 }
+
+/* ---------- cxunelev: 國泰哩程日曆 外掛模式 (seat badges without miles, route tabs on the landing) ---------- */
+.cx-seat { display: inline-block; margin-right: 4px; padding: 0 6px; border-radius: 6px; background: var(--cx-soft); color: var(--cx); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cx-seat b { margin-right: 3px; }
+.cx-land .cx-tabs { margin-bottom: 8px; }

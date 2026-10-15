@@ -177,6 +177,77 @@
     return { from: rt[0], to: rt[1], fc: first[0] || '', tc: last[last.length - 1] || '', head: hd, date, cabin, strip: stripOut, tiles, flights: out, low, issues };
   }
 
+  // 外掛模式: the visible text of the third-party 「Unelevated Award Search」 userscript's batch results on Cathay's
+  // redeem page (its DOM is not ours, so only the text is read): date lines 2027-02-13, route headers 「TPE - NRT」 and
+  // flight chips 「CX461 HKG CX500 J3 Y9 ›」 (flights, connecting airports, then cabin letter + seats; 9 = 9 or more).
+  // hints (from its form, when readable): { from: 'TPE', to: 'NRT,KIX', date: '20270213', cabins: 'FJWY', direct, err }.
+  // → { found, dates, routes: [{ fc, tc, days: { iso: { na: 1 } | { c: { J: { seats, n, nonstop, f: [{ n, p, s, q }] } } } } }],
+  //     err, missing: [iso], chips }. A date shown with no chips for a route counts as no seats.
+  function parseUnelevatedText(text, hints) {
+    hints = hints || {};
+    const s = String(text || '');
+    const add = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
+    const RE = /(Error\s*[:：][^\n]*)|\b(\d{4})-(\d{2})-(\d{2})\b|\b([A-Z]{3})\s*[-–—]\s*([A-Z]{3})\b|\b([A-Z]{2})\s?(\d{2,4})\b|\b([FJWY])\s?(\d)\b|\b([A-Z]{3})\b/g;
+    const shown = 'FJWY'.split('').filter((c) => !hints.cabins || hints.cabins.includes(c));
+    const sec = {};
+    const dates = [];
+    const keys = [];
+    const codes = (x) => String(x || '').toUpperCase().split(/[^A-Z]+/).filter((c) => c.length === 3);
+    for (const o of codes(hints.from)) for (const d of codes(hints.to)) if (o !== d) keys.push(o + '>' + d);
+    let date = '';
+    let rt = '';
+    let cur = null;
+    let err = String(hints.err || '');
+    let chips = 0;
+    const has = (c) => c && Object.keys(c.q).length;
+    const close = () => { if (cur && has(cur) && sec[date + '|' + rt]) { sec[date + '|' + rt].push(cur); chips++; } cur = null; };
+    for (const m of s.matchAll(RE)) {
+      if (m[1]) { close(); err = m[1].replace(/^Error\s*[:：]\s*/, '').replace(/\s*\(?\s*Login\s*\)?\s*$/i, '').trim(); continue; }
+      if (m[2]) { close(); date = m[2] + '-' + m[3] + '-' + m[4]; rt = ''; if (!dates.includes(date)) dates.push(date); continue; }
+      if (m[5]) { close(); rt = m[5] + '>' + m[6]; if (!keys.includes(rt)) keys.push(rt); if (date) sec[date + '|' + rt] = sec[date + '|' + rt] || []; continue; }
+      if (!date || !rt) continue;
+      if (m[7]) { if (!cur || has(cur)) { close(); cur = { n: [], v: [], q: {} }; } cur.n.push(m[7] + m[8]); continue; }
+      if (m[9]) { if (cur && cur.n.length) cur.q[m[9]] = Math.max(cur.q[m[9]] || 0, +m[10]); continue; }
+      if (m[11] && cur && cur.n.length && !has(cur)) cur.v.push(m[11]);
+    }
+    close();
+    dates.sort();
+    const routes = keys.map((k) => {
+      const [fc, tc] = k.split('>');
+      const days = {};
+      dates.forEach((d) => {
+        const list = (sec[d + '|' + k] || []).filter((x) => shown.some((c) => x.q[c]));
+        if (!list.length) {
+          if (shown.length === 4) days[d] = { na: 1 };
+          else { days[d] = { c: {} }; shown.forEach((c) => { days[d].c[c] = { na: 1 }; }); }
+          return;
+        }
+        const top = list.filter((x) => !x.v.length).concat(list.filter((x) => x.v.length)).slice(0, 20);
+        const c = {};
+        shown.forEach((cb) => {
+          const w = list.filter((x) => x.q[cb]);
+          if (!w.length) return;
+          c[cb] = { seats: Math.max(...w.map((x) => x.q[cb])), n: w.length, nonstop: w.some((x) => !x.v.length), f: top.filter((x) => x.q[cb]).map((x) => {
+            const q = {};
+            'FJWY'.split('').forEach((y) => { if (x.q[y]) q[y] = x.q[y]; });
+            return { n: x.n.join('›'), p: [fc].concat(x.v, [tc]).join('-'), s: x.v.length, q };
+          }) };
+        });
+        days[d] = { c };
+      });
+      return { fc, tc, days };
+    }).filter((r) => dates.length && r.fc !== r.tc);
+    // The batch covers 20 days from the form's date (else the first date shown); with an error, the rest are missing.
+    let start = '';
+    const hd = String(hints.date || '').match(/^(\d{4})-?(\d{2})-?(\d{2})$/);
+    if (hd) start = hd[1] + '-' + hd[2] + '-' + hd[3];
+    else if (dates.length) start = dates[0];
+    const missing = [];
+    if (err && start) for (let i = 0; i < (hints.days || 20); i++) { const d = add(start, i); if (!dates.includes(d)) missing.push(d); }
+    const found = /Unelevated Award Search|批次搜尋\s*\d*\s*天可兌換航班/i.test(s) || !!hints.found;
+    return { found, dates, routes, err, missing, chips, start };
+  }
+
   // The calendar and the chosen day's flights, drawn into `box` from a route record { from, to, days }. `st` holds the
   // month on show and the chosen day; clicks redraw in place. Shared by the panel on Cathay's page and our landing.
   function cxView(box, db, st) {
@@ -214,13 +285,17 @@
       b.append(E('i', '', d));
       const cs = r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && r.c[c].m) : [];
       cs.forEach((c) => { const s = E('span', 'cx-m'); s.append(E('b', '', LB[c]), document.createTextNode(short(r.c[c].m))); b.append(s); });
+      // 外掛模式 knows seat counts but no miles: 「商J3」.
+      const seat = !cs.length && r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && r.c[c].seats) : [];
+      seat.forEach((c) => { const s = E('span', 'cx-m'); s.append(E('b', '', LB[c]), document.createTextNode(c + r.c[c].seats)); b.append(s); });
       // The runner's strip sweep knows a cabin has seats (no 不適用) before any miles are read: 「有位」.
-      const open = !cs.length && r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && !r.c[c].na) : [];
-      if (!cs.length && r && r.na) b.append(E('span', 'cx-na', '無位'));
+      const open = !cs.length && !seat.length && r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && !r.c[c].na) : [];
+      if (seat.length) b.title = seat.map((c) => CN[c] + ' ' + (r.c[c].seats >= 9 ? '9 位以上' : r.c[c].seats + ' 位')).join('、');
+      if (!cs.length && !seat.length && r && (r.na || (r.c && !open.length && !r.lo))) b.append(E('span', 'cx-na', '無位'));
       else if (!cs.length && r && r.lo) b.append(E('span', 'cx-m', '低' + short(r.lo)));
       else if (open.length) b.append(E('span', 'cx-m', open.map((c) => LB[c]).join('') + '有位'));
-      if (cs.length || (r && r.lo) || open.length) b.classList.add('has');
-      else if (r && r.na) b.classList.add('na');
+      if (cs.length || seat.length || (r && r.lo) || open.length) b.classList.add('has');
+      else if (r && (r.na || r.c)) b.classList.add('na');
       if (st.sel === iso) b.classList.add('sel');
       b.onclick = () => { st.sel = iso; cxView(box, db, st); };
       g.append(b);
@@ -233,7 +308,33 @@
     const cs = r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && r.c[c].m) : [];
     const open = r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && !r.c[c].na) : [];
     const shut = r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && r.c[c].na) : [];
-    if (!cs.length && (open.length || shut.length)) det.append(E('p', 'cx-mut', (open.length ? '國泰日期列顯示' + open.map((c) => CN[c]).join('、') + '有位（哩數要點進那天才看得到）' : '') + (shut.length ? (open.length ? '；' : '') + shut.map((c) => CN[c]).join('、') + '「不適用」' : '') + '。'));
+    const seat = !cs.length && r && r.c ? 'YWJF'.split('').filter((c) => r.c[c] && r.c[c].seats) : [];
+    // 外掛模式: seats per cabin and the flights, priced 「約」 on the Asia Miles chart when the page gives st.est(cabin, path).
+    const est = (c, p) => (st.est ? st.est(c, p) || 0 : 0);
+    const nseat = (v) => (v >= 9 ? '9 位以上' : v + ' 位');
+    if (seat.length) {
+      // One line per cabin (most seats, flights, 「約」 price), then the day's flights once, with their seats per cabin.
+      let any = false;
+      const all = [];
+      seat.slice().reverse().forEach((c) => {
+        const x = r.c[c];
+        const fs = x.f || [];
+        const ms = fs.map((f) => est(c, f.p)).filter(Boolean);
+        const lo = ms.length ? Math.min(...ms) : est(c, (db.fc || '') + '-' + (db.tc || ''));
+        if (lo) any = true;
+        det.append(E('div', 'cx-ch', CN[c] + ' 最多 ' + nseat(x.seats) + '・' + (x.n || fs.length) + ' 班' + (x.nonstop ? '（有直飛）' : '') + (lo ? '・約 ' + fmt(lo) + ' 哩起' : '')));
+        fs.forEach((f) => { if (!all.some((g) => g.n === f.n)) all.push(f); });
+      });
+      all.sort((a, b) => (a.s || 0) - (b.s || 0)).forEach((f) => {
+        const row = E('div', 'cx-f');
+        const q = f.q || {};
+        row.append(E('span', '', f.n), E('b', '', 'FJWY'.split('').filter((y) => q[y]).map((y) => y + q[y]).join(' ')),
+          E('small', '', [(f.p || '').split('-').join(' → '), f.s ? '轉 ' + f.s + ' 次' : '直飛'].join('・')));
+        det.append(row);
+      });
+      // On our site the card or the landing explains 「約」; on Cathay's page there is no chart.
+      if (!any && !st.est) det.append(E('p', 'cx-mut', '外掛只顯示座位數（9 表示 9 位以上），不顯示哩數；匯出到網站後會依獎勵表估算。'));
+    } else if (!cs.length && (open.length || shut.length)) det.append(E('p', 'cx-mut', (open.length ? '國泰日期列顯示' + open.map((c) => CN[c]).join('、') + '有位（哩數要點進那天才看得到）' : '') + (shut.length ? (open.length ? '；' : '') + shut.map((c) => CN[c]).join('、') + '「不適用」' : '') + '。'));
     else if (!r || (!cs.length && !r.na)) det.append(E('p', 'cx-mut', r && r.lo ? '國泰日期列顯示最低 ' + fmt(r.lo) + ' 哩；在國泰頁面點這天就會記下航班。' : '這天還沒有紀錄：在國泰頁面點這天，就會記下來。'));
     else if (!cs.length) det.append(E('p', 'cx-mut', '國泰顯示「不適用」：這天沒有獎勵位。'));
     cs.forEach((c) => {
@@ -264,6 +365,7 @@
       + '.cx-m{white-space:nowrap}.cx-m b{color:var(--ca);margin-right:1px}.cx-na{color:var(--cm)}'
       + '.cx-det{border-top:1px solid var(--cl);margin-top:8px;padding-top:6px}.cx-dh{display:block;margin-bottom:2px}.cx-ch{font-weight:700;color:var(--ca);margin-top:6px}.cx-mut{color:var(--cm);margin:4px 0}'
       + '.cx-f{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 8px;padding:4px 0;border-bottom:1px dashed var(--cl);font-variant-numeric:tabular-nums}.cx-f small{flex-basis:100%;color:var(--cm)}'
+      + '.cx-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}.cx-tabs:empty{display:none}.cxp .cx-tabs button{padding:3px 10px;font-variant-numeric:tabular-nums}'
       + '.cx-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.cxp .cx-pri{background:var(--ca);border-color:var(--ca);color:#fff}'
       + '.cx-note{color:var(--cm);font-size:11.5px;margin:8px 0 0}.cx-out textarea{width:100%;height:90px;margin-top:6px;font:11px monospace}.cx-out a{color:var(--ca)}';
   }
@@ -305,6 +407,47 @@
     const d = choose(dayEls, false);
     const c = choose(cabEls, true);
     return { day: d ? d[1] : null, cabin: c ? c[1] : '', nd: dayEls.length, nc: cabEls.length };
+  }
+
+  // 外掛模式: the 「Unelevated Award Search」 userscript's panel, if it is on the page → { root, text, hints } or null.
+  // root is the smallest element holding its title (or batch button) and the dated results; hints come from its form
+  // (From / To / Date inputs, the 直飛 and cabin checkboxes) and an error line anywhere on the page.
+  function cxUnFind() {
+    const TT = /^(Unelevated Award Search|批次搜尋\s*\d*\s*天可兌換航班)$/i;
+    const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n;
+    let t = null;
+    while ((n = tw.nextNode())) if (TT.test(n.nodeValue.trim()) && n.parentElement && n.parentElement.getClientRects().length) { t = n.parentElement; break; }
+    if (!t) return null;
+    let panel = null;
+    let root = null;
+    for (let e = t; e && e !== document.documentElement; e = e.parentElement) {
+      const x = e.innerText || '';
+      if (!panel && /Unelevated Award Search/i.test(x) && /批次搜尋/.test(x)) panel = e;
+      if (!root && /\b\d{4}-\d{2}-\d{2}\b/.test(x) && /\b[A-Z]{3}\s*[-–—]\s*[A-Z]{3}\b/.test(x)) root = e;
+      if (root && panel) break;
+    }
+    panel = panel || t.parentElement || t;
+    root = root || panel;
+    const lab = (i) => ((i.labels && i.labels[0] && i.labels[0].innerText) || i.getAttribute('aria-label') || i.getAttribute('placeholder') || i.name || (i.previousElementSibling && i.previousElementSibling.innerText) || (i.parentElement && i.parentElement.innerText) || '').trim();
+    const hints = { cabins: '' };
+    const CB = { 頭等: 'F', 商務: 'J', 豪經: 'W', 經濟: 'Y' };
+    let boxes = 0;
+    for (const i of (root.contains(panel) ? root : panel).querySelectorAll('input')) {
+      const l = lab(i);
+      if (i.type === 'checkbox') {
+        const w = (l.match(/直飛|頭等|商務|豪經|經濟/) || [''])[0];
+        if (w === '直飛') hints.direct = i.checked;
+        else if (w) { boxes++; if (i.checked) hints.cabins += CB[w]; }
+      } else if (/^from\b/i.test(l)) hints.from = i.value;
+      else if (/^to\b/i.test(l)) hints.to = i.value;
+      else if (/^date\b/i.test(l)) hints.date = i.value.trim();
+    }
+    if (boxes < 4) delete hints.cabins;
+    const er = (document.body.innerText || '').match(/Error\s*[:：]\s*([^\n]*)/);
+    if (er) hints.err = er[1].replace(/\s*\(?\s*Login\s*\)?\s*$/i, '').trim();
+    hints.found = true;
+    return { root, text: root.innerText || '', hints };
   }
 
   // The results section only (from the 出發 heading down through the flight list), never the header/account area.
@@ -384,6 +527,7 @@
     top.append(ttl, sw, mn, cl);
     const body = E('div');
     const stat = E('div', 'cx-st', '讀取中…');
+    const tabs = E('div', 'cx-tabs');
     const view = E('div');
     const btns = E('div', 'cx-btns');
     const bClr = E('button', '', '清除');
@@ -391,8 +535,10 @@
     const bDia = E('button', '', '複製診斷資料');
     [bClr, bExp, bDia].forEach((b) => { b.type = 'button'; btns.append(b); });
     const outBox = E('div', 'cx-out');
-    const nt = E('p', 'cx-note', '只讀取你畫面上已顯示的內容：不會自動點選或查詢，密碼不會離開你的瀏覽器。在國泰頁面點其他日期或艙等，日曆會自己補上。' + (note ? ' ' + note : ''));
-    body.append(stat, view, btns, outBox, nt);
+    const NT = '只讀取你畫面上已顯示的內容：不會自動點選或查詢，密碼不會離開你的瀏覽器。在國泰頁面點其他日期或艙等，日曆會自己補上。';
+    const NTU = '外掛模式：只讀取 Unelevated 外掛畫面上已顯示的批次結果，不會替你按任何按鈕；外掛還在跑時，結果會自己補上。';
+    const nt = E('p', 'cx-note', NT + (note ? ' ' + note : ''));
+    body.append(stat, tabs, view, btns, outBox, nt);
     p.append(top, body);
     sr.append(css, p);
     document.documentElement.append(host);
@@ -401,9 +547,55 @@
     let db = null;
     let last = null;
     const st = { ym: '', sel: '' };
+    // 外掛模式: every route the userscript shows, [{ k, d }], and the one on show.
+    let un = null;
+    let unList = [];
     const draw = () => {
-      ttl.textContent = '國泰哩程日曆' + (db && db.from ? '・' + db.from + ' → ' + db.to : '');
+      ttl.textContent = '國泰哩程日曆' + (un ? '・外掛模式' : db && db.from ? '・' + db.from + ' → ' + db.to : '');
+      tabs.textContent = '';
+      if (un && unList.length > 1) unList.forEach((x) => {
+        const b = E('button', x.k === key ? 'cx-pri' : '', x.d.fc + ' → ' + x.d.tc);
+        b.type = 'button';
+        b.onclick = () => { key = x.k; db = x.d; st.ym = ''; st.sel = un.dates[0] || ''; draw(); };
+        tabs.append(b);
+      });
       cxView(view, db || { days: {} }, st);
+    };
+    const md = (d) => +d.slice(5, 7) + '/' + +d.slice(8);
+    // Dates as short runs: 2/17–2/20、2/25.
+    const runs = (ds) => {
+      const out = [];
+      ds.forEach((d, i) => { if (i && Date.parse(d) - Date.parse(ds[i - 1]) === 864e5) out[out.length - 1][1] = d; else out.push([d, d]); });
+      return out.map((r) => (r[0] === r[1] ? md(r[0]) : md(r[0]) + '–' + md(r[1]))).join('、');
+    };
+    const readUn = (f, u) => {
+      const now = Date.now();
+      let saved = true;
+      unList = u.routes.map((rt) => {
+        const k = 'cxcal:' + rt.fc + '>' + rt.tc;
+        const d = ld(k) || { from: rt.fc, to: rt.tc, days: {} };
+        Object.assign(d, { fc: rt.fc, tc: rt.tc, source: 'unelevated', at: now });
+        Object.keys(rt.days).forEach((x) => {
+          const v = rt.days[x];
+          if (v.c) Object.keys(v.c).forEach((c) => { v.c[c].t = now; });
+          d.days[x] = v;
+        });
+        saved = sv(k, d) && saved;
+        return { k, d };
+      });
+      if (!un) { nt.textContent = NTU; st.ym = ''; st.sel = ''; }
+      un = u;
+      last = { u, hints: f.hints };
+      const cur = unList.find((x) => x.k === key) || unList[0];
+      if (cur.k !== key) { st.ym = ''; st.sel = u.dates[0]; }
+      key = cur.k;
+      db = cur.d;
+      let msg = '外掛模式：讀到 ' + unList.length + ' 條航線、' + u.dates.length + ' 天';
+      if (f.hints.direct) msg += '（外掛只勾了直飛，轉機航班沒有列出）';
+      if (u.err) msg += '。外掛顯示：' + (/金鑰/.test(u.err) ? '無法取得金鑰，請登出國泰再登入後重跑批次搜尋' : u.err) + (u.missing.length ? '（缺 ' + runs(u.missing) + '，共 ' + u.missing.length + ' 天）' : '');
+      if (!saved) msg += '（瀏覽器不允許儲存，關掉分頁就會不見）';
+      stat.textContent = msg;
+      draw();
     };
     const read = () => {
       const busy = [].some.call(document.body.querySelectorAll('[aria-busy="true"],[class*="spinner" i],[class*="loading" i]'), (e) => e.getClientRects().length);
@@ -411,9 +603,16 @@
       waits = 0;
       let r;
       let hints;
+      let f = null;
+      try {
+        f = cxUnFind();
+        const u = f ? parseUnelevatedText(f.text, f.hints) : null;
+        if (u && u.routes.length) { readUn(f, u); return; }
+      } catch (e) { stat.textContent = '外掛模式讀取失敗：' + e.message + '。請按「複製診斷資料」傳給我們。'; return; }
+      if (un) { un = null; unList = []; key = ''; db = null; nt.textContent = NT + (note ? ' ' + note : ''); }
       try { hints = cxHints(); r = parseCathayText(document.body.innerText, hints); } catch (e) { stat.textContent = '讀取失敗：' + e.message + '。請按「複製診斷資料」傳給我們。'; return; }
-      last = { r, hints };
-      if (!r.from && !r.fc) { stat.textContent = '還讀不到航線：請在國泰「選擇航班」的結果頁使用。'; draw(); return; }
+      last = { r, hints, f };
+      if (!r.from && !r.fc) { stat.textContent = f ? '外掛模式：還沒有結果。請先按外掛的「批次搜尋 20 天可兌換航班」，跑完會自動讀進來。' : '還讀不到航線：請在國泰「選擇航班」的結果頁使用。'; draw(); return; }
       const k = 'cxcal:' + (r.from && r.to ? r.from + '>' + r.to : r.fc + '>' + r.tc);
       if (k !== key) { key = k; db = ld(k) || { from: r.from || r.fc, to: r.to || r.tc, days: {} }; st.ym = ''; st.sel = ''; }
       if (r.fc) { db.fc = r.fc; db.tc = r.tc; }
@@ -439,7 +638,6 @@
       db.at = Date.now();
       const saved = sv(key, db);
       const n = Object.keys(db.days).filter((d) => db.days[d].c).length;
-      const md = (d) => +d.slice(5, 7) + '/' + +d.slice(8);
       let msg = '已記錄 ' + n + ' 天的哩程';
       if (r.date && r.cabin && r.flights.length) msg += '・剛讀到 ' + md(r.date) + ' ' + CN[r.cabin] + ' ' + r.flights.length + ' 班';
       else if (r.date && !r.cabin && r.flights.length) msg += '・讀到 ' + md(r.date) + ' 的航班，但分不出選的是哪個艙等，請按「複製診斷資料」傳給我們';
@@ -471,6 +669,14 @@
     };
     bClr.onclick = () => {
       if (!db) return;
+      if (un) {
+        if (!window.confirm('清除外掛模式讀到的 ' + unList.length + ' 條航線（' + unList.map((x) => x.d.fc + '→' + x.d.tc).join('、') + '）已記錄的日曆？外掛畫面上的結果還在時，會再讀進來。')) return;
+        unList.forEach((x) => { x.d.days = {}; sv(x.k, null); });
+        st.sel = '';
+        shout('已清除。');
+        draw();
+        return;
+      }
       if (!window.confirm('清除「' + db.from + ' → ' + db.to + '」已記錄的日曆？')) return;
       db.days = {};
       sv(key, null);
@@ -480,7 +686,8 @@
     };
     bExp.onclick = () => {
       if (!db || !Object.keys(db.days).length) { shout('還沒有記錄任何日期。'); return; }
-      const json = JSON.stringify({ v: 1, from: db.from, to: db.to, fc: db.fc || '', tc: db.tc || '', at: Date.now(), days: db.days });
+      const json = JSON.stringify(un ? { v: 2, source: 'unelevated', at: Date.now(), routes: unList.map((x) => ({ from: x.d.from, to: x.d.to, fc: x.d.fc, tc: x.d.tc, days: x.d.days })) }
+        : { v: 1, from: db.from, to: db.to, fc: db.fc || '', tc: db.tc || '', at: Date.now(), days: db.days });
       const b64 = btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
       const url = origin + '/#cxcal=' + b64;
       const w = window.open(url, '_blank');
@@ -488,6 +695,13 @@
       if (!w) { const a = E('a', '', '點這裡打開機票搜索雷達'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; shout('瀏覽器擋住了新分頁：', a); }
     };
     bDia.onclick = () => {
+      if (un && last && last.u) {
+        const u = last.u;
+        const sum = JSON.stringify({ mode: 'unelevated', routes: u.routes.map((x) => x.fc + '>' + x.tc), dates: u.dates.length, chips: u.chips, err: u.err, missing: u.missing, hints: last.hints });
+        const f = cxUnFind();
+        copy(cxDiag(f && f.root, '解析結果：' + sum), '已複製診斷資料（不含姓名、會員號碼與哩程餘額），可以直接貼給我們。');
+        return;
+      }
       const r = last && last.r;
       const sum = r ? JSON.stringify({ route: [r.from, r.to, r.fc, r.tc], head: r.head, date: r.date, cabin: r.cabin, strip: r.strip.length, tiles: r.tiles, flights: r.flights.length, low: r.low, issues: r.issues, hints: last.hints }) : '';
       copy(cxDiag(cxRoot(), '解析結果：' + sum), '已複製診斷資料（不含姓名、會員號碼與哩程餘額），可以直接貼給我們。');
@@ -550,26 +764,37 @@
   // The bookmark: the parser, the calendar and the panel in one javascript: URL (no script is loaded from anywhere,
   // so no script host has to be allowed by Cathay's page). One line, with % and # escaped for the URL.
   function bookmarkletCode(origin, note) {
-    const fns = [parseCathayText, cxView, cxCss, cxHints, cxRoot, cxDiag, cxRun].map(String).join('\n');
+    const fns = [parseCathayText, parseUnelevatedText, cxView, cxCss, cxHints, cxUnFind, cxRoot, cxDiag, cxRun].map(String).join('\n');
     const src = '(function(){' + fns + '\ncxRun(' + JSON.stringify(String(origin || '').replace(/\/$/, '')) + ',' + JSON.stringify(note || '') + ')})()';
     return 'javascript:' + cxMin(src).replace(/%/g, '%25').replace(/#/g, '%23');
   }
 
-  // Export payload (base64url JSON in the hash) → route record, or null.
+  // Export payload (base64url JSON in the hash) → route record { from, to, fc, tc, at, days } (v1), or
+  // { v: 2, source, at, routes: [route records] } (v2, several routes from 外掛模式), or null.
   function decodeExport(b64) {
+    const route = (d, at, source) => {
+      if (!d || typeof d.days !== 'object' || Array.isArray(d.days)) return null;
+      const days = {};
+      for (const k of Object.keys(d.days)) if (/^\d{4}-\d{2}-\d{2}$/.test(k) && d.days[k] && typeof d.days[k] === 'object') days[k] = d.days[k];
+      const r = { from: String(d.from || '').slice(0, 40), to: String(d.to || '').slice(0, 40), fc: String(d.fc || '').slice(0, 3), tc: String(d.tc || '').slice(0, 3), at: Number(at) || 0, days };
+      if (source) r.source = source;
+      return r;
+    };
     try {
       const s = String(b64 || '').replace(/-/g, '+').replace(/_/g, '/');
       const bin = typeof atob === 'function' ? atob(s) : Buffer.from(s, 'base64').toString('binary');
       const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
       const d = JSON.parse(new TextDecoder().decode(bytes));
-      if (!d || typeof d.days !== 'object' || Array.isArray(d.days)) return null;
-      const days = {};
-      for (const k of Object.keys(d.days)) if (/^\d{4}-\d{2}-\d{2}$/.test(k) && d.days[k] && typeof d.days[k] === 'object') days[k] = d.days[k];
-      return { from: String(d.from || '').slice(0, 40), to: String(d.to || '').slice(0, 40), fc: String(d.fc || '').slice(0, 3), tc: String(d.tc || '').slice(0, 3), at: Number(d.at) || 0, days };
+      if (d && Number(d.v) === 2) {
+        const source = d.source === 'unelevated' ? 'unelevated' : '';
+        const routes = (Array.isArray(d.routes) ? d.routes : []).slice(0, 10).map((x) => route(x, d.at, source)).filter(Boolean);
+        return routes.length ? { v: 2, source, at: Number(d.at) || 0, routes } : null;
+      }
+      return route(d, d && d.at);
     } catch { return null; }
   }
 
-  const api = { parseCathayText, bookmarkletCode, cxMin, decodeExport, cxView, cxCss };
+  const api = { parseCathayText, parseUnelevatedText, bookmarkletCode, cxMin, decodeExport, cxView, cxCss };
   if (typeof module === 'object' && module.exports) { module.exports = api; return; }
   root.CXCAL = api;
 
@@ -589,18 +814,36 @@
     if (!dlg) {
       document.body.insertAdjacentHTML('beforeend', `<dialog id="cx-dialog" class="cx-dlg" aria-labelledby="cx-title">
         <div class="dialog-head"><h2 id="cx-title">國泰哩程日曆</h2><button class="ghost" id="cx-close" aria-label="關閉">✕</button></div>
-        <div class="cx-land"><p class="hint" id="cx-src"></p><div class="cxp" id="cx-view"></div></div></dialog>`);
+        <div class="cx-land"><p class="hint" id="cx-src"></p><div class="cxp"><div class="cx-tabs" id="cx-tabs" role="tablist"></div><div id="cx-view"></div></div></div></dialog>`);
       dlg = document.getElementById('cx-dialog');
       $('#cx-close').addEventListener('click', () => dlg.close());
       dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
     }
-    const n = Object.keys(d.days).filter((k) => d.days[k].c).length;
+    // v1: one route; v2 (外掛模式): several, one calendar each behind tabs.
+    const list = d.routes || [d];
+    const un = d.source === 'unelevated';
     const at = d.at ? new Date(d.at) : null;
     const when = at ? `${at.getMonth() + 1}/${at.getDate()} ${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}` : '';
-    $('#cx-title').textContent = `國泰哩程日曆・${d.from} → ${d.to}`;
-    $('#cx-src').textContent = `這些資料來自你自己在國泰官網的查詢畫面${when ? `（${when} 匯出，共 ${n} 天有哩程）` : ''}，本站只負責顯示，沒有向國泰查詢。機位隨時會變，開票前請到國泰官網確認。`;
-    const ks = Object.keys(d.days).filter((k) => d.days[k].c).sort();
-    cxView($('#cx-view'), d, { ym: '', sel: ks[0] || '' });
+    const name = (r) => (un ? `${r.fc} → ${r.tc}` : `${r.from} → ${r.to}`);
+    // 外掛模式 has seats but no miles: priced 「約」 on the Asia Miles chart (cxlive.js cxEst, once the chart is loaded).
+    const est = typeof cxEst === 'function' ? cxEst : null;
+    let cur = 0;
+    const show = (i) => {
+      cur = i;
+      const r = list[i];
+      const ks = Object.keys(r.days).filter((k) => r.days[k].c).sort();
+      for (const b of document.querySelectorAll('#cx-tabs button')) { const on = +b.dataset.i === i; b.classList.toggle('cx-pri', on); b.setAttribute('aria-selected', on); }
+      cxView($('#cx-view'), r, { ym: '', sel: ks[0] || '', est });
+    };
+    const n = list.reduce((a, r) => a + Object.keys(r.days).filter((k) => r.days[k].c).length, 0);
+    $('#cx-title').textContent = list.length > 1 ? `國泰哩程日曆・${list.length} 條航線` : `國泰哩程日曆・${name(list[0])}`;
+    $('#cx-src').textContent = un
+      ? `這些資料來自國泰查票外掛（你自己的瀏覽器）的批次查詢結果${when ? `（${when} 匯出，${list.length} 條航線、共 ${n} 天有資料）` : ''}，本站只負責顯示，沒有向國泰查詢。外掛只顯示座位數（9 表示 9 位以上），哩數是依亞洲萬里通國泰航班獎勵表與飛行距離估算的「約」，每人單程，未含稅金與附加費。機位隨時會變，開票前請到國泰官網確認。`
+      : `這些資料來自你自己在國泰官網的查詢畫面${when ? `（${when} 匯出，共 ${n} 天有哩程）` : ''}，本站只負責顯示，沒有向國泰查詢。機位隨時會變，開票前請到國泰官網確認。`;
+    $('#cx-tabs').innerHTML = list.length > 1 ? list.map((r, i) => `<button type="button" role="tab" data-i="${i}">${esc(name(r))}</button>`).join('') : '';
+    for (const b of document.querySelectorAll('#cx-tabs button')) b.addEventListener('click', () => show(+b.dataset.i));
+    show(0);
+    if (est && un && typeof cxEstReady === 'function') cxEstReady().then(() => show(cur), () => {});
     // cxlive.js: 「儲存到網站」 so the route search shows this calendar (passcode).
     if (typeof cxLiveSave === 'function') cxLiveSave($('#cx-src'), d);
     if (!dlg.open) dlg.showModal();
@@ -620,7 +863,7 @@
     $('#cx-body').innerHTML = `<p class="hint">seats.aero 幾乎沒有從台北出發的亞洲萬里通資料。這個「書籤小工具」在你登入國泰官網、查獎勵機票時，把畫面上已顯示的日期與各艙等最低哩程記下來，排成月曆；點其他日期或艙等，月曆會自己補上，也能匯出到這裡看。</p>
       <p class="gf-drag"><a class="outline btn primary-link" id="cx-link" href="${esc(code)}">🗓 國泰日曆</a><span class="hint">← 電腦上把這個按鈕拖到書籤列</span></p>
       <div class="gf-how">
-        <div><b>怎麼用（電腦版 Chrome／Edge）</b><ol><li>按 Ctrl＋Shift＋B（Mac：⌘＋Shift＋B）打開書籤列，把「🗓 國泰日曆」拖上去。</li><li>到國泰官網登入，用哩數兌換搜尋航班，停在「選擇航班」結果頁。</li><li>點書籤列的「🗓 國泰日曆」：右下角出現月曆。之後照常點日期、切換艙等，月曆會逐格填上。</li></ol>
+        <div><b>怎麼用（電腦版 Chrome／Edge）</b><ol><li>按 Ctrl＋Shift＋B（Mac：⌘＋Shift＋B）打開書籤列，把「🗓 國泰日曆」拖上去。</li><li>到國泰官網登入，用哩數兌換搜尋航班，停在「選擇航班」結果頁。</li><li>點書籤列的「🗓 國泰日曆」：右下角出現月曆。之後照常點日期、切換艙等，月曆會逐格填上。</li><li>裝了 Unelevated 外掛的話：先按它的「批次搜尋 20 天」，跑完再點這個書籤，會一次讀完所有日期。</li></ol>
           <button type="button" class="outline" id="cx-copy">複製書籤程式碼</button> <span class="hint">拖不動時：新增一個書籤，網址貼上這段程式碼。</span></div>
         <div><b>安全</b><p class="hint">密碼不會離開你的瀏覽器、不會自動點選或查詢：它只讀你自己畫面上已經顯示的內容，資料存在你的瀏覽器裡；按「匯出」才會帶到本站，而且放在網址 # 後面，不會傳到伺服器。</p>
           ${last ? '<button type="button" class="outline" id="cx-last">打開上次匯入的日曆</button>' : ''}</div>
@@ -639,7 +882,9 @@
     if (!d) toast('國泰哩程日曆的資料讀不出來，請在國泰頁面再按一次「匯出」');
     else {
       try { localStorage.setItem(LAST, JSON.stringify(d)); } catch { /* storage blocked: still show it */ }
-      openLanding(d);
+      // After the rest of the scripts, so cxlive.js's 「儲存到網站」 (cxLiveSave) and cxEst exist.
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => openLanding(d), { once: true });
+      else openLanding(d);
     }
   }
 })(typeof window !== 'undefined' ? window : globalThis);

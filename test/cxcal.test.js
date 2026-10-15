@@ -100,7 +100,7 @@ test('cxcal: the minifier keeps strings, regexes and behaviour', () => {
   assert.equal(f(`x'"/y`), 'xya // not a commentNaNstring');
   // The parser itself, minified, gives the same answers.
   const src2 = fs.readFileSync(path.join(__dirname, '..', 'public', 'cxcal.js'), 'utf8');
-  const fn = src2.slice(src2.indexOf('function parseCathayText'), src2.indexOf('  // The calendar and the chosen day'));
+  const fn = src2.slice(src2.indexOf('function parseCathayText'), src2.indexOf('  // 外掛模式: the visible text'));
   const p2 = vm.runInNewContext(`(${CX.cxMin(fn)})`);
   assert.deepEqual(JSON.parse(JSON.stringify(p2(ZH(), { day: 4 }))), JSON.parse(JSON.stringify(CX.parseCathayText(ZH(), { day: 4 }))));
 });
@@ -111,7 +111,7 @@ test('cxcal: the bookmark is one javascript: line that compiles, with % and # es
   assert.ok(!/[\n#]/.test(code), 'no newline or raw #');
   assert.ok(!/[\u00a0\u2028\u2029]/.test(code), 'no invisible spaces or line separators');
   assert.ok(!/%(?!2[35])/.test(code), 'every % is an escape');
-  assert.ok(code.length < 30000, code.length);
+  assert.ok(code.length < 36000, code.length);
   const body = decodeURIComponent(code.slice('javascript:'.length));
   assert.doesNotThrow(() => new Function(body));
   assert.match(body, /cxRun\("https:\/\/award\.example","匯出要等網站更新後才能用"\)/);

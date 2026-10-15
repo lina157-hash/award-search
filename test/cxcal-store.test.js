@@ -62,9 +62,9 @@ test('cxcal-store: bad shapes are refused with a reason', () => {
   const f = Array.from({ length: 15 }, (_, i) => ({ n: `CX${100 + i}›CX${500 + i}`, d: '08:20', a: '20:20', p: 'TPE-HKG-NRT', s: 1, m: 13000, du: '11小時0分' }));
   for (let i = 0; i < 300; i++) big[new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10)] = { c: { Y: { m: 13000, f }, J: { m: 38000, f }, F: { m: 90000, f } } };
   bad(payload({ days: big }), /資料太大/);
-  // Flights are capped at 15 per cabin and day, unknown flight fields refused.
-  const r = validatePayload(payload({ days: { '2026-11-03': { c: { Y: { m: 1000, f: Array.from({ length: 20 }, () => ({ n: 'CX1', m: 1000 })) } } } } }));
-  assert.equal(r.days['2026-11-03'].c.Y.f.length, 15);
+  // Flights are capped at 20 per cabin and day, unknown flight fields refused.
+  const r = validatePayload(payload({ days: { '2026-11-03': { c: { Y: { m: 1000, f: Array.from({ length: 25 }, () => ({ n: 'CX1', m: 1000 })) } } } } }));
+  assert.equal(r.days['2026-11-03'].c.Y.f.length, 20);
   bad(payload({ days: { '2026-11-03': { c: { Y: { m: 1, f: [{ n: 'CX1', pw: 'x' }] } } } } }), /不認識的欄位/);
 });
 
