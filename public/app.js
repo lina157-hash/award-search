@@ -3253,6 +3253,7 @@ tabInit.cash = () => loadCashQuota();
   // Search and cash forms start blank (owner's choice); only region explore gets a default window.
   datePickers.explore.set(isoDate(30), isoDate(44));
   initFeatures();
+  if (typeof nlInit === 'function') nlInit(config); // 一句話搜尋 (nlsearch.js)
   // Hidden tabs (rules, points, hotels) and the cash quota are set up when first opened.
   dataReady = true;
   ensureTab(currentTab);

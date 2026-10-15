@@ -1697,3 +1697,32 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 #dsub-settings label.chk input, .dsub-dlg label.chk input { margin-top: 2px; flex: none; }
 #dsub-settings label.chk b, .dsub-dlg label.chk b { overflow-wrap: anywhere; }
 .adm-digest { margin: -4px 0 0; }
+/* ---------- 一句話搜尋 (nlsearch) ---------- */
+.nl-card { background: var(--surface); color: var(--text); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 14px; display: grid; gap: 10px; position: relative; z-index: 4; }
+.nl-head { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: .95rem; }
+.nl-head span { color: var(--muted); font-size: .82rem; }
+.nl-row { display: flex; gap: 8px; }
+.nl-row input { flex: 1 1 auto; }
+.nl-row button { flex: none; padding: 10px 22px; }
+.nl-row button:disabled { opacity: .7; cursor: default; }
+.nl-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.nl-chip { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); max-width: 100%; }
+.nl-chip button { font: inherit; border: 0; background: none; color: var(--text); cursor: pointer; }
+.nl-go { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 4px 5px 12px; font-size: .9rem; min-height: 34px; border-radius: 999px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.nl-go > small { color: var(--muted); font-size: .76rem; }
+.nl-go b { color: var(--accent); letter-spacing: .03em; }
+.nl-go:hover { color: var(--accent); }
+.nl-x { width: 30px; height: 34px; border-radius: 999px; color: var(--muted) !important; font-size: 1rem; line-height: 1; }
+.nl-x:hover { color: var(--danger) !important; }
+.nl-go:only-child { padding-right: 14px; }
+.nl-act { color: var(--accent); font-size: .8rem; font-weight: 600; }
+.nl-msg { margin: 0; color: var(--muted); font-size: .85rem; }
+.nl-msg:empty { display: none; }
+.nl-msg.err { color: var(--danger); }
+.nl-msg small { white-space: nowrap; }
+@media (max-width: 640px) {
+  .nl-card { padding: 12px 14px; }
+  .nl-head span { display: none; }
+  .nl-row button { padding: 10px 16px; }
+  .nl-go { font-size: .86rem; }
+}
