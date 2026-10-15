@@ -1555,12 +1555,14 @@ let matrixObs = null;
 function fillMatrix() {
   const host = $('#matrix-host');
   const m = matrixNow;
-  const tbody = host && $('tbody', host);
+  const tbody = host && $('tbody:not(.mx-sizer)', host);
   if (!m || !tbody) return;
   matrixObs?.disconnect();
   // Long date ranges can have hundreds of rows; show the first ones until asked.
   const keys = state.allRows ? m.allKeys : m.allKeys.slice(0, MATRIX_ROWS);
   $('#all-rows', host)?.remove();
+  $('.mx-sizer', host)?.remove();
+  if (keys.length > tbody.rows.length + MATRIX_FIRST) tbody.insertAdjacentHTML('afterend', m.sizer(keys));
   const step = (n) => {
     const from = tbody.rows.length;
     tbody.insertAdjacentHTML('beforeend', keys.slice(from, from + n).map(m.row).join(''));
@@ -1574,7 +1576,10 @@ function fillMatrix() {
       }, { rootMargin: '0px 0px 900px 0px' });
       obs.observe(tbody.rows[tbody.rows.length - 1]);
       matrixObs = obs;
-    } else if (keys.length < m.allKeys.length) host.insertAdjacentHTML('beforeend', `<button type="button" class="outline more-rows" id="all-rows">顯示全部 ${m.allKeys.length} 列（目前 ${keys.length} 列）</button>`);
+      return;
+    }
+    if (keys.length === m.allKeys.length) $('.mx-sizer', host)?.remove();
+    else host.insertAdjacentHTML('beforeend', `<button type="button" class="outline more-rows" id="all-rows">顯示全部 ${m.allKeys.length} 列（目前 ${keys.length} 列）</button>`);
   };
   step(tbody.rows.length ? MATRIX_BATCH : MATRIX_FIRST);
 }
@@ -1607,7 +1612,30 @@ function matrixParts(rows, sources) {
     return `<tr><td><div class="d">${dayLabel(date)}</div><div class="r">${esc(o)} → ${esc(d)}</div></td>${sources.map((s) => cell(grid.get(k)[s])).join('')}</tr>`;
   };
   const head = `<thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}${feeHeadHtml(s)}</th>`).join('')}</tr></thead>`;
-  return { allKeys, row, head };
+  // Column widths follow each column's widest cell, also in rows not drawn yet, so the table doesn't shift while it
+  // grows: two hidden rows (visibility:collapse still counts for the widths) carry each column's widest airline line
+  // and its longest tax or cost line.
+  const sizer = (keys) => {
+    const cost = costSortOn();
+    // Rough text width in em (CJK and full-width 1, digits and Latin about half); only compared within one column.
+    const tw = (t) => { let w = 0; for (const ch of String(t)) w += ch > '\u2e7f' ? 1 : /[,.:·\s]/.test(ch) ? 0.3 : 0.6; return w; };
+    const metaW = (r, x) => { const n = new Set(String(x.airlines || '').split(/[,\s]+/).filter(Boolean)).size; return Math.min(n, 3) * 1.7 + (n > 3 ? 1.4 : 0) + (r.estimate ? 1 + tw('國泰表') : (x.direct ? 1 + tw('直飛') : 0) + (x.seats ? 1 + tw(`${x.seats}位`) : 0)); };
+    const textW = (r, x) => (r.estimate ? 0 : Math.max(x.taxes ? tw(`＋${taxText(x.taxes)}`) : 0, cost ? tw(`≈NT$${fmt(atRowCost(r, c).twd)}`) : 0));
+    // The three widest of a column by one measure (estimates can be off by a little, so not just the first).
+    const top = (list, w) => list.map((v) => [w(v), v]).filter((p) => p[0] > 0).sort((a, b) => b[0] - a[0]).slice(0, 3).map((p) => p[1]);
+    // The first column: every date label and route once, stacked in one hidden cell.
+    const dates = new Set(keys.map((k) => k.split('|')[0]));
+    const routes = new Set(keys.map((k) => { const [, o, d] = k.split('|'); return `${esc(o)} → ${esc(d)}`; }));
+    const head = `<td>${[...dates].map((d) => `<div class="d">${dayLabel(d)}</div>`).join('')}${[...routes].map((r) => `<div class="r">${r}</div>`).join('')}</td>`;
+    const picks = sources.map((s) => {
+      const rs = keys.map((k) => grid.get(k)[s]).filter((r) => r && cab(r, c));
+      return [...top(rs, (r) => metaW(r, cab(r, c))), ...top(rs, (r) => textW(r, cab(r, c)))];
+    });
+    const n = Math.max(1, ...picks.map((p) => p.length));
+    const rowsHtml = Array.from({ length: n }, (_, i) => `<tr>${i ? '<td></td>' : head}${picks.map((p) => cell(p[i])).join('')}</tr>`).join('');
+    return `<tbody class="mx-sizer" aria-hidden="true">${rowsHtml}</tbody>`.replace(/ tabindex="0"/g, '');
+  };
+  return { allKeys, row, head, sizer };
 }
 
 // ---------- trip details ----------
