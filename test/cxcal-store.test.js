@@ -131,8 +131,9 @@ test('cxcal-store: with a passcode set, writes need it and reads stay public', a
 });
 
 test('cxcal-store: the site loads the card script', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  assert.match(html, /<script src="\/cxlive\.js\?v=[\w.-]+"><\/script>/);
+  // Loaded on the first search, after cxcal.js (app.js SEARCH_SCRIPTS).
+  const list = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8').match(/const SEARCH_SCRIPTS = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
+  assert.ok(list.indexOf('cxcal') >= 0 && list.indexOf('cxlive') > list.indexOf('cxcal'));
   assert.ok(!fs.existsSync(path.join(__dirname, '..', 'tools', 'cathay-runner')), 'the runner was removed at the owner\'s request (2026-10-15)');
 });
 

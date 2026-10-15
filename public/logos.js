@@ -22,6 +22,15 @@ function airlineLogo(code, cls = '') {
   if (LOGO_CODES.has(c)) return `<span class="alogo ${cls}" aria-hidden="true"><img src="/logos/${c}.webp" alt="" width="64" height="64" loading="lazy" decoding="async"></span>`;
   return `<span class="alogo alogo-code ${cls}" style="--lc:${AIRLINE_COLOR[c] || '#64748b'}" aria-hidden="true">${c}</span>`;
 }
+// The comparison table's small round mark (looks like airlineLogo(code, 'xs')): one element with the logo as its
+// background instead of a wrapper and an <img>, because the table draws hundreds of them. `name` is already escaped.
+function airlineMark(code, name) {
+  const c = String(code || '').toUpperCase();
+  if (!/^[A-Z0-9]{2}$/.test(c)) return '';
+  const label = `role="img" aria-label="${name}" title="${name}"`;
+  if (LOGO_CODES.has(c)) return `<span class="alogo xs alogo-bg" ${label} style="background-image:url(/logos/${c}.webp)"></span>`;
+  return `<span class="alogo alogo-code xs" ${label} style="--lc:${AIRLINE_COLOR[c] || '#64748b'}">${c}</span>`;
+}
 function allianceLogo(id, cls = '') {
   if (!ALLIANCE_LOGOS.includes(id)) return '';
   return `<span class="alogo alogo-al ${cls}" aria-hidden="true"><img src="/logos/${id}.webp" alt="" width="64" height="64" loading="lazy" decoding="async"></span>`;

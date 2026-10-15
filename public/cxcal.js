@@ -997,6 +997,8 @@
       try { localStorage.setItem(LAST, JSON.stringify(d)); } catch { /* storage blocked: still show it */ }
       // After the rest of the scripts, so cxlive.js's 「儲存到網站」 (cxLiveSave) and cxEst exist.
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => openLanding(d), { once: true });
+      // Loaded by app.js after the page (loadSearchScripts): once cxlive.js has run too.
+      else if (typeof loadSearchScripts === 'function') loadSearchScripts().then(() => openLanding(d));
       else openLanding(d);
     }
   }

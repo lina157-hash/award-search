@@ -11,7 +11,7 @@ before(() => new Promise((r) => server.listen(0, () => { base = `http://localhos
 after(() => server.close());
 
 test('search returns normalized demo results', async () => {
-  const res = await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=2026-11-01&end=2026-11-03&cabin=J`);
+  const res = await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=${isoIn(17)}&end=${isoIn(19)}&cabin=J`);
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.mock, true);
@@ -26,20 +26,20 @@ test('search rejects bad input', async () => {
 });
 
 test('search accepts a date range of up to a year', async () => {
-  const res = await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=2026-11-01&end=2027-11-01`);
+  const res = await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=${isoIn(17)}&end=${isoIn(17 + 365)}`);
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.truncated, false);
-  assert.ok(body.results.some((r) => r.date > '2027-10-01'));
+  assert.ok(body.results.some((r) => r.date > isoIn(17 + 335)));
 });
 
 test('search includes lowest taxes per cabin for short ranges only', async () => {
-  const short = await (await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=2026-11-01&end=2026-11-03`)).json();
+  const short = await (await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=${isoIn(17)}&end=${isoIn(19)}`)).json();
   assert.equal(short.withTaxes, true);
   const j = short.results.find((r) => r.cabins.J.available);
   assert.ok(j.cabins.J.taxes.amount > 0);
   assert.equal(j.cabins.J.taxes.currency, 'TWD');
-  const long = await (await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=2026-11-01&end=2027-03-01`)).json();
+  const long = await (await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=${isoIn(17)}&end=${isoIn(137)}`)).json();
   assert.equal(long.withTaxes, false);
   assert.equal(long.results[0].cabins.J.taxes, null);
 });
@@ -135,7 +135,7 @@ test('alerts endpoints work in demo mode and honour the passcode', async () => {
 });
 
 test('trips and data endpoints work', async () => {
-  const s = await (await fetch(`${base}/api/search?origin=TPE&destination=CDG&start=2026-11-01`)).json();
+  const s = await (await fetch(`${base}/api/search?origin=TPE&destination=CDG&start=${isoIn(17)}`)).json();
   const t = await (await fetch(`${base}/api/trips/${s.results[0].id}`)).json();
   assert.ok(t.trips.length > 0);
   assert.ok(t.trips[0].segments.length > 0);
@@ -251,7 +251,7 @@ test('normalizeAvailability maps cabin fields', () => {
 test('vercel adapter rewrites path back', async () => {
   const handler = require('../api/index');
   const out = await new Promise((resolve) => {
-    const req = { method: 'GET', url: '/api/index?__path=search&origin=TPE&destination=YVR&start=2026-11-01' };
+    const req = { method: 'GET', url: `/api/index?__path=search&origin=TPE&destination=YVR&start=${isoIn(17)}` };
     const res = { writeHead(status) { this.status = status; }, end(b) { resolve({ status: this.status, body: JSON.parse(b) }); } };
     handler(req, res);
   });
@@ -626,11 +626,11 @@ test('A8: one deals refresh at a time', async () => {
 });
 
 test('A5: unknown or repeated query parameters on public lookups are redirected away', async () => {
-  const r = await fetch(`${base}/api/search?origin=TPE&destination=NRT&start=2026-11-01&_=123`, { redirect: 'manual' });
+  const r = await fetch(`${base}/api/search?origin=TPE&destination=NRT&start=${isoIn(17)}&_=123`, { redirect: 'manual' });
   assert.equal(r.status, 301);
-  assert.equal(r.headers.get('location'), '/api/search?origin=TPE&destination=NRT&start=2026-11-01');
-  assert.equal((await fetch(`${base}/api/explore?program=aeroplan&start=2026-11-01&cabin=J&cabin=F`, { redirect: 'manual' })).status, 301);
-  assert.equal((await fetch(`${base}/api/search?origin=TPE&destination=NRT&start=2026-11-01`, { redirect: 'manual' })).status, 200);
+  assert.equal(r.headers.get('location'), `/api/search?origin=TPE&destination=NRT&start=${isoIn(17)}`);
+  assert.equal((await fetch(`${base}/api/explore?program=aeroplan&start=${isoIn(17)}&cabin=J&cabin=F`, { redirect: 'manual' })).status, 301);
+  assert.equal((await fetch(`${base}/api/search?origin=TPE&destination=NRT&start=${isoIn(17)}`, { redirect: 'manual' })).status, 200);
   assert.equal((await fetch(`${base}/api/trips/abc?x=1`, { redirect: 'manual' })).headers.get('location'), '/api/trips/abc');
 });
 
