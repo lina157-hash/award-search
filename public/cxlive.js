@@ -1,14 +1,19 @@
 // 國泰官網實查: the owner's own Cathay (Asia Miles) award calendar, saved from the 國泰哩程日曆 bookmarklet and kept on
 // the server (lib/cxcal-store.js). When a route search renders, one call to our own /api/cxcal shows a card above the
-// 國泰補查 badge with each cabin's lowest miles and open days and a 「看日曆」 toggle (the cxcal calendar). Spends no
-// paid quota: everything here is our own server. Loaded after cxcal.js (CXCAL.cxView).
+// 國泰補查 badge with each cabin's lowest miles and open days and a 「看日曆」 toggle (the cxcal calendar). Calendars of
+// the other airlines saved by 「請 AI 助理查官網」 (cxmuse.js) show the same way as 「<航空>官網實查」, one card per
+// airline and route, named from cxmuse.js's templates (museTemplates) and coloured by its museTint. Spends no paid
+// quota: everything here is our own server. Loaded after cxcal.js (CXCAL.cxView).
 if (typeof document !== 'undefined' && document.getElementById('search-results') && typeof CXCAL === 'object') {
   const CN = { Y: '經濟', W: '豪華經濟', J: '商務', F: '頭等' };
   const TTL = 5 * 60e3;
   const codes = (s) => [...new Set(String(s || '').toUpperCase().split(/[,\s]+/).filter((c) => /^[A-Z]{3}$/.test(c)))];
-  const key = (o, d) => `${o}>${d}`;
+  // A card per airline and route: Cathay keeps the old "TPE>NRT", the others "ci:TPE>NRT".
+  const key = (r) => `${r.air && r.air !== 'cx' ? `${r.air}:` : ''}${r.fc}>${r.tc}`;
+  let tpls = [];
+  const tplOf = (air) => tpls.find((a) => a.id === (air || 'cx'));
   const cache = new Map(); // "TPE,TSA|NRT" → { at, body }
-  const st = { share: null, body: null, cal: new Set(), seq: 0 };
+  const st = { share: null, body: null, cal: new Set(), seq: 0, view: new Map() };
   const host = () => document.getElementById('cx-live');
   const hasPass = () => Boolean(store.get('cashPass', '')) || !cashCfg.locked;
   const nameOf = (c) => (typeof airportCity === 'function' ? airportCity(c) : '') || '';
@@ -69,23 +74,28 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   }
 
   function cardHtml(r) {
-    const k = key(r.fc, r.tc);
+    const k = key(r);
     const { total, cabins } = stats(r);
+    const cx = !r.air || r.air === 'cx';
+    const t = tplOf(r.air);
+    const name = cx ? '國泰' : t?.label || t?.name || String(r.air).toUpperCase();
+    const waits = cx ? 0 : Object.keys(r.days || {}).filter((d) => d >= isoDate(0) && Object.values(r.days[d].c || {}).some((x) => x.st === 'w')).length;
     const LB = { Y: '經', W: '豪', J: '商', F: '頭' };
     const parts = cabins.map((x) => (x.seats && !x.min
       ? `<span class="cx-seat" title="${esc(`${CN[x.c]}：單日最多 ${x.seats >= 9 ? '9 位以上' : `${x.seats} 位`}`)}"><b>${LB[x.c]}</b> ${x.c}${x.seats}</span>${x.est ? `約 <b>${fmt(x.est)}</b> 哩起` : CN[x.c]}（${x.open}/${total} 天有位）`
-      : `${CN[x.c]}${x.min ? `最低 <b>${fmt(x.min)}</b> 哩` : ''}（${x.open}/${total} 天有位${x.min ? '' : '，哩數要點進日期才看得到'}）`));
+      : `${CN[x.c]}${x.min ? `最低 <b>${fmt(x.min)}</b> 哩` : ''}（${x.open}/${total} 天有位${x.min || !cx ? '' : '，哩數要點進日期才看得到'}）`));
+    if (waits) parts.push(`候補 ${waits} 天`);
     const when = r.savedAt ? ago(r.savedAt) : '';
     const old = r.savedAt && Date.now() - Date.parse(r.savedAt) > 2 * 86400e3;
     const un = r.source === 'unelevated';
     const from = un ? nameOf(r.fc) || r.fc : r.from || r.fc;
     const to = un ? nameOf(r.tc) || r.tc : r.to || r.tc;
     return `<section class="cx-live-card" data-route="${esc(k)}">
-      <div class="cx-live-head"><span class="cx-tag">國泰官網實查</span><b>${esc(from)} → ${esc(to)}</b><small>${esc(r.fc)}→${esc(r.tc)}</small>${when ? `<span class="hint">${SRC[r.source] || SRC.runner}・${esc(when)}${old ? '（有點舊了）' : ''}</span>` : ''}</div>
+      <div class="cx-live-head"><span class="cx-tag">${esc(name)}${/[A-Za-z]$/.test(name) ? ' ' : ''}官網實查</span><b>${esc(from)} → ${esc(to)}</b><small>${esc(r.fc)}→${esc(r.tc)}</small>${when ? `<span class="hint">${SRC[r.source] || SRC.runner}・${esc(when)}${old ? '（有點舊了）' : ''}</span>` : ''}</div>
       <p class="cx-live-sum">${parts.length ? parts.join('、') : '沒有讀到任何艙等的資料'}</p>
       <div class="cx-live-actions"><button type="button" class="linklike" data-cx-cal="${esc(k)}">${st.cal.has(k) ? '收起日曆' : '看日曆'}</button></div>
-      <div class="cxp cx-live-cal" ${st.cal.has(k) ? '' : 'hidden'}></div>
-      <p class="hint cx-live-note">來自站長自己在國泰官網（亞洲萬里通）的查詢結果，不是即時資料，機位隨時會變；開票前請到國泰官網確認。${cabins.some((x) => x.est) ? '「約」是依亞洲萬里通國泰航班獎勵表與飛行距離估算，每人單程，未含稅金與附加費；9 表示 9 位以上。' : ''}</p>
+      <div class="cxp cx-live-cal" ${st.cal.has(k) ? '' : 'hidden'}></div>${st.cal.has(k) && r.source === 'ai' && typeof museHasLevels === 'function' && museHasLevels(r) ? museLegendHtml(r) : ''}
+      <p class="hint cx-live-note">${cx ? '來自站長自己在國泰官網（亞洲萬里通）的查詢結果，不是即時資料，機位隨時會變；開票前請到國泰官網確認。' : `來自站長的 AI 助理在${esc(t?.site || '航空公司官網')}查到的結果，不是即時資料，機位隨時會變；開票前請到官網確認。`}${cabins.some((x) => x.est) ? '「約」是依亞洲萬里通國泰航班獎勵表與飛行距離估算，每人單程，未含稅金與附加費；9 表示 9 位以上。' : ''}</p>
     </section>`;
   }
 
@@ -101,11 +111,18 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     for (const sec of el.querySelectorAll('.cx-live-card')) {
       const k = sec.dataset.route;
       if (!st.cal.has(k)) continue;
-      const r = (st.body?.routes || []).find((x) => key(x.fc, x.tc) === k);
+      const r = (st.body?.routes || []).find((x) => key(x) === k);
       const box = sec.querySelector('.cx-live-cal');
-      if (r && box) { const ks = Object.keys(r.days).filter((d) => r.days[d].c).sort(); CXCAL.cxView(box, r, { ym: '', sel: ks[0] || '', est: window.cxEst }); }
+      if (!r || !box) continue;
+      const ks = Object.keys(r.days).filter((d) => r.days[d].c).sort();
+      const vs = { ym: '', sel: ks[0] || '', est: window.cxEst };
+      st.view.set(k, vs);
+      CXCAL.cxView(box, r, vs);
+      tint(box, r, vs);
     }
   }
+  // The AI assistant's days: status colours and its words for the chosen day (cxmuse.js).
+  const tint = (box, r, vs) => { if (r.source === 'ai' && typeof museTint === 'function') museTint(box, r, vs); };
 
   // Hook: renderSearch asks cxfill's cxBadgeHtml for the badge; we put our card right above it, and redraw it from
   // state on every render (cabin switches re-render).
@@ -131,6 +148,8 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     try {
       const body = await fetchRoutes(st.share);
       if (n !== st.seq) return;
+      if ((body.routes || []).some((r) => r.air && r.air !== 'cx') && !tpls.length && typeof museTemplates === 'function') tpls = await museTemplates().catch(() => []);
+      if (n !== st.seq) return;
       st.body = body;
       draw();
       if (usesSeats(body.routes) && !(data.asiamiles && AP.loaded)) window.cxEstReady().then(() => { if (n === st.seq) draw(); }, () => {});
@@ -140,7 +159,14 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   const results = document.getElementById('search-results');
   results.addEventListener('click', (e) => {
     const cal = e.target.closest('[data-cx-cal]');
-    if (cal) { const k = cal.dataset.cxCal; if (st.cal.has(k)) st.cal.delete(k); else st.cal.add(k); draw(); }
+    if (cal) { const k = cal.dataset.cxCal; if (st.cal.has(k)) st.cal.delete(k); else st.cal.add(k); draw(); return; }
+    // A day or a month arrow: cxView has already redrawn the calendar (the clicked button is detached).
+    const path = e.composedPath();
+    const sec = path.find((el) => el.classList?.contains('cx-live-card') && el.dataset.route);
+    if (sec && path.some((el) => el.classList?.contains('cx-live-cal'))) {
+      const r = (st.body?.routes || []).find((x) => key(x) === sec.dataset.route);
+      if (r) tint(sec.querySelector('.cx-live-cal'), r, st.view.get(sec.dataset.route));
+    }
   });
 
   // The bookmarklet's export landing (cxcal.js): save the calendar to the server too, so the route search shows it.
