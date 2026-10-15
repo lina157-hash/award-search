@@ -1,6 +1,6 @@
 {
  "note": "Fixed award charts for the miles-needed estimate.",
- "researched": "2026-10-14",
+ "researched": "2026-10-15",
  "programs": [
   {
    "id": "british",
@@ -3620,10 +3620,205 @@
    "kind": "dynamic",
    "perSegment": false,
    "oneWay": true,
-   "note": "無公開獎勵表，夥伴價格依航線浮動",
+   "note": "無公開獎勵表，夥伴價格依航線浮動；例：西雅圖—台北長榮單程經濟 41,140、商務 83,200 哩（2026-10）",
    "effective": null,
    "confidence": "secondary",
-   "sources": []
+   "sources": [
+    {
+     "label": "The Points Guy LifeMiles 指南（2026-10）",
+     "url": "https://thepointsguy.com/loyalty-programs/everything-you-need-to-know-avianca-lifemiles/",
+     "official": false
+    },
+    {
+     "label": "OMAAT LifeMiles 兌換攻略（2026-01）",
+     "url": "https://onemileatatime.com/guides/redeem-lifemiles/",
+     "official": false
+    }
+   ]
+  },
+  {
+   "id": "etihad",
+   "name": "阿提哈德 Etihad Guest",
+   "kind": "distance",
+   "perSegment": false,
+   "oneWay": true,
+   "note": "官方未公布固定表，此為第三方整理的最低價：夥伴航班依整段實際飛行距離（含轉機）計價；阿提哈德自營是 GuestSeats 起價，實際常更高，OpenSeats 依現金票價浮動；星宇（2026-08 起）計價未公布",
+   "effective": null,
+   "confidence": "secondary",
+   "sources": [
+    {
+     "label": "10xTravel Etihad Guest 獎勵表",
+     "url": "https://10xtravel.com/etihad-guest-award-charts/",
+     "official": false
+    },
+    {
+     "label": "AwardWallet 夥伴新表（2026-08）",
+     "url": "https://awardwallet.com/blog/new-etihad-guest-award-chart/",
+     "official": false
+    },
+    {
+     "label": "Upgraded Points 自營與夥伴表（2026-06）",
+     "url": "https://upgradedpoints.com/travel/airlines/how-to-redeem-etihad-guest-miles/",
+     "official": false
+    }
+   ],
+   "tables": [
+    {
+     "label": "夥伴航班（美航、加航、法荷航、大韓、全日空等）",
+     "bands": [
+      {
+       "upTo": 500,
+       "Y": 6000,
+       "W": 7500,
+       "J": 20000,
+       "F": 35000,
+       "note": "Upgraded Points（2026-06）寫商務 10,000、頭等 14,000；10xTravel（2025-10）與 AwardWallet（2026-08）寫 20,000／35,000，這裡採後者，待核實"
+      },
+      {
+       "upTo": 1000,
+       "Y": 12000,
+       "W": 13000,
+       "J": 25000,
+       "F": 40000,
+       "note": "Upgraded Points（2026-06）寫商務 20,000、頭等 27,000；10xTravel 與 AwardWallet 寫 25,000／40,000，這裡採後者，待核實"
+      },
+      {
+       "upTo": 1500,
+       "Y": 15000,
+       "W": 19000,
+       "J": 30000,
+       "F": 45000
+      },
+      {
+       "upTo": 2000,
+       "Y": 23000,
+       "W": 25000,
+       "J": 40000,
+       "F": 54000
+      },
+      {
+       "upTo": 2500,
+       "Y": 28000,
+       "W": 31000,
+       "J": 50000,
+       "F": 67000
+      },
+      {
+       "upTo": 3000,
+       "Y": 34000,
+       "W": 37000,
+       "J": 60000,
+       "F": 80000
+      },
+      {
+       "upTo": 4000,
+       "Y": 45000,
+       "W": 49000,
+       "J": 80000,
+       "F": 107000
+      },
+      {
+       "upTo": 5000,
+       "Y": 60000,
+       "W": 62000,
+       "J": 100000,
+       "F": 134000
+      },
+      {
+       "upTo": 6000,
+       "Y": 67000,
+       "W": 74000,
+       "J": 120000,
+       "F": 160000
+      },
+      {
+       "upTo": null,
+       "Y": 75000,
+       "W": 90000,
+       "J": 140000,
+       "F": 200000
+      }
+     ]
+    },
+    {
+     "label": "阿提哈德自營（GuestSeats 起價，進出阿聯酋的航段）",
+     "touchesCountries": [
+      "AE"
+     ],
+     "bands": [
+      {
+       "upTo": 500,
+       "Y": 5000,
+       "W": null,
+       "J": 15000,
+       "F": 30000
+      },
+      {
+       "upTo": 1000,
+       "Y": 10000,
+       "W": null,
+       "J": 20000,
+       "F": 40000
+      },
+      {
+       "upTo": 1500,
+       "Y": 13000,
+       "W": null,
+       "J": 30000,
+       "F": 55000
+      },
+      {
+       "upTo": 2000,
+       "Y": 15000,
+       "W": null,
+       "J": 35000,
+       "F": 80000
+      },
+      {
+       "upTo": 2500,
+       "Y": 20000,
+       "W": null,
+       "J": 45000,
+       "F": 90000
+      },
+      {
+       "upTo": 3000,
+       "Y": 25000,
+       "W": null,
+       "J": 60000,
+       "F": 110000
+      },
+      {
+       "upTo": 4000,
+       "Y": 30000,
+       "W": null,
+       "J": 70000,
+       "F": 120000
+      },
+      {
+       "upTo": 5000,
+       "Y": 37000,
+       "W": null,
+       "J": 75000,
+       "F": 135000
+      },
+      {
+       "upTo": 6000,
+       "Y": 45000,
+       "W": null,
+       "J": 95000,
+       "F": 140000
+      },
+      {
+       "upTo": null,
+       "Y": 60000,
+       "W": null,
+       "J": 120000,
+       "F": 160000
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "emirates",

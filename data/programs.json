@@ -1,5 +1,5 @@
 {
-  "lastReviewed": "2026-10-14",
+  "lastReviewed": "2026-10-15",
   "disclaimer": "以下為重點整理，用自己的話改寫，不代表官方條款。每個計畫都附上資料來源；標示「第三方整理」的內容來自旅遊媒體或部落格，開票前請以官網為準。",
   "fields": {
     "pricing": "計價方式",
@@ -881,15 +881,15 @@
       "airline": "AV",
       "alliance": "star",
       "seatsAeroSource": "lifemiles",
-      "pricing": "已不公布獎勵表，價格依航線與日期變動（第三方 2026-01）。美國本土出發單程參考：歐洲經濟艙 4 萬、商務 6.3 萬至 7 萬、頭等 12 萬至 13 萬哩；北亞經濟艙 4 萬至 5.5 萬、商務 7.5 萬、頭等 12 萬哩。",
+      "pricing": "已不公布獎勵表（官方說明中心只導向線上查詢），價格依航線與日期變動。美國本土出發單程參考：歐洲經濟艙 4 萬、商務 6.3 萬至 7 萬、頭等 12 萬至 13 萬哩；北亞經濟艙 4 萬至 5.5 萬、商務 7.5 萬、頭等 12 萬哩（第三方 2026-01）。台灣相關實例：西雅圖—台北長榮單程經濟艙 41,140 哩、商務 83,200 哩（第三方 2026-10）。開票時可用現金補足最多 60% 哩數（第三方）。",
       "oneWay": "可開單程、來回與多城市行程（官方），價格以單程計。",
       "stopover": "未查到明確的中停規則；第三方建議 LifeMiles 只用在簡單的點對點行程，要中停的複雜行程改用 Aeroplan。",
       "openJaw": "官方只提到可開多城市行程，開口規則未查到，以官網為準。",
-      "surcharges": "夥伴航班不收航空公司附加費（燃油附加費），只付稅金（第三方）。另有讀者回報每張收約 25 美元訂位手續費，未經官方確認。",
+      "surcharges": "夥伴航班不收航空公司附加費（燃油附加費），只付稅金（第三方 2026-01、2026-10 兩個來源一致）。另有讀者回報每張收約 25 美元訂位手續費，未經官方確認。",
       "changes": "第三方（2026-07）：改票約 150 美元；取消退哩 50 至 200 美元，訂位時就會顯示，長程商務、頭等多為 200 美元。LifeMiles+ 訂閱者若是 2026-06-26 前開始的 Basic 以上方案，出發 72 小時前改退可免手續費；之後的新訂閱者已沒有這項優惠。",
-      "expiry": "里程 12 個月沒有累積就到期，兌換不算活動，購買里程可延長（第三方）；過期後可付費恢復，每千哩 10 美元（第三方）。",
+      "expiry": "里程 12 個月沒有累積就到期，兌換不算活動，購買里程可延長（第三方）；Avianca 菁英會員與合格聯名卡持卡人為 24 個月，LifeMiles+ 訂閱也可延長（第三方 2026-10）。過期後可付費恢復，每千哩 10 美元（第三方）。",
       "pooling": "未查到家庭合併里程的功能，以官網為準。",
-      "notes": "台灣可由滙豐旅人卡 1:1、滙豐卓越理財卡 3:1 轉入，也可經萬豪等飯店點數轉入。星空聯盟夥伴多可線上訂，但網站與電話客服看到的艙位常不一致。seats.aero 有收錄 LifeMiles。官方說明中心只確認可開單程、來回與多城市，其餘為第三方整理。",
+      "notes": "可兌換星空聯盟全部成員（含 2026-04-01 加入的 ITA 航空），另有 GOL、伊比利等非聯盟夥伴（第三方）；長榮、全日空、新航、聯合等星盟航班不收燃油費，是從台灣換星盟商務艙的備選。可依「Smart Search」「Star Alliance」或指定航空查詢，結果可能不同，網站與電話客服看到的艙位也常不一致（第三方）。台灣可由滙豐旅人卡旅遊積分 1:1（最低 3,000 分、以 500 分為單位）、滙豐卓越理財卡紅利 3:1 轉入；也可繞路經萬豪（3:1，不適用每 6 萬點送 5 千哩）、雅高（2:1）、洲際（5:1，最長 6 週入帳）轉入。seats.aero 收錄 LifeMiles 的經濟、商務、頭等艙，並有行程明細（seats.aero API 文件）。官方說明中心只確認可開單程、來回與多城市，其餘為第三方整理。",
       "confidence": "secondary",
       "officialUrl": "https://www.lifemiles.com/",
       "sources": [
@@ -912,9 +912,29 @@
           "label": "LoyaltyLobby：LifeMiles 效期只靠累積延長（2026-01-18）",
           "url": "https://loyaltylobby.com/2026/01/18/reader-warning-lifemiles-purchased-miles-can-expire-even-if-you-redeem-redemption-does-not-extend-validity/",
           "official": false
+        },
+        {
+          "label": "The Points Guy：LifeMiles 指南（2026-10-12）",
+          "url": "https://thepointsguy.com/loyalty-programs/everything-you-need-to-know-avianca-lifemiles/",
+          "official": false
+        },
+        {
+          "label": "seats.aero API 文件：支援的計畫與艙等",
+          "url": "https://developers.seats.aero/reference/concepts",
+          "official": true
+        },
+        {
+          "label": "萬豪：點數轉哩程（官方）",
+          "url": "https://www.marriott.com/loyalty/redeem/travel/points-to-miles.mi",
+          "official": true
+        },
+        {
+          "label": "洲際：點數轉 LifeMiles（官方）",
+          "url": "https://www.ihg.com/onerewards/content/us/en/earn-rewards/miles/aviancaairlines",
+          "official": true
         }
       ],
-      "lastVerified": "2026-10-14"
+      "lastVerified": "2026-10-15"
     },
     {
       "id": "virginatlantic",
@@ -963,15 +983,15 @@
       "airline": "EY",
       "alliance": null,
       "seatsAeroSource": "etihad",
-      "pricing": "阿提哈德自營航班依距離分級，但官方沒有公布保證不變的完整價表，價格可能調整；夥伴航班依航空、航線與艙等計價，同一張票不能混搭不同夥伴（第三方）。2026-08 起可兌換星宇經濟艙與商務艙（官方新聞稿）。",
-      "oneWay": "可開單程，價格以單程計（第三方）。",
+      "pricing": "阿提哈德自營航班：GuestSeats 依單程距離分 10 級起價（如 4,001–5,000 哩經濟艙 3.7 萬、商務 7.5 萬；6,001 哩以上經濟 6 萬、商務 12 萬、頭等 16 萬），實際常比起價高；OpenSeats 依現金票價浮動。夥伴航班用同一張距離表，依整段實際飛行距離計（如 1,001–1,500 哩經濟 1.5 萬、商務 3 萬；5,001–6,000 哩商務 12 萬、頭等 16 萬），同一張票不能混搭不同夥伴（第三方）。官方沒有公布保證不變的價表。2026-08-11 起可兌換星宇經濟艙與商務艙（官方新聞稿），計價方式未公布。",
+      "oneWay": "可開單程，價格以單程計；來回至少是單程的兩倍（第三方）。",
       "stopover": "有轉機或中停的行程依出發地到轉機點分段計算哩數（官方）。第三方：阿布達比中停要電話開票；轉機一般限 8 小時內。",
       "openJaw": "未查到明確規定，以官網為準。",
       "surcharges": "哩程之外要付稅金與航空公司附加費，自營航班的附加費不低（第三方 2024 年舉例：阿布達比出發高艙等單程到美國約 580 美元、到歐洲約 340 美元）；電話客服開票可能另收服務費。",
       "changes": "第三方：2025-11-13 起開或改的固定價（Promo／Saver）票分三種：Value 改票 600 迪拉姆、不可取消；Comfort 改票 200 迪拉姆、取消扣 25%；Deluxe 改退免費。三種都不能在起飛前 72 小時內改退。",
       "expiry": "官方：銅卡、銀卡、金卡會員的哩程效期 18 個月，搭阿提哈德或夥伴航班並累積到帳戶，可再延 18 個月；白金與 Emerald 會員不過期。",
       "pooling": "可開家庭帳戶，戶長最多再加 9 人，哩程可合併兌換（官方）。",
-      "notes": "台灣可由國泰世華小樹點 420 點 = 1,000 哩轉入，也可經萬豪等飯店點數轉入。夥伴航班可線上或電話訂（官方）。seats.aero 有收錄阿提哈德計畫。效期與家庭帳戶依官方常見問題；計價、改退費為第三方整理。",
+      "notes": "夥伴（第三方 2025-10）：線上可訂加航、法航、荷航、美航、大韓、馬航、海灣、斯里蘭卡、沙烏地、維珍澳洲、JetBlue；全日空、韓亞、海南、紐航、歐羅巴、布魯塞爾、以色列、印尼鷹航、阿曼、摩洛哥、北歐航空要打電話訂。2026-05 新增曼谷航空，塞爾維亞航空 2026-06-30 起終止（第三方 2026-07）。阿提哈德自營的商務、頭等約在出發前 30 天才放給其他計畫，更早只能用 Etihad Guest 換（第三方）。台灣相關：阿提哈德 2025-09 開航阿布達比—台北直飛（787-9），台北—阿布達比約 4,130 哩，自營商務起價 7.5 萬哩；星宇會員用 COSMILE 兌換阿提哈德預計 2026-10 開放（官方新聞稿）。台灣可由國泰世華小樹點 420 點 = 1,000 哩轉入（全卡別，CUBE App 申請）；也可繞路經萬豪（3:1，每 6 萬點加送 5 千哩）、雅高（2:1）、洲際（5:1）、希爾頓（10:1）、香格里拉（1:1）轉入。seats.aero 只收錄經濟與商務艙，而且沒有行程明細（看不到稅金與轉機段）（seats.aero API 文件）。效期與家庭帳戶依官方常見問題；計價、夥伴與改退費為第三方整理。",
       "confidence": "secondary",
       "officialUrl": "https://www.etihad.com/en-us/help/faq/etihad-guest",
       "sources": [
@@ -1004,9 +1024,34 @@
           "label": "Frequent Miler：各計畫獎勵票改退費（2026-07-27 更新）",
           "url": "https://frequentmiler.com/award-ticket-change-and-cancellation-fees-by-transfer-partner/",
           "official": false
+        },
+        {
+          "label": "10xTravel：Etihad Guest 獎勵表與夥伴（2025-10-22 更新）",
+          "url": "https://10xtravel.com/etihad-guest-award-charts/",
+          "official": false
+        },
+        {
+          "label": "AwardWallet：Etihad Guest 夥伴新表（2026-08-09）",
+          "url": "https://awardwallet.com/blog/new-etihad-guest-award-chart/",
+          "official": false
+        },
+        {
+          "label": "Prince of Travel：Etihad Guest（2026-10-14 更新）",
+          "url": "https://princeoftravel.com/points-programs/etihad-guest",
+          "official": false
+        },
+        {
+          "label": "seats.aero API 文件：支援的計畫與艙等",
+          "url": "https://developers.seats.aero/reference/concepts",
+          "official": true
+        },
+        {
+          "label": "國泰世華：小樹點兌換航空哩程（官方）",
+          "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles",
+          "official": true
         }
       ],
-      "lastVerified": "2026-10-14"
+      "lastVerified": "2026-10-15"
     },
     {
       "id": "lufthansa",

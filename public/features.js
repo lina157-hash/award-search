@@ -77,7 +77,7 @@ function promosHtml() {
 
 // ---------- my points wallet (this browser only) ----------
 const WALLET_KEY = 'wallet:v1';
-const WALLET_PROGRAMS = ['eva', 'ci', 'asiamiles', 'singapore', 'jal', 'aeroplan', 'united', 'flyingblue', 'alaska', 'american', 'british', 'qatar', 'turkish', 'lifemiles', 'emirates', 'delta', 'starlux'];
+const WALLET_PROGRAMS = ['eva', 'ci', 'asiamiles', 'singapore', 'jal', 'aeroplan', 'united', 'flyingblue', 'alaska', 'american', 'british', 'qatar', 'turkish', 'lifemiles', 'etihad', 'emirates', 'delta', 'starlux'];
 const cleanCount = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(n, 1e9) : 0; };
 function loadWallet() {
   const w = store.get(WALLET_KEY, {});
@@ -702,6 +702,8 @@ function chartPrices(p, from, to, cabin, dist) {
   const area = p.id === 'alaska' ? alaskaArea(from, to) : null;
   for (const t of p.tables || []) {
     if (t.appliesWhen && t.appliesWhen !== area) continue;
+    // A home-carrier table that only counts when the route touches its hub country (Etihad flies everything via Abu Dhabi).
+    if (t.touchesCountries && ![from, to].some((ap) => t.touchesCountries.includes(ap.country))) continue;
     let miles = null;
     let note = '';
     if (p.kind === 'distance') {

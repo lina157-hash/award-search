@@ -1,5 +1,5 @@
 {
- "lastReviewed": "2026-10-14",
+ "lastReviewed": "2026-10-15",
  "disclaimer": "銀行點數轉換比率、最低門檻與活動常變動，轉點前請到銀行官網確認；比率多來自銀行 2026 年公告，標示「待核實」的列來源較舊或僅有第三方整理。查無可靠來源而未列入：永豐、聯邦吉鶴卡（現金回饋卡）。",
  "programKeys": {
   "eva": "長榮 無限萬哩遊",
@@ -71,13 +71,13 @@
    "toName": "長榮、亞洲萬里通、華航、新航、日航、加航、法荷航、聯合、卡達、阿聯酋、澳航、LifeMiles、土航、越南航空、海南、亞航（共 16 家）",
    "ratio": "1 分 = 1 哩（全部 1:1）",
    "min": "3,000 分，以 500 分為單位",
-   "notes": "華航自 2026-04-01 起由 2:1 調回 1:1（滙豐 2026-01-30 公告）。一般約 7 至 14 個工作天、日航 7 至 21 個工作天入帳；網銀或 App 兌換可即時入帳，但華航、新航、日航、海南除外。",
+   "notes": "華航自 2026-04-01 起由 2:1 調回 1:1（滙豐 2026-01-30 公告）。一般約 7 至 14 個工作天、日航 7 至 21 個工作天入帳；網銀或 App 兌換可即時入帳，但華航、新航、日航、海南除外。轉點前要先自行到航空公司官網入會取得會員號碼，只能轉入正卡本人帳戶。",
    "confidence": "official",
    "source": {
     "label": "滙豐：旅人卡哩程兌換表（2026 Q4）",
     "url": "https://shop.hsbc.com.tw/installments/creditcard/rewards/fly.html"
    },
-   "date": "2026-10-13"
+   "date": "2026-10-15"
   },
   {
    "bank": "滙豐",
@@ -310,13 +310,13 @@
    ],
    "toName": "亞航 250、法荷航 340、阿提哈德 420、泰航 450、英航 450、日航 480、卡達 480、加航 510、聯合 510、阿聯酋 550、新航 620（點數 = 1,000 哩／點）",
    "ratio": "依計畫 250 至 620 點 = 1,000 哩",
-   "notes": "另可轉萬豪 340、IHG 250、雅高 600 點 = 1,000 點。日航比例 2026 年由 670 調為 480 點。",
+   "notes": "另可轉萬豪 340、IHG 250、雅高 600 點 = 1,000 點。日航比例 2026 年由 670 調為 480 點。這些計畫世界卡與一般卡同價（全卡別）；以 1,000 哩為單位（阿提哈德最低 420 點），限正卡、轉入本人帳戶，轉出後不能取消；在 CUBE App 申請，活動頁寫除華航、亞洲萬里通外即時入帳，權益公告則寫處理需 4 至 6 週。",
    "confidence": "official",
    "source": {
-    "label": "國泰世華：2026 年小樹點權益公告",
-    "url": "https://www.cathaybk.com.tw/cathaybk/promo/event/credit-card/discount/2026/pointannounceInfo05/index.html"
+    "label": "國泰世華：小樹點兌換航空哩程（CUBE 活動頁）",
+    "url": "https://www.cathay-cube.com.tw/cathaybk/personal/event/overview/credit-card/bonus/point-exchange/airmiles"
    },
-   "date": "2026-10-14"
+   "date": "2026-10-15"
   },
   {
    "bank": "中國信託",
@@ -1436,7 +1436,7 @@
     "program": "小樹點",
     "variant": "世界卡",
     "confidence": "official",
-    "note": "世界卡優惠比率只公告長榮、亞洲萬里通、華航三家，其他計畫同一般卡。",
+    "note": "世界卡優惠比率只有長榮、亞洲萬里通、華航三家；其他航空官網標「全卡別」，與一般卡同價。",
     "rates": [
      {
       "to": "eva",
@@ -1454,6 +1454,82 @@
       "to": "ci",
       "points": 720,
       "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "sq",
+      "points": 620,
+      "miles": 1000,
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 250,
+      "miles": 1000,
+      "name": "亞航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 340,
+      "miles": 1000,
+      "name": "法荷航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 420,
+      "miles": 1000,
+      "name": "阿提哈德",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 450,
+      "miles": 1000,
+      "name": "泰航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 450,
+      "miles": 1000,
+      "name": "英航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 480,
+      "miles": 1000,
+      "name": "日航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 480,
+      "miles": 1000,
+      "name": "卡達",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 510,
+      "miles": 1000,
+      "name": "加航",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 510,
+      "miles": 1000,
+      "name": "聯合",
+      "stepMiles": 1000
+     },
+     {
+      "to": "other",
+      "points": 550,
+      "miles": 1000,
+      "name": "阿聯酋",
       "stepMiles": 1000
      }
     ]
@@ -2162,8 +2238,8 @@
     }
    ],
    "toAir": {
-    "researched": "2026-10-14",
-    "note": "飯店轉航空的比率：萬豪、雅高來自官網；洲際、希爾頓、香格里拉的夥伴與比率來自第三方整理，轉之前請到飯店官網確認。",
+    "researched": "2026-10-15",
+    "note": "飯店轉航空的比率：萬豪、雅高來自官網；洲際轉 LifeMiles、阿提哈德已對照洲際官網，其他洲際夥伴與希爾頓、香格里拉的夥伴與比率來自第三方整理，轉之前請到飯店官網確認。",
     "airlines": {
      "eva": "長榮 無限萬哩遊",
      "asiamiles": "國泰 亞洲萬里通",
@@ -2392,7 +2468,8 @@
         "hotelPoints": 3,
         "miles": 1,
         "bonus": true,
-        "confidence": "official"
+        "confidence": "official",
+        "note": "萬豪官網列 3:1，未列在不送加贈的名單內"
        },
        {
         "to": "frontier",
@@ -2578,6 +2655,11 @@
        {
         "label": "LoyaltyLobby：卡達比例調升（2025/11）",
         "url": "https://loyaltylobby.com/2025/11/20/all-accor-qatar-airways-privilege-club-enhance-conversion-ratios/",
+        "official": false
+       },
+       {
+        "label": "The Points Guy：LifeMiles 轉點夥伴（2026-10-12）",
+        "url": "https://thepointsguy.com/loyalty-programs/everything-you-need-to-know-avianca-lifemiles/",
         "official": false
        }
       ],
@@ -2933,6 +3015,16 @@
         "label": "The Point Calculator：IHG 轉點夥伴（2026/9/29）",
         "url": "https://www.thepointcalculator.com/us/ihg-one-rewards-points/ihg-transfer-partners/",
         "official": false
+       },
+       {
+        "label": "洲際：點數轉 LifeMiles（官方）",
+        "url": "https://www.ihg.com/onerewards/content/us/en/earn-rewards/miles/aviancaairlines",
+        "official": true
+       },
+       {
+        "label": "洲際：點數轉 Etihad Guest（官方）",
+        "url": "https://www.ihg.com/onerewards/content/us/en/earn-rewards/miles/etihadairways",
+        "official": true
        }
       ],
       "partners": [
@@ -2990,7 +3082,8 @@
         "hotelPoints": 5,
         "miles": 1,
         "bonus": false,
-        "confidence": "secondary"
+        "confidence": "official",
+        "note": "洲際官網：10,000 點換 2,000 哩，向客服申請，最長 6 週入帳"
        },
        {
         "to": "british",
@@ -3039,7 +3132,8 @@
         "hotelPoints": 5,
         "miles": 1,
         "bonus": false,
-        "confidence": "secondary"
+        "confidence": "official",
+        "note": "洲際官網：10,000 點換 2,000 哩，向客服申請，最長 6 週入帳"
        },
        {
         "to": "gulfair",
@@ -3184,6 +3278,11 @@
         "label": "LoyaltyLobby：韓亞航移除（2025/5/31）",
         "url": "https://loyaltylobby.com/2025/05/14/hilton-honors-ends-points-transfer-partnership-with-asiana-from-may-31-2025/",
         "official": false
+       },
+       {
+        "label": "Prince of Travel：Etihad Guest 轉點夥伴（2026-10-14）",
+        "url": "https://princeoftravel.com/points-programs/etihad-guest",
+        "official": false
        }
       ],
       "removed": [
@@ -3255,7 +3354,8 @@
         "hotelPoints": 10,
         "miles": 1,
         "bonus": false,
-        "confidence": "secondary"
+        "confidence": "secondary",
+        "note": "Prince of Travel（2026-10）同為 10:1"
        },
        {
         "to": "eva",
@@ -3406,6 +3506,11 @@
         "label": "Point Hacks：Shangri-La Circle（2025/7/28）",
         "url": "https://www.pointhacks.com.au/shangri-la-circle/",
         "official": false
+       },
+       {
+        "label": "Prince of Travel：Etihad Guest 轉點夥伴（2026-10-14）",
+        "url": "https://princeoftravel.com/points-programs/etihad-guest",
+        "official": false
        }
       ],
       "partners": [
@@ -3449,7 +3554,8 @@
         "hotelPoints": 1,
         "miles": 1,
         "bonus": false,
-        "confidence": "secondary"
+        "confidence": "secondary",
+        "note": "Prince of Travel（2026-10）同為 1:1"
        },
        {
         "to": "qantas",
