@@ -19,6 +19,7 @@ const { todayTW, monthTW, validDate } = require('./lib/day');
 const tg = require('./lib/telegram');
 const accor = require('./lib/accor');
 const { createAccounts, AccountError } = require('./lib/accounts');
+const { createAdmin, AdminError } = require('./lib/admin');
 const lineLib = require('./lib/line');
 const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
@@ -684,6 +685,27 @@ async function handleAccount(req, res, sub) {
   return sendJson(res, 404, { error: 'not found' });
 }
 
+// 帳號管理 (lib/admin.js): the owner only, by the passcode as everywhere else. Without a passcode only the demo without
+// Redis gets in, as its accounts live in this process's memory and are nobody's real data.
+const admin = accounts && createAdmin({
+  kv, accounts, passcode: cashPasscode,
+  alertEmails: async () => [...(alerts ? (await alerts.list()).map((a) => a.email) : []), ...(priceWatch ? (await priceWatch.list()).watches.map((w) => w.email) : [])],
+});
+async function handleAdmin(req, res, sub) {
+  if (!admin) return sendJson(res, 404, { error: '這個網站沒有開啟帳號功能', code: 'off' });
+  const m = req.method;
+  if (m !== 'GET' && !sameSite(req)) return sendJson(res, 403, { error: '請從網站本身操作', code: 'origin' });
+  const who = await runCaller(req);
+  if (who === 'cron') return sendJson(res, 403, { error: '只有站長可以管理帳號', code: 'owner-only' });
+  if (who !== 'owner' || (!cashPasscode() && HAS_REDIS)) throw cashPasscode() ? passError(req, '只有站長（輸入通關密碼）可以管理帳號') : noPasscode('帳號');
+  if (sub === '' && m === 'GET') return sendJson(res, 200, await admin.list());
+  if (m !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
+  const { email } = await readJson(req);
+  if (sub === 'delete') return sendJson(res, 200, await admin.remove(email));
+  if (sub === 'signout') return sendJson(res, 200, await admin.signOut(email));
+  return sendJson(res, 404, { error: 'not found' });
+}
+
 // TWD per unit of each currency, for converting award taxes. Refreshed daily from a free rate feed; the table is the fallback.
 const FX_FALLBACK = { USD: 31.96, CAD: 22.42, EUR: 35.81, GBP: 42.3, JPY: 0.202, HKD: 4.07, AUD: 22.32, SGD: 24.96, KRW: 0.0225, CNY: 4.45, NZD: 19.3, CHF: 39.5, THB: 0.95, MYR: 7.4, INR: 0.36, BRL: 5.9, MXN: 1.72, AED: 8.7, QAR: 8.78, TRY: 0.78, SEK: 3.3, DKK: 4.8, NOK: 3.1, TWD: 1 };
 let fxCache = { expires: 0, body: null };
@@ -1238,6 +1260,11 @@ async function route(req, res) {
       if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return await handleAccount(req, res, am[1] || '');
     }
+    const adm = p.match(/^\/api\/admin\/accounts(?:\/(delete|signout))?$/);
+    if (adm) {
+      if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return await handleAdmin(req, res, adm[1] || '');
+    }
     if (p === '/api/telegram' || p === '/api/telegram/link' || p === '/api/telegram/test') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleTelegram(req, p.endsWith('/link') ? 'link' : p.endsWith('/test') ? 'test' : ''));
@@ -1347,7 +1374,7 @@ async function route(req, res) {
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
     if (e instanceof AccountError && e.current) return sendJson(res, e.status, { error: e.message, code: e.code, ...e.current });
-    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError || e instanceof AdminError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

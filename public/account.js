@@ -32,6 +32,8 @@ const rawSet = store.set.bind(store);
 const rawDel = store.del.bind(store);
 const whenReady = () => new Promise((resolve) => { const t = () => (dataReady ? resolve() : setTimeout(t, 120)); t(); });
 const signedIn = () => Boolean(acct.status?.loggedIn);
+// Menu items other files add (admin.js): { m, label, show(), run() }, listed above 登出 while show() is true.
+const ACCT_MENU_EXTRA = [];
 
 // ---------- merging two copies of the synced keys ----------
 // `base` is the copy both sides started from (null on a device's first sync): with it, something removed on one side
@@ -359,6 +361,7 @@ function toggleMenu(open = $('#acct-menu').hidden) {
       <button type="button" role="menuitem" data-m="plan">🧳 我的行程</button>
       <button type="button" role="menuitem" data-m="alerts">🔔 機位提醒與降價追蹤</button>
       <button type="button" role="menuitem" data-m="settings">⚙️ 帳號設定（改密碼、Telegram）</button>
+      ${ACCT_MENU_EXTRA.filter((x) => x.show()).map((x) => `<button type="button" role="menuitem" data-m="${x.m}">${x.label}</button>`).join('')}
       <button type="button" role="menuitem" data-m="logout" class="out">登出</button>`;
     m.hidden = false;
     $$('[data-m]', m).forEach((x) => x.addEventListener('click', () => menuAction(x.dataset.m)));
@@ -389,7 +392,7 @@ async function menuAction(what) {
     if (acct.pending) await push();
     try { await acctCall('/api/account/logout', 'POST', {}); } catch { /* the cookie is cleared below either way */ }
     signedOutHere('已登出。這台裝置上的資料都還在。');
-  }
+  } else ACCT_MENU_EXTRA.find((x) => x.m === what)?.run();
 }
 function signedOutHere(msg) {
   clearTimeout(acct.timer);
