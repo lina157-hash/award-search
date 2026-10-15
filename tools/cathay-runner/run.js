@@ -280,8 +280,9 @@ async function fillCity(page, labelRe, name, code) {
   const pick = await firstVisible([page.getByRole('option', { name: new RegExp(code, 'i') }), page.getByRole('option'), anyText(page, new RegExp(`\\(${code}\\)`)), page.getByRole('listitem').filter({ hasText: new RegExp(code) })]);
   if (pick) await pick.click(); else { await page.keyboard.press('ArrowDown'); await sleep(300); await page.keyboard.press('Enter'); }
   await pause(1, 2);
-  const txt = await page.evaluate(() => document.body.innerText);
-  return new RegExp(`\\(?${code}\\)?`).test(txt) || (name && txt.includes(name));
+  // The chosen city sits in the input's value, which innerText leaves out.
+  const txt = await page.evaluate(() => document.body.innerText + '\n' + [...document.querySelectorAll('input')].map((i) => i.value).join('\n'));
+  return new RegExp(`\\b${code}\\b`).test(txt) || Boolean(name && txt.includes(name));
 }
 
 // A dropdown field: click, choose by text. Skipped when the field already shows the wanted text.
@@ -419,6 +420,15 @@ async function stripInfo(page) {
 
 async function clickArrow(page, dir) {
   const next = dir === 'next';
+  // Cathay: <div class="date-navigator right-navigator"><img class="right-navigator-icon [disabled]"></div>, no text.
+  const side = next ? 'right' : 'left';
+  const nav = page.locator(`.date-navigator.${side}-navigator`);
+  if (await nav.first().isVisible().catch(() => false)) {
+    const off = await page.locator(`.${side}-navigator-icon.disabled, .date-navigator.${side}-navigator.disabled`).count().catch(() => 0);
+    if (off) return 'end';
+    await nav.first().click();
+    return 'navigator';
+  }
   const cands = next
     ? [page.locator('[aria-label*="下一週"],[aria-label*="下週"],[aria-label*="下一"],[aria-label*="next" i]'), page.getByRole('button', { name: /下一週|下週|next/i }), page.getByRole('button', { name: /^(›|>|»|→)$/ })]
     : [page.locator('[aria-label*="上一週"],[aria-label*="上週"],[aria-label*="上一"],[aria-label*="prev" i]'), page.getByRole('button', { name: /上一週|上週|previous|prev/i }), page.getByRole('button', { name: /^(‹|<|«|←)$/ })];
@@ -573,6 +583,15 @@ async function sweepRoute(route, mode) {
     }
   };
   const within = (d) => d >= start && d <= until;
+  // The day the page has open shows its flight cards with miles: keep its lowest without clicking anything.
+  const shown = (r, cabin) => {
+    if (!r.date || (r.cabin && r.cabin !== cabin) || !r.low[cabin]) return;
+    const x = day(r.date);
+    x.c = x.c || {};
+    x.c[cabin] = { ...(x.c[cabin] || {}), m: r.low[cabin], t: Date.now() };
+    delete x.c[cabin].na;
+    if (!x.lo || r.low[cabin] < x.lo) x.lo = r.low[cabin];
+  };
   const maxTurns = Math.ceil(cfg.daysAhead / 7) + 2;
   let ci = 0;
   for (const cabin of route.cabins) {
@@ -582,6 +601,7 @@ async function sweepRoute(route, mode) {
     if (!st.n) { await saveDebug(page, 'strip-' + route.fc + route.tc, 'results'); throw new Error('讀不到日期列（已存診斷資料）'); }
     for (let turn = 0; turn < maxTurns; turn++) {
       record(st.info.r, cabin);
+      shown(st.info.r, cabin);
       if (cfg.detailDays) {
         for (const s of st.info.r.strip) {
           if (s.na || !within(s.date)) continue;
@@ -606,6 +626,7 @@ async function sweepRoute(route, mode) {
       const done = forward ? st.last >= until : st.first <= start;
       if (done) break;
       const how = await clickArrow(page, forward ? 'next' : 'prev');
+      if (how === 'end') { log(`　日期列已到${forward ? '國泰開放兌換的最後一天' : '最前面'}。`); break; }
       if (!how) { log(`　找不到日期列的${forward ? '›' : '‹'}箭頭，這個艙等到此為止。`); await saveDebug(page, 'arrow-' + route.fc + route.tc, 'results'); break; }
       await pause();
       await waitIdle(page);
