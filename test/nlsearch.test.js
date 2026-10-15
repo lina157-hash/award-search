@@ -2,7 +2,7 @@
 // design doc's examples, the daily cap, the one-day cache and the request sent to Claude or OpenAI (fakes: no network).
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { createNlSearch, pickProvider, validate, mockParse, holidayRange, normalize, MODEL, OPENAI_MODEL } = require('../lib/nlsearch');
+const { createNlSearch, pickProvider, buildPlaces, validate, mockParse, holidayRange, normalize, MODEL, OPENAI_MODEL } = require('../lib/nlsearch');
 const { memoryKv } = require('../lib/kv');
 const AIRPORTS = require('../public/airports.min.json');
 const names = require('../data/source-names.json').names;
@@ -313,4 +313,34 @@ test('pickProvider: whichever key is set; NL_PROVIDER picks when both are', () =
   assert.deepEqual(pick({ OPENAI_API_KEY: 'sk-a', NL_PROVIDER: 'claude' }), ['live', 'openai', 'sk-a']); // the named one has no key
   assert.deepEqual(pick({ ANTHROPIC_API_KEY: 'sk-ant-b', NL_PROVIDER: 'chatgpt' }), ['live', 'anthropic', 'sk-ant-b']);
   assert.deepEqual(pick({ OPENAI_API_KEY: '   ' }), ['off', null, '']);
+});
+
+const places = buildPlaces(AIRPORTS.groups, AIRPORTS.airports);
+
+test('places: names to airports from the site\'s own list', () => {
+  for (const [name, want] of [['溫哥華', ['YVR']], ['Vancouver', ['YVR']], ['東京', ['NRT', 'HND']], ['Tokyo', ['NRT', 'HND']], ['台北', ['TPE']], ['Auckland', ['AKL']], ['新加坡', ['SIN']]]) assert.deepEqual(places.codes(name), want, name);
+  assert.equal(places.codes('奧克蘭'), null); // Auckland or Oakland
+  assert.equal(places.codes('火星'), null);
+  assert.deepEqual(places.find('從台北去東京再到大阪').map((h) => h.name), ['台北', '東京', '大阪']);
+});
+
+test('validate: a destination the model missed comes from the places the sentence names', () => {
+  const sentence = '明年三月兩個人商務艙去溫哥華';
+  const v = (raw, s = sentence) => validate(answer({ date_start: '2027-03-01', date_end: '2027-03-31', cabin: 'J', passengers: 2, ...raw }), { ...ctx, sentence: s, places });
+  for (const raw of [{}, { origin: ['YVR'] }, { destination: ['溫哥華'] }, { destination: ['Vancouver'] }, { destination: ['Vancouver BC'] }]) {
+    const r = v(raw);
+    assert.deepEqual([r.origin, r.destination, r.defaults, r.dropped, r.vague], [['TPE'], ['YVR'], ['origin'], [], undefined], JSON.stringify(raw));
+    assert.deepEqual([r.start, r.end, r.cabin, r.pax], ['2027-03-01', '2027-03-31', 'J', 2]);
+  }
+  // A place the sentence marks as the start is never the destination.
+  for (const s of ['從溫哥華', '溫哥華出發，明年三月']) assert.equal(v({}, s).vague, true, s);
+  assert.deepEqual(v({ origin: ['KHH'] }, '高雄飛溫哥華').origin, ['KHH']);
+  // Without the sentence (or the list) nothing is guessed.
+  assert.equal(validate(answer({}), ctx).vague, true);
+});
+
+test('OpenAI answer with the destination put as the origin still fills the form', async () => {
+  const f = fakeFetch(chat(answer({ origin: ['YVR'], date_start: '2027-03-01', date_end: '2027-03-31', cabin: 'J', passengers: 2 })));
+  const r = await openai(f, { airports: AIRPORTS.airports }).parse('明年三月兩個人商務艙去溫哥華');
+  assert.deepEqual([r.origin, r.destination, r.cabin, r.pax, r.vague], [['TPE'], ['YVR'], 'J', 2, undefined]);
 });

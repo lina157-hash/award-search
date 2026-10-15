@@ -1239,6 +1239,7 @@ const nlSearch = createNlSearch({
   taiwan: (start, end) => travelInfo.taiwan(start, end),
   airportCodes: new Set(AIRPORTS.keys()),
   groups: AIRPORT_FILE.groups || [],
+  airports: AIRPORT_FILE.airports,
   // One entry per program name (copa / connectmiles share one), without the estimate-only source.
   programs: Object.entries(SOURCE_NAMES).filter(([id, name], i, all) => !id.endsWith('_est') && all.findIndex(([, n]) => n === name) === i).map(([id, name]) => ({ id, name })),
   regions: require('./data/airports.json').regions,

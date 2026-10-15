@@ -82,7 +82,8 @@ function nlApply(r) {
   if (r.vague) {
     Object.assign(nl, { result: null, programs: [], ret: null, armed: false, vague: r });
     $('#nl-chips').hidden = true;
-    nlMsg(`${esc(r.message)}${r.region ? ' <button type="button" class="linkish" data-explore>到區域探索</button>' : ''} <small>${esc(nlLeft(r))}</small>`);
+    const missed = r.dropped?.length ? ` 沒看懂的部分：${r.dropped.map(esc).join('、')}。` : '';
+    nlMsg(`${esc(r.message)}${missed}${r.region ? ' <button type="button" class="linkish" data-explore>到區域探索</button>' : ''} <small>${esc(nlLeft(r))}</small>`);
     return;
   }
   const f = $('#search-form');
