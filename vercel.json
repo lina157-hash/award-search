@@ -4,7 +4,7 @@
   "functions": { "api/index.js": { "includeFiles": "data/**", "maxDuration": 60 } },
   "crons": [
     { "path": "/api/alerts/run", "schedule": "10 0 * * *" },
-    { "path": "/api/cron/daily", "schedule": "10 1 * * *" }
+    { "path": "/api/cron/daily", "schedule": "10 13 * * *" }
   ],
   "headers": [
     { "source": "/airports.min.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }] },

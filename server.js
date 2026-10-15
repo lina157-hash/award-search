@@ -366,8 +366,8 @@ function readJson(req, limit = 10_000) {
   });
 }
 
-// The daily run (Vercel cron, 00:10 UTC = 08:10 Taiwan, just after seats.aero's quota resets, plus a catch-up an hour
-// later): deals, then price watches, then seat alerts, in one 60-second function. Each part saves item by item and
+// The daily run (Vercel cron, 00:10 UTC = 08:10 Taiwan, just after seats.aero's quota resets, and again at 13:10 UTC =
+// 21:10 Taiwan, which refreshes 今日好康 a second time and retries what the morning missed): deals, then price watches, then seat alerts, in one 60-second function. Each part saves item by item and
 // stops starting new items near the time limit, so a cut-off run loses nothing and the catch-up run (or tomorrow's)
 // finishes the rest; work already done today is skipped. `?part=expiry,deals,watches,alerts` runs only those parts
 // (expiry: the miles expiry reminders, which spend no quota, go first). The budgets say when each part stops starting

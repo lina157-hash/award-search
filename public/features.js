@@ -1061,7 +1061,7 @@ function renderDeals() {
         <span class="dm-miles">${fmt(d.miles)} <small>哩</small>${d.direct ? '<small class="dm-direct">直飛</small>' : ''}</span>
         <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>
       </button>`).join('')}</div></div>`).join('') || '<p class="hint">這個艙等今天沒有整理到好康。</p>'}
-    <p class="hint">每天早上整理一次，座位可能已被訂走；點卡片會查那一天前後三天。${store.get('cashPass', '') || !cashCfg.locked ? ' <button type="button" class="linkish" id="deals-refresh">立即更新（用約 8 次查詢，每小時一次）</button>' : ''}</p>`;
+    <p class="hint">每 12 小時整理一次（早上 8 點多、晚上 9 點多），座位可能已被訂走；點卡片會查那一天前後三天。${store.get('cashPass', '') || !cashCfg.locked ? ' <button type="button" class="linkish" id="deals-refresh">立即更新（用約 8 次查詢，每小時一次）</button>' : ''}</p>`;
   $$('input[name=deal-cabin]', host).forEach((i) => i.addEventListener('change', () => { dealsState.cabin = i.value; renderDeals(); }));
   $('#deals-refresh', host)?.addEventListener('click', async (e) => {
     const b = e.currentTarget;
