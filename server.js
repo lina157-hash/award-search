@@ -731,11 +731,13 @@ function param(q, name, re, { required = false, upper = false } = {}) {
   return v;
 }
 
-function dateRange(q) {
+// `future`: award searches refuse a range that has wholly passed (it would spend a seats.aero call on departed flights).
+function dateRange(q, { future = false } = {}) {
   const start = param(q, 'start', DATE, { required: true });
   const end = param(q, 'end', DATE) || start;
   const days = (new Date(end) - new Date(start)) / 864e5;
   if (days < 0) throw new BadRequest('結束日期不可早於開始日期');
+  if (future && end < todayTW()) throw new BadRequest('這段日期已經過了（以台灣時間計），請選今天以後的日期');
   // seats.aero publishes award space about a year out, so a search may cover all of it.
   if (days > MAX_RANGE_DAYS) throw new BadRequest('日期範圍最多一年');
   return { start_date: start, end_date: end };
@@ -788,7 +790,7 @@ async function handleSearch(q, req) {
   const params = {
     origin_airport: param(q, 'origin', IATA_LIST, { required: true, upper: true }),
     destination_airport: param(q, 'destination', IATA_LIST, { required: true, upper: true }),
-    ...dateRange(q),
+    ...dateRange(q, { future: true }),
     carriers: param(q, 'carriers', CODE_LIST, { upper: true }),
     sources: param(q, 'sources', SOURCE_LIST),
     only_direct_flights: q.get('direct') === '1' ? true : undefined,
@@ -810,7 +812,7 @@ async function handleExplore(q, req) {
   const params = {
     // `program`, not `source`: Vercel's rewrite drops a `source` query param.
     source: param(q, 'program', /^[a-z]+$/) || param(q, 'source', /^[a-z]+$/, { required: true }),
-    ...dateRange(q),
+    ...dateRange(q, { future: true }),
     origin_region: q.get('origin_region') || undefined,
     destination_region: q.get('destination_region') || undefined,
   };

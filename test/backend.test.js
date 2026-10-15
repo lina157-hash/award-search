@@ -432,7 +432,7 @@ test('P02: static files carry validators and a cache policy, and answer HEAD', a
 });
 
 test('P06: a search only carries details for cabins that have seats', async () => {
-  const body = await (await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=2026-11-01&end=2026-11-20`)).json();
+  const body = await (await fetch(`${base}/api/search?origin=TPE&destination=YVR&start=${isoIn(17)}&end=${isoIn(36)}`)).json();
   const all = body.results.flatMap((r) => Object.values(r.cabins));
   assert.ok(all.some((c) => !c.available));
   assert.ok(all.filter((c) => !c.available).every((c) => Object.keys(c).length === 1));

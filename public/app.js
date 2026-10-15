@@ -763,6 +763,7 @@ function createDatePicker(form, label, opts = {}) {
   return {
     // A range that is one day ± a preset opens as 「指定日期 ± 天數」 (shared links, restored searches); any other as a range.
     set(s, e = s) {
+      if (!s) { st.center = null; return write('', ''); } // cleared (a search whose dates have passed)
       if (single || e < s) e = s;
       const half = (dayCount(s, e) - 1) / 2;
       st.center = null;
@@ -861,8 +862,21 @@ function normalizeShare(share) {
   if (!/^[YWJF]$/.test(share.get('c') || '')) share.set('c', 'J');
   if (!share.get('e')) share.set('e', share.get('s'));
   if (share.get('n') && !/^[1-9]$/.test(share.get('n'))) share.delete('n');
+  const d = clampShareDates(share.get('s'), share.get('e'), searchToday());
+  if (d.clamped) { share.clampedFrom ||= share.get('s'); share.set('s', d.s); }
+  share.past = d.past;
   return share;
 }
+// Dates already past (an old favourite, a recent search or a shared link): the search starts today, and a range that
+// has wholly passed is not searched at all (it would spend a seats.aero call on flights that have left).
+function clampShareDates(s, e, today) {
+  e = e || s;
+  if (!s || !e) return { s, e, clamped: false, past: false };
+  if (e < today) return { s, e, clamped: false, past: true };
+  return s < today ? { s: today, e, clamped: true, past: false } : { s, e, clamped: false, past: false };
+}
+// Today for that check: the earlier of the visitor's day and Taiwan's (the server counts days in Taiwan time).
+const searchToday = () => { const tw = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); const here = isoDate(0); return here < tw ? here : tw; };
 
 // Fill the search form from share-link params and optionally run it (used by links, recents and favourites).
 function applyShare(share, run = true, pre = null) {
@@ -870,7 +884,8 @@ function applyShare(share, run = true, pre = null) {
   const f = $('#search-form');
   pickers.origin.set(share.get('o').split(','));
   pickers.destination.set(share.get('d').split(','));
-  datePickers.search.set(share.get('s'), share.get('e') || share.get('s'));
+  if (share.past) datePickers.search.set('');
+  else datePickers.search.set(share.get('s'), share.get('e') || share.get('s'));
   f.alliance.value = share.get('al') || '';
   f.carrier.value = share.get('a') || '';
   f.direct.checked = share.get('direct') === '1';
@@ -1117,6 +1132,18 @@ function searchQuery(share) {
 async function runSearch(share, pre, autoRange = false) {
   normalizeShare(share);
   const fresh = latest('search');
+  if (share.past) {
+    // Nothing to search: say so, and the 出發日期 button (now empty) is the next step.
+    const status = $('#search-status');
+    status.className = 'status';
+    status.textContent = `這次的日期（${dayLabel(share.get('s'))} – ${dayLabel(share.get('e'))}）已經過了，沒有搜尋。請點上面的出發日期選新的日期，或直接按「搜尋」查未來 1 個月。`;
+    $('#search-results').innerHTML = '';
+    $('#search-trip').innerHTML = '';
+    $('#search-empty').hidden = true;
+    reveal(status);
+    return;
+  }
+  if (share.clampedFrom) toast(`已過的日期不查，改從今天（${dayLabel(share.get('s'))}）開始查`);
   const params = searchQuery(share);
   Object.assign(state, { cabin: share.get('c') || 'J', hidden: new Set(), day: null, allRows: false, showSame: false, results: [], start: share.get('s'), end: share.get('e') || share.get('s'), pax: Number(share.get('n')) || 0, withTaxes: false, product: '', route: `${share.get('o')} → ${share.get('d')}` });
   const status = $('#search-status');
@@ -1809,11 +1836,14 @@ $('#explore-form').addEventListener('submit', async (e) => {
 function applyExploreShare(share) {
   const f = $('#explore-form');
   for (const k of ['program', 'origin_region', 'destination_region']) if (share.get(k)) f[k].value = share.get(k);
-  if (share.get('start')) datePickers.explore.set(share.get('start'), share.get('end') || share.get('start'));
+  // Dates already past: from today, or (all past) the form's own default dates and no search until asked.
+  const d = clampShareDates(share.get('start'), share.get('end'), searchToday());
+  if (d.s && !d.past) datePickers.explore.set(d.s, d.e);
   // The cabin comes from the URL, so only a known letter goes into the selector.
   const c = share.get('cabin');
   const cab = $(`#explore-form input[name=cabin][value="${/^[YWJF]$/.test(c || '') ? c : 'J'}"]`);
   if (cab) cab.checked = true;
+  if (d.past) return toast('這個連結的日期已經過了，請選新的日期再按「開始探索」');
   f.requestSubmit();
 }
 
@@ -3091,7 +3121,7 @@ tabInit.cash = () => loadCashQuota();
   const share = new URLSearchParams(location.search);
   const isShare = share.get('o') && share.get('d') && share.get('s');
   let pre = null;
-  if (isShare && !share.get('al')) {
+  if (isShare && !share.get('al') && !normalizeShare(new URLSearchParams(share)).past) {
     pre = api(`/api/search?${searchQuery(normalizeShare(new URLSearchParams(share)))}`);
     pre.catch(() => {}); // handled when awaited
     $('#search-status').textContent = '正在搜尋各哩程計畫的獎勵位…';
