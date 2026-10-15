@@ -654,10 +654,10 @@ function createDatePicker(form, label, opts = {}) {
     dlg.innerHTML = `<div class="dp-in">
       <div class="dp-top">
         ${single ? `<b class="dp-title">${esc(label)}</b>` : `<fieldset class="seg dp-mode" aria-label="選擇方式">
-          <label><input type="radio" name="${uid}-mode" value="range" ${st.mode === 'range' ? 'checked' : ''}><span>選擇日期範圍</span></label>
           <label><input type="radio" name="${uid}-mode" value="flex" ${st.mode === 'flex' ? 'checked' : ''}><span>指定日期 ± 天數</span></label>
+          <label><input type="radio" name="${uid}-mode" value="range" ${st.mode === 'range' ? 'checked' : ''}><span>選擇日期範圍</span></label>
         </fieldset>`}
-        <button type="button" class="dp-x" aria-label="關閉">✕</button>
+        <span class="dp-acts"><button type="button" class="dp-chip dp-today" ${lo() > isoDate(0) ? 'disabled title="這裡不能選今天"' : ''}>今天</button><button type="button" class="dp-x" aria-label="關閉">✕</button></span>
       </div>
       ${extra}
       <div class="dp-cal">
@@ -705,6 +705,14 @@ function createDatePicker(form, label, opts = {}) {
     const t = e.target.closest('button, input');
     if (!t) return;
     if (t.matches('.dp-x, .dp-done')) return close();
+    // 今天: the centre of 「指定日期 ± 天數」, the first day of a range (then pick the last), or the single date.
+    if (t.matches('.dp-today')) {
+      const d = lo();
+      if (single) { write(d, d); return close(); }
+      st.month = d.slice(0, 7);
+      if (st.mode === 'flex') { st.center = d; write(...flexRange()); } else { st.anchor = d; st.hover = d; }
+      return render();
+    }
     if (t.name === `${uid}-mode`) {
       st.mode = t.value;
       st.anchor = null;
