@@ -372,6 +372,7 @@ async function handleAlerts(req, q, sub) {
   if (!alerts) return { configured: false, email: false, alerts: [] };
   if (!(await alertsAllowed(req))) throw cashPasscode() ? passError(req, '需要通關密碼才能管理提醒') : noPasscode('提醒');
   if (req.method === 'POST') return { configured: true, ...(await alerts.add(await readJson(req))) };
+  if (req.method === 'PUT') { const b = await readJson(req); return { configured: true, ...(await alerts.update(String(q.get('id') || b.id || ''), b)) }; }
   if (req.method === 'DELETE') { await alerts.remove(String(q.get('id') || '')); return { ok: true }; }
   return { configured: true, email: Boolean(alertMailer), alerts: await alerts.list() };
 }
@@ -1143,7 +1144,7 @@ async function route(req, res) {
       return sendJson(res, 200, await runDaily(req, q));
     }
     if (p === '/api/alerts' || p === '/api/alerts/run') {
-      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleAlerts(req, q, p.endsWith('/run') ? 'run' : ''));
     }
     const am = p.match(/^\/api\/account(?:\/(signup|verify|login|logout|forgot|reset|password|unlock|data))?$/);

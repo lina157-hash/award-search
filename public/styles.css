@@ -1422,3 +1422,20 @@ dialog.cx-dlg { width: min(560px, calc(100vw - 24px)); overflow: auto; }
 .cxm-out > .hint { margin: 6px 0 0; }
 .cxm-save { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 0; }
 .cxm-save .hint { flex: 1 1 260px; font-size: .8rem; }
+
+/* ---------- ui4: 機位提醒「修改」, folded results calendar, 全部勾選／全部取消 ---------- */
+.alert-edit { grid-column: 1 / -1; margin-top: 6px; padding-top: 10px; border-top: 1px dashed var(--border); display: grid; gap: 4px; min-width: 0; }
+.alert-edit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 10px; }
+.alert-edit .field { min-width: 0; }
+.alert-edit .hint { margin: 4px 0 0; }
+.alert-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.alert-actions [aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 640px) { .alert-edit-grid { grid-template-columns: 1fr 1fr; } }
+details.cal-fold > summary { list-style: none; margin-top: 0; color: inherit; }
+details.cal-fold > summary::-webkit-details-marker { display: none; }
+details.cal-fold > summary .section-title::after { content: "▾"; color: var(--muted); font-size: .85rem; font-weight: 400; }
+details.cal-fold[open] > summary .section-title::after { content: "▴"; }
+details.cal-fold > summary:hover .section-title { color: var(--accent); }
+.cal-how { margin: -6px 0 10px; font-size: .82rem; }
+.filters .chip-all { border-style: dashed; color: var(--muted); background: transparent; }
+.filters .chip-all:hover { border-color: var(--accent); color: var(--accent); }

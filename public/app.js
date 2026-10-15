@@ -535,7 +535,8 @@ function createDatePicker(form, label, opts = {}) {
   const btn = $('.dp-btn', field);
   const startIn = single ? form.elements[opts.name] : form.elements.start;
   const endIn = single ? startIn : form.elements.end;
-  const st = { mode: single ? 'single' : 'range', flex: 3, center: null, anchor: null, hover: null, month: null };
+  // 「指定日期 ± 天數」 first (owner's choice); 「選擇日期範圍」 is for when that does not fit.
+  const st = { mode: single ? 'single' : 'flex', flex: 3, center: null, anchor: null, hover: null, month: null };
   const dlg = document.createElement('dialog');
   dlg.className = 'dp';
   dlg.setAttribute('aria-label', `選擇${label}`);
@@ -686,7 +687,7 @@ function createDatePicker(form, label, opts = {}) {
     if (t.name === `${uid}-mode`) {
       st.mode = t.value;
       st.anchor = null;
-      if (st.mode === 'flex') {
+      if (st.mode === 'flex' && startIn.value) {
         // Centre on the middle of the current range, rounded to a ± option that covers it.
         const s = startIn.value;
         const half = Math.ceil((dayCount(s, endIn.value) - 1) / 2);
@@ -742,10 +743,16 @@ function createDatePicker(form, label, opts = {}) {
   updateButton();
 
   return {
+    // A range that is one day ± a preset opens as 「指定日期 ± 天數」 (shared links, restored searches); any other as a range.
     set(s, e = s) {
-      if (!single) st.mode = 'range';
+      if (single || e < s) e = s;
+      const half = (dayCount(s, e) - 1) / 2;
       st.center = null;
-      write(s, single || e < s ? s : e);
+      if (!single) {
+        st.mode = FLEX_DAYS.includes(half) ? 'flex' : 'range';
+        if (st.mode === 'flex') { st.center = isoDateFrom(s, half); st.flex = half; }
+      }
+      write(s, e);
     },
     value: () => startIn.value,
   };
@@ -905,14 +912,15 @@ const alertShare = (a) => new URLSearchParams({ o: a.origin, d: a.destination, s
 // Which programs and airlines a watch reports. Programs: every seats.aero program, the ones in this search first, ticked
 // when the result filter hides some. Airlines: the carriers in this search's results, plus codes typed in for ones that
 // have no seats yet. Nothing ticked means any. The search's 航空聯盟 and 只看直飛 carry over too.
-function alertFiltersHtml(share) {
+// `a`: a saved watch being edited (「修改」): its own programs, airlines and switches are ticked instead.
+function alertFiltersHtml(share, a = null) {
   const c = state.cabin;
-  const inResults = [...new Set(state.results.map((r) => r.source))].filter((x) => SOURCE_NAMES[x]);
+  const inResults = a ? a.sources || [] : [...new Set(state.results.map((r) => r.source))].filter((x) => SOURCE_NAMES[x]);
   const programs = [...inResults, ...Object.keys(SOURCE_NAMES).filter((x) => !inResults.includes(x))];
-  const pre = state.hidden.size ? new Set(inResults.filter((x) => !state.hidden.has(x))) : new Set();
-  const carriers = [...new Set(state.results.flatMap((r) => (cab(r, c)?.available ? r.cabins[c].airlines.split(/,\s*/) : [])).filter((x) => /^[A-Z0-9]{2}$/.test(x)))].sort();
+  const pre = a ? new Set(a.sources || []) : state.hidden.size ? new Set(inResults.filter((x) => !state.hidden.has(x))) : new Set();
+  const carriers = a ? [] : [...new Set(state.results.flatMap((r) => (cab(r, c)?.available ? r.cabins[c].airlines.split(/,\s*/) : [])).filter((x) => /^[A-Z0-9]{2}$/.test(x)))].sort();
   // An airline filter on the search itself (航空公司 field) carries over.
-  const airPre = new Set(String(share.get('a') || '').toUpperCase().split(/[\s,]+/).filter((x) => /^[A-Z0-9]{2}$/.test(x)));
+  const airPre = new Set(a ? a.airlines || [] : String(share.get('a') || '').toUpperCase().split(/[\s,]+/).filter((x) => /^[A-Z0-9]{2}$/.test(x)));
   for (const x of airPre) if (!carriers.includes(x)) carriers.push(x);
   const al = data.alliances.alliances.some((x) => x.id === share.get('al')) ? share.get('al') : '';
   const chip = (name, value, label, on) => `<label class="h-chip"><input type="checkbox" name="${name}" value="${esc(value)}" ${on ? 'checked' : ''}><span>${esc(label)}</span></label>`;
@@ -923,10 +931,39 @@ function alertFiltersHtml(share) {
       <label class="field">航空聯盟<select name="alliance"><option value="">全部聯盟</option>${data.alliances.alliances.map((x) => `<option value="${esc(x.id)}" ${x.id === al ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
       ${carriers.length ? `<div class="h-progs">${carriers.map((x) => chip('a-air', x, airlineLabel(x), airPre.has(x))).join('')}</div>` : ''}
       <label class="field">其他航空公司代碼（現在還沒有位子的，例如 CI、BR）<input name="airlinesExtra" placeholder="CI, BR" autocomplete="off" autocapitalize="characters"></label>
-      <label class="switch"><input type="checkbox" name="anyLeg"><span class="knob"></span>轉機也通知（只要其中一段是這些航空公司）</label>
+      <label class="switch"><input type="checkbox" name="anyLeg" ${a?.anyLeg ? 'checked' : ''}><span class="knob"></span>轉機也通知（只要其中一段是這些航空公司）</label>
       <p class="hint">沒勾的話，整趟都是這些航空公司飛的才通知。</p>
     </details>
     <label class="switch"><input type="checkbox" name="direct" ${share.get('direct') === '1' ? 'checked' : ''}><span class="knob"></span>只通知直飛</label>`;
+}
+// What the filter part of an alert form (create dialog or a 「修改」 row) asks for.
+function alertFilterValues(f) {
+  return {
+    sources: $$('input[name="a-src"]:checked', f).map((i) => i.value),
+    airlines: [...new Set([...$$('input[name="a-air"]:checked', f).map((i) => i.value), ...f.airlinesExtra.value.toUpperCase().split(/[\s,，、]+/).filter(Boolean)])],
+    anyLeg: f.anyLeg.checked,
+    alliance: f.alliance.value,
+    direct: f.direct.checked,
+  };
+}
+const PAX_OPTIONS = [['', '不限'], ['2', '至少 2 位'], ['3', '至少 3 位'], ['4', '至少 4 位'], ['5', '至少 5 位']];
+// 「修改」: the watch's conditions in a form inside its own row, filled in with what it has now.
+function alertEditHtml(a) {
+  const opt = (v, t, on) => `<option value="${esc(v)}" ${on ? 'selected' : ''}>${esc(t)}</option>`;
+  const lo = isoDate(0);
+  return `<form class="alert-edit" data-id="${esc(a.id)}">
+    <div class="alert-edit-grid">
+      <label class="field">出發地<input name="origin" value="${esc(a.origin)}" autocomplete="off" autocapitalize="characters" required placeholder="TPE"></label>
+      <label class="field">目的地<input name="destination" value="${esc(a.destination)}" autocomplete="off" autocapitalize="characters" required placeholder="NRT"></label>
+      <label class="field">出發日期（從）<input type="date" name="start" value="${esc(a.start < lo ? lo : a.start)}" min="${lo}" max="${isoDate(MAX_AHEAD_DAYS)}" required></label>
+      <label class="field">到<input type="date" name="end" value="${esc(a.end)}" min="${lo}" max="${isoDate(MAX_AHEAD_DAYS)}" required></label>
+      <label class="field">艙等<select name="cabin">${Object.entries(CABIN_LABEL).map(([k, t]) => opt(k, t, k === a.cabin)).join('')}</select></label>
+      <label class="field">座位數<select name="pax">${PAX_OPTIONS.map(([v, t]) => opt(v, t, String(a.pax || '') === v)).join('')}</select></label>
+    </div>
+    ${alertFiltersHtml(new URLSearchParams({ ...(a.alliance ? { al: a.alliance } : {}), ...(a.direct ? { direct: '1' } : {}) }), a)}
+    <p class="hint">機場可填多個，用逗號分開（例如 TPE,TSA）。儲存後會重新記下目前已有的座位，之後只通知新出現的；通知方式不變。</p>
+    <div class="alert-edit-actions"><button type="button" class="outline" data-edit-cancel>取消</button><button type="submit" class="primary small">儲存修改</button></div>
+  </form>`;
 }
 const ALERT_SETUP = `<p class="hint">機位提醒還沒啟用。網站主人要在 Vercel 做兩件事：① Storage 分頁用 Marketplace 建一個 Upstash Redis（免費方案），它會自動加上連線設定；② 到 resend.com 申請免費金鑰，在 Environment Variables 新增 <code>RESEND_API_KEY</code>。都設好後重新部署。</p>`;
 function openAlertDialog() {
@@ -954,9 +991,7 @@ $('#alert-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   try {
     store.set(ALERT_EMAIL_KEY, f.email.value.trim());
-    const sources = $$('input[name="a-src"]:checked', f).map((i) => i.value);
-    const airlines = [...new Set([...$$('input[name="a-air"]:checked', f).map((i) => i.value), ...f.airlinesExtra.value.toUpperCase().split(/[\s,，、]+/).filter(Boolean)])];
-    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim(), sources, airlines, anyLeg: f.anyLeg.checked, alliance: f.alliance.value, direct: f.direct.checked }), headers: { 'content-type': 'application/json' } });
+    const body = await cashApi('/api/alerts', { method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: share.get('c') || 'J', pax: f.pax.value, email: f.email.value.trim(), ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
     $('#alert-dialog').close();
     toast(`已建立提醒，目前有 ${body.found} 筆有位`);
     $('#alerts-panel').open = true;
@@ -978,10 +1013,42 @@ async function loadAlerts() {
     box.innerHTML = (list.length ? `<ul class="alert-list">${list.map((a) => `<li>
         <div><b>${esc(alertSummary(a))}</b>${alertFilterText(a) ? `<small>${esc(alertFilterText(a))}</small>` : ''}${a.email ? `<small>→ ${esc(a.email)}</small>` : '<small>只在網站顯示</small>'}</div>
         <div class="hint">${a.lastRun ? `上次檢查 ${ago(a.lastRun)}：有位 ${a.lastFound ?? '—'} 筆${a.lastNew ? `，<b class="new">新增 ${a.lastNew} 筆</b>` : ''}` : '尚未檢查'}${a.lastError ? `　⚠ ${esc(a.lastError)}` : ''}</div>
-        <div class="alert-actions"><button type="button" class="outline" data-open="${esc(alertShare(a))}">查看</button><button type="button" class="outline" data-del="${esc(a.id)}">刪除</button></div>
+        <div class="alert-actions"><button type="button" class="outline" data-open="${esc(alertShare(a))}">查看</button><button type="button" class="outline" data-edit="${esc(a.id)}" aria-expanded="false">修改</button><button type="button" class="outline" data-del="${esc(a.id)}">刪除</button></div>
       </li>`).join('')}</ul>` : '<p class="hint">還沒有提醒。搜尋一條航線後，按結果上方的「🔔 有新機位通知我」。</p>')
       + `<div class="alert-foot">${list.length ? '<button type="button" class="outline" id="alerts-run">立即檢查全部</button>' : ''}<span class="hint">每天早上 8 點多（台灣時間）自動檢查${body.email ? '並寄信' : '；尚未設定寄信服務，只會顯示在這裡'}。</span></div>`;
     $$('[data-open]', box).forEach((b) => b.addEventListener('click', () => applyShare(new URLSearchParams(b.dataset.open))));
+    $$('[data-edit]', box).forEach((b) => b.addEventListener('click', () => {
+      const li = b.closest('li');
+      const was = $('.alert-edit', li);
+      // One row at a time; a second click on 修改 closes it again.
+      $$('.alert-edit', box).forEach((x) => x.remove());
+      $$('[data-edit]', box).forEach((x) => x.setAttribute('aria-expanded', 'false'));
+      if (was) return;
+      li.insertAdjacentHTML('beforeend', alertEditHtml(list.find((x) => x.id === b.dataset.edit)));
+      b.setAttribute('aria-expanded', 'true');
+      $('.alert-edit [name=origin]', li).focus();
+    }));
+    box.onclick = (e) => {
+      if (!e.target.closest('[data-edit-cancel]')) return;
+      e.target.closest('.alert-edit').remove();
+      $$('[data-edit]', box).forEach((x) => x.setAttribute('aria-expanded', 'false'));
+    };
+    box.onsubmit = async (e) => {
+      const f = e.target.closest('.alert-edit');
+      if (!f) return;
+      e.preventDefault();
+      const btn = $('button[type=submit]', f);
+      btn.disabled = true;
+      try {
+        const codes = (v) => v.toUpperCase().split(/[\s,，、]+/).filter(Boolean).join(',');
+        const r = await cashApi(`/api/alerts?id=${encodeURIComponent(f.dataset.id)}`, { method: 'PUT', body: JSON.stringify({ origin: codes(f.origin.value), destination: codes(f.destination.value), start: f.start.value, end: f.end.value, cabin: f.cabin.value, pax: f.pax.value, ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
+        toast(`已更新提醒，目前有 ${r.found} 筆有位，之後只通知新出現的`);
+        loadAlerts();
+      } catch (err) {
+        toast(err.message);
+        btn.disabled = false;
+      }
+    };
     $$('[data-del]', box).forEach((b) => b.addEventListener('click', async () => {
       try { await cashApi(`/api/alerts?id=${encodeURIComponent(b.dataset.del)}`, { method: 'DELETE' }); toast('已刪除提醒'); loadAlerts(); } catch (err) { toast(err.message); }
     }));
@@ -1151,6 +1218,12 @@ $('#search-results').addEventListener('click', (e) => {
   }
   const card = t.closest('.deal, td.cell[data-id]');
   if (card) { openTrips(card.dataset.id, card.dataset.title, state.cabin, card); return; }
+  const bulk = t.closest('[data-chips]');
+  if (bulk) {
+    state.hidden = bulk.dataset.chips === 'all' ? new Set() : new Set(state.results.map((r) => r.source));
+    renderSearch();
+    return;
+  }
   const chip = t.closest('.chip[data-src]');
   if (chip) {
     state.hidden.has(chip.dataset.src) ? state.hidden.delete(chip.dataset.src) : state.hidden.add(chip.dataset.src);
@@ -1233,10 +1306,20 @@ function renderSearch() {
 
   const programs = [...new Set(state.results.map((r) => r.source))];
   const release = releaseNoticeHtml(programs, state.start, state.end, state.route || '');
+  // Phantom-space notes once per program (they used to sit on every cell as a tooltip touch screens can't open).
+  const ph = phantomByProgram(rows, c);
+  const hiddenAll = allSources.every((s) => state.hidden.has(s));
+  const chips = allSources.map((s) => `<button type="button" class="chip ${state.hidden.has(s) ? '' : 'on'}" data-src="${s}" aria-pressed="${!state.hidden.has(s)}">
+    ${esc(srcName(s))}${bestBySource[s] ? ` <b>${kfmt(bestBySource[s])}</b>` : ''}${ph.has(s) ? ' <span class="ph" title="可能有幻影機位">⚠</span>' : ''}</button>`).join('')
+    + (allSources.length > 1 ? `${state.hidden.size ? '<button type="button" class="chip chip-all" data-chips="all">全部勾選</button>' : ''}${hiddenAll ? '' : '<button type="button" class="chip chip-all" data-chips="none">全部取消</button>'}` : '');
+  const matrixTitle = `<h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>`;
   if (!rows.length) {
     const filtered = state.affordOnly || state.product;
+    // Nothing left because programs were unticked: keep the chips so they can be ticked again.
+    const byChips = state.hidden.size && state.results.some((r) => state.hidden.has(r.source) && cab(r, c)?.available);
     root.innerHTML = `<div class="section-title">${cabinSeg}</div>${resultToolsHtml()}${release}
-      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」或改選全部艙位產品。' : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>`;
+      ${byChips ? `${matrixTitle}<div class="filters">${chips}</div>` : ''}
+      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」或改選全部艙位產品。' : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>`;
     return;
   }
 
@@ -1259,11 +1342,6 @@ function renderSearch() {
     </button>`;
   }).join('');
 
-  // Phantom-space notes once per program (they used to sit on every cell as a tooltip touch screens can't open).
-  const ph = phantomByProgram(rows, c);
-  const chips = allSources.map((s) => `<button type="button" class="chip ${state.hidden.has(s) ? '' : 'on'}" data-src="${s}" aria-pressed="${!state.hidden.has(s)}">
-    ${esc(srcName(s))}${bestBySource[s] ? ` <b>${kfmt(bestBySource[s])}</b>` : ''}${ph.has(s) ? ' <span class="ph" title="可能有幻影機位">⚠</span>' : ''}</button>`).join('');
-
   root.innerHTML = `
     <div class="section-title">${cabinSeg}</div>
     ${resultToolsHtml()}
@@ -1280,22 +1358,34 @@ function renderSearch() {
     <h2 class="section-title">最划算的選擇 <small>${byCost ? '依台幣成本（哩數 × 每哩成本 ＋ 稅金）；' : allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
     <div class="best${folded ? ' folded' : ''}">${dealHtml}</div>
     ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}
-    <h2 class="section-title">日曆 <small>每天最低哩數（顏色對照下方的便宜／較貴）；點日期篩選下表</small></h2>
-    <div id="cal-host"></div>
-    <h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>
+    <details class="cal-fold" id="cal-fold"${calOpen ? ' open' : ''}>
+      <summary><h2 class="section-title">日曆 <small id="cal-sum"></small></h2></summary>
+      <p class="hint cal-how">每天最低哩數（顏色對照下方的便宜／較貴）；點日期篩選下表</p>
+      <div id="cal-host"></div>
+    </details>
+    ${matrixTitle}
     <div class="filters">${chips}</div>
     ${matrixLegendHtml(rows, c, ph)}
     <div id="matrix-host"></div>`;
   renderCalendar(rows);
   renderMatrix(rows, allSources);
+  $('#cal-fold').addEventListener('toggle', (e) => { calOpen = e.target.open; });
 }
 
-// Calendar block only (holidays arriving later redraw just this, not the whole result page).
+// The results calendar starts folded (it is tall); opening it is remembered while this page is open.
+let calOpen = false;
+// Calendar block only (holidays arriving later redraw just this, not the whole result page). Folded, its heading
+// still says the lowest price and how many days have seats.
 function renderCalendar(rows = visibleRows()) {
   const host = $('#cal-host');
   if (!host) return;
   const real = rows.filter((r) => !r.estimate);
-  host.innerHTML = calendarHtml(real.length ? real : rows);
+  const use = real.length ? real : rows;
+  host.innerHTML = calendarHtml(use);
+  const c = state.cabin;
+  const miles = use.map((r) => cab(r, c)?.miles).filter(Boolean);
+  const days = new Set(use.filter((r) => cab(r, c)?.miles).map((r) => r.date)).size;
+  $('#cal-sum').textContent = miles.length ? `最低 ${fmt(Math.min(...miles))} 哩 · ${days} 天有位` : '';
 }
 function renderMatrix(rows = visibleRows(), sources = [...new Set(state.results.map((r) => r.source))]) {
   const host = $('#matrix-host');
