@@ -25,6 +25,7 @@ const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
 const { createExpiry } = require('./lib/expiry');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
+const { cronParts, cronSlot } = require('./lib/cronreport');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = process.env.SEATS_AERO_API_KEY || '';
@@ -410,7 +411,11 @@ async function runDaily(req, q) {
   if (parts.has('alerts') && alerts) {
     Object.assign(out, await alerts.run({ deadline: t0 + RUN_BUDGET.alerts, until: t0 + RUN_BUDGET.end, force: who !== 'cron', lock: lockFor('alerts:run', 120) }).catch((e) => ({ alertsError: e.message })));
   }
-  if (who === 'cron') await kv.set('cron:done', { at: new Date().toISOString(), ms: Date.now() - t0, problems: runProblems(out) }, { ex: 40 * 86400 }).catch(() => {});
+  if (who === 'cron') {
+    // Also kept per slot with how each part went, for the owner's status line (GET /api/cron/status).
+    const done = { at: new Date().toISOString(), ms: Date.now() - t0, problems: runProblems(out), parts: cronParts(out) };
+    await Promise.all([kv.set('cron:done', done, { ex: 40 * 86400 }), kv.set(`cron:done:${cronSlot(done.at)}`, done, { ex: 3 * 86400 })]).catch(() => {});
+  }
   return { checked: 0, report: [], ...out };
 }
 async function handleAlerts(req, q, sub) {
@@ -1252,6 +1257,13 @@ async function route(req, res) {
     if (p === '/api/cron/daily') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await runDaily(req, q));
+    }
+    // The owner's status line: how today's runs went and every instance's seats.aero calls. Not for visitors.
+    if (p === '/api/cron/status') {
+      if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
+      if ((await runCaller(req)) !== 'owner') return sendJson(res, 403, { error: '只有站長看得到排程狀態', code: 'owner-only' });
+      const [morning, evening] = await Promise.all(['morning', 'evening'].map((k) => kv.get(`cron:done:${k}`).catch(() => null)));
+      return sendJson(res, 200, { ...(await cronStatus()), runs: [morning, evening].filter(Boolean).sort((a, b) => a.at.localeCompare(b.at)), callsTodayAll: Number(await kv.get(seatsAllKey()).catch(() => 0)) || 0, dailyLimit: 1000 });
     }
     if (p === '/api/alerts' || p === '/api/alerts/run') {
       if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
