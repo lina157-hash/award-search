@@ -38,8 +38,8 @@ const carriersHtml = (list) => String(list || '').split(/[,\s]+/).filter(Boolean
 // The comparison table's compact form: each operating airline as a small logo (name on hover), at most 3 then 「+N」.
 const carrierLogosHtml = (list) => {
   const codes = [...new Set(String(list || '').split(/[,\s]+/).filter(Boolean))];
-  if (typeof airlineLogo !== 'function') return carriersHtml(list);
-  const one = (c) => { const logo = airlineLogo(c, 'xs'); return logo ? `<span class="mx-al" title="${esc(airlineZh(c))}">${logo}</span>` : `<span class="mx-al" title="${esc(airlineZh(c))}">${esc(c)}</span>`; };
+  if (typeof airlineMark !== 'function') return carriersHtml(list);
+  const one = (c) => airlineMark(c, esc(airlineZh(c))) || `<span class="mx-al" title="${esc(airlineZh(c))}">${esc(c)}</span>`;
   return codes.length ? `<span class="mx-als" title="${esc(codes.map(airlineZh).join('、'))}">${codes.slice(0, 3).map(one).join('')}${codes.length > 3 ? `<span class="mx-more">+${codes.length - 3}</span>` : ''}</span>` : '';
 };
 // A fare source's English airline name → Chinese, with the original in a tooltip.
@@ -154,7 +154,8 @@ function showTab(name) {
   const [tab, sub] = name.split('/');
   if (sub) tabSub[tab] = sub;
   currentTab = tab;
-  $$('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+  // One tab stop for the strip; the arrow keys move between tabs (below).
+  $$('.tabs button').forEach((b) => { b.setAttribute('aria-selected', String(b.dataset.tab === tab)); b.tabIndex = b.dataset.tab === tab ? 0 : -1; });
   // On phones the tab strip scrolls sideways; keep the open tab in view.
   const tb = $(`.tabs [data-tab="${tab}"]`);
   const strip = tb?.parentElement;
@@ -171,6 +172,16 @@ function setTabUrl(tab, query) {
 }
 const tabParams = (tab) => new URLSearchParams(tabQuery[tab] || '');
 $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+$('.tabs').addEventListener('keydown', (e) => {
+  const list = $$('.tabs button');
+  const i = list.indexOf(e.target);
+  const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: list.length - 1 }[e.key];
+  if (i < 0 || to == null) return;
+  e.preventDefault();
+  const b = list[(to + list.length) % list.length];
+  showTab(b.dataset.tab);
+  b.focus();
+});
 // The hash as the page was opened (account.js reads mail links like #verify=… after showTab has replaced it).
 const BOOT_HASH = location.hash;
 // Open the linked tab right away (before the data loads) and hand the incoming query to the tab it belongs to.
@@ -1234,21 +1245,27 @@ $('#search-results').addEventListener('click', (e) => {
   if (card) { openTrips(card.dataset.id, card.dataset.title, state.cabin, card); return; }
   const bulk = t.closest('[data-chips]');
   if (bulk) {
-    state.hidden = bulk.dataset.chips === 'all' ? new Set() : new Set(state.results.map((r) => r.source));
-    renderSearch();
+    const all = bulk.dataset.chips === 'all';
+    state.hidden = all ? new Set() : new Set(state.results.map((r) => r.source));
+    refreshPrograms(`[data-chips=${all ? 'none' : 'all'}]`);
     return;
   }
   const chip = t.closest('.chip[data-src]');
   if (chip) {
     state.hidden.has(chip.dataset.src) ? state.hidden.delete(chip.dataset.src) : state.hidden.add(chip.dataset.src);
-    renderSearch();
+    refreshPrograms(`.chip[data-src="${chip.dataset.src}"]`);
     return;
   }
   const day = t.closest('.day.has');
   if (day) { pickDay(state.day === day.dataset.date ? null : day.dataset.date); return; }
-  if (t.closest('#all-rows')) { state.allRows = true; renderMatrix(); return; }
-  if (t.closest('#show-same')) { state.showSame = true; renderSearch(); return; }
+  // The first rows are drawn already: add the rest instead of drawing the table again.
+  if (t.closest('#all-rows')) { state.allRows = true; fillMatrix(); return; }
+  if (t.closest('#show-same')) { state.showSame = true; $('#deals-host').innerHTML = resultParts(visibleRows()).deals; return; }
   if (t.closest('#clear-day')) pickDay(null);
+});
+// A focused table cell opens its flights with Enter or Space, like a click.
+$('#search-results').addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('td.cell[data-id]')) { e.preventDefault(); e.target.click(); }
 });
 $('#search-results').addEventListener('change', (e) => {
   const t = e.target;
@@ -1297,10 +1314,9 @@ function dealPicks(rows, c) {
   return picks.sort((a, b) => a.cabins[c].miles - b.cabins[c].miles);
 }
 
-function renderSearch() {
-  const root = $('#search-results');
+// The parts of the results page that follow the ticked programs: chips, Asia Miles callouts, best-deal cards, legend.
+function resultParts(rows) {
   const c = state.cabin;
-  const rows = visibleRows();
   const allSources = [...new Set(state.results.map((r) => r.source))];
 
   // lowest per program (ignores the program filter so chips always show a price)
@@ -1315,27 +1331,14 @@ function renderSearch() {
   const amRows = rows.filter((r) => r.estimate).sort((a, b) => a.cabins[c].miles - b.cabins[c].miles);
   const amReal = rows.filter((r) => r.source === 'asiamiles').sort((a, b) => a.cabins[c].miles - b.cabins[c].miles);
 
-  const cabinSeg = `<fieldset class="seg" aria-label="切換艙等">${Object.entries(CABIN_SHORT).map(([k, l]) =>
-    `<label><input type="radio" name="view-cabin" value="${k}" ${k === c ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
-
-  const programs = [...new Set(state.results.map((r) => r.source))];
-  const release = releaseNoticeHtml(programs, state.start, state.end, state.route || '');
   // Phantom-space notes once per program (they used to sit on every cell as a tooltip touch screens can't open).
   const ph = phantomByProgram(rows, c);
   const hiddenAll = allSources.every((s) => state.hidden.has(s));
   const chips = allSources.map((s) => `<button type="button" class="chip ${state.hidden.has(s) ? '' : 'on'}" data-src="${s}" aria-pressed="${!state.hidden.has(s)}">
     ${esc(srcName(s))}${bestBySource[s] ? ` <b>${kfmt(bestBySource[s])}</b>` : ''}${ph.has(s) ? ' <span class="ph" title="可能有幻影機位">⚠</span>' : ''}</button>`).join('')
     + (allSources.length > 1 ? `${state.hidden.size ? '<button type="button" class="chip chip-all" data-chips="all">全部勾選</button>' : ''}${hiddenAll ? '' : '<button type="button" class="chip chip-all" data-chips="none">全部取消</button>'}` : '');
-  const matrixTitle = `<h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>`;
-  if (!rows.length) {
-    const filtered = state.affordOnly || state.product;
-    // Nothing left because programs were unticked: keep the chips so they can be ticked again.
-    const byChips = state.hidden.size && state.results.some((r) => state.hidden.has(r.source) && cab(r, c)?.available);
-    root.innerHTML = `<div class="section-title">${cabinSeg}</div>${resultToolsHtml()}${release}
-      ${byChips ? `${matrixTitle}<div class="filters">${chips}</div>` : ''}
-      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」或改選全部艙位產品。' : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>`;
-    return;
-  }
+  const parts = { allSources, chips, hiddenAll, am: '', deals: '', legend: '' };
+  if (!rows.length) return parts;
 
   // One card per program, headed by the program; a tie at the top is said once instead of starring one card.
   const byCost = costSortOn();
@@ -1356,34 +1359,81 @@ function renderSearch() {
     </button>`;
   }).join('');
 
-  root.innerHTML = `
-    <div class="section-title">${cabinSeg}</div>
-    ${resultToolsHtml()}
-    ${release}
-    ${amReal.length ? `<div class="am-callout">
+  parts.am = `${amReal.length ? `<div class="am-callout">
       <div><b>國泰 亞洲萬里通</b>　最低 <b class="am-miles">${fmt(amReal[0].cabins[c].miles)} 哩</b>（${mmdd(amReal[0].date)} ${esc(amReal[0].origin)} → ${esc(amReal[0].destination)}，${carriersHtml(amReal[0].cabins[c].airlines)}），共 ${amReal.length} 個日期／航線有位</div>
       <div class="hint">來自 seats.aero 的亞洲萬里通實際資料。可在下方表格「國泰 亞洲萬里通」欄點選看航班。</div>
     </div>` : ''}
     ${amRows.length ? `<div class="am-callout">
       <div><b>亞洲萬里通估算</b>　國泰／寰宇一家航班最低約 <b class="am-miles">${fmt(amRows[0].cabins[c].miles)} 哩</b>（${mmdd(amRows[0].date)} ${esc(amRows[0].origin)} → ${esc(amRows[0].destination)}，${amRows[0].cabins[c].kind === 'cx' ? '國泰航班' : '夥伴航班'}）</div>
       <div class="hint">依 2026-05-01 起的距離哩數表推算，實際座位與價格請至國泰官網確認；轉機行程依各段距離相加，可能落在更高區間。<a href="#rules" data-goto="rules">看哩數表</a></div>
-    </div>` : ''}
-    ${typeof cxBadgeHtml === 'function' ? cxBadgeHtml(c) : ''}
-    <h2 class="section-title">最划算的選擇 <small>${byCost ? '依台幣成本（哩數 × 每哩成本 ＋ 稅金）；' : allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
+    </div>` : ''}`;
+  parts.deals = `<h2 class="section-title">最划算的選擇 <small>${byCost ? '依台幣成本（哩數 × 每哩成本 ＋ 稅金）；' : allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
     <div class="best${folded ? ' folded' : ''}">${dealHtml}</div>
-    ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}
+    ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}`;
+  parts.legend = matrixLegendHtml(rows, c, ph);
+  return parts;
+}
+
+function renderSearch() {
+  const root = $('#search-results');
+  const c = state.cabin;
+  const rows = visibleRows();
+  const p = resultParts(rows);
+
+  const cabinSeg = `<fieldset class="seg" aria-label="切換艙等">${Object.entries(CABIN_SHORT).map(([k, l]) =>
+    `<label><input type="radio" name="view-cabin" value="${k}" ${k === c ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
+
+  const programs = [...new Set(state.results.map((r) => r.source))];
+  const release = releaseNoticeHtml(programs, state.start, state.end, state.route || '');
+  const matrixTitle = `<h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>`;
+  if (!rows.length) {
+    matrixObs?.disconnect();
+    const filtered = state.affordOnly || state.product;
+    // Nothing left because programs were unticked: keep the chips so they can be ticked again.
+    const byChips = state.hidden.size && state.results.some((r) => state.hidden.has(r.source) && cab(r, c)?.available);
+    root.innerHTML = `<div class="section-title">${cabinSeg}</div>${resultToolsHtml()}${release}
+      ${byChips ? `${matrixTitle}<div class="filters">${p.chips}</div>` : ''}
+      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && p.hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」或改選全部艙位產品。' : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>`;
+    return;
+  }
+
+  // The parts in display:contents boxes (#am-host, #deals-host, #legend-host) are redrawn alone by refreshPrograms.
+  root.innerHTML = `
+    <div class="section-title">${cabinSeg}</div>
+    ${resultToolsHtml()}
+    ${release}
+    <div class="res-part" id="am-host">${p.am}</div>
+    ${typeof cxBadgeHtml === 'function' ? cxBadgeHtml(c) : ''}
+    <div class="res-part" id="deals-host">${p.deals}</div>
     <details class="cal-fold" id="cal-fold"${calOpen ? ' open' : ''}>
       <summary><h2 class="section-title">日曆 <small id="cal-sum"></small></h2></summary>
       <p class="hint cal-how">每天最低哩數（顏色對照下方的便宜／較貴）；點日期篩選下表</p>
       <div id="cal-host"></div>
     </details>
     ${matrixTitle}
-    <div class="filters">${chips}</div>
-    ${matrixLegendHtml(rows, c, ph)}
+    <div class="filters">${p.chips}</div>
+    <div class="res-part" id="legend-host">${p.legend}</div>
     <div id="matrix-host"></div>`;
   renderCalendar(rows);
-  renderMatrix(rows, allSources);
+  renderMatrix(rows, p.allSources);
   $('#cal-fold').addEventListener('toggle', (e) => { calOpen = e.target.open; });
+}
+
+// A program chip or 全部勾選／全部取消: redraw only what follows the ticked programs (chips, cards, calendar, legend,
+// table). The cabin switch, the filters and the 國泰 cards above stay as they are. `focusSel`: the button to keep focus on.
+function refreshPrograms(focusSel) {
+  const hadFocus = $('#search-results').contains(document.activeElement);
+  const rows = visibleRows();
+  if (rows.length && $('#matrix-host')) {
+    const p = resultParts(rows);
+    $('#am-host').innerHTML = p.am;
+    $('#deals-host').innerHTML = p.deals;
+    $('#search-results .filters').innerHTML = p.chips;
+    $('#legend-host').innerHTML = p.legend;
+    renderCalendar(rows);
+    renderMatrix(rows, p.allSources);
+  } else renderSearch();
+  if (hadFocus) $(`#search-results ${focusSel}`)?.focus({ preventScroll: true });
 }
 
 // The results calendar starts folded (it is tall); opening it is remembered while this page is open.
@@ -1406,7 +1456,9 @@ function renderMatrix(rows = visibleRows(), sources = [...new Set(state.results.
   if (!host) return;
   const shown = $$('#search-results .chip[data-src]').map((b) => b.dataset.src);
   const cols = (shown.length ? shown : sources).filter((s) => !state.hidden.has(s));
-  host.innerHTML = `${state.day ? `<div class="day-filter">目前只看 <b>${dayLabel(state.day)}</b><button type="button" class="outline" id="clear-day">顯示全部日期</button></div>` : ''}${matrixHtml(rows, cols)}`;
+  matrixNow = matrixParts(rows, cols);
+  host.innerHTML = `${state.day ? `<div class="day-filter">目前只看 <b>${dayLabel(state.day)}</b><button type="button" class="outline" id="clear-day">顯示全部日期</button></div>` : ''}<div class="table-wrap"><table class="mx">${matrixNow.head}<tbody></tbody></table></div>`;
+  fillMatrix();
 }
 
 // What each cell colour, border and mark means, under the program chips.
@@ -1494,7 +1546,40 @@ function calendarHtml(rows) {
 }
 
 const MATRIX_ROWS = 120;
-function matrixHtml(rows, sources) {
+// The table draws its first rows at once and more as they scroll near the screen: drawing all of them took seconds on a
+// phone, on every filter tap. Scrolled through, it is the same table as before.
+const MATRIX_FIRST = 12;
+const MATRIX_BATCH = 30;
+let matrixNow = null;
+let matrixObs = null;
+function fillMatrix() {
+  const host = $('#matrix-host');
+  const m = matrixNow;
+  const tbody = host && $('tbody', host);
+  if (!m || !tbody) return;
+  matrixObs?.disconnect();
+  // Long date ranges can have hundreds of rows; show the first ones until asked.
+  const keys = state.allRows ? m.allKeys : m.allKeys.slice(0, MATRIX_ROWS);
+  $('#all-rows', host)?.remove();
+  const step = (n) => {
+    const from = tbody.rows.length;
+    tbody.insertAdjacentHTML('beforeend', keys.slice(from, from + n).map(m.row).join(''));
+    if (tbody.rows.length < keys.length) {
+      if (typeof IntersectionObserver !== 'function') return step(keys.length);
+      // The next rows once the last drawn one is within about a screen of view.
+      const obs = new IntersectionObserver((ents) => {
+        if (!ents.some((x) => x.isIntersecting)) return;
+        obs.disconnect();
+        if (tbody.isConnected) step(MATRIX_BATCH);
+      }, { rootMargin: '0px 0px 900px 0px' });
+      obs.observe(tbody.rows[tbody.rows.length - 1]);
+      matrixObs = obs;
+    } else if (keys.length < m.allKeys.length) host.insertAdjacentHTML('beforeend', `<button type="button" class="outline more-rows" id="all-rows">顯示全部 ${m.allKeys.length} 列（目前 ${keys.length} 列）</button>`);
+  };
+  step(tbody.rows.length ? MATRIX_BATCH : MATRIX_FIRST);
+}
+// The table's header, its row keys (date|origin|destination, in display order) and a function drawing one row.
+function matrixParts(rows, sources) {
   const c = state.cabin;
   const keyOf = (r) => `${r.date}|${r.origin}|${r.destination}`;
   const grid = new Map();
@@ -1506,25 +1591,23 @@ function matrixHtml(rows, sources) {
   let low = Infinity;
   for (const g of grid.values()) for (const r of Object.values(g)) if (!r.estimate) low = Math.min(low, r.cabins[c].miles || Infinity);
   const allKeys = costSortKeys([...grid.keys()].sort(), grid, c, sources);
-  // Long date ranges can have hundreds of rows; show the first ones until asked.
-  const keys = state.allRows ? allKeys : allKeys.slice(0, MATRIX_ROWS);
+  // Priced cells take keyboard focus (Enter or Space opens the flights, like a click).
   const cell = (r) => {
     const x = r && cab(r, c);
     if (!x) return '<td class="cell none">·</td>';
     if (r.estimate) {
-      return `<td class="cell est" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small class="mx-meta">${carrierLogosHtml(x.airlines)}<span>${x.kind === 'cx' ? '國泰表' : '夥伴表'}</span></small></td>`;
+      return `<td class="cell est" tabindex="0" data-id="${esc(x.refId)}" data-title="${esc(`${titleOf(r)}（座位來源：${srcName(x.refSource)}）`)}" title="依距離哩數表估算">≈${fmt(x.miles)}<small class="mx-meta">${carrierLogosHtml(x.airlines)}<span>${x.kind === 'cx' ? '國泰表' : '夥伴表'}</span></small></td>`;
     }
     const cls = [x.seats && x.seats <= 1 ? 'few' : 'good', x.miles === low ? 'best-cell' : '', isOld(r.updatedAt) ? 'old' : ''].join(' ');
     const ph = phantomWarnings(r.source, x.airlines);
-    return `<td class="cell ${cls}" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}${costCellHtml(r, c)}<small class="mx-meta">${carrierLogosHtml(x.airlines)}${x.direct ? '<span>直飛</span>' : ''}${x.seats ? `<span>${x.seats}位</span>` : ''}</small></td>`;
+    return `<td class="cell ${cls}" tabindex="0" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}" title="${esc([r.updatedAt ? `資料 ${ago(r.updatedAt)}更新` : '', ...ph.map((p) => `⚠️ ${p.warning}`)].filter(Boolean).join('\n'))}">${valueMark(r, c)}${fmt(x.miles)}${x.taxes ? `<i class="tax">＋${esc(taxText(x.taxes))}</i>` : ''}${costCellHtml(r, c)}<small class="mx-meta">${carrierLogosHtml(x.airlines)}${x.direct ? '<span>直飛</span>' : ''}${x.seats ? `<span>${x.seats}位</span>` : ''}</small></td>`;
   };
-  return `<div class="table-wrap"><table class="mx">
-    <thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}${feeHeadHtml(s)}</th>`).join('')}</tr></thead>
-    <tbody>${keys.map((k) => {
-      const [date, o, d] = k.split('|');
-      return `<tr><td><div class="d">${dayLabel(date)}</div><div class="r">${esc(o)} → ${esc(d)}</div></td>${sources.map((s) => cell(grid.get(k)[s])).join('')}</tr>`;
-    }).join('')}</tbody></table></div>
-    ${keys.length < allKeys.length ? `<button type="button" class="outline more-rows" id="all-rows">顯示全部 ${allKeys.length} 列（目前 ${keys.length} 列）</button>` : ''}`;
+  const row = (k) => {
+    const [date, o, d] = k.split('|');
+    return `<tr><td><div class="d">${dayLabel(date)}</div><div class="r">${esc(o)} → ${esc(d)}</div></td>${sources.map((s) => cell(grid.get(k)[s])).join('')}</tr>`;
+  };
+  const head = `<thead><tr><th>日期／航線</th>${sources.map((s) => `<th>${esc(srcName(s))}${feeHeadHtml(s)}</th>`).join('')}</tr></thead>`;
+  return { allKeys, row, head };
 }
 
 // ---------- trip details ----------
@@ -1877,7 +1960,7 @@ function renderExplore() {
   const shown = rows.slice(0, ex.shown);
   $('#ex-table').innerHTML = `<div class="table-wrap"><table>
     <thead><tr>${cols.map(([k, l]) => `<th class="sortable" data-k="${k}" tabindex="0" aria-sort="${ex.sort.key === k ? (ex.sort.dir > 0 ? 'ascending' : 'descending') : 'none'}">${l}${arrow(k)}</th>`).join('')}</tr></thead>
-    <tbody>${shown.map((r) => `<tr class="click" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">
+    <tbody>${shown.map((r) => `<tr class="click" tabindex="0" data-id="${esc(r.id)}" data-title="${esc(titleOf(r))}">
       <td><span class="d">${dayLabel(r.date)}</span></td>
       <td><b>${esc(r.origin)}</b> → <b>${esc(r.destination)}</b></td>
       <td><b class="ex-miles">${fmt(r.miles)}</b></td>
@@ -1900,7 +1983,8 @@ $('#explore-results').addEventListener('click', (e) => {
   if (e.target.closest('#ex-more')) { ex.shown += PAGE; renderExplore(); }
 });
 $('#explore-results').addEventListener('keydown', (e) => {
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('th.sortable')) { e.preventDefault(); e.target.click(); }
+  // Sort headers and result rows (a row opens its flights, like a click).
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('th.sortable, tr.click')) { e.preventDefault(); e.target.click(); }
 });
 // ---------- cash fares ----------
 // Live prices come from Google Flights through the server (SerpApi); without a key we still offer deep links.

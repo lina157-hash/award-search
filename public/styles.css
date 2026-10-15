@@ -198,7 +198,8 @@ td.cell.none { color: var(--muted); cursor: default; font-weight: 400; }
 td.cell small { display: block; font-size: .72rem; font-weight: 400; }
 td .d { font-weight: 700; } td .r { color: var(--muted); font-size: .8rem; }
 tr.click { cursor: pointer; }
-tr.click:hover td { background: var(--surface-2); }
+tr.click:hover td, tr.click:focus-visible td { background: var(--surface-2); }
+tr.click:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ---------- dialog ---------- */
 dialog { border: 0; border-radius: 18px; background: var(--surface); color: var(--text); width: min(760px, calc(100vw - 24px)); max-height: 86vh; padding: 0; box-shadow: 0 20px 60px rgb(0 0 0 / .3); }
@@ -307,6 +308,11 @@ h3.sub { font-size: .95rem; margin: 8px 0; }
 
 /* ---------- cash fares ---------- */
 [hidden] { display: none !important; }
+/* The route tab keeps its drawn results while another tab is open (content-visibility keeps the layout; display:none
+   threw it away and a long results table took seconds to come back on a phone). */
+#tab-search.panel[hidden] { display: block !important; content-visibility: hidden; height: 0; }
+.res-part { display: contents; }
+td.cell[tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 a.outline.btn { display: inline-flex; align-items: center; font-size: .88rem; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; }
 a.outline.btn:hover { border-color: var(--accent); color: var(--accent); }
 button.primary.small { padding: 7px 14px; font-size: .85rem; }
@@ -1303,6 +1309,7 @@ details.rules-fold > summary:hover h2.section, .prog-card > summary:hover h3, .a
 .alogo.sm { width: 20px; height: 20px; border-radius: 5px; }
 .alogo.md { width: 36px; height: 36px; border-radius: 10px; }
 .alogo.lg { width: 40px; height: 40px; }
+.alogo-bg { padding: 1.44px; background: #fff center / contain no-repeat content-box border-box; }
 .alogo-al { border-radius: 50%; }
 .alogo-al img { width: 92%; height: 92%; }
 .alogo-code { border-radius: 50%; background: var(--lc); color: #fff; font-size: .58rem; font-weight: 700; letter-spacing: .02em; box-shadow: none; line-height: 1; }
