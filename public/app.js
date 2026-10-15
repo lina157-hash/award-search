@@ -916,7 +916,9 @@ const alertShare = (a) => new URLSearchParams({ o: a.origin, d: a.destination, s
 function alertFiltersHtml(share, a = null) {
   const c = state.cabin;
   const inResults = a ? a.sources || [] : [...new Set(state.results.map((r) => r.source))].filter((x) => SOURCE_NAMES[x]);
-  const programs = [...inResults, ...Object.keys(SOURCE_NAMES).filter((x) => !inResults.includes(x))];
+  // One chip per program: aliases sharing a name (copa / connectmiles) and the estimate-only source are left out.
+  const named = new Set(inResults.map(srcName));
+  const programs = [...inResults, ...Object.keys(SOURCE_NAMES).filter((x) => !inResults.includes(x) && !x.endsWith('_est') && !named.has(srcName(x)) && named.add(srcName(x)))];
   const pre = a ? new Set(a.sources || []) : state.hidden.size ? new Set(inResults.filter((x) => !state.hidden.has(x))) : new Set();
   const carriers = a ? [] : [...new Set(state.results.flatMap((r) => (cab(r, c)?.available ? r.cabins[c].airlines.split(/,\s*/) : [])).filter((x) => /^[A-Z0-9]{2}$/.test(x)))].sort();
   // An airline filter on the search itself (航空公司 field) carries over.
