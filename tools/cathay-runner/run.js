@@ -330,28 +330,50 @@ async function fillDate(page, iso) {
   return Boolean(ok);
 }
 
-// 「使用里數兌換」 must be on. The toggle is a switch/checkbox next to that text.
-async function milesToggleOn(page) {
-  const state = await page.evaluate(`(() => {
-    const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let n;
-    while ((n = tw.nextNode())) if (/使用里數兌換|使用里數|redeem (with )?miles|pay with miles/i.test(n.nodeValue)) {
-      let e = n.parentElement;
-      for (let k = 0; e && k < 5; e = e.parentElement, k++) {
-        const sw = e.querySelector('[role=switch],[role=checkbox],input[type=checkbox]');
-        if (sw) { const on = sw.getAttribute('aria-checked') === 'true' || sw.checked === true; return { found: true, on }; }
-      }
-      return { found: true, on: null };
+// 「使用里數兌換」 must be on. The toggle is a switch/checkbox next to that text (on Cathay a <label class="c-toggle"
+// aria-label="使用里數兌換"> around a hidden input, whose thumb and the quick links above it catch a mouse click).
+// Tries a normal click, then the keyboard (focus + Space), then the label's own click, checking the state after each.
+const MILES_STATE_JS = `(() => {
+  const isSw = (e) => e.matches('[role=switch],[role=checkbox],input[type=checkbox]');
+  const on = (sw) => sw.getAttribute('aria-checked') === 'true' || sw.checked === true;
+  for (const l of document.querySelectorAll('[aria-label]')) if (/使用里數兌換|redeem (with )?miles|pay with miles/i.test(l.getAttribute('aria-label'))) {
+    const sw = isSw(l) ? l : l.querySelector('[role=switch],[role=checkbox],input[type=checkbox]');
+    if (sw) return { found: true, on: on(sw) };
+  }
+  const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = tw.nextNode())) if (/使用里數兌換|使用里數|redeem (with )?miles|pay with miles/i.test(n.nodeValue)) {
+    let e = n.parentElement;
+    for (let k = 0; e && k < 5; e = e.parentElement, k++) {
+      const sw = e.querySelector('[role=switch],[role=checkbox],input[type=checkbox]');
+      if (sw) return { found: true, on: on(sw) };
     }
-    return { found: false };
-  })()`).catch(() => ({ found: false }));
-  if (!state.found) return false;
-  if (state.on === true) return true;
+    return { found: true, on: null };
+  }
+  return { found: false };
+})()`;
+const MILES_LABEL_CLICK_JS = `(() => {
+  for (const l of document.querySelectorAll('[aria-label]')) if (/使用里數兌換|redeem (with )?miles|pay with miles/i.test(l.getAttribute('aria-label'))) { l.click(); return true; }
+  return false;
+})()`;
+async function milesToggleOn(page) {
+  const state = () => page.evaluate(MILES_STATE_JS).catch(() => ({ found: false }));
+  const first = await state();
+  if (!first.found) return false;
+  if (first.on === true) return true;
   const sw = await firstVisible([page.getByRole('switch', { name: /里數|miles/i }), page.getByRole('checkbox', { name: /里數|miles/i }), page.getByRole('switch'), anyText(page, /使用里數兌換/)]);
-  if (!sw) return false;
-  await sw.click();
-  await pause(1, 2);
-  return true;
+  const tries = [
+    async () => { if (sw) await sw.click({ timeout: 4000 }); },
+    async () => { if (sw) { await sw.focus({ timeout: 3000 }); await page.keyboard.press('Space'); } },
+    async () => { await page.evaluate(MILES_LABEL_CLICK_JS); },
+  ];
+  for (const t of tries) {
+    try { await t(); } catch { /* try the next way */ }
+    await pause(1, 2);
+    const now = await state();
+    if (now.on === true || (now.on === null && first.on === null)) return true;
+  }
+  return false;
 }
 
 // The whole homepage search: true when the results page with the date strip came up.
@@ -515,10 +537,13 @@ async function reachResults(page, route, date, mode) {
   throw new Error('看不到日期列');
 }
 
-// Does the page show the route we asked for? Codes from the flight cards when there are any, else the names.
+// Does the page show the route we asked for? The city names in the heading first: Cathay searches a city (東京 = NRT
+// and HND), so the flight cards can end at another airport of the same city. Else the codes from the flight cards.
 function routeMatches(r, route) {
+  const same = (a, b) => Boolean(a && b) && (a.includes(b) || b.includes(a));
+  if (r.from && r.to && route.from && route.to) return same(r.from, route.from) && same(r.to, route.to);
   if (r.fc && r.tc) return r.fc === route.fc && r.tc === route.tc;
-  if (r.from && route.from) return r.from.includes(route.from) || route.from.includes(r.from);
+  if (r.from && route.from) return same(r.from, route.from);
   return true;
 }
 
