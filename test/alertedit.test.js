@@ -64,7 +64,7 @@ test('alert update: same validation as create, unknown id is an error, nothing s
   await assert.rejects(al.update(alert.id, { origin: 'TAIPEI' }), /機場代碼格式錯誤/);
   await assert.rejects(al.update(alert.id, { start: isoIn(30), end: isoIn(10) }), /日期格式錯誤/);
   await assert.rejects(al.update(alert.id, { start: isoIn(-20), end: isoIn(-10) }), /日期已經過了/);
-  await assert.rejects(al.update(alert.id, { cabin: 'X' }), /艙等錯誤/);
+  await assert.rejects(al.update(alert.id, { cabin: 'X' }), /艙等/);
   await assert.rejects(al.update(alert.id, { airlines: 'CHINA' }), /航空公司代碼/);
   await assert.rejects(al.update(alert.id, { alliance: 'nope' }), /航空聯盟錯誤/);
   await assert.rejects(al.update('nope', { cabin: 'Y' }), (e) => e.status === 404 && /找不到這個提醒/.test(e.message));
