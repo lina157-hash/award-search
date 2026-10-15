@@ -135,11 +135,14 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     const k = `${o}|${d}`;
     const hit = cache.get(k);
     if (hit && Date.now() - hit.at < TTL) return hit.body;
-    const body = await api(`/api/cxcal?origin=${encodeURIComponent(o)}&destination=${encodeURIComponent(d)}`);
+    // After a save on this page, `v` asks past the CDN's one-minute copy.
+    const body = await api(`/api/cxcal?origin=${encodeURIComponent(o)}&destination=${encodeURIComponent(d)}${savedAt ? `&v=${savedAt}` : ''}`);
     cache.set(k, { at: Date.now(), body });
     return body;
   }
-  document.addEventListener('cxcal:saved', () => cache.clear()); // cxmuse.js saved a route
+  let savedAt = 0;
+  const saved = () => { cache.clear(); savedAt = Date.now(); };
+  document.addEventListener('cxcal:saved', saved); // cxmuse.js saved a route
   document.addEventListener('search:start', () => { st.seq++; st.share = null; st.body = null; st.cal.clear(); });
   document.addEventListener('search:done', async (e) => {
     const n = ++st.seq;
@@ -206,7 +209,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
             ok.push(`${x.fc}→${x.tc}（${x.days} 天）`);
           } catch (err) { bad.push(`${r.fc}→${r.tc}：${err.message}`); }
         }
-        cache.clear();
+        saved();
         toast([ok.length ? `已儲存 ${ok.join('、')}` : '', bad.join('；')].filter(Boolean).join('；'));
         done();
       });
@@ -224,7 +227,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
       const done = busy(b, '儲存中…');
       try {
         const r = await cashApi('/api/cxcal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ v: 1, from: d.from, to: d.to, fc: d.fc, tc: d.tc, at: d.at || Date.now(), days: d.days, source: 'bookmarklet' }) });
-        cache.clear();
+        saved();
         toast(`已儲存 ${r.fc}→${r.tc}（${r.days} 天）`);
       } catch (err) { toast(err.message); }
       done();

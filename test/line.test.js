@@ -90,7 +90,7 @@ test('push cap: counted per month, the last allowed message says so, then nothin
   assert.equal(client.sent.at(-1).text, '🔔 TPE → NRT 新增 & 打開這個搜尋：https://x.test/?a=1&b=2');
   assert.equal(await line.notify('third'), true);
   assert.match(client.sent.at(-1).text, /^third\n\n（本月 LINE 通知已達網站設定的上限 3 則/);
-  assert.equal(await line.notify('fourth'), false, 'over the cap: not sent');
+  assert.equal(await line.notify('fourth'), null, 'over the cap: not sent, and nothing to try again this month');
   await assert.rejects(line.test(), (e) => e.code === 'cap' && e.status === 429);
   assert.equal(client.sent.length, 3);
   const st = await line.status();
@@ -101,14 +101,14 @@ test('push cap: counted per month, the last allowed message says so, then nothin
   assert.equal((await line.status()).used, 1);
   // A failed push gives its slot back; LINE's own monthly limit stops the rest of the month.
   const failing = createLine({ client: fakeClient({ failPush: Object.assign(new Error('x'), { code: 'blocked' }) }), kv, cap: 3, now: () => t });
-  assert.equal(await failing.notify('a'), false);
+  assert.equal(await failing.notify('a'), false, 'tried and failed: the caller keeps the news');
   assert.equal((await line.status()).used, 1);
   const limited = createLine({ client: fakeClient({ failPush: Object.assign(new Error('x'), { code: 'limit' }) }), kv, cap: 3, now: () => t });
-  assert.equal(await limited.notify('a'), false);
+  assert.equal(await limited.notify('a'), null);
   assert.equal((await line.status()).capped, true);
-  // Not set up or not linked: false, never thrown.
-  assert.equal(await createLine({ client: null, kv }).notify('x'), false);
-  assert.equal(await createLine({ client, kv: memoryKv() }).notify('x'), false);
+  // Not set up or not linked: null (nowhere to send), never thrown.
+  assert.equal(await createLine({ client: null, kv }).notify('x'), null);
+  assert.equal(await createLine({ client, kv: memoryKv() }).notify('x'), null);
 });
 
 test('htmlToText turns the Telegram HTML into plain text', () => {

@@ -57,6 +57,11 @@ function countCall() {
   if (usage.day !== today) Object.assign(usage, { day: today, calls: 0 });
   usage.calls++;
 }
+// Every instance's seats.aero calls of the day together (UTC day, like seats.aero's own count): visitors' lookups
+// add theirs through spendBudget; the daily jobs and the owner's runs (deals, seat alerts) through countShared, so
+// visitors are stopped earlier on a day the jobs needed more.
+const seatsAllKey = (day = new Date().toISOString().slice(0, 10)) => `budget:v1:seats:all:${day}`;
+const countShared = () => { kv.incr(seatsAllKey(), 1, 2 * 86400).catch(() => {}); };
 
 // Keeps background work alive after the response on Vercel (the hook @vercel/functions' waitUntil uses); elsewhere it simply runs.
 function defer(p) {
@@ -73,7 +78,8 @@ function countSerp(kind) {
 }
 const serpUsed = async (kind) => Number(await kv.get(serpKey(kind)).catch(() => 0)) || 0;
 
-const client = createClient({ apiKey: API_KEY, onCall: countCall });
+// The jobs' client (deals, seat alerts); visitors' lookups use their own (seatsCalls), counted by the budget.
+const client = createClient({ apiKey: API_KEY, onCall: () => { countCall(); countShared(); } });
 const cashQuery = createCashClient({ apiKey: SERPAPI_KEY, onCall: () => countSerp('flights') });
 // Hotel award availability (rooms.aero) takes the same seats.aero Pro key, with its own 1,000 calls per UTC day.
 const roomsUsage = { day: '', calls: 0 };
@@ -221,21 +227,27 @@ const line = lineLib.createLine({
   cap: Number(process.env.LINE_MONTHLY_CAP) || 180,
   missing: [!LINE_TOKEN && 'LINE_CHANNEL_ACCESS_TOKEN', !LINE_SECRET && 'LINE_CHANNEL_SECRET', !HAS_REDIS && 'Upstash Redis'].filter(Boolean),
 });
-// Alerts and price drops go to Telegram and LINE side by side; true when either got it.
-const notifyAll = async (html) => (await Promise.all([telegram.notify(html), line.notify(html)])).some(Boolean);
+// Price drops go to Telegram and LINE side by side: true when either got it, false when one was tried and none got
+// it (tried again next time), null when neither is linked. Seat alerts go to Telegram one by one and to LINE as one
+// message per run (LINE counts every push against a monthly allowance).
+const notifyAll = async (html) => { const rs = await Promise.all([telegram.notify(html), line.notify(html)]); return rs.includes(true) ? true : rs.includes(false) ? false : null; };
 // Award-space history from the searches the daily jobs already make (lib/history.js); needs Upstash.
 const history = createHistory({ kv, enabled: HAS_REDIS && !MOCK, demo: MOCK });
 const alerts = alertStore && createAlerts({
   store: alertStore,
   sendEmail: alertMailer,
-  notify: notifyAll,
+  notify: (html) => telegram.notify(html),
+  digest: (htmls) => line.notify(htmls.join('\n\n')),
   listLock: () => waitLock(kv, 'award-alerts:v1:lock', 10),
   siteUrl: SITE_URL,
   programNames: SOURCE_NAMES,
-  // Cheapest seats first, one page of 1,000 (two for ranges over four months): what an alert mail lists anyway.
-  search: (params) => cached('alert:' + JSON.stringify(params), async () => {
+  // Cheapest seats first, pages of 1,000 per cabin: one page up to four months, then one more for every 120 days
+  // (four for a whole year), fetched only while seats.aero says there is more. `until`: see lib/seats.js.
+  pagesFor: (a) => pagesFor({ start_date: a.start, end_date: a.end }, 1, 120),
+  perCallMs: 2000, // per seats.aero call, when deciding whether a watch can still start in a run (live calls take 0.1–0.5 s)
+  search: (params, { until } = {}) => cached('alert:' + JSON.stringify(params), async () => {
     const p = { ...params, order_by: 'lowest_mileage', take: 1000 };
-    const { items } = MOCK ? { items: mock.mockSearch(p) } : await client.search(p, { maxPages: pagesFor(p, 1, 120) });
+    const { items } = MOCK ? { items: mock.mockSearch(p) } : await client.search(p, { maxPages: pagesFor(p, 1, 120), until });
     const rows = items.map(normalizeAvailability);
     defer(history.note(p, rows));
     return rows;
@@ -248,12 +260,18 @@ const deals = createDeals({
   days: MOCK ? 60 : 330,
   lock: (name, seconds) => takeLock(kv, name, seconds),
   defer,
-  search: (params) => cached('deals:' + JSON.stringify(params), async () => {
-    const { items } = MOCK ? { items: mock.mockSearch(params) } : await client.search(params, { maxPages: 1 });
-    const rows = items.map(normalizeAvailability);
-    defer(history.note(params, rows));
-    return rows;
-  }),
+  // `fresh` (the owner's 立即更新): ask seats.aero now instead of reusing this instance's last 30 minutes.
+  search: (params, { fresh = false } = {}) => {
+    const key = 'deals:' + JSON.stringify(params);
+    if (fresh) uncache(key);
+    return cached(key, async () => {
+      const { items } = MOCK ? { items: mock.mockSearch(params) } : await client.search(params, { maxPages: 1 });
+      const rows = items.map(normalizeAvailability);
+      rows.fetchedAt = Date.now();
+      defer(history.note(params, rows));
+      return rows;
+    });
+  },
 });
 // Cash price tracking: same Redis and mailer as the seat alerts; each check spends one search credit, so lib/pricewatch spaces them out and caps them.
 const watchStore = CASH_MODE === 'off' ? null : HAS_REDIS ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'price-watch:v1' }) : CASH_MODE === 'mock' ? memoryStore(null) : null;
@@ -265,11 +283,12 @@ const priceWatch = watchStore && createPriceWatch({
   siteUrl: SITE_URL,
   // Checks run on RapidAPI; the SerpApi reserve only matters when there is no RapidAPI key.
   quota: async () => (CASH_MODE !== 'live' || RAPIDAPI_KEY ? null : serpLeft()),
-  search: async (w) => {
+  search: async (w, { until = Infinity } = {}) => {
     const params = { departure_id: w.origin, arrival_id: w.destination, outbound_date: w.depart, return_date: w.ret || undefined, type: w.ret ? 1 : 2, travel_class: CABIN_CLASS[w.cabin], adults: w.adults, stops: w.stops || undefined };
     if (CASH_MODE === 'mock') return normalizeCash(mock.mockCash(params));
-    // Falling back to SerpApi is fine only while it has plenty left for the owner's own searches.
-    return normalizeCash(await liveCash(params, { allowSerp: async () => { const left = await serpLeft(); return left == null || left >= RESERVE; } }));
+    // Falling back to SerpApi is fine only while it has plenty left for the owner's own searches, and while the run
+    // has time left for it (under 15 seconds, the run would be cut off mid-call).
+    return normalizeCash(await liveCash(params, { allowSerp: async () => { if (until - Date.now() < 15e3) return false; const left = await serpLeft(); return left == null || left >= RESERVE; } }));
   },
 });
 async function handleWatch(req, q) {
@@ -282,17 +301,27 @@ async function handleWatch(req, q) {
 }
 
 let dealsPending = null;
-async function handleDeals() {
+// `at` (the page, after its own 立即更新): that copy or a newer one, past this instance's memory of an older one.
+const DEALS_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+async function handleDeals(q) {
+  const at = q.get('at');
+  if (at && DEALS_AT.test(at) && Date.parse(at) <= Date.now() + 60e3) return { mock: MOCK, ...(await deals.get({ atLeast: at })) };
   // Concurrent first visitors share one read (or the very first build) instead of each spending API calls.
   dealsPending ||= deals.get().finally(() => { dealsPending = null; });
   return { mock: MOCK, ...(await dealsPending) };
 }
 
 // 「立即更新」 on 今日好康: the owner (passcode) refreshes every group now, about 8 seats.aero calls, at most once an hour.
+// Nothing refreshed (the daily run was updating them, or every group failed): the hour's turn is given back.
 async function refreshDealsNow(req) {
   if (!(await runCaller(req))) throw cashPasscode() ? passError(req, '需要通關密碼才能手動更新今日好康') : noPasscode('今日好康手動更新');
-  if (!(await takeLock(kv, 'deals:manual', 3600))) throw new BadRequest('今日好康一小時內只能手動更新一次，請稍後再試');
-  const d = await deals.refresh({ deadline: Date.now() + 45_000 });
+  const release = await takeLock(kv, 'deals:manual', 3600);
+  if (!release) throw new BadRequest('今日好康一小時內只能手動更新一次，請稍後再試');
+  let d;
+  try {
+    d = await deals.refresh({ deadline: Date.now() + 45_000, fresh: true });
+  } catch (e) { await release(); throw e; }
+  if (!d.refreshed) await release();
   return { mock: MOCK, ...d };
 }
 
@@ -341,13 +370,18 @@ function readJson(req, limit = 10_000) {
 // later): deals, then price watches, then seat alerts, in one 60-second function. Each part saves item by item and
 // stops starting new items near the time limit, so a cut-off run loses nothing and the catch-up run (or tomorrow's)
 // finishes the rest; work already done today is skipped. `?part=expiry,deals,watches,alerts` runs only those parts
-// (expiry: the miles expiry reminders, which spend no quota, go first).
-const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, alerts: 48e3 };
-// Whether CRON_SECRET is set (never its value) and when Vercel's run last got in or was turned away.
+// (expiry: the miles expiry reminders, which spend no quota, go first). The budgets say when each part stops starting
+// new items; `end` is when every seats.aero or cash lookup must have answered, short of Vercel's 60-second limit, so
+// a slow upstream ends in a timeout the run records instead of the function being killed mid-way.
+const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, alerts: 48e3, end: 54e3 };
+// Whether CRON_SECRET is set (never its value), when Vercel's run last got in or was turned away, and when the last
+// one finished, how long it took and how many items failed or were left for later.
 async function cronStatus() {
-  const [last, denied] = await Promise.all([kv.get('cron:last').catch(() => null), kv.get('cron:denied').catch(() => null)]);
-  return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null };
+  const [last, denied, done] = await Promise.all(['cron:last', 'cron:denied', 'cron:done'].map((k) => kv.get(k).catch(() => null)));
+  return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null, lastDone: done?.at || null, lastDoneMs: done?.ms ?? null, lastProblems: done?.problems ?? null };
 }
+const runProblems = (out) => [out.expiry?.error, out.dealsError, out.watches?.error, out.alertsError].filter(Boolean).length
+  + [...(out.report || []), ...(out.watches?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
 async function runDaily(req, q) {
   const who = await runCaller(req);
   // Remembered for /api/config, so the owner can see whether Vercel's daily run gets in (CRON_SECRET set) or is turned away.
@@ -370,9 +404,12 @@ async function runDaily(req, q) {
     } catch (e) { out.dealsError = e.message; }
   }
   if (parts.has('watches') && priceWatch) {
-    out.watches = await priceWatch.run({ deadline: t0 + RUN_BUDGET.watches, lock: lockFor('price-watch:run', 120) }).catch((e) => ({ error: e.message }));
+    out.watches = await priceWatch.run({ deadline: t0 + RUN_BUDGET.watches, until: t0 + RUN_BUDGET.end, lock: lockFor('price-watch:run', 120) }).catch((e) => ({ error: e.message }));
   }
-  if (parts.has('alerts') && alerts) Object.assign(out, await alerts.run({ deadline: t0 + RUN_BUDGET.alerts, force: who !== 'cron', lock: lockFor('alerts:run', 120) }));
+  if (parts.has('alerts') && alerts) {
+    Object.assign(out, await alerts.run({ deadline: t0 + RUN_BUDGET.alerts, until: t0 + RUN_BUDGET.end, force: who !== 'cron', lock: lockFor('alerts:run', 120) }).catch((e) => ({ alertsError: e.message })));
+  }
+  if (who === 'cron') await kv.set('cron:done', { at: new Date().toISOString(), ms: Date.now() - t0, problems: runProblems(out) }, { ex: 40 * 86400 }).catch(() => {});
   return { checked: 0, report: [], ...out };
 }
 async function handleAlerts(req, q, sub) {
@@ -443,12 +480,36 @@ class LimitError extends Error {
 }
 // Guessing the passcode: 5 wrong tries per address (the x-cash-pass header on any endpoint, account unlock included),
 // then that address waits 15 minutes; the right passcode starts the count again. Everyone's wrong tries together are
-// capped per hour as a backstop (the owner hears about it on Telegram), which only stops header checks: signed-in
-// accounts that were unlocked before keep working.
+// capped per hour as a backstop (the owner hears about it on Telegram). That pause only stops header checks from
+// addresses that have not entered the right passcode in the last 30 days, and signed-in accounts that were unlocked
+// before keep working from the page (see cashOk), so a flood of wrong guesses cannot lock the owner out.
 const PASS_MAX = 5;
 const PASS_LOCK_SEC = 900;
 const PASS_GLOBAL_MAX = 100;
-const passKey = (req) => `rl:pass:v1:${hashKey(clientIp(req) || 'unknown')}`;
+const PASS_OK_SEC = 30 * 86400;
+// The address guesses are counted against: IPv4 as it is, IPv6 by its /64 (one home or one server usually holds a
+// whole /64, so counting single IPv6 addresses would hand a guesser millions of fresh ones).
+function passBucket(ip) {
+  const s = String(ip || '').trim().replace(/^\[|\]$/g, '').replace(/%.*$/, '').toLowerCase();
+  const v4 = s.match(/^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/);
+  if (v4) return v4[1];
+  if (!s.includes(':')) return s || 'unknown';
+  const [head, tail] = s.split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail ? tail.split(':') : [];
+  const groups = tail === undefined ? h : [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t];
+  return groups.slice(0, 4).map((g) => (parseInt(g, 16) || 0).toString(16)).join(':') + '::/64';
+}
+const passKey = (req) => `rl:pass:v1:${hashKey(passBucket(clientIp(req)))}`;
+// Addresses that entered the right passcode lately, remembered per instance too, so the owner's every request does
+// not write it again.
+const passOkSeen = new Map();
+function markPassOk(key) {
+  if (Date.now() - (passOkSeen.get(key) || 0) < 12 * 3600e3) return;
+  passOkSeen.set(key, Date.now());
+  if (passOkSeen.size > 1000) passOkSeen.delete(passOkSeen.keys().next().value);
+  kv.set(key + ':ok', 1, { ex: PASS_OK_SEC }).catch(() => {});
+}
 const lockedFor = (until) => `通關密碼錯太多次，請 ${Math.max(1, Math.ceil((until - Date.now()) / 60000))} 分鐘後再試`;
 async function passHeaderOk(req, want) {
   const given = String(req.headers['x-cash-pass'] || '');
@@ -457,13 +518,14 @@ async function passHeaderOk(req, want) {
   const lock = await kv.get(key + ':lock').catch(() => null);
   if (lock) throw new LimitError(lockedFor(lock.until || Date.now() + PASS_LOCK_SEC * 1000));
   const globalKey = `rl:pass:v1:all:${Math.floor(Date.now() / 3600e3)}`;
-  if (Number(await kv.get(globalKey).catch(() => 0)) >= PASS_GLOBAL_MAX) throw new LimitError('通關密碼暫停驗證中（錯誤的嘗試太多），請過一小時再試');
+  if (Number(await kv.get(globalKey).catch(() => 0)) >= PASS_GLOBAL_MAX && !(await kv.get(key + ':ok').catch(() => null))) throw new LimitError('通關密碼暫停驗證中（錯誤的嘗試太多），請過一小時再試');
   // Counted before comparing, so a burst of guesses sent at once cannot all be compared before the count catches up;
   // a few extra are let through for the owner's own requests running side by side.
   const n = await kv.incr(key, 1, PASS_LOCK_SEC).catch(() => 0);
   if (n > PASS_MAX + 3) throw new LimitError(lockedFor(Date.now() + PASS_LOCK_SEC * 1000));
   if (safeEqual(given, want)) {
     await kv.del(key).catch(() => {});
+    markPassOk(key);
     return true;
   }
   const all = await kv.incr(globalKey, 1, 3600).catch(() => 0);
@@ -491,14 +553,22 @@ function fromPage(req) {
 
 // Signed-in accounts that entered the passcode once count as unlocked from then on (see lib/accounts.js), next to the
 // x-cash-pass header. The header on a signed-in request is what marks the account. The cookie alone counts only on
-// requests from the page itself, so another site cannot make a signed-in browser spend the quota. Worked out once
-// per request.
+// requests from the page itself, so another site cannot make a signed-in browser spend the quota. While header checks
+// are paused (too many wrong guesses), such an account still gets in from the page, although the page keeps sending
+// its stored passcode. Worked out once per request.
 function cashOk(req) {
   req.cashOkP ||= (async () => {
     const want = cashPasscode();
     if (!want) return true;
     const sess = await sessionOf(req);
-    if (await passHeaderOk(req, want)) {
+    let headerOk;
+    try {
+      headerOk = await passHeaderOk(req, want);
+    } catch (e) {
+      if (e instanceof LimitError && sess && fromPage(req) && (await accounts.isUnlocked(sess.user, want).catch(() => false))) return true;
+      throw e;
+    }
+    if (headerOk) {
       if (sess) await accounts.markUnlocked(sess, want).catch((e) => console.error('unlock', e.message));
       return true;
     }
@@ -678,7 +748,8 @@ const pagesFor = (p, base, per = 90) => base + Math.floor((new Date(p.end_date) 
 // Daily budgets for visitors' seats.aero and rooms.aero calls (each has 1,000 per UTC day), so one visitor or script
 // cannot use up the day for everyone, and the morning cron (deals, alerts) always has calls left. Only cache misses
 // count. Per address, and for everyone together; the owner (unlocked with the passcode) has no per-address cap and
-// is never stopped by the shared one, but still counts toward it.
+// is never stopped by the shared one, but still counts toward it, and so do the seats.aero calls of the daily jobs and
+// of the owner's alert runs (countShared), so visitors are stopped sooner on a day those needed many.
 const BUDGET = {
   seats: { ip: Number(process.env.SEATS_DAILY_PER_IP) || 150, all: Number(process.env.SEATS_DAILY_VISITORS) || 700 },
   rooms: { ip: Number(process.env.ROOMS_DAILY_PER_IP) || 150, all: Number(process.env.ROOMS_DAILY_VISITORS) || 700 },
@@ -1053,6 +1124,10 @@ const KNOWN_PARAMS = {
   '/api/hotels/search': ['where', 'start', 'end', 'nights', 'programs'],
   '/api/hotels/calendar': ['hotel', 'start', 'end', 'nights'],
   '/api/hotels/rooms': ['id'],
+  '/api/history': ['origin', 'destination'],
+  '/api/deals': ['at'],
+  // `v`: the page asks past the CDN's copy right after it saved a calendar.
+  '/api/cxcal': ['origin', 'destination', 'v'],
 };
 function canonicalUrl(p, q) {
   const known = p.startsWith('/api/trips/') ? [] : KNOWN_PARAMS[p];
@@ -1178,7 +1253,13 @@ async function route(req, res) {
     }
     if (p === '/api/cxcal') {
       if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
-      return sendJson(res, 200, await handleCxcal(req, q));
+      const cc = req.method === 'GET' && canonicalUrl(p, q);
+      if (cc) {
+        res.writeHead(301, { location: cc, 'cache-control': 'public, max-age=3600, s-maxage=86400' });
+        return res.end();
+      }
+      // Reading is public and the same for everyone, so the CDN may keep it for a minute.
+      return sendJson(res, 200, await handleCxcal(req, q), req.method === 'GET' ? CACHE.short : null);
     }
     if (p === '/api/deals' && req.method === 'POST') return sendJson(res, 200, await refreshDealsNow(req));
     if (p === '/api/watch') {
@@ -1195,7 +1276,8 @@ async function route(req, res) {
     }
     if (p === '/api/config') {
       return sendJson(res, 200, {
-        mock: MOCK, callsToday: usage.calls, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
+        // callsToday: this instance's seats.aero calls; callsTodayAll: every instance's (visitors' lookups and the daily jobs).
+        mock: MOCK, callsToday: usage.calls, callsTodayAll: Number(await kv.get(seatsAllKey()).catch(() => 0)) || 0, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
         accounts: Boolean(accounts), accountEmail: Boolean(accounts?.mailOn && alertMailer),
         line: await line.status().then((s) => ({ configured: s.configured, linked: s.linked, ...(s.missing ? { missing: s.missing } : {}), ...(s.configured ? { tokenOk: s.tokenOk } : {}) })).catch(() => ({ configured: line.configured })),
@@ -1236,8 +1318,10 @@ async function route(req, res) {
       return sendJson(res, 200, fx, fx.live ? CACHE.fx : CACHE.short);
     }
     if (p === '/api/deals') {
-      const d = await handleDeals();
-      return sendJson(res, 200, d, d.groups?.length ? CACHE.deals : CACHE.short);
+      const d = await handleDeals(q);
+      // Asked for a copy at least as new as `at` and this is older: not kept by the CDN under that address.
+      const older = q.has('at') && String(d.generatedAt || '') < q.get('at');
+      return sendJson(res, 200, d, older ? null : d.groups?.length ? CACHE.deals : CACHE.short);
     }
     if (p === '/api/history') {
       const h = await history.get(param(q, 'origin', IATA_LIST, { required: true, upper: true }), param(q, 'destination', IATA_LIST, { required: true, upper: true }));
@@ -1273,4 +1357,4 @@ const server = http.createServer(route);
 if (require.main === module) {
   server.listen(PORT, () => console.log(`http://localhost:${PORT}  ${MOCK ? '(示範資料模式：未設定 SEATS_AERO_API_KEY)' : '(使用 seats.aero API)'}`));
 }
-module.exports = { server, route, cached, VERSION_STRING: VERSION.version };
+module.exports = { server, route, cached, passBucket, VERSION_STRING: VERSION.version };

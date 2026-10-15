@@ -1033,7 +1033,9 @@ async function loadDeals() {
   const host = $('#deals');
   if (!host) return;
   try {
-    dealsState.body = await api('/api/deals');
+    // For two hours after this browser's 立即更新, ask for that copy or newer (past the CDN's older one).
+    const at = store.get('dealsAt', '');
+    dealsState.body = await api(`/api/deals${at && Date.now() - Date.parse(at) < 2 * 3600e3 ? `?at=${encodeURIComponent(at)}` : ''}`);
     renderDeals();
     if (!AP.loaded) onAirports(renderDeals); // city names under the codes
   } catch {
@@ -1065,9 +1067,13 @@ function renderDeals() {
     b.disabled = true;
     b.textContent = '更新中…（約半分鐘）';
     try {
-      dealsState.body = await cashApi('/api/deals', { method: 'POST' });
+      const d = await cashApi('/api/deals', { method: 'POST' });
+      dealsState.body = d;
+      if (d.refreshed && d.generatedAt) store.set('dealsAt', d.generatedAt);
       renderDeals();
-      toast('今日好康已更新');
+      // Say what actually happened; when nothing was updated, the hour's turn was not used.
+      const why = d.groups?.find((g) => g.error)?.error;
+      toast(d.busy ? '另一個更新正在進行，這次沒有更新，請過幾分鐘再試' : !d.refreshed ? `今日好康沒有更新${why ? `（${why}）` : ''}，這次不算，可以稍後再試` : d.failedGroups ? `已更新 ${d.refreshed} 組，${d.failedGroups} 組沒更新成功，先保留舊資料` : '今日好康已更新');
     } catch (err) {
       toast(err.message);
       b.disabled = false;
