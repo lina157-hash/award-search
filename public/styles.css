@@ -329,6 +329,8 @@ h3.sub { font-size: .95rem; margin: 8px 0; }
 #tab-search.panel[hidden] { display: block !important; content-visibility: hidden; height: 0; }
 .res-part { display: contents; }
 table.mx .mx-sizer tr { visibility: collapse; }
+/* Paints as one unit: without it, returning to the tab spent over a second sorting the table's cells into layers. */
+#matrix-host .table-wrap { contain: paint; }
 td.cell[tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 a.outline.btn { display: inline-flex; align-items: center; font-size: .88rem; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; }
 a.outline.btn:hover { border-color: var(--accent); color: var(--accent); }
