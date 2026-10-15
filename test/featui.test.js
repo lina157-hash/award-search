@@ -42,7 +42,12 @@ test('promo caps: KGI 「每月加贈上限500里」 reads as a monthly 500-mile
 test('co-brand cards are found for the programs the earn section names', () => {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext(`${grab('features.js', /const COBRAND_MATCH = .*;/)}\nthis.M = COBRAND_MATCH;`, ctx);
   const cob = read('points.json').cobrand;
-  for (const [key, word] of Object.entries(ctx.M)) assert.ok(cob.some((c) => c.program.includes(word)), `${key} (${word}) has a co-brand card`);
+  ctx.data = { points: { cobrand: cob } };
+  vm.runInContext(`${grab('features.js', /const COBRAND_MATCH = .*;/)}\n${grab('features.js', /const cobrandFor = .*;/)}\nthis.M = COBRAND_MATCH; this.cobrandFor = cobrandFor;`, ctx);
+  // 新光 JAL stopped earning on 2026-04-30: it stays in the 規則庫 table but is not suggested any more.
+  const live = Object.keys(ctx.M).filter((key) => ctx.cobrandFor(key).length);
+  assert.deepEqual(Object.keys(ctx.M).filter((key) => !live.includes(key)), ['jal']);
+  assert.ok(cob.some((c) => c.ended && c.program.includes(ctx.M.jal)));
+  assert.ok(ctx.cobrandFor('eva').every((c) => !c.ended));
 });

@@ -340,7 +340,8 @@ function untilTag(x) {
 }
 const bankProgram = (x) => (String(x.program).startsWith(x.bank) ? x.program : `${x.bank} ${x.program}`);
 // Everything dated that is still ahead: { date, days, title, advice, kind, source }, soonest first.
-function upcomingChanges(today = isoDate(0), { promoDays = 14 } = {}) {
+// Bank rate dates only count within rateDays (the same 60 days in which untilTag counts down).
+function upcomingChanges(today = isoDate(0), { promoDays = 14, rateDays = 60 } = {}) {
   const out = [];
   const seen = new Set();
   const add = (x) => {
@@ -354,11 +355,11 @@ function upcomingChanges(today = isoDate(0), { promoDays = 14 } = {}) {
   const pts = data.points || {};
   for (const s of pts.calc?.sources || []) {
     const date = validUntilOf(s);
-    if (date) add({ date, key: s.bank, kind: 'rate', title: `${bankProgram(s)} 轉點比率保證期限`, advice: '之後比率可能調整，要用目前的比率請在這天前轉點' });
+    if (date && ewDays(today, date) <= rateDays) add({ date, key: s.bank, kind: 'rate', title: `${bankProgram(s)} 轉點比率保證期限`, advice: '之後比率可能調整，要用目前的比率請在這天前轉點' });
   }
   for (const t of pts.transfers || []) {
     const date = validUntilOf(t);
-    if (date) add({ date, key: t.bank, kind: 'rate', title: `${bankProgram(t)} 轉點比率保證期限`, advice: '之後比率可能調整，要用目前的比率請在這天前轉點', source: t.source });
+    if (date && ewDays(today, date) <= rateDays) add({ date, key: t.bank, kind: 'rate', title: `${bankProgram(t)} 轉點比率保證期限`, advice: '之後比率可能調整，要用目前的比率請在這天前轉點', source: t.source });
   }
   for (const p of data.promos?.promos || []) {
     if (p.start <= today && ewDays(today, p.end) <= promoDays) add({ date: p.end, kind: 'promo', title: `${p.title} 結束`, advice: p.type === 'buy' ? '買哩促銷最後一天' : '要拿加贈請在這天前完成轉點', source: (p.sources || [])[0] });

@@ -247,6 +247,13 @@ test('countdowns: validUntil on a bank or its rates, promos ending soon, leaving
   assert.ok(list.some((x) => x.kind === 'change' && x.date === '2027-06-01'));
   assert.ok(list.filter((x) => x.kind === 'promo').every((x) => x.days <= 14));
   assert.ok(!list.some((x) => x.days < 0));
+  // Bank rate dates join the list only in their last 60 days (most bank tables run to 2026-12-31).
+  assert.ok(list.filter((x) => x.kind === 'rate').every((x) => x.days <= 60));
+  assert.ok(list.some((x) => x.kind === 'rate' && x.date === '2026-10-31'));
+  assert.ok(!list.some((x) => x.kind === 'rate' && x.date === '2026-12-31'));
+  const nov = sandbox('2026-11-15').upcomingChanges('2026-11-15');
+  assert.ok(nov.some((x) => x.kind === 'rate' && x.key === '滙豐' && x.date === '2026-12-31'));
+  assert.ok(!nov.some((x) => x.kind === 'rate' && x.date === '2027-06-30'));
   assert.match(programChangeTag('emirates'), /2027\/6\/1 起有變更/);
   assert.equal(programChangeTag('eva'), '');
   // Missing files are fine.

@@ -22,6 +22,13 @@ test('LifeMiles and Etihad Guest can be picked in 區域探索 (bookableVia) and
   assert.ok(ey.bookableVia.includes('etihad'));
 });
 
+test('STARLUX can be picked as an airline: Atmos and Etihad Guest sell its seats; Atmos also sells Korean Air', () => {
+  const jx = airlines.find((a) => a.code === 'JX');
+  assert.deepEqual([jx.alliance, jx.homeProgram, jx.bookableVia], [null, 'starlux', ['alaska', 'etihad']]);
+  assert.ok(programs.some((p) => p.id === jx.homeProgram), 'the home program has a 規則庫 card');
+  assert.ok(airlines.find((a) => a.code === 'KE').bookableVia.includes('alaska'));
+});
+
 test('every airline lists known programs, once each', () => {
   for (const a of airlines) {
     assert.equal(new Set(a.bookableVia).size, a.bookableVia.length, a.code);

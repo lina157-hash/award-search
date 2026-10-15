@@ -157,7 +157,8 @@ const phantomHtml = (program, airlines) => phantomWarnings(program, airlines).ma
 // ---------- how to gather the miles for one award (flight details dialog) ----------
 // Co-brand cards name their program in Chinese (data/points.json cobrand); match on the program's short name.
 const COBRAND_MATCH = { eva: '長榮', ci: '華航', asiamiles: '亞洲萬里通', starlux: '星宇', ana: '全日空', jal: '日航' };
-const cobrandFor = (key) => (COBRAND_MATCH[key] ? (data.points?.cobrand || []).filter((c) => c.program.includes(COBRAND_MATCH[key])) : []);
+// Cards that stopped earning (`ended`) stay in the 規則庫 table but are not suggested.
+const cobrandFor = (key) => (COBRAND_MATCH[key] ? (data.points?.cobrand || []).filter((c) => !c.ended && c.program.includes(COBRAND_MATCH[key])) : []);
 // Running offers for one program: transfer bonuses (by calculator column) and buy-miles sales.
 const promosFor = (key) => { const col = PROGRAM_TRANSFER[key]?.to || key; return activePromos().filter((p) => p.program === key || promoCol(p) === col); };
 // Hotels whose points move on to this airline program (the 繞路兌換 tool).
