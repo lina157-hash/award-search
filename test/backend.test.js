@@ -453,3 +453,14 @@ test('deals: a morning run refreshes groups fetched the previous afternoon', asy
   await deals.refresh({ skipFresh: true });
   assert.ok(calls >= 1, 'an 18-hour-old group is fetched again');
 });
+
+test('deals: 立即更新 needs the owner and runs at most once an hour', async () => {
+  {
+    const first = await fetch(base + '/api/deals', { method: 'POST', headers: { 'x-requested-with': 'fetch' } });
+    assert.equal(first.status, 200, 'the demo (no passcode, no cron secret) lets the owner refresh');
+    assert.ok(Array.isArray((await first.json()).groups));
+    const again = await fetch(base + '/api/deals', { method: 'POST', headers: { 'x-requested-with': 'fetch' } });
+    assert.equal(again.status, 400);
+    assert.match((await again.json()).error, /一小時內/);
+  }
+});

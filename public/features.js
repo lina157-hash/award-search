@@ -1058,8 +1058,22 @@ function renderDeals() {
         <span class="dm-miles">${fmt(d.miles)} <small>哩</small>${d.direct ? '<small class="dm-direct">直飛</small>' : ''}</span>
         <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>
       </button>`).join('')}</div></div>`).join('') || '<p class="hint">這個艙等今天沒有整理到好康。</p>'}
-    <p class="hint">每天早上整理一次，座位可能已被訂走；點卡片會查那一天前後三天。</p>`;
+    <p class="hint">每天早上整理一次，座位可能已被訂走；點卡片會查那一天前後三天。${store.get('cashPass', '') || !cashCfg.locked ? ' <button type="button" class="linkish" id="deals-refresh">立即更新（用約 8 次查詢，每小時一次）</button>' : ''}</p>`;
   $$('input[name=deal-cabin]', host).forEach((i) => i.addEventListener('change', () => { dealsState.cabin = i.value; renderDeals(); }));
+  $('#deals-refresh', host)?.addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    b.textContent = '更新中…（約半分鐘）';
+    try {
+      dealsState.body = await cashApi('/api/deals', { method: 'POST' });
+      renderDeals();
+      toast('今日好康已更新');
+    } catch (err) {
+      toast(err.message);
+      b.disabled = false;
+      b.textContent = '立即更新（用約 8 次查詢，每小時一次）';
+    }
+  });
   $$('[data-deal]', host).forEach((b) => b.addEventListener('click', () => {
     const [o, d, date] = b.dataset.deal.split('|');
     const s = date < isoDateFrom(isoDate(0), 3) ? isoDate(0) : isoDateFrom(date, -3);

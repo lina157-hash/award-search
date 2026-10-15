@@ -288,6 +288,14 @@ async function handleDeals() {
   return { mock: MOCK, ...(await dealsPending) };
 }
 
+// 「立即更新」 on 今日好康: the owner (passcode) refreshes every group now, about 8 seats.aero calls, at most once an hour.
+async function refreshDealsNow(req) {
+  if (!(await runCaller(req))) throw cashPasscode() ? passError(req, '需要通關密碼才能手動更新今日好康') : noPasscode('今日好康手動更新');
+  if (!(await takeLock(kv, 'deals:manual', 3600))) throw new BadRequest('今日好康一小時內只能手動更新一次，請稍後再試');
+  const d = await deals.refresh({ deadline: Date.now() + 45_000 });
+  return { mock: MOCK, ...d };
+}
+
 const safeEqual = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 // Without a passcode, alerts and price watches (which hold people's emails and spend seats.aero, RapidAPI and mail)
 // cannot be managed by anyone, like Telegram, except in the demo, which spends nothing.
@@ -1172,6 +1180,7 @@ async function route(req, res) {
       if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleCxcal(req, q));
     }
+    if (p === '/api/deals' && req.method === 'POST') return sendJson(res, 200, await refreshDealsNow(req));
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleWatch(req, q));

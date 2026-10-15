@@ -1536,3 +1536,8 @@ table.mx .mx-als { display: inline-flex; align-items: center; gap: 2px; }
 table.mx .mx-al { display: inline-flex; font-size: .66rem; font-weight: 600; }
 table.mx .mx-more { font-size: .66rem; margin-left: 1px; }
 table.mx .mx-meta > span + span::before { content: '· '; opacity: .7; }
+
+/* ---------- 今日好康「立即更新」 and multi-cabin alerts ---------- */
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.linkish:disabled { color: var(--muted); text-decoration: none; cursor: default; }
+.alert-cabins { margin-top: 4px; }
