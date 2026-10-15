@@ -1411,3 +1411,14 @@ dialog.cx-dlg { width: min(560px, calc(100vw - 24px)); overflow: auto; }
 /* ---------- cxauto: 國泰座位日曆（自動）(reuses the .cx-live-card / .cx-live-cal styles above) ---------- */
 .cx-auto-c { white-space: nowrap; }
 .cx-auto-more { margin: 4px 0 6px; }
+
+/* ---------- cxmuse: 請 AI 助理查國泰官網 (public/cxmuse.js; the prompt reuses .ai-head / .ai-text from aihelper) ---------- */
+.cxm { margin: 8px 0 10px; max-width: 860px; display: grid; gap: 6px; }
+.cxm .ai-head button { font-size: .84rem; padding: 4px 10px; }
+.cxm-note { font-size: .8rem; }
+.cxm .ai-text { max-height: 340px; overflow: auto; }
+.cxm-paste > summary { cursor: pointer; color: var(--accent); font-size: .86rem; width: fit-content; }
+.cxm-in { width: 100%; margin-top: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font: .82rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+.cxm-out > .hint { margin: 6px 0 0; }
+.cxm-save { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 0; }
+.cxm-save .hint { flex: 1 1 260px; font-size: .8rem; }

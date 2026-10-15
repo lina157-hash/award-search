@@ -12,7 +12,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   const host = () => document.getElementById('cx-live');
   const hasPass = () => Boolean(store.get('cashPass', '')) || !cashCfg.locked;
   const nameOf = (c) => (typeof airportCity === 'function' ? airportCity(c) : '') || '';
-  const SRC = { unelevated: '來自國泰查票外掛（你自己的瀏覽器）', bookmarklet: '來自你的書籤', runner: '來自你的腳本' };
+  const SRC = { unelevated: '來自國泰查票外掛（你自己的瀏覽器）', bookmarklet: '來自你的書籤', runner: '來自你的腳本', ai: '來自你的 AI 助理' };
 
   // 外掛模式 (cxcal.js) records seats but no miles: the Asia Miles price of a Cathay itinerary ("TPE-HKG-NRT") on the
   // chart by summed sector distance, or 0 while the chart or the airport list (loaded on demand: cxEstReady) is missing.
@@ -122,6 +122,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     cache.set(k, { at: Date.now(), body });
     return body;
   }
+  document.addEventListener('cxcal:saved', () => cache.clear()); // cxmuse.js saved a route
   document.addEventListener('search:start', () => { st.seq++; st.share = null; st.body = null; st.cal.clear(); });
   document.addEventListener('search:done', async (e) => {
     const n = ++st.seq;
