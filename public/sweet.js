@@ -79,7 +79,7 @@ function mountSweet() {
     const m = e.target.closest('[data-sw-map]');
     if (!m) return;
     // The map above, redrawn from this origin and cabin (the form too), with the city's popup open once it is drawn.
-    Object.assign(rmap, { origins: [c.from], cabin: c.cabin, trip: 'ow', program: '', budget: 0, mine: false });
+    Object.assign(rmap, { origins: [c.from], cabin: c.cabin, trip: 'ow', program: '', budget: 0, mine: false, direct: false });
     const before = rmapMap;
     initRmap();
     $('#rmap-out').scrollIntoView({ behavior: 'smooth', block: 'start' });

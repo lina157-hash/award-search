@@ -1,6 +1,6 @@
 {
-  "note": "Active Taiwan bank transfer bonuses and airline buy-miles sales; refreshed weekly. type transfer|buy. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only). bonusPct 0 = fixed or capped bonus that the calculator cannot apply; listed only. registration true = the official page says you must register first (registerBy = last day to register), null = the official page does not say. creditBy = the transferred miles must reach the airline account by this day (only when the official page says so); the site subtracts each bank's slowest transfer time (holds.json) to show 最晚轉點日; without creditBy the transfer only has to be made by end. termsChecked = the day those fields were read from the official page. Ended promos move to promos-history.json (keep the whole entry).",
-  "updated": "2026-10-15",
+  "note": "Active Taiwan bank transfer bonuses, airline buy-miles sales and award sales; refreshed weekly. type transfer|buy|award. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only). bonusPct 0 = fixed or capped bonus that the calculator cannot apply; listed only. registration true = the official page says you must register first (registerBy = last day to register), null = the official page does not say. creditBy = the transferred miles must reach the airline account by this day (only when the official page says so); the site subtracts each bank's slowest transfer time (holds.json) to show 最晚轉點日; without creditBy the transfer only has to be made by end. termsChecked = the day those fields were read from the official page. Ended promos move to promos-history.json (keep the whole entry). Award sales (type award, 哩程票特惠): discountPct = miles off; start/end = the booking (ticketing) window; travelFrom/travelTo = the travel window; carriers = operating airlines it covers (codeshares excluded); routes = [{ from, to, cabins }] one way, or [{ between, and, cabins }] both ways; a 2-letter code is a country, 3 letters an airport; cabins Y/W/J/F letters. Only official pages, never a blog summary. cashSales = official cash fare sales from Taiwan carriers for 查現金票 (start/end = sale dates, travelFrom/travelTo, from, to = airports, price text); cashSalePages = each carrier's official offers page, listed while nothing is curated.",
+  "updated": "2026-10-16",
   "promos": [
     {
       "id": "cx-80th-card-conversion-tw-202610",
@@ -188,6 +188,175 @@
           "official": true
         }
       ]
+    },
+    {
+      "id": "krisflyer-escapes-202610",
+      "type": "award",
+      "bank": null,
+      "program": "singapore",
+      "title": "新航 KrisFlyer Spontaneous Escapes：新加坡出發往返多條航線 Saver 獎勵機票少 30%",
+      "bonusPct": 0,
+      "discountPct": 30,
+      "price": null,
+      "start": "2026-10-15",
+      "end": "2026-10-31",
+      "travelFrom": "2026-11-01",
+      "travelTo": "2026-11-30",
+      "carriers": ["SQ"],
+      "routes": [
+        { "from": "SIN", "to": "BWN", "cabins": "Y" },
+        { "from": "BWN", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "DPS", "cabins": "Y" },
+        { "from": "DPS", "to": "SIN", "cabins": "J" },
+        { "from": "SIN", "to": "CGK", "cabins": "J" },
+        { "from": "CGK", "to": "SIN", "cabins": "J" },
+        { "from": "SIN", "to": "KUL", "cabins": "YJ" },
+        { "from": "KUL", "to": "SIN", "cabins": "YJ" },
+        { "from": "SIN", "to": "SUB", "cabins": "YJ" },
+        { "from": "SUB", "to": "SIN", "cabins": "YJ" },
+        { "from": "SIN", "to": "BKK", "cabins": "YJ" },
+        { "from": "BKK", "to": "SIN", "cabins": "YJ" },
+        { "from": "SIN", "to": "DAD", "cabins": "YJ" },
+        { "from": "DAD", "to": "SIN", "cabins": "YJ" },
+        { "from": "HAN", "to": "SIN", "cabins": "J" },
+        { "from": "SIN", "to": "SGN", "cabins": "YJ" },
+        { "from": "SGN", "to": "SIN", "cabins": "YJ" },
+        { "from": "SIN", "to": "MNL", "cabins": "Y" },
+        { "from": "MNL", "to": "SIN", "cabins": "YJ" },
+        { "from": "SIN", "to": "KTI", "cabins": "YJ" },
+        { "from": "KTI", "to": "SIN", "cabins": "YJ" },
+        { "from": "SIN", "to": "HKT", "cabins": "Y" },
+        { "from": "HKT", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "SAI", "cabins": "Y" },
+        { "from": "SAI", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "HGH", "cabins": "YJ" },
+        { "from": "HGH", "to": "SIN", "cabins": "YJ" },
+        { "from": "AMD", "to": "SIN", "cabins": "J" },
+        { "from": "CMB", "to": "SIN", "cabins": "J" },
+        { "from": "SIN", "to": "CMB", "cabins": "YJ" },
+        { "from": "DAC", "to": "SIN", "cabins": "YJ" },
+        { "from": "SIN", "to": "DAC", "cabins": "YJ" },
+        { "from": "SIN", "to": "DRW", "cabins": "J" },
+        { "from": "SIN", "to": "ADL", "cabins": "Y" },
+        { "from": "ADL", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "BNE", "cabins": "YW" },
+        { "from": "SIN", "to": "CNS", "cabins": "YJ" },
+        { "from": "CNS", "to": "SIN", "cabins": "YJ" },
+        { "from": "SIN", "to": "MEL", "cabins": "Y" },
+        { "from": "SIN", "to": "SYD", "cabins": "Y" },
+        { "from": "SIN", "to": "IST", "cabins": "YW" },
+        { "from": "IST", "to": "SIN", "cabins": "YW" },
+        { "from": "AMS", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "BRU", "cabins": "YW" },
+        { "from": "BRU", "to": "SIN", "cabins": "YW" },
+        { "from": "SIN", "to": "CPH", "cabins": "YW" },
+        { "from": "CPH", "to": "SIN", "cabins": "YW" },
+        { "from": "SIN", "to": "FRA", "cabins": "YW" },
+        { "from": "FRA", "to": "SIN", "cabins": "YW" },
+        { "from": "SIN", "to": "LGW", "cabins": "Y" },
+        { "from": "LGW", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "LHR", "cabins": "Y" },
+        { "from": "LHR", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "MXP", "cabins": "YW" },
+        { "from": "MXP", "to": "SIN", "cabins": "YW" },
+        { "from": "SIN", "to": "MUC", "cabins": "YW" },
+        { "from": "MUC", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "CDG", "cabins": "YW" },
+        { "from": "CDG", "to": "SIN", "cabins": "YW" },
+        { "from": "SIN", "to": "FCO", "cabins": "Y" },
+        { "from": "FCO", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "ZRH", "cabins": "Y" },
+        { "from": "ZRH", "to": "SIN", "cabins": "Y" },
+        { "from": "FRA", "to": "JFK", "cabins": "YW" },
+        { "from": "JFK", "to": "FRA", "cabins": "W" },
+        { "from": "SIN", "to": "LAX", "cabins": "Y" },
+        { "from": "LAX", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "SFO", "cabins": "YW" },
+        { "from": "SFO", "to": "SIN", "cabins": "Y" },
+        { "from": "SIN", "to": "SEA", "cabins": "Y" },
+        { "from": "SEA", "to": "SIN", "cabins": "Y" }
+      ],
+      "routeNote": "都是新加坡進出（沒有台灣航線），可搭配外站出發；金邊為新機場 KTI、暹粒為 SAI",
+      "termsChecked": "2026-10-16",
+      "conditions": "10/15–10/31 在新航官網或 App 開票，11/1–11/30 搭乘；不能改票、退票，不能中停，不能和其他優惠合併；稅金不打折；不含聯營航班；先到先得、各航班有不適用日期；酷航指定航班經濟艙少 15%（航線見酷航官網，未列入）",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "新航 KrisFlyer Spontaneous Escapes",
+          "url": "https://www.singaporeair.com/kfescapes",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "turkish-award-30off-asia-202610",
+      "type": "award",
+      "bank": null,
+      "program": "turkish",
+      "title": "土航 Miles&Smiles 台北等 12 個城市往返土耳其 經濟艙獎勵機票少 30%",
+      "bonusPct": 0,
+      "discountPct": 30,
+      "price": null,
+      "start": "2026-10-16",
+      "end": "2026-10-30",
+      "travelFrom": "2026-11-01",
+      "travelTo": "2026-11-30",
+      "carriers": ["TK"],
+      "routes": [
+        {
+          "between": "TR",
+          "and": [
+            "TPE",
+            "HKG",
+            "PEK",
+            "PKX",
+            "TFU",
+            "CAN",
+            "PVG",
+            "ICN",
+            "KUL",
+            "SIN",
+            "SYD",
+            "MEL",
+            "UBN"
+          ],
+          "cabins": "Y"
+        }
+      ],
+      "routeNote": "官網列的城市：北京、成都、廣州、香港、吉隆坡、墨爾本、首爾、雪梨、新加坡、上海、台北、烏蘭巴托，往返土耳其，單程或來回皆可",
+      "termsChecked": "2026-10-16",
+      "conditions": "10/16–10/30 開票，11/1–11/30 搭乘；只限經濟艙「促銷獎勵機票」與土航自營定期航班，不含聯營與星盟夥伴；改票限同航線；稅金另付；座位有限",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "土航 Miles&Smiles：土耳其與東亞、東南亞、澳洲經濟艙獎勵機票 30% off",
+          "url": "https://www.turkishairlines.com/zh-tw/miles-and-smiles/campaigns/30-percent-off-miles-promotional-award-tickets-selected-routes-turkiye-far-east-oceania/",
+          "official": true
+        }
+      ]
+    }
+  ],
+  "cashSales": [],
+  "cashSalePages": [
+    {
+      "airline": "BR",
+      "label": "長榮航空 優惠活動",
+      "url": "https://www.evaair.com/zh-tw/plan-and-book/special-offers/promotions/"
+    },
+    {
+      "airline": "CI",
+      "label": "中華航空 最新活動",
+      "url": "https://www.china-airlines.com/tw/zh/itinerary-booking/exclusive-offers/latest-events"
+    },
+    {
+      "airline": "JX",
+      "label": "星宇航空 會員精選活動",
+      "url": "https://www.starlux-airlines.com/flights/zh-tw/member-specialoffers"
+    },
+    {
+      "airline": "CX",
+      "label": "國泰航空 優惠",
+      "url": "https://flights.cathaypacific.com/zh_TW/offers.html"
     }
   ]
 }

@@ -58,14 +58,14 @@ function alsoEstimate(p, trip, cabin, { price, airport, dist }) {
       if (!one) return null;
       miles += one.miles;
     }
-    return { miles, label: segs.length > 1 ? `${segs.length} 段分開計價` : one.label, note: segs.length > 1 ? '每段依距離計價後相加' : one.note, multi: ops.length > 1 };
+    return { miles, label: segs.length > 1 ? `${segs.length} 段分開計價` : one.label, note: segs.length > 1 ? '每段依距離計價後相加' : one.note, multi: ops.length > 1, ...(segs.length === 1 ? { bands: one.bands, d: one.d } : {}) };
   }
   const a = airport(segs[0].from);
   const b = airport(segs.at(-1).to);
   if (!a || !b) return null;
   const flown = segs.reduce((n, s) => n + (Number(s.distance) || 0), 0) || dist(a, b);
   const x = pick(price(p, a, b, cabin, flown), ops[0]);
-  return x ? { miles: x.miles, label: x.label, note: x.note, multi: ops.length > 1 } : null;
+  return x ? { miles: x.miles, label: x.label, note: x.note, multi: ops.length > 1, bands: x.bands, d: x.d } : null;
 }
 
 // The fewest Taiwan card points that buy `miles` in `program`, one entry per bank points program, cheapest first:
@@ -160,7 +160,8 @@ async function alsoFill(box) {
   const body = $('.also-body', box);
   if (!t || box.dataset.done) return;
   box.dataset.done = '1';
-  await loadAirports();
+  // mapkit.js brings 級距邊緣提醒 (mkEdge); the list draws without it if it would not load.
+  await Promise.all([loadAirports(), typeof loadMapkit === 'function' ? loadMapkit() : null]);
   const cabin = CABIN_KEY[t.cabin] || 'J';
   const dep = { price: chartPrices, airport: (c) => AP.byCode.get(c) || null, dist: haversineMiles };
   const map = { ...PROGRAM_TRANSFER, ana: { name: '全日空' } };
@@ -176,8 +177,10 @@ async function alsoFill(box) {
     const bank = own || banks[0];
     const bankText = bank ? `${own ? '用你的' : '台灣卡點最省：'}${esc(bankLabel(bank.source))} 約 ${fmt(bank.points)} 點（${esc(ratioLabel(bank.rate))}）` : '台灣的卡點不能直接轉入';
     const src = p.sources?.[0];
+    const edge = typeof mkEdge === 'function' ? mkEdge(est.bands, est.d) : null;
     return `<li><div class="also-top"><b>${esc(p.name)}</b><span class="also-miles">約 ${fmt(est.miles)} 哩</span>${diff ? `<small class="also-diff ${diff < 0 ? 'less' : ''}">比這張${diff < 0 ? '少' : '多'} ${fmt(Math.abs(diff))}</small>` : '<small class="also-diff">一樣</small>'}</div>
       <small class="also-meta">${esc(est.label)}${est.note ? `・${esc(est.note)}` : ''}${est.multi ? '・多家航空轉機，能不能開同一張票依計畫規定' : ''}</small>
+      ${edge ? `<small class="also-meta mk-edge">⚠ ${esc(mkEdgeText(edge, est.d))}</small>` : ''}
       <small class="also-meta">💳 ${bankText}　${CONFIDENCE_TAG[p.confidence] || ''}${src ? ` <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label)} ↗</a>` : ''}</small></li>`;
   }).join('')}</ul>
   <p class="hint">依各計畫公布的固定哩程表估算單程最低價，不含稅金與燃油附加費。要該計畫看得到夥伴機位才換得到；同一班的夥伴位子通常和 United、Aeroplan 等看到的是同一批（常見情況，不是官方規則），轉點前先在該計畫查到位。</p>`;

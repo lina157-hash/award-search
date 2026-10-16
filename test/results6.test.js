@@ -251,10 +251,14 @@ test('also: the chart price for the whole trip, Avios per flight with each airli
   const band = (label, d) => p('british').tables.find((t) => t.label.includes(label)).bands.find((b) => b.upTo == null || d <= b.upTo).J;
   const cx = { source: 'alaska', cabin: 'business', segments: [seg('CX400', 'TPE', 'HKG', 500)] };
   assert.equal(F.alsoEstimate(p('british'), cx, 'J', dep).miles, band('國泰', 500));
+  // One flight keeps its band list and distance, for the 級距邊緣提醒 line (mapkit.js mkEdge).
+  assert.equal(F.alsoEstimate(p('british'), cx, 'J', dep).d, 500);
+  assert.ok(F.alsoEstimate(p('british'), cx, 'J', dep).bands.length > 1);
   const two = { source: 'alaska', cabin: 'business', segments: [seg('CX400', 'TPE', 'HKG', 500), seg('JL1', 'HKG', 'NRT', 1800)] };
   const est = F.alsoEstimate(p('british'), two, 'J', dep);
   assert.equal(est.miles, band('國泰', 500) + band('日本', 1800));
   assert.equal(est.multi, true);
+  assert.equal(est.bands, undefined, 'two flights priced apart have no single band');
   assert.equal(F.alsoEstimate(p('british'), cx, 'F', dep), null, 'a cabin the chart does not price');
   assert.equal(F.alsoEstimate(p('eva'), { source: 'x', segments: [seg('BR1', 'ZZZ', 'YVR')] }, 'J', dep), null, 'unknown airport');
   // Card points: one line per bank points program, fewest first; rates past their date left out.

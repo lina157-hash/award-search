@@ -80,9 +80,10 @@ test('regReminders: one per promo to register, dated on the earliest safe day st
 
 test('newPromos / promoTouches: running promos that touch the wallet and were not announced', () => {
   const mine = [src('ctbc-bonus')];
-  const fresh = P6.newPromos(PROMOS, mine, ['emirates'], [], '2026-10-16').map((p) => p.id).sort();
+  // Award sales (哩程票特惠) are tested in r9-prog.test.js.
+  const fresh = P6.newPromos(PROMOS.filter((p) => p.type !== 'award'), mine, ['emirates'], [], '2026-10-16').map((p) => p.id).sort();
   assert.deepEqual(fresh, ['cx-80th-card-conversion-tw-202610', 'emirates-buy-miles-202610']);
-  assert.deepEqual(P6.newPromos(PROMOS, mine, ['emirates'], fresh, '2026-10-16'), [], 'seen');
+  assert.deepEqual(P6.newPromos(PROMOS.filter((p) => p.type !== 'award'), mine, ['emirates'], fresh, '2026-10-16'), [], 'seen');
   assert.ok(!P6.promoTouches(CX, [src('cathay-tree')], [], '2026-10-16'), 'excluded bank');
   assert.ok(P6.promoTouches(PROMOS.find((p) => p.id === 'cub-cube-asiamiles-autumn-202610'), [src('cathay-tree')], [], '2026-10-16'));
 });
@@ -301,7 +302,7 @@ test('expiry reminders: voucher dates, 登記 3 days ahead, and what expiring mi
 // ---------- N4a: new promo notices ----------
 test('promo watch: what runs when switched on counts as seen; a new promo is sent once; no channel retries', async () => {
   const kv = memoryKv();
-  const promos = PROMOS.map((p) => ({ ...p }));
+  const promos = PROMOS.filter((p) => p.type !== 'award').map((p) => ({ ...p }));
   const sent = [];
   let tg = true;
   const w = createPromoWatch({ kv, promos, sources: SOURCES, holds: HOLDS, notify: async (h) => { sent.push(h); return tg; }, now: at('2026-10-16'), siteUrl: 'https://example.test' });

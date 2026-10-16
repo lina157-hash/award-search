@@ -10,6 +10,7 @@ const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = requ
 const { createPriceWatch, RESERVE } = require('./lib/pricewatch');
 const { createHotelWatch } = require('./lib/hotelwatch');
 const { createDeals } = require('./lib/deals');
+const { withSeatHints } = require('./lib/seathint');
 const rooms = require('./lib/rooms');
 const rapid = require('./lib/rapidflights');
 const { createTravelInfo } = require('./lib/travelinfo');
@@ -28,6 +29,7 @@ const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
 const { createExpiry, notesFromData } = require('./lib/expiry');
 const { createPromoWatch } = require('./lib/promowatch');
+const { createWeekly } = require('./lib/weekly');
 const P6 = require('./public/points6.js');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 const { cronParts, cronSlot } = require('./lib/cronreport');
@@ -37,6 +39,7 @@ const { createNlImage, MAX_BODY: NL_IMAGE_BODY } = require('./lib/nlimage');
 const { createBooked } = require('./lib/booked');
 const { createDealRules, DealRuleError } = require('./lib/dealrules');
 const { createTicketParse } = require('./lib/ticketparse');
+const { createFlightData } = require('./lib/flightdata');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = (process.env.SEATS_AERO_API_KEY || '').trim(); // a key pasted into Vercel with a space or line break still works
@@ -53,12 +56,12 @@ const kv = HAS_REDIS ? redisKv({ url: REDIS_URL, token: REDIS_TOKEN }) : memoryK
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips', 'seats'];
 // The page loads the bundle in two parts: `core` is what the first screen needs (form menus, airline and airport names);
 // `more` (points, charts, rules, booking notes…) is fetched when a search, a flight's details or a tab that uses it opens.
 const DATA_PARTS = {
   core: ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'],
-  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'],
+  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips', 'seats'],
 };
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
@@ -198,7 +201,7 @@ class BadRequest extends Error {}
 
 // Airport → country and coordinates, for the pre-trip notes.
 const AIRPORT_FILE = require('./public/airports.min.json');
-const AIRPORTS = new Map(AIRPORT_FILE.airports.map(([code, , , country, , , , , lat, lon]) => [code, { country, lat, lon }]));
+const AIRPORTS = new Map(AIRPORT_FILE.airports.map(([code, , , country, , , , , lat, lon, tz]) => [code, { country, lat, lon, tz: AIRPORT_FILE.tzs?.[tz] || '' }]));
 // A Chinese city name in English, for sources that only know English names (Booking.com's city search):
 // the multi-airport groups first (東京 → Tokyo), then a major airport whose Chinese name starts with it (曼谷 → Bangkok).
 function cityInEnglish(name) {
@@ -217,7 +220,7 @@ async function handleTripInfo(q) {
   const place = AIRPORTS.get(to);
   if (!place) throw new BadRequest('找不到這個機場');
   const info = await travelInfo.forTrip(place, start, end, { withWeather: q.get('only') !== 'holidays' });
-  return { airport: to, ...info, sources: { visa: { name: VISA.source, url: VISA.sourceUrl, asOf: VISA.asOf }, warning: { name: WARNINGS.source, url: WARNINGS.sourceUrl, asOf: WARNINGS.asOf } } };
+  return { airport: to, tz: place.tz || undefined, ...info, sources: { visa: { name: VISA.source, url: VISA.sourceUrl, asOf: VISA.asOf }, warning: { name: WARNINGS.source, url: WARNINGS.sourceUrl, asOf: WARNINGS.asOf } } };
 }
 
 // Seat alerts: Upstash Redis keeps the watches, Resend sends the mail. Demo mode keeps them in memory.
@@ -407,10 +410,10 @@ let dealsPending = null;
 const DEALS_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 async function handleDeals(q) {
   const at = q.get('at');
-  if (at && DEALS_AT.test(at) && Date.parse(at) <= Date.now() + 60e3) return { mock: MOCK, ...(await withUsual(await deals.get({ atLeast: at }))) };
+  if (at && DEALS_AT.test(at) && Date.parse(at) <= Date.now() + 60e3) return { mock: MOCK, ...(await dealsView(await deals.get({ atLeast: at }))) };
   // Concurrent first visitors share one read (or the very first build) instead of each spending API calls.
   dealsPending ||= deals.get().finally(() => { dealsPending = null; });
-  return { mock: MOCK, ...(await withUsual(await dealsPending)) };
+  return { mock: MOCK, ...(await dealsView(await dealsPending)) };
 }
 // 「平常約 X 哩」 on each deal, from the route history (lib/history.js usual): one store read per saved copy of the
 // deals on this instance (kept by its generatedAt), never a seats.aero call. A failed read just leaves it out.
@@ -426,6 +429,11 @@ async function withUsual(d) {
   return { ...d, groups: d.groups.map((g) => ({ ...g, items: (g.items || []).map((x) => { const n = dealsUsual.map.get(usualKey(g.cabin, x)); return n ? { ...x, usual: n } : x; }) })) };
 }
 
+// …and 「可能斜躺」 on short-haul business deals on airlines with recliner business seats (lib/seathint.js).
+let dealSeats = null;
+const dealsView = async (d) => withSeatHints(await withUsual(d), (dealSeats ||= JSON.parse(DATA.seats.body)), DEAL_AIRLINE_ZH);
+const DEAL_AIRLINE_ZH = Object.fromEntries(require('./data/airline-names.json').airlines.map(([c, zh]) => [c, zh]));
+
 // 「立即更新」 on 今日好康: the owner (passcode) refreshes every group now, about 8 seats.aero calls, at most once an hour.
 // Nothing refreshed (the daily run was updating them, or every group failed): the hour's turn is given back.
 async function refreshDealsNow(req) {
@@ -437,7 +445,7 @@ async function refreshDealsNow(req) {
     d = await deals.refresh({ deadline: Date.now() + 45_000, fresh: true });
   } catch (e) { await release(); throw e; }
   if (!d.refreshed) await release();
-  return { mock: MOCK, ...(await withUsual(d)) };
+  return { mock: MOCK, ...(await dealsView(d)) };
 }
 
 const safeEqual = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -501,7 +509,7 @@ async function cronStatus() {
   const [last, denied, done] = await Promise.all(['cron:last', 'cron:denied', 'cron:done'].map((k) => kv.get(k).catch(() => null)));
   return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null, lastDone: done?.at || null, lastDoneMs: done?.ms ?? null, lastProblems: done?.problems ?? null };
 }
-const runProblems = (out) => [out.expiry?.error, out.promos?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.booked?.error, out.alertsError, out.hotels?.error].filter(Boolean).length
+const runProblems = (out) => [out.expiry?.error, out.promos?.error, out.weekly?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.booked?.error, out.alertsError, out.hotels?.error].filter(Boolean).length
   + [...(out.report || []), ...(out.watches?.report || []), ...(out.booked?.report || []), ...(out.hotels?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
 async function runDaily(req, q) {
   const who = await runCaller(req);
@@ -513,11 +521,18 @@ async function runDaily(req, q) {
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
-  const parts = new Set((q.get('part') || 'expiry,promos,deals,digest,watches,booked,alerts,hotels').split(','));
+  const parts = new Set((q.get('part') || 'expiry,promos,weekly,deals,digest,watches,booked,alerts,hotels,timetable').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
+  // 官方航班資料: about once a week (flightData.due), or when asked for by name. It runs alongside the other parts (it
+  // only waits on government servers) and must answer by the run's end.
+  const asked = (q.get('part') || '').split(',').includes('timetable');
+  const ttP = parts.has('timetable') && (asked || (await flightData.due().catch(() => false)))
+    ? flightData.refresh({ until: t0 + RUN_BUDGET.end }).catch((e) => ({ error: e.message })) : null;
   if (parts.has('expiry')) out.expiry = await expiry.run({ deadline: t0 + RUN_BUDGET.expiry, lock: lockFor('expiry:run', 60) }).catch((e) => ({ error: e.message }));
   // New transfer bonuses for the owner: one Redis read most days, no quota.
   if (parts.has('promos')) out.promos = await promoWatch.run({ lock: lockFor('promo-watch:run', 60) }).catch((e) => ({ error: e.message }));
+  // 本週變動: the first run of each week; asking for this part by name sends it again.
+  if (parts.has('weekly')) out.weekly = await weekly.run({ lock: lockFor('weekly:run', 60), force: who !== 'cron' && (q.get('part') || '').split(',').includes('weekly') }).catch((e) => ({ error: e.message }));
   if (parts.has('deals')) {
     try {
       const d = await deals.refresh({ deadline: t0 + RUN_BUDGET.deals, skipFresh: true });
@@ -539,6 +554,7 @@ async function runDaily(req, q) {
   // (立即檢查 on 查飯店, which says what it spends); the seat alerts' 立即檢查全部 does not spend them again.
   if (parts.has('hotels') && hotelWatch) out.hotels = await hotelWatch.run({ deadline: t0 + RUN_BUDGET.hotels, until: t0 + RUN_BUDGET.digest, force: who !== 'cron' && (q.get('part') || '').split(',').includes('hotels'), lock: lockFor('hotel-watch:run', 120) }).catch((e) => ({ error: e.message }));
   if (parts.has('digest') && dealSub) out.digest = await dealSub.run({ deadline: t0 + RUN_BUDGET.digest, base: SITE_URL || siteBase(req) }).catch((e) => ({ error: e.message }));
+  if (ttP) { const t = await ttP; out.timetable = t?.error ? { error: t.error } : { changed: t?.changed || [], ...(t?.timetable || {}) }; }
   if (who === 'cron') {
     // Also kept per slot with how each part went, for the owner's status line (GET /api/cron/status).
     const done = { at: new Date().toISOString(), ms: Date.now() - t0, problems: runProblems(out), parts: cronParts(out) };
@@ -747,6 +763,15 @@ const expiry = createExpiry({
 });
 // New transfer bonuses / buy-miles sales that touch the owner's wallet (lib/promowatch.js), checked by the daily run.
 const promoWatch = createPromoWatch({ kv, ...POINTS6, notify: (html) => telegram.notify(html), sendEmail: alertMailer, siteUrl: SITE_URL, log: MOCK && !alertMailer ? (m) => console.log(m) : null });
+// 本週變動 (lib/weekly.js): once a week with the daily run, to the owner's Telegram and the promo notice's address.
+const weekly = createWeekly({
+  kv, notify: (html) => telegram.notify(html), sendEmail: alertMailer, emailOf: () => promoWatch.ownerEmail(), siteUrl: SITE_URL,
+  log: MOCK && !alertMailer ? (m) => console.log(m) : null, off: process.env.WEEKLY_DIGEST === 'off',
+  src: () => ({
+    promos: POINTS6.promos, history: require('./data/promos-history.json').promos, log: require('./data/changes.json').log,
+    changes: require('./data/changes.json').changes, alliances: require('./data/alliances.json').alliances, transfers: require('./data/points.json').transfers,
+  }),
+});
 async function handlePromoWatch(req) {
   if (!(await alertsAllowed(req))) throw Object.assign(new CashError('需要通關密碼才能設定新加贈通知', 401), { code: 'passcode' });
   if (req.method !== 'POST') return promoWatch.status();
@@ -1144,6 +1169,39 @@ async function handleDirects(q, req) {
   }
 }
 
+// 官方航班資料 (lib/flightdata.js, round 9): the timetable of flights touching Taiwan (TDX when TDX_CLIENT_ID and
+// TDX_CLIENT_SECRET are set, else 民航局 and 桃園機場's files), TPE terminals and load factors, refreshed about weekly
+// by the daily run. Public and free. The demo fills it from made-up copies of the files on first use.
+const AIRPORT_ZH_FILE = require('./data/airport-names-zh.json');
+// The demo keeps its made-up data in memory, never in the real store.
+const flightData = createFlightData({
+  kv: MOCK ? memoryKv() : kv,
+  mock: MOCK,
+  fetchImpl: MOCK ? require('./lib/flightdata-mock').mockFetch(todayTW()) : fetch,
+  tzOf: (c) => AIRPORTS.get(c)?.tz || '',
+  airportNames: [...Object.entries(AIRPORT_ZH_FILE.names).map(([c, n]) => [n, c]), ...AIRPORT_ZH_FILE.groups.map((g) => [g.zh, g.codes[0]])],
+  airlineZh: Object.fromEntries(require('./data/airline-names.json').airlines.map(([c, n]) => [c, n])),
+  log: (m) => console.log(m),
+});
+let flightDemo = null;
+const flightReady = () => (MOCK ? (flightDemo ||= flightData.refresh().catch(() => null)) : Promise.resolve());
+async function handleFlightData(kind, q, req) {
+  if (kind === 'refresh' || kind === 'status') {
+    if (!(await runCaller(req))) throw passError(req, '需要通關密碼');
+    if (kind === 'status') return flightData.status();
+    if (req.method !== 'POST') throw new BadRequest('請用 POST');
+    return flightData.refresh({ until: Date.now() + 45e3 });
+  }
+  await flightReady();
+  if (kind === 'terminals') return flightData.terminals();
+  if (kind === 'upcoming') return flightData.upcoming();
+  const from = param(q, 'from', /^[A-Z]{3}(,[A-Z]{3}){0,3}$/, { required: true, upper: true }).split(',');
+  const to = param(q, 'to', /^[A-Z]{3}(,[A-Z]{3}){0,3}$/, { required: true, upper: true }).split(',');
+  if (kind === 'route') return flightData.route(from, to);
+  if (kind === 'lf') return flightData.loadFactor(from, to);
+  throw new BadRequest('不支援的資料');
+}
+
 // 查航班動態 / 這班過去準點率 (我的行程, lib/flightstatus.js): the owner's, like the cash fares (the passcode), one click
 // one lookup, out of the same AeroDataBox units as 直飛資料 (a status 2, delay statistics 6). The demo makes them up.
 const flightStatus = RAPIDAPI_KEY ? createFlightStatus({ apiKey: RAPIDAPI_KEY, kv, spend: spendDirectsUnits, refund: (n) => kv.incr(directsKey(), -n).catch(() => {}), onQuota: (q) => Object.assign(directsQuota, q) })
@@ -1510,6 +1568,7 @@ const CACHE = {
   search: 'public, max-age=60, s-maxage=1800, stale-while-revalidate=600',
   tripInfo: 'public, max-age=600, s-maxage=21600, stale-while-revalidate=3600',
   directs: 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
+  flightdata: 'public, max-age=600, s-maxage=21600, stale-while-revalidate=86400',
   fx: 'public, max-age=600, s-maxage=3600, stale-while-revalidate=3600',
   deals: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=3600',
   short: 'public, max-age=0, s-maxage=60',
@@ -1558,6 +1617,12 @@ const MUSE_TPL = { body: MUSE_TPL_BODY, etag: etagOf(MUSE_TPL_BODY) };
 // Which oneworld/Star airlines fly each airport pair (rtw.js's airline menu), fetched when 環球票規劃 opens.
 const RTW_ROUTES_BODY = fs.readFileSync(path.join(DATA_DIR, 'rtw-routes.json'));
 const RTW_ROUTES = { body: RTW_ROUTES_BODY, etag: etagOf(RTW_ROUTES_BODY) };
+// Cash-ticket earning charts and the baggage/lounge links (public/airinfo.js), fetched when one of those opens.
+const AIRLINE_INFO_BODY = JSON.stringify({ accrual: require('./data/accrual.json'), info: require('./data/airline-info.json') });
+const AIRLINE_INFO = { body: AIRLINE_INFO_BODY, etag: etagOf(AIRLINE_INFO_BODY) };
+// 拆兩段查 (hubsplit.js): the alliance hubs with their sources and SkyTeam's nonstop records, fetched when its fold shows.
+const SPLIT_HUBS_BODY = JSON.stringify({ hubs: JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'split-hubs.json'))), skyteam: JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'skyteam-routes.json'))) });
+const SPLIT_HUBS = { body: SPLIT_HUBS_BODY, etag: etagOf(SPLIT_HUBS_BODY) };
 
 function staticPolicy(rel, q) {
   if (rel.endsWith('.html')) return 'no-cache';
@@ -1704,6 +1769,8 @@ async function route(req, res) {
         searchCache: { enabled: searchCache.enabled },
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true, tokenOk: telegram.configured ? (await telegram.bot()).tokenOk : null },
         booked: Boolean(booked), dealRules: Boolean(dealRules),
+        // 官方航班資料 (lib/flightdata.js): which parts have data, so the page loads its script only when there is some.
+        flightdata: await (MOCK ? flightReady() : Promise.resolve()).then(() => flightData.flags()).catch(() => ({})),
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK, watch: Boolean(hotelWatch) },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
@@ -1726,6 +1793,11 @@ async function route(req, res) {
     if (p === '/api/directs') {
       const { body, open } = await handleDirects(q, req);
       return sendJson(res, 200, body, open && body.configured ? CACHE.directs : null);
+    }
+    const fdm = p.match(/^\/api\/flightdata\/(route|terminals|upcoming|lf|status|refresh)$/);
+    if (fdm) {
+      const body = await handleFlightData(fdm[1], q, req);
+      return sendJson(res, 200, body, ['status', 'refresh'].includes(fdm[1]) ? null : body.configured ? CACHE.flightdata : CACHE.short);
     }
     // Behind the passcode: 我的行程's 查航班動態 / 這班過去準點率 and 區域探索's 哪裡都好 (its region list is not).
     if (p === '/api/flight-status' || p === '/api/flight-delays') return sendJson(res, 200, await handleFlightStatus(q, req, p === '/api/flight-delays' ? 'delays' : 'status'));
@@ -1765,6 +1837,8 @@ async function route(req, res) {
     if (p === '/api/data/routing') return sendBody(req, res, { ...ROUTING, type: MIME['.json'], cache: CACHE.data });
     if (p === '/api/data/musetemplates') return sendBody(req, res, { ...MUSE_TPL, type: MIME['.json'], cache: CACHE.data });
     if (p === '/api/data/rtwroutes') return sendBody(req, res, { ...RTW_ROUTES, type: MIME['.json'], cache: CACHE.data });
+    if (p === '/api/data/airlineinfo') return sendBody(req, res, { ...AIRLINE_INFO, type: MIME['.json'], cache: CACHE.data });
+    if (p === '/api/data/splithubs') return sendBody(req, res, { ...SPLIT_HUBS, type: MIME['.json'], cache: CACHE.data });
     const m = p.match(/^\/api\/data\/(\w+)$/);
     if (m && DATA_FILES.includes(m[1])) return sendBody(req, res, { ...DATA[m[1]], type: MIME['.json'], cache: CACHE.data });
     if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'not found' });

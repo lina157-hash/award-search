@@ -2460,3 +2460,310 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 @media (max-width: 560px) { .aw-table td { white-space: normal; padding: 8px 10px; } .aw-table td:first-child { min-width: 5.5em; } }
 .aw-table td small { display: block; color: var(--muted); font-size: .78rem; }
 
+
+/* round 9: r9-flight (官方航班資料 flightdata.js, 航班明細 layovers, 出發前小提醒 local time, 桃園航廈) */
+.day.no-direct { background-image: repeating-linear-gradient(135deg, transparent 0 5px, rgba(0, 0, 0, .2) 5px 6.5px, rgba(255, 255, 255, .35) 6.5px 8px); }
+.hol-legend .dot.nd { border-radius: 2px; background: repeating-linear-gradient(135deg, transparent 0 2px, var(--muted) 2px 3.5px); border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent); }
+.tt-list { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 4px; font-size: .86rem; }
+.tt-list li, .ti-list .tt-list li { display: block; line-height: 1.45; font-size: .86rem; }
+.tt-list li b:first-child { font-variant-numeric: tabular-nums; }
+.tt-list sup, .seg-line sup.plus-day { font-size: .68em; color: var(--danger, #b42318); font-weight: 600; margin-left: 1px; }
+.tt-directs { display: block; }
+.tt-directs > .hint { display: block; margin-top: 2px; }
+.tt-more > summary { cursor: pointer; color: var(--accent); font-size: .82rem; }
+.tt-fold .tt-list { max-width: 720px; }
+.ti-term .hint, .ti-time .hint { display: inline; }
+.tag.bad { background: #fde5e8; color: #8c1f33; }
+.seg-conn { margin: 6px 0 0 10px; font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.seg-conn b { color: var(--text); }
+.trip-sort { display: flex; justify-content: flex-end; margin: 0 0 6px; font-size: .84rem; color: var(--muted); }
+.trip-sort label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: .84rem; }
+.trip-sort select { width: auto; font-size: .86rem; padding: 4px 8px; min-height: 32px; }
+.tt-upcoming { margin: 12px 0 0; font-size: .86rem; }
+.tt-upcoming > summary { cursor: pointer; color: var(--muted); min-height: 32px; display: flex; align-items: center; }
+.tt-upcoming > summary:hover { color: var(--accent); }
+.tt-upcoming ul { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 6px; }
+.tt-upcoming .tt-acts { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; margin-left: 6px; }
+.lf-fold { margin-top: 10px; }
+.lf-fold > summary { cursor: pointer; font-size: .86rem; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.lf-grid { display: grid; gap: 3px; max-width: 620px; margin-top: 4px; }
+.lf-row { display: grid; grid-template-columns: 6em repeat(12, minmax(0, 1fr)); gap: 3px; align-items: center; }
+.lf-head span { text-align: center; font-size: .72rem; color: var(--muted); }
+.lf-label { font-size: .8rem; font-weight: 600; display: flex; flex-direction: column; line-height: 1.2; }
+.lf-label small { font-weight: 400; color: var(--muted); font-size: .7rem; }
+.lf-cell { text-align: center; font-size: .72rem; font-variant-numeric: tabular-nums; padding: 5px 0; border-radius: 5px; color: var(--muted); background: color-mix(in srgb, var(--muted) 10%, transparent); }
+.lf-cell.l1 { background: var(--heat-1); color: var(--text); }
+.lf-cell.l2 { background: var(--heat-2); color: var(--text); }
+.lf-cell.l3 { background: var(--heat-3); color: var(--text); }
+.lf-cell.l4 { background: var(--heat-4); color: var(--heat-text-strong); }
+@media (max-width: 640px) {
+  .lf-row { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; }
+  .lf-head > span:first-child { display: none; }
+  .lf-label { grid-column: 1 / -1; flex-direction: row; gap: 6px; align-items: baseline; margin-top: 4px; }
+  .lf-cell { font-size: .66rem; padding: 4px 0; }
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.bad { background: #4a1f28; color: #ffc9d2; } }
+:root[data-theme="dark"] .tag.bad { background: #4a1f28; color: #ffc9d2; }
+
+/* round 9: r9-map */
+/* 可搭直飛 tags, 級距提醒 and other-airport lines in 哩程試算, its 經過 comparison, 兌換地圖's layers, 中停／開口組合's map. */
+.mk-bits { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+.mk-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--none); color: var(--muted); font-size: .74rem; line-height: 1.6; white-space: nowrap; }
+.mk-tag.ok { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.mk-edge, .mk-alt { display: block; font-size: .78rem; line-height: 1.45; }
+.mk-edge { color: var(--few-text); }
+.mk-alt { color: var(--accent); }
+.mk-h { margin: 16px 0 8px; font-size: .95rem; }
+.mk-via { margin: 8px 0 0; max-width: 520px; }
+.mk-compare th, .mk-compare td { vertical-align: top; white-space: normal; }
+.need-main td .mk-edge, .need-main td .mk-alt { white-space: normal; }
+.mk-compare thead th { min-width: 150px; text-align: left; font-weight: 600; }
+.mk-compare thead th:first-child { min-width: 120px; }
+.mk-compare th small, .mk-compare td small { display: block; color: var(--muted); font-size: .76rem; font-weight: 400; }
+.mk-compare .mk-more { color: var(--few-text); font-weight: 600; }
+.mk-compare td .mk-tag { margin-top: 3px; white-space: normal; border-radius: 8px; }
+.mk-compare td.mk-best { background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface)); }
+.mk-compare td.mk-best > b { color: var(--accent); }
+.mk-src { font-size: .78rem; }
+.rmap-layers { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 10px; }
+.mk-layers-h { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.mk-air select { max-width: 260px; }
+.mk-layers-tip { color: var(--muted); font-size: .78rem; }
+.rm-pin.rm-direct .rm-k { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent), 0 1px 6px rgb(0 0 0 / .35); }
+path.mk-ring { stroke: var(--brand); stroke-opacity: .55; fill: none; }
+path.mk-ring.on { stroke: var(--sun-2); stroke-opacity: .95; }
+path.mk-arc { stroke: var(--sun-2); stroke-linecap: round; fill: none; }
+.leaflet-marker-icon.mk-ring-label { white-space: nowrap; padding: 1px 6px; border-radius: 6px; background: var(--surface); color: var(--muted); font-size: .7rem; box-shadow: 0 1px 3px rgb(0 0 0 / .2); }
+.leaflet-marker-icon.mk-ring-label.on { color: var(--text); font-weight: 700; outline: 2px solid var(--sun-2); }
+.leaflet-popup-content p.mk-pop { margin: 6px 0 0; font-size: .8rem; line-height: 1.45; }
+.rm-pop td:first-child { white-space: normal; }
+.mk-pop small { display: block; color: #777; }
+.mk-pop.warn { color: #8a5a00; }
+.mk-list { margin: 8px 0 0; }
+.mk-list > summary { cursor: pointer; font-weight: 600; font-size: .92rem; padding: 4px 0; }
+.mk-list .seg { margin: 6px 0; }
+.mk-cities { margin: 6px 0 0; padding-left: 1.6em; columns: 2 300px; column-gap: 24px; font-size: .86rem; }
+.mk-cities li { break-inside: avoid; padding: 2px 0; }
+.mk-cities li span { margin: 0 6px; }
+.mk-cities li small { color: var(--muted); }
+.combo-map { margin: 10px 0; }
+.combo-map > summary { cursor: pointer; font-weight: 600; font-size: .92rem; padding: 4px 0; }
+.combo-map-box { height: 340px; margin: 6px 0; }
+.combo-dists { margin: 6px 0; padding: 0; list-style: none; font-size: .86rem; }
+.combo-dists li { padding: 2px 0; }
+.combo-dists li.oj { color: var(--muted); padding-left: 1em; }
+@media (max-width: 640px) {
+  /* 哩程試算 on a phone: each program a card (name and miles, then the basis, tags and source) instead of a wide table. */
+  .need-main thead { display: none; }
+  .need-main, .need-main tbody { display: block; }
+  .need-main tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .need-main tbody tr:last-child { border-bottom: 0; }
+  .need-main td { display: block; padding: 0; border: 0; position: static; background: none; white-space: normal; }
+  .need-main td:nth-child(2) { text-align: right; }
+  .need-main td:nth-child(n+3) { grid-column: 1 / -1; }
+  .need-main td:nth-child(4) { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .need-main td:nth-child(4) small { display: inline; }
+  .need-main tr.best-row { background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
+  .need-main tr.best-row td { background: none; }
+  .combo-map-box { height: 260px; }
+  .mk-air, .mk-air select { max-width: 100%; }
+  .mk-compare thead th { min-width: 130px; }
+}
+
+/* round 9: r9-airline */
+/* 商務艙座椅 (airline.js): 平躺／斜躺 beside the aircraft in 航班明細, on the route cards and 今日好康 */
+.pill.seat-tag { display: inline-block; font-size: .72rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin-left: 6px; text-decoration: none; white-space: nowrap; }
+.pill.seat-tag.flat { background: #e2f3e7; color: #1c6234; }
+.pill.seat-tag.recliner { background: var(--few); color: var(--few-text); }
+.pill.seat-tag.mixed { background: var(--surface-2); color: var(--muted); border: 1px dashed var(--border); }
+a.pill.seat-tag:hover { text-decoration: underline; }
+span.seat-tag:not(.pill) { font-weight: 700; white-space: nowrap; }
+span.seat-tag.flat:not(.pill) { color: #1c6234; }
+span.seat-tag.recliner:not(.pill) { color: var(--few-text); }
+.dm-seat { justify-self: start; font-size: .68rem; font-weight: 700; line-height: 1.5; padding: 0 7px; border-radius: 999px; background: var(--few); color: var(--few-text); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pill.seat-tag.flat { background: #173a24; color: #a6e3b8; }
+  :root:not([data-theme="light"]) span.seat-tag.flat:not(.pill) { color: #8fd6a6; }
+}
+:root[data-theme="dark"] .pill.seat-tag.flat { background: #173a24; color: #a6e3b8; }
+:root[data-theme="dark"] span.seat-tag.flat:not(.pill) { color: #8fd6a6; }
+/* Airline names and alliance logos that open 航空公司小檔案 */
+.seg-line .al.linklike { padding: 0; color: var(--accent); text-decoration: underline dotted; text-underline-offset: 3px; }
+.member-grid .mg-al { display: flex; align-items: center; gap: 6px; min-width: 0; width: 100%; min-height: 32px; padding: 2px 4px; margin: 0 -4px; font: inherit; color: inherit; text-align: left; background: none; border: 0; border-radius: 8px; cursor: pointer; }
+.member-grid .mg-al > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-grid .mg-al:hover { background: var(--surface-2); color: var(--accent); }
+.member-grid .mg-al:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 累積哩程試算 (airinfo.js): 查現金票's fold, 我的行程, 點數換算器 */
+.acc-fold summary small { display: block; color: var(--muted); font-weight: 400; font-size: .82rem; }
+.acc-calc { margin-top: 8px; display: grid; gap: 8px; }
+.acc-picks { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.acc-picks .field.compact { flex-wrap: wrap; }
+.acc-picks .field.compact select { width: auto; max-width: 100%; }
+.acc-legs { font-size: .8rem; }
+.acc-calc .acc-rows, .tp-accrual .acc-calc .acc-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--border); }
+.acc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(6.5em, auto) auto; align-items: baseline; gap: 2px 12px; padding: 7px 2px; border-bottom: 1px solid var(--border); }
+.acc-name { display: flex; align-items: baseline; gap: 6px; font-weight: 600; min-width: 0; }
+.acc-name input[type="radio"] { width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; accent-color: var(--accent); flex: none; align-self: center; }
+label.acc-name:has(input) { cursor: pointer; }
+.acc-pct { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.acc-m { text-align: right; white-space: nowrap; }
+.acc-m b { color: var(--accent); font-size: 1.02rem; }
+.acc-src { font-size: .78rem; white-space: nowrap; }
+.acc-note { grid-column: 1 / -1; color: var(--muted); font-size: .76rem; line-height: 1.4; }
+.acc-row.zero .acc-m, .acc-row.pend .acc-name { color: var(--muted); }
+.acc-row.pend .acc-name { font-weight: 500; }
+.acc-net { padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); display: grid; gap: 4px; }
+.acc-net p { margin: 0; }
+.acc-net b { color: var(--accent); }
+.acc-goal { font-weight: 600; }
+.acc-h { margin: 6px 0 4px; font-size: .86rem; color: var(--muted); }
+.acc-tool { margin: 16px 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+.acc-tool > summary { font-weight: 700; color: var(--text); min-height: 32px; }
+.acc-tool > summary small { display: block; color: var(--muted); font-weight: 400; font-size: .8rem; }
+.acc-tool-body { margin-top: 8px; display: grid; gap: 8px; }
+.acc-form { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.acc-form input[name="route"] { text-transform: uppercase; }
+@media (max-width: 560px) {
+  .acc-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .acc-pct { grid-column: 1; grid-row: 2; }
+  .acc-m { grid-column: 2; grid-row: 1; }
+  .acc-src { grid-column: 2; grid-row: 2; text-align: right; }
+}
+/* 行李與貴賓室 (航班明細, 我的行程, 小檔案) */
+#trip-body .al-fold { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+#trip-body .al-fold > summary { font-weight: 600; color: var(--text); flex-wrap: wrap; row-gap: 0; }
+#trip-body .al-fold > summary small { color: var(--muted); font-weight: 400; }
+.al-fold-body { margin-top: 6px; }
+.tp-air { margin-top: 4px; font-size: .84rem; }
+.tp-air > summary { color: var(--muted); cursor: pointer; font-size: .8rem; }
+.tp-air-body { margin: 6px 0 4px; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.alb { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.alb-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.alb-head .hint { font-size: .78rem; }
+.alb-head .linklike { margin-left: auto; font-size: .8rem; }
+.alb-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 2px; font-size: .86rem; }
+.alb-rules, .alb-al ul { margin: 4px 0 0; padding-left: 1.2em; font-size: .84rem; display: grid; gap: 3px; }
+.alb-rules small, .alb-al small { display: block; color: var(--muted); font-size: .76rem; }
+.alb-al { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--accent-soft); font-size: .86rem; }
+.alb-al > b { margin-left: 6px; }
+.alb-al .src { margin: 4px 0 0; font-size: .8rem; }
+.alb-gen { margin-top: 8px; font-size: .78rem; }
+/* 航空公司小檔案 (a sheet from the bottom on phones) */
+dialog.al-dlg { width: min(620px, calc(100vw - 24px)); max-height: 88vh; overflow: hidden; }
+dialog.al-dlg[open] { display: flex; flex-direction: column; }
+#al-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#al-title small { color: var(--muted); font-weight: 400; font-size: .8rem; }
+#al-body { overflow: auto; padding: 4px 18px 18px; overscroll-behavior: contain; }
+.als { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: .9rem; }
+.als:last-child { border-bottom: 0; }
+.als h3 { margin: 0 0 6px; font-size: .86rem; color: var(--muted); font-weight: 600; }
+.als p { margin: 0 0 4px; }
+.als-list { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 4px; }
+.als-list small { color: var(--muted); }
+.als-list .pill.seat-tag { margin-left: 0; }
+.als-progs { display: flex; flex-wrap: wrap; gap: 6px; }
+.als-progs .pill { display: inline-block; font-size: .8rem; padding: 2px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.als-progs .pill.home { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-weight: 700; }
+.als-ns small { color: var(--muted); }
+@media (max-width: 560px) {
+  dialog.al-dlg { width: 100vw; max-width: 100vw; margin: auto 0 0; border-radius: 18px 18px 0 0; max-height: 90dvh; }
+  #al-body { padding: 4px 14px calc(18px + env(safe-area-inset-bottom)); }
+}
+
+/* round 9: r9-split */
+/* 拆兩段查：經樞紐轉機 (public/hubsplit.js), under the route results */
+.split-fold { margin-top: 18px; }
+.split-fold > .hint { max-width: 860px; }
+.split-warn { display: inline-block; margin: 4px 0 8px; padding: 4px 10px; border-radius: 8px; background: var(--few); color: var(--few-text); font-size: .88rem; }
+.split-hubs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.split-hub { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; }
+.split-hub-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+.split-hub-name { flex: 1 1 320px; min-width: 0; }
+.split-hub-name small { display: block; color: var(--muted); font-size: .8rem; }
+.split-al { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--text); font-size: .74rem; vertical-align: 1px; }
+.split-act { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; max-width: 100%; }
+.split-act button { white-space: normal; text-align: left; }
+.split-act small.error { color: var(--danger); font-size: .8rem; }
+.split-done { color: var(--muted); font-size: .85rem; }
+.split-out { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.split-out .cx-total b { color: var(--accent); font-size: 1.08rem; }
+.split-out .cx-total small { display: block; color: var(--muted); font-size: .8rem; }
+.split-progs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 6px 0 2px; font-size: .88rem; }
+.split-prog small { color: var(--muted); font-size: .76rem; margin-left: 4px; }
+.split-table td .linklike { display: inline-block; margin-top: 2px; font-size: .8rem; min-height: 28px; }
+.split-table td:last-child { white-space: nowrap; }
+.split-notes { margin: 8px 0 0; padding-left: 1.2em; max-width: 860px; }
+.split-src { margin-top: 10px; font-size: .84rem; color: var(--muted); }
+.split-src > summary { cursor: pointer; }
+.split-src p { margin: 6px 0; }
+@media (max-width: 560px) {
+  .split-hub { padding: 10px; }
+  .split-act, .split-act button { width: 100%; }
+  .split-act button { min-height: 44px; }
+  .split-also { display: none; }
+  /* Each paired day as a small card: date and total on top, the two legs side by side. */
+  .split-table thead { display: none; }
+  .split-table, .split-table tbody { display: block; }
+  .split-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .split-table tbody tr:last-child { border-bottom: 0; }
+  .split-table td { display: block; padding: 0; border: 0; white-space: normal; }
+  .split-table td:first-child { order: 0; }
+  .split-table td:first-child small { display: inline; margin-left: 4px; }
+  .split-table td:last-child { order: 1; text-align: right; white-space: normal; }
+  .split-table td:last-child small, .split-table td:last-child .linklike { display: inline-block; margin-left: 6px; }
+  .split-table td:nth-child(2) { order: 2; }
+  .split-table td:nth-child(3) { order: 3; }
+  .split-table td[data-l]::before { content: attr(data-l); display: block; color: var(--muted); font-size: .72rem; }
+}
+
+/* round 9: r9-prog */
+/* #7 Avios moves */
+.result-tools .avios-afford { flex-basis: 100%; margin: -4px 0 0; }
+.wallet-sum td small.avios-need { display: block; font-size: .74rem; }
+.earn-mine li small { display: block; color: var(--muted); font-size: .76rem; }
+.earn-avios { margin: 4px 0; }
+.earn-avios-rules { margin: 4px 0 8px; padding-left: 1.2em; }
+.earn-avios-rules li { margin: 2px 0; }
+.earn-avios-rules li small { display: block; color: var(--muted); font-size: .76rem; }
+.detour-table td small { display: block; }
+/* #9 award sales (哩程票特惠) */
+.tag.sale { background: var(--few); color: var(--few-text); white-space: nowrap; }
+.deal .tag.sale, .deal-mini .tag.sale { margin-top: 4px; align-self: flex-start; }
+.sale-note { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 10px; padding: 8px 12px; margin: 0 0 12px; background: var(--surface); }
+.sale-note p { margin: 2px 0; }
+.sale-note small, .sale-trip small { display: block; color: var(--muted); font-size: .78rem; }
+.sale-trip { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: var(--accent-soft); }
+/* #17 Great Circle Mapper link, external tools */
+.gcmap-line { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.gcmap-line a { display: inline-block; padding: 6px 0; }
+.gcmap-line small { color: var(--muted); overflow-wrap: anywhere; }
+.tag.tp { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.tool-card h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tool-card h3 a { padding: 4px 0; }
+/* #21 最近變動 */
+.recent-box ul { margin: 4px 0; }
+.recent-box li .tag { margin-right: 2px; }
+/* #27 會籍匹配 */
+.sm-card { min-width: 0; }
+.sm-card[open] .card-sum { display: none; }
+.sm-card dl { margin: 6px 0; }
+.sm-card dd ul { margin: 2px 0; padding-left: 1.2em; }
+.sm-card .sub-fold summary h4 { margin: 0; font-size: .9rem; }
+/* #28 航空公司官方特賣 */
+.cash-sales { margin: 0 0 12px; }
+.cash-sale { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--border); }
+.cash-sale:first-child { border-top: 0; }
+.cash-sale small { display: block; color: var(--muted); font-size: .8rem; }
+.sale-go { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.sale-go small { flex-basis: 100%; }
+.sale-pages li { display: flex; align-items: center; gap: 6px; }
+.sale-pages a { padding: 6px 0; }
+/* #29 看改版前 */
+.before-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 8px 0; }
+.before-toggle { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; min-height: 32px; }
+.before-bar small { color: var(--muted); }
+small.was { display: none; color: var(--muted); font-size: .76rem; white-space: nowrap; }
+.show-before small.was { display: block; }
+.show-before td:has(small.was) { background: var(--accent-soft); }
+.before-tables h4 { margin: 10px 0 4px; font-size: .92rem; }
+@media (max-width: 640px) { .before-toggle, .gcmap-line a { min-height: 44px; } }

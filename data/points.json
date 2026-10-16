@@ -2021,6 +2021,61 @@
     ]
    }
   ],
+  "avios": {
+   "researched": "2026-10-16",
+   "note": "Avios 是英航、卡達、芬航、西班牙國家航空、愛爾蘭航空共用的哩程，連結帳戶後可 1:1 互轉（只能轉進自己的帳戶）。卡達只能和英航互轉，芬航不能直接連結卡達，要經英航。links 是官方頁面寫明可直接互轉的兩個計畫；features.js 依這些連結找最短的轉法。",
+   "programs": {
+    "british": "英航 Avios",
+    "qatar": "卡達 Avios",
+    "finnair": "芬航 Avios",
+    "iberia": "西班牙國家航空 Avios",
+    "aerlingus": "愛爾蘭航空 Avios"
+   },
+   "links": [
+    {
+     "a": "british",
+     "b": "qatar",
+     "rule": "兩邊都要是會員、年滿 18 歲，帳戶開立 30 天後才能連結；名字、姓氏、生日與 Email 要一致。連結後 1:1 即時入帳、不收費、沒有最低數量",
+     "confidence": "official",
+     "source": { "label": "卡達 Privilege Club：Avios 連結帳戶條款（2025-01-29 生效）", "url": "https://www.qatarairways.com/en-qa/Privilege-Club/terms-and-conditions/avios.html" }
+    },
+    {
+     "a": "british",
+     "b": "finnair",
+     "rule": "Finnair Plus 帳戶要開立滿 30 天、年滿 18 歲，兩邊的名字、姓氏與 Email 要相同，並開啟雙重驗證。1:1、免費、幾乎即時；一般（Basic）會員 12 個月內最多轉 100 萬 Avios",
+     "confidence": "official",
+     "source": { "label": "芬航：Finnair Plus 與英航互轉 Avios（2026-06-16 更新）", "url": "https://www.finnair.com/in-en/finnair-plus/buy--transfer-or-exchange-avios/transfer-avios-between-finnair-and-british-airways" }
+    },
+    {
+     "a": "british",
+     "b": "iberia",
+     "rule": "連結兩邊帳戶後 1:1 即時互轉，次數不限",
+     "confidence": "official",
+     "source": { "label": "英航：Transfer your Avios", "url": "https://www.britishairways.com/content/en/us/the-british-airways-club/avios/combine-avios" }
+    },
+    {
+     "a": "british",
+     "b": "aerlingus",
+     "rule": "連結兩邊帳戶後 1:1 即時互轉，次數不限",
+     "confidence": "official",
+     "source": { "label": "英航：Transfer your Avios", "url": "https://www.britishairways.com/content/en/us/the-british-airways-club/avios/combine-avios" }
+    },
+    {
+     "a": "finnair",
+     "b": "iberia",
+     "rule": "Finnair Plus 帳戶要開立滿 30 天，兩邊姓名相同；1:1、免費",
+     "confidence": "official",
+     "source": { "label": "芬航：Finnair Plus 與英航互轉 Avios（2026-06-16 更新）", "url": "https://www.finnair.com/in-en/finnair-plus/buy--transfer-or-exchange-avios/transfer-avios-between-finnair-and-british-airways" }
+    },
+    {
+     "a": "finnair",
+     "b": "aerlingus",
+     "rule": "Finnair Plus 帳戶要開立滿 30 天，兩邊姓名相同；1:1、免費",
+     "confidence": "official",
+     "source": { "label": "芬航：Finnair Plus 與英航互轉 Avios（2026-06-16 更新）", "url": "https://www.finnair.com/in-en/finnair-plus/buy--transfer-or-exchange-avios/transfer-avios-between-finnair-and-british-airways" }
+    }
+   ]
+  },
   "hotels": {
    "researched": "2026-10-14",
    "note": "各家比率多為 2026 年度條款，明年初需重新確認。飯店點數價值差很多：雅高 1 點約 €0.02，萬豪約 US$0.0075、洲際約 US$0.006、希爾頓約 US$0.004（The Points Guy 2026/10 估值），點數多不代表比較划算。",

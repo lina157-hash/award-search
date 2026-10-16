@@ -1,6 +1,6 @@
 {
-  "updated": "2026-10-14",
-  "note": "其他資料檔沒有結構化日期的規則變更，給「即將變更」清單用。date 是生效或截止日（YYYY-MM-DD），過了日期就不再顯示，可以刪掉。轉點比率的期限寫在 points.json 的 validUntil、優惠結束日寫在 promos.json 的 end、聯盟成員退出寫在 alliances.json 的 memberNotes，都會自動列入，不用重複寫在這裡。",
+  "updated": "2026-10-16",
+  "note": "其他資料檔沒有結構化日期的規則變更。changes 給「即將變更」清單用：date 是生效或截止日（YYYY-MM-DD）；pct 選填，是官方公布的平均漲幅（%，降價寫負數），會顯示成「X 月起漲約 N%」。過了日期請把那一筆移到 log（不要刪掉）。log 是已生效的規則變更，給規則庫「最近變動」與每週「本週變動」用：kind 是 rule 或 alliance，只收有官方來源的。轉點比率的期限寫在 points.json 的 validUntil、優惠開始與結束寫在 promos.json／promos-history.json、聯盟成員異動寫在 alliances.json 的 memberNotes，都會自動列入，不用重複寫在這裡。",
   "changes": [
     {
       "date": "2027-06-01",
@@ -9,6 +9,35 @@
       "advice": "之前累積的哩程照舊制計算",
       "confidence": "official",
       "source": { "label": "阿聯酋官網：Skywards 計畫更新", "url": "https://www.emirates.com/ae/english/skywards/emirates-skywards-program-updates/" }
+    }
+  ],
+  "log": [
+    {
+      "date": "2026-10-16",
+      "kind": "alliance",
+      "program": null,
+      "title": "韓亞航空航班不再累積星空聯盟哩程",
+      "advice": "2026-10-16 起出發的韓亞航班；用星盟夥伴哩程換韓亞的票或升等，要在 2026-12-16（含）前飛完",
+      "confidence": "official",
+      "source": { "label": "加航轉載星空聯盟新聞稿（2026-06）", "url": "https://www.aircanada.com/media/asiana-airlines-to-exit-star-alliance/" }
+    },
+    {
+      "date": "2026-09-16",
+      "kind": "rule",
+      "program": "dynastyflyer",
+      "title": "華航國際線酬賓機票改為「充足／有限／稀少」三級浮動價",
+      "advice": "以開票日決定適用新制",
+      "confidence": "official",
+      "source": { "label": "華航酬賓機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket" }
+    },
+    {
+      "date": "2026-06-01",
+      "kind": "rule",
+      "program": "aeroplan",
+      "title": "加航 Aeroplan 夥伴航班獎勵表調整",
+      "advice": "多數長程商務艙與頭等艙變貴，少數短程與太平洋區內長程變便宜；改版前後對照見規則庫「哩程表改版前後」",
+      "confidence": "official",
+      "source": { "label": "加航 2026 獎勵表調整公告", "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/news/2026-an-update-on-the-aeroplan-flight-reward-chart.html" }
     }
   ]
 }

@@ -1,0 +1,258 @@
+{
+  "lastReviewed": "2026-10-16",
+  "note": "現金票累積哩程試算（查現金票的已選取的航班、我的行程、點數換算器）：每家營運航空公司的票，累積到各計畫的官方比例。rates 是訂位艙等代碼 → 累積比例（%，乘上飛行距離），表上沒有的代碼不累積；kind zone 是依距離區間給固定哩數（國泰 2025-08-20 起的亞洲萬里通）；pending 表示官方頁讀不到（多半要開 JavaScript），只連到官方頁、不列數字。cabins 是這家航空公司自己的訂位艙等代碼分組（用在「還不知道代碼」時列出整個艙等的範圍），來自它自家累積表。只收官方頁面寫明的數字；第三方整理（例如 wheretocredit.com）只當標示「第三方」的連結，不抄數字。",
+  "fields": {
+    "programs": "計畫代碼 → 名稱與單位（哩、Avios、點）。代碼和網站其他地方一樣（eva、ci、starlux 用 programs.json 的代碼，其他用 seats.aero 來源代碼；korean 是大韓 SKYPASS）。",
+    "carriers": "營運航空公司 → cabins 與 earn（每個計畫一筆）。earn 欄位：rates、zero（官方表上寫明不累積的代碼）、min（每段最低哩數）、minDist（距離不足時以此計，再乘比例）、cabinRates（只按艙等給比例的計畫：艙等 → %，或 [最低, 最高]）、cabinMiles（依距離區間按艙等給固定哩數：艙等 → 每個 zones 一格，或 [最低那列, 最高那列]；routes 是官方另列固定數字的航線）、until（官方寫的適用期限）、minExcept（最低不適用的代碼）、except（特定航線例外）、basis（距離依據）、notes、source（官方頁）、checked（查核日）、effective（官方寫的生效日）。"
+  },
+  "wheretocredit": "https://wheretocredit.com/en/",
+  "programs": {
+    "eva": { "name": "長榮 無限萬哩遊" },
+    "united": { "name": "聯合 MileagePlus" },
+    "aeroplan": { "name": "加航 Aeroplan", "unit": "點" },
+    "singapore": { "name": "新航 KrisFlyer" },
+    "ana": { "name": "全日空 ANA Mileage Club" },
+    "turkish": { "name": "土航 Miles&Smiles" },
+    "ci": { "name": "華航 華夏哩程" },
+    "flyingblue": { "name": "法荷航 Flying Blue" },
+    "delta": { "name": "達美 SkyMiles" },
+    "korean": { "name": "大韓 SKYPASS" },
+    "virginatlantic": { "name": "維珍 Flying Club", "unit": "點" },
+    "starlux": { "name": "星宇 COSMILE" },
+    "alaska": { "name": "阿拉斯加 Atmos", "unit": "點" },
+    "asiamiles": { "name": "國泰 亞洲萬里通" },
+    "american": { "name": "美航 AAdvantage" },
+    "british": { "name": "英航 Avios", "unit": "Avios" },
+    "jal": { "name": "日航 JMB" },
+    "qantas": { "name": "澳航 Frequent Flyer", "unit": "點" }
+  },
+  "carriers": {
+    "BR": {
+      "cabins": { "J": "CJD", "W": "KLTP", "Y": "YBMHQSWV" },
+      "earn": [
+        {
+          "program": "eva",
+          "rates": { "C": 175, "J": 150, "D": 125, "K": 125, "L": 115, "T": 115, "P": 100, "Y": 100, "B": 100, "M": 75, "H": 75, "Q": 75, "S": 50, "W": 50, "V": 50 },
+          "basis": "IATA TPM",
+          "notes": ["長榮、立榮營運的國際線；機票艙等和實際搭乘艙等不同時，以較低的計算", "免費票、團體票（G）、嬰兒票、包機與特殊促銷票不累積", "聯名卡鑽石卡、金卡會員另加 25%、銀卡 15%（只限長榮、立榮營運的國際線，不算會籍）"],
+          "source": { "label": "長榮 無限萬哩遊：哩程累積比例（官方）", "url": "https://www.evaair.com/en-global/infinity-mileagelands/mileage-award-program/earning-mileage/eva-air-and-uni-air/mileage-accrual-ratio-rule/" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "turkish",
+          "rates": { "C": 150, "J": 150, "D": 125, "K": 125, "L": 115, "T": 100, "P": 100, "Y": 100, "B": 100, "M": 75, "H": 75, "Q": 75, "S": 50 },
+          "zero": "RIEVWNXGAO",
+          "notes": ["土航機票上的艙等代碼可能和長榮的不同；長榮的代碼不在表上就不累積"],
+          "source": { "label": "土航 Miles&Smiles：長榮航空（官方）", "url": "https://www.turkishairlines.com/en-gb/miles-and-smiles/program-partners/airlines/eva-air/" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "singapore",
+          "rates": { "C": 125, "D": 125, "J": 125, "K": 110, "L": 110, "B": 100, "M": 100, "P": 100, "T": 100, "Y": 100, "H": 50, "Q": 50, "S": 50 },
+          "basis": "實際飛行哩程",
+          "notes": ["D、J 只限國際線", "國際線 GO Light 票價的 K、L 不累積", "T 在國內線、澳洲與太平洋島嶼航線不累積"],
+          "source": { "label": "新航 KrisFlyer：夥伴航空累積表 PDF（官方，2026-06-02 更新）", "url": "https://www.singaporeair.com/content/dam/sia/web-assets/pdfs/ppsclub-krisflyer/charts/KFOALLevels_2Jun2026version.pdf" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "ana",
+          "rates": { "C": 125, "J": 125, "D": 125, "K": 100, "L": 100, "T": 100, "P": 100, "Y": 100, "B": 100, "M": 100, "H": 70, "Q": 50, "S": 50 },
+          "basis": "區間基本哩程",
+          "notes": ["官方頁標示這是 2016-11-11 的資料，全日空寫明夥伴可能不經通知調整", "以機票上的訂位艙等代碼為準"],
+          "source": { "label": "全日空 ANA Mileage Club：長榮航空（官方）", "url": "https://www.ana.co.jp/en/jp/amc/flightmile/tk/br/" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "united",
+          "rates": { "C": 150, "J": 150, "D": 125, "K": 125, "L": 115, "T": 115, "P": 100, "Y": 100, "B": 100, "M": 75, "H": 75, "Q": 75, "S": 50, "W": 50 },
+          "zero": "AEFGINORUVXZ",
+          "basis": "飛行距離",
+          "notes": ["這是在長榮、其他航空、第三方網站或旅行社買的票：依飛行距離和艙等代碼累積（已含加贈）", "在聯合官網買的票改依票價累積：2026-04-02 起開票，一般會員每 1 美元 3 哩（Premier Silver 5、Gold 6、Platinum 7、1K 9 哩）", "立榮（UNI Air）營運的航班不能累積，也不能兌換"],
+          "source": { "label": "聯合 MileagePlus：搭長榮航空累積（官方）", "url": "https://www.united.com/en/us/fly/mileageplus/partners/earn-miles-on-eva-air.html" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "aeroplan",
+          "rates": { "C": 125, "J": 125, "D": 125, "K": 100, "L": 100, "T": 100, "P": 100, "Y": 100, "B": 100, "M": 75, "H": 75, "Q": 50, "S": 50 },
+          "basis": "實際飛行哩程",
+          "notes": ["這是不是加航開的票（票號不是 014 開頭）的比例：依實際飛行哩程乘艙等代碼比例；表上沒有的代碼不累積", "加航開的票（票號 014 開頭）2026-01-01 起搭乘的，改依花費累積，Aeroplan 菁英會員另有加成"],
+          "source": { "label": "Aeroplan：長榮航空（官方）", "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/partners.html" },
+          "checked": "2026-10-16"
+        }
+      ]
+    },
+    "CI": {
+      "cabins": { "J": "JCD", "W": "WUAE", "Y": "YBMKVTRQHNL" },
+      "earn": [
+        {
+          "program": "ci",
+          "rates": { "J": 175, "C": 150, "D": 125, "W": 125, "U": 125, "A": 115, "E": 100, "Y": 100, "B": 100, "M": 100, "K": 80, "V": 80, "T": 80, "R": 50, "Q": 50, "H": 50, "N": 50, "L": 0 },
+          "zero": "OZLXGS",
+          "basis": "IATA TPM",
+          "notes": ["華航、華信營運的國際線定期航班；轉機時每個班號分開算", "機票艙等和實際搭乘艙等不同時，以較低的計算；I、P 艙升等依原機票艙等"],
+          "source": { "label": "華航 華夏哩程：飛行哩程（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/earning/flight" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "korean",
+          "rates": { "J": 130, "C": 125, "D": 115, "W": 115, "U": 115, "A": 100, "E": 100, "Y": 100, "B": 100, "M": 100, "K": 80 },
+          "notes": ["2025-09-17 起搭乘的比例（K 從這天起 80%、T 不再累積）", "也適用指定的華信航班"],
+          "source": { "label": "大韓 SKYPASS：天合聯盟夥伴（官方）", "url": "https://www.koreanair.com/contents/skypass/earn-miles/partner-airlines/skyteam?hl=zh-hk" },
+          "checked": "2026-10-16",
+          "effective": "2025-09-17"
+        },
+        {
+          "program": "delta",
+          "rates": { "J": 100, "C": 100, "D": 100, "W": 100, "U": 100, "E": 100, "Y": 80, "B": 80, "M": 80, "K": 50, "V": 50, "T": 50, "R": 25, "Q": 25, "H": 25, "N": 25 },
+          "basis": "達美計算的起訖距離",
+          "notes": ["表頭寫「China Airlines Marketed Flights」，即華航班號的航班", "只有指定班號的華信航班可累積"],
+          "source": { "label": "達美 SkyMiles：中華航空（官方）", "url": "https://www.delta.com/content/www/en_US/skymiles/earn-miles/earn-miles-with-partners/airlines/china-airlines.html" },
+          "checked": "2026-10-16",
+          "effective": "2015-01-01"
+        },
+        {
+          "program": "virginatlantic",
+          "rates": { "J": 175, "C": 150, "D": 125, "W": 125, "U": 125, "A": 115, "E": 100, "Y": 100, "B": 100, "M": 100, "K": 75, "V": 75, "T": 75, "R": 50, "Q": 50, "H": 50, "N": 50 },
+          "notes": ["一般（Red）會員的比例；Silver、Gold 會員更多", "其他天合聯盟航空公司班號的華航航班，依該公司的規定"],
+          "source": { "label": "維珍 Flying Club：中華航空（官方）", "url": "https://www.virginatlantic.com/en-US/flying-club/airline-partners/china-airlines" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "flyingblue",
+          "rates": { "J": 130, "C": 125, "D": 115, "W": 115, "U": 115, "A": 100, "E": 100, "Y": 100, "B": 100, "M": 100, "K": 80, "V": 80, "T": 80, "R": 50, "Q": 50, "H": 50, "N": 50 },
+          "minDist": 500,
+          "basis": "起訖兩地的距離",
+          "notes": ["華航班號的航班（任何天合聯盟夥伴營運），以及華航營運的指定華信班號；表上沒有的代碼、獎勵機票不累積", "華航航班每段最少算 500 哩，例如 274 哩的 N 艙一般會員得 500 × 50% = 250 哩", "CI1000–1999、4000–4999、5000–6999、7000–7999 的航班不累積（CI7863、7867–7868 台南—香港、CI7915–7916 台北—仰光除外）"],
+          "source": { "label": "Flying Blue：中華航空（官方）", "url": "https://www.flyingblue.com/en/earn/partners/airline-china-airlines" },
+          "checked": "2026-10-16"
+        }
+      ]
+    },
+    "JX": {
+      "cabins": { "F": "FA", "J": "JCD", "W": "WRE", "Y": "YBHKMLVSNQ" },
+      "earn": [
+        {
+          "program": "starlux",
+          "rates": { "F": 200, "A": 200, "J": 175, "C": 150, "D": 130, "W": 125, "R": 115, "E": 105, "Y": 100, "B": 100, "H": 100, "K": 80, "M": 80, "L": 80, "V": 60, "S": 60, "N": 60, "Q": 0 },
+          "zero": "Q",
+          "basis": "IATA TPM",
+          "notes": ["星宇班號的航班；機票艙等和實際搭乘艙等不同時，以較低的計算", "Q（Limited）、獎勵機票、用阿拉斯加哩程換的票、折扣票、包機、團體票和嬰兒票不累積", "INSIGHTER、EXPLORER、ADVENTURER 會員搭星宇營運的航班另有加贈"],
+          "source": { "label": "星宇 COSMILE：哩程累積（官方）", "url": "https://www.starlux-airlines.com/en-US/cosmile/my-cosmile/mileage-accrual" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "alaska",
+          "cabinRates": { "F": 150, "J": 125, "W": 100, "Y": [25, 50] },
+          "basis": "飛行距離",
+          "notes": ["在星宇官網、旅行社等其他地方買的票：頭等 150%、商務 125%、豪經 100%、經濟 50%、折扣經濟 25%（官網沒寫哪些代碼算折扣經濟，所以經濟艙顯示 25%–50%）", "在阿拉斯加或夏威夷航空官網買的票多很多：國際線頭等 350%、商務 250%、豪經 150%、經濟和折扣經濟 100%", "這張表適用到 2026-12-31；2027-01-01 起可以選依距離、票價或航段累積", "在星宇官網買的票不累積 Atmos 會籍點數"],
+          "source": { "label": "阿拉斯加 Atmos：夥伴航空累積（官方，2026 年）", "url": "https://www.alaskaair.com/atmosrewards/content/earn-points/flights" },
+          "checked": "2026-10-16",
+          "until": "2026-12-31"
+        }
+      ]
+    },
+    "CX": {
+      "cabins": { "F": "FA", "J": "JCDPI", "W": "WRE", "Y": "YBHKMLVSNQO" },
+      "earn": [
+        {
+          "program": "asiamiles",
+          "kind": "zone",
+          "zones": [
+            { "id": "us", "label": "超短程（1–750 哩）", "max": 750 },
+            { "id": "s1", "label": "短程第一類（751–2,750 哩）", "max": 2750 },
+            { "id": "s2", "label": "短程第二類（751–2,750 哩，往返日本、印尼、斯里蘭卡、尼泊爾、孟加拉、印度）", "max": 2750, "countries": ["JP", "ID", "LK", "NP", "BD", "IN"] },
+            { "id": "m", "label": "中程（2,751–5,000 哩）", "max": 5000 },
+            { "id": "l", "label": "長程（5,001–7,500 哩）", "max": 7500 },
+            { "id": "ul", "label": "超長程（7,501 哩以上）", "max": null }
+          ],
+          "rows": [
+            { "classes": "FA", "fare": "Flex", "miles": [3500, 4500, 6000, 11000, 16000, 18000] },
+            { "classes": "JC", "fare": "Flex", "miles": [3000, 4000, 5000, 9000, 13000, 15000] },
+            { "classes": "DPI", "fare": "Essential／Light", "miles": [2500, 3500, 4500, 7500, 10000, 12000] },
+            { "classes": "WR", "fare": "Flex", "miles": [2500, 3000, 3500, 6000, 8000, 10000] },
+            { "classes": "E", "fare": "Essential", "miles": [1500, 2000, 2500, 4500, 6500, 8500] },
+            { "classes": "YBHK", "fare": "Flex", "miles": [2500, 3000, 3500, 4800, 7000, 9000] },
+            { "classes": "YBHK", "fare": "Essential", "miles": [1500, 2000, 2500, 3800, 6000, 7000] },
+            { "classes": "YBHK", "fare": "Light", "miles": [1000, 1500, 1800, 3000, 4000, 5000] },
+            { "classes": "MLV", "fare": "Flex", "miles": [2000, 2500, 3000, 4200, 6000, 8000] },
+            { "classes": "MLV", "fare": "Essential", "miles": [1000, 1500, 2000, 3200, 5000, 6000] },
+            { "classes": "MLV", "fare": "Light", "miles": [600, 1000, 1200, 2200, 3200, 4000] },
+            { "classes": "SNQO", "fare": "Flex", "miles": [1500, 2000, 2500, 3200, 3800, 4500] },
+            { "classes": "SNQO", "fare": "Essential", "miles": [500, 1000, 1500, 2200, 2800, 3500] },
+            { "classes": "SNQO", "fare": "Light", "miles": [300, 600, 800, 1500, 1800, 2500] }
+          ],
+          "notes": ["國泰班號的航班（2025-08-20 起出發）：每一段依距離區間、艙等代碼和票價類型（Light、Essential、Flex）給固定哩數，不是距離乘比例", "同一個代碼有幾種票價類型時，列出最少到最多"],
+          "source": { "label": "國泰：航班累積亞洲萬里通與會籍積分的新制（官方 PDF）", "url": "https://www.cathaypacific.com/content/dam/cx/membership/changes-to-status-points-and-am-earnings-on-flights-full-table-tw-v3.pdf" },
+          "checked": "2026-10-16",
+          "effective": "2025-08-20"
+        },
+        {
+          "program": "american",
+          "rates": { "F": 150, "A": 150, "J": 125, "C": 125, "D": 125, "P": 125, "I": 125, "W": 110, "R": 100, "E": 100, "Y": 100, "B": 75, "H": 75 },
+          "zero": "KMLVQSGN",
+          "except": [{ "classes": "W", "routes": ["HKG-BKK"], "pct": 100, "note": "香港—曼谷的 W 艙沒有 10% 艙等加成" }],
+          "notes": ["基本哩程 100% 加上艙等加成（頭等 50%、商務 25%、W 艙 10%）", "表上沒有的代碼不累積哩程，也不累積 Loyalty Points"],
+          "source": { "label": "美航 AAdvantage：國泰航空（官方）", "url": "https://www.aa.com/i18n/travel-info/partner-airlines/cathay-pacific.jsp" },
+          "checked": "2026-10-16",
+          "effective": "2022-04-01"
+        },
+        {
+          "program": "british",
+          "rates": { "F": 150, "A": 150, "J": 125, "C": 125, "D": 125, "I": 125, "P": 125, "W": 110, "R": 100, "E": 100, "Y": 100, "B": 100, "H": 100, "K": 25, "L": 25, "M": 25, "N": 25, "Q": 25, "S": 25, "V": 25 },
+          "min": 500,
+          "minExcept": "KLMNQSV",
+          "basis": "飛行哩程",
+          "notes": ["每段最低 500 Avios；折扣經濟艙（K、L、M、N、Q、S、V）的最低規定不同，這幾個代碼這裡不套最低"],
+          "source": { "label": "英航：搭乘合作航空累積 Avios（官方）", "url": "https://www.britishairways.com/en-us/executive-club/collecting-avios/flights" },
+          "checked": "2026-10-16",
+          "effective": "2023-11-01"
+        },
+        {
+          "program": "jal",
+          "rates": { "F": 150, "A": 150, "J": 125, "C": 125, "D": 125, "P": 125, "I": 70, "W": 100, "R": 100, "E": 70, "Y": 100, "B": 50, "H": 50, "K": 50, "M": 50, "L": 50 },
+          "basis": "IATA TPM",
+          "notes": ["只有寰宇一家航空公司營運、國泰班號的航班可累積", "部分票價的比例可能和表上不同"],
+          "source": { "label": "日航 JMB：國泰航空（官方）", "url": "https://www.jal.co.jp/twl/zhtw/jmb/earn/travel/flight/cx.html" },
+          "checked": "2026-10-16"
+        },
+        {
+          "program": "alaska",
+          "cabinRates": { "F": 150, "J": 125, "W": 100, "Y": [25, 50] },
+          "basis": "飛行距離",
+          "notes": ["在國泰官網、旅行社等其他地方買的票：頭等 150%、商務 125%、豪經 100%、經濟 50%、折扣經濟 25%（官網沒寫哪些代碼算折扣經濟，所以經濟艙顯示 25%–50%）", "在阿拉斯加或夏威夷航空官網買的票多很多：國際線頭等 350%、商務 250%、豪經 150%、經濟和折扣經濟 100%", "這張表適用到 2026-12-31；2027-01-01 起可以選依距離、票價或航段累積"],
+          "source": { "label": "阿拉斯加 Atmos：夥伴航空累積（官方，2026 年）", "url": "https://www.alaskaair.com/atmosrewards/content/earn-points/flights" },
+          "checked": "2026-10-16",
+          "until": "2026-12-31"
+        },
+        {
+          "program": "qantas",
+          "zones": [
+            { "id": "d1", "label": "100 哩以下", "max": 100 },
+            { "id": "d2", "label": "101–250 哩", "max": 250 },
+            { "id": "d3", "label": "251–500 哩", "max": 500 },
+            { "id": "d4", "label": "501–750 哩", "max": 750 },
+            { "id": "d5", "label": "751–1,500 哩", "max": 1500 },
+            { "id": "d6", "label": "1,501–2,500 哩", "max": 2500 },
+            { "id": "d7", "label": "2,501–3,500 哩", "max": 3500 },
+            { "id": "d8", "label": "3,501–5,000 哩", "max": 5000 },
+            { "id": "d9", "label": "5,001–6,500 哩", "max": 6500 },
+            { "id": "d10", "label": "6,501 哩以上", "max": null }
+          ],
+          "cabinMiles": {
+            "F": [150, 300, 600, 975, 1650, 3000, 4800, 6300, 8600, 11250],
+            "J": [125, 250, 500, 825, 1375, 2500, 4000, 5250, 7125, 9400],
+            "W": [110, 220, 450, 715, 1210, 2200, 3520, 4600, 6300, 8250],
+            "Y": [[25, 50, 100, 170, 275, 500, 800, 1050, 1425, 1875], [100, 200, 400, 650, 1100, 2000, 3200, 4200, 5700, 7500]]
+          },
+          "routes": [
+            { "label": "雪梨、墨爾本、布里斯本、黃金海岸 ↔ 香港", "between": ["SYD", "MEL", "BNE", "OOL"], "and": ["HKG"], "cabinMiles": { "F": 6750, "J": 5600, "W": 4950, "Y": [1100, 4500] } }
+          ],
+          "basis": "距離區間（單程）",
+          "notes": ["每段依距離區間給固定點數（官網 All other flights 表）；雪梨、墨爾本、布里斯本、黃金海岸往返香港用官網另一張固定點數表", "經濟艙分折扣經濟、經濟、彈性經濟三種，要看國泰的 Earn Category 表才知道哪個代碼算哪一種，所以經濟艙先顯示最低到最高", "距離用大圓距離算，剛好在區間邊上時可能和澳航算的差一級"],
+          "source": { "label": "澳航 Frequent Flyer：夥伴航空累積表（官方）", "url": "https://www.qantas.com/en-tw/frequent-flyer/calculators/earning-tables/partner-airlines" },
+          "checked": "2026-10-16"
+        }
+      ]
+    }
+  }
+}
