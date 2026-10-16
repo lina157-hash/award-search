@@ -1608,6 +1608,9 @@ const RTW_ROUTES = { body: RTW_ROUTES_BODY, etag: etagOf(RTW_ROUTES_BODY) };
 // Cash-ticket earning charts and the baggage/lounge links (public/airinfo.js), fetched when one of those opens.
 const AIRLINE_INFO_BODY = JSON.stringify({ accrual: require('./data/accrual.json'), info: require('./data/airline-info.json') });
 const AIRLINE_INFO = { body: AIRLINE_INFO_BODY, etag: etagOf(AIRLINE_INFO_BODY) };
+// 拆兩段查 (hubsplit.js): the alliance hubs with their sources and SkyTeam's nonstop records, fetched when its fold shows.
+const SPLIT_HUBS_BODY = JSON.stringify({ hubs: JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'split-hubs.json'))), skyteam: JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'skyteam-routes.json'))) });
+const SPLIT_HUBS = { body: SPLIT_HUBS_BODY, etag: etagOf(SPLIT_HUBS_BODY) };
 
 function staticPolicy(rel, q) {
   if (rel.endsWith('.html')) return 'no-cache';
@@ -1823,6 +1826,7 @@ async function route(req, res) {
     if (p === '/api/data/musetemplates') return sendBody(req, res, { ...MUSE_TPL, type: MIME['.json'], cache: CACHE.data });
     if (p === '/api/data/rtwroutes') return sendBody(req, res, { ...RTW_ROUTES, type: MIME['.json'], cache: CACHE.data });
     if (p === '/api/data/airlineinfo') return sendBody(req, res, { ...AIRLINE_INFO, type: MIME['.json'], cache: CACHE.data });
+    if (p === '/api/data/splithubs') return sendBody(req, res, { ...SPLIT_HUBS, type: MIME['.json'], cache: CACHE.data });
     const m = p.match(/^\/api\/data\/(\w+)$/);
     if (m && DATA_FILES.includes(m[1])) return sendBody(req, res, { ...DATA[m[1]], type: MIME['.json'], cache: CACHE.data });
     if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'not found' });
