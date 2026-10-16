@@ -37,6 +37,7 @@ const { createNlImage, MAX_BODY: NL_IMAGE_BODY } = require('./lib/nlimage');
 const { createBooked } = require('./lib/booked');
 const { createDealRules, DealRuleError } = require('./lib/dealrules');
 const { createTicketParse } = require('./lib/ticketparse');
+const { createFlightData } = require('./lib/flightdata');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = (process.env.SEATS_AERO_API_KEY || '').trim(); // a key pasted into Vercel with a space or line break still works
@@ -513,8 +514,13 @@ async function runDaily(req, q) {
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
-  const parts = new Set((q.get('part') || 'expiry,promos,deals,digest,watches,booked,alerts,hotels').split(','));
+  const parts = new Set((q.get('part') || 'expiry,promos,deals,digest,watches,booked,alerts,hotels,timetable').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
+  // 官方航班資料: about once a week (flightData.due), or when asked for by name. It runs alongside the other parts (it
+  // only waits on government servers) and must answer by the run's end.
+  const asked = (q.get('part') || '').split(',').includes('timetable');
+  const ttP = parts.has('timetable') && (asked || (await flightData.due().catch(() => false)))
+    ? flightData.refresh({ until: t0 + RUN_BUDGET.end }).catch((e) => ({ error: e.message })) : null;
   if (parts.has('expiry')) out.expiry = await expiry.run({ deadline: t0 + RUN_BUDGET.expiry, lock: lockFor('expiry:run', 60) }).catch((e) => ({ error: e.message }));
   // New transfer bonuses for the owner: one Redis read most days, no quota.
   if (parts.has('promos')) out.promos = await promoWatch.run({ lock: lockFor('promo-watch:run', 60) }).catch((e) => ({ error: e.message }));
@@ -539,6 +545,7 @@ async function runDaily(req, q) {
   // (立即檢查 on 查飯店, which says what it spends); the seat alerts' 立即檢查全部 does not spend them again.
   if (parts.has('hotels') && hotelWatch) out.hotels = await hotelWatch.run({ deadline: t0 + RUN_BUDGET.hotels, until: t0 + RUN_BUDGET.digest, force: who !== 'cron' && (q.get('part') || '').split(',').includes('hotels'), lock: lockFor('hotel-watch:run', 120) }).catch((e) => ({ error: e.message }));
   if (parts.has('digest') && dealSub) out.digest = await dealSub.run({ deadline: t0 + RUN_BUDGET.digest, base: SITE_URL || siteBase(req) }).catch((e) => ({ error: e.message }));
+  if (ttP) { const t = await ttP; out.timetable = t?.error ? { error: t.error } : { changed: t?.changed || [], ...(t?.timetable || {}) }; }
   if (who === 'cron') {
     // Also kept per slot with how each part went, for the owner's status line (GET /api/cron/status).
     const done = { at: new Date().toISOString(), ms: Date.now() - t0, problems: runProblems(out), parts: cronParts(out) };
@@ -1144,6 +1151,39 @@ async function handleDirects(q, req) {
   }
 }
 
+// 官方航班資料 (lib/flightdata.js, round 9): the timetable of flights touching Taiwan (TDX when TDX_CLIENT_ID and
+// TDX_CLIENT_SECRET are set, else 民航局 and 桃園機場's files), TPE terminals and load factors, refreshed about weekly
+// by the daily run. Public and free. The demo fills it from made-up copies of the files on first use.
+const AIRPORT_ZH_FILE = require('./data/airport-names-zh.json');
+// The demo keeps its made-up data in memory, never in the real store.
+const flightData = createFlightData({
+  kv: MOCK ? memoryKv() : kv,
+  mock: MOCK,
+  fetchImpl: MOCK ? require('./lib/flightdata-mock').mockFetch(todayTW()) : fetch,
+  tzOf: (c) => AIRPORTS.get(c)?.tz || '',
+  airportNames: [...Object.entries(AIRPORT_ZH_FILE.names).map(([c, n]) => [n, c]), ...AIRPORT_ZH_FILE.groups.map((g) => [g.zh, g.codes[0]])],
+  airlineZh: Object.fromEntries(require('./data/airline-names.json').airlines.map(([c, n]) => [c, n])),
+  log: (m) => console.log(m),
+});
+let flightDemo = null;
+const flightReady = () => (MOCK ? (flightDemo ||= flightData.refresh().catch(() => null)) : Promise.resolve());
+async function handleFlightData(kind, q, req) {
+  if (kind === 'refresh' || kind === 'status') {
+    if (!(await runCaller(req))) throw passError(req, '需要通關密碼');
+    if (kind === 'status') return flightData.status();
+    if (req.method !== 'POST') throw new BadRequest('請用 POST');
+    return flightData.refresh({ until: Date.now() + 45e3 });
+  }
+  await flightReady();
+  if (kind === 'terminals') return flightData.terminals();
+  if (kind === 'upcoming') return flightData.upcoming();
+  const from = param(q, 'from', /^[A-Z]{3}(,[A-Z]{3}){0,3}$/, { required: true, upper: true }).split(',');
+  const to = param(q, 'to', /^[A-Z]{3}(,[A-Z]{3}){0,3}$/, { required: true, upper: true }).split(',');
+  if (kind === 'route') return flightData.route(from, to);
+  if (kind === 'lf') return flightData.loadFactor(from, to);
+  throw new BadRequest('不支援的資料');
+}
+
 // 查航班動態 / 這班過去準點率 (我的行程, lib/flightstatus.js): the owner's, like the cash fares (the passcode), one click
 // one lookup, out of the same AeroDataBox units as 直飛資料 (a status 2, delay statistics 6). The demo makes them up.
 const flightStatus = RAPIDAPI_KEY ? createFlightStatus({ apiKey: RAPIDAPI_KEY, kv, spend: spendDirectsUnits, refund: (n) => kv.incr(directsKey(), -n).catch(() => {}), onQuota: (q) => Object.assign(directsQuota, q) })
@@ -1510,6 +1550,7 @@ const CACHE = {
   search: 'public, max-age=60, s-maxage=1800, stale-while-revalidate=600',
   tripInfo: 'public, max-age=600, s-maxage=21600, stale-while-revalidate=3600',
   directs: 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
+  flightdata: 'public, max-age=600, s-maxage=21600, stale-while-revalidate=86400',
   fx: 'public, max-age=600, s-maxage=3600, stale-while-revalidate=3600',
   deals: 'public, max-age=300, s-maxage=3600, stale-while-revalidate=3600',
   short: 'public, max-age=0, s-maxage=60',
@@ -1704,6 +1745,8 @@ async function route(req, res) {
         searchCache: { enabled: searchCache.enabled },
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true, tokenOk: telegram.configured ? (await telegram.bot()).tokenOk : null },
         booked: Boolean(booked), dealRules: Boolean(dealRules),
+        // 官方航班資料 (lib/flightdata.js): which parts have data, so the page loads its script only when there is some.
+        flightdata: await (MOCK ? flightReady() : Promise.resolve()).then(() => flightData.flags()).catch(() => ({})),
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK, watch: Boolean(hotelWatch) },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
@@ -1726,6 +1769,11 @@ async function route(req, res) {
     if (p === '/api/directs') {
       const { body, open } = await handleDirects(q, req);
       return sendJson(res, 200, body, open && body.configured ? CACHE.directs : null);
+    }
+    const fdm = p.match(/^\/api\/flightdata\/(route|terminals|upcoming|lf|status|refresh)$/);
+    if (fdm) {
+      const body = await handleFlightData(fdm[1], q, req);
+      return sendJson(res, 200, body, ['status', 'refresh'].includes(fdm[1]) ? null : body.configured ? CACHE.flightdata : CACHE.short);
     }
     // Behind the passcode: 我的行程's 查航班動態 / 這班過去準點率 and 區域探索's 哪裡都好 (its region list is not).
     if (p === '/api/flight-status' || p === '/api/flight-delays') return sendJson(res, 200, await handleFlightStatus(q, req, p === '/api/flight-delays' ? 'delays' : 'status'));
