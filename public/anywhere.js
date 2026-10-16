@@ -16,11 +16,20 @@ function awOrigins(s) {
   const list = [...new Set(String(s || '').toUpperCase().split(/[\s,，、]+/).filter(Boolean))];
   return list.length && list.length <= 3 && list.every((c) => /^[A-Z]{3}$/.test(c)) ? list : null;
 }
-// The programs to offer: every seats.aero program the site names, those the wallet reaches (own miles or a bank
-// transfer; `reachOf(id)` → miles) first, biggest first, then the rest by name. → [{ id, name, miles }]
+// The programs to offer: every seats.aero program the site names (not the site's own estimates such as asiamiles_est),
+// the ones you hold miles in first (biggest first), then those your card points transfer to, then the rest by name.
+// Two seats.aero ids with one name (copa and connectmiles) are one row whose id lists both.
+// `reachOf(id)` → { own, total } miles (我的點數). → [{ id: 'a' or 'a,b', name, own, total }]
 function awProgramList(names, reachOf) {
-  return Object.entries(names || {}).map(([id, name]) => ({ id, name, miles: reachOf(id) || 0 }))
-    .sort((a, b) => b.miles - a.miles || a.name.localeCompare(b.name, 'zh-Hant'));
+  const rows = new Map();
+  for (const [id, name] of Object.entries(names || {})) {
+    if (!/^[a-z]+$/.test(id)) continue;
+    const r = { own: 0, total: 0, ...reachOf(id) };
+    const row = rows.get(name);
+    if (row) Object.assign(row, { id: `${row.id},${id}`, own: Math.max(row.own, r.own), total: Math.max(row.total, r.total) });
+    else rows.set(name, { id, name, own: r.own, total: r.total });
+  }
+  return [...rows.values()].sort((a, b) => b.own - a.own || b.total - a.total || a.name.localeCompare(b.name, 'zh-Hant'));
 }
 
 // ---------- the page ----------
@@ -29,7 +38,7 @@ const aw = { regions: null, picker: null, busy: false, last: null };
 const AW_PROG_KEY = 'aw:progs:v1';
 const awProgSaved = () => { try { return JSON.parse(localStorage.getItem(AW_PROG_KEY)) || null; } catch { return null; } };
 const awProgSave = (x) => { try { localStorage.setItem(AW_PROG_KEY, JSON.stringify(x)); } catch { /* not kept */ } };
-const awReach = (id) => (typeof reach === 'function' && data.points?.calc ? reach(id).total : 0);
+const awReach = (id) => (typeof reach === 'function' && data.points?.calc ? reach(id) : { own: 0, total: 0 });
 function awMount() {
   const form = $('#explore-form');
   if (!form || $('#aw-panel')) return;
@@ -86,24 +95,24 @@ async function awOpen() {
   });
 }
 // 哩程計畫: 全部 (the default) or only the ticked ones; the list opens only for the second, already ticked with the
-// programs your points reach (我的點數), or what you ticked last time.
+// programs you hold miles in (我的點數), or what you ticked last time. Card points that transfer in are noted, not ticked.
 function awProgsHtml() {
   const saved = awProgSaved();
   const list = awProgramList(SOURCE_NAMES, awReach);
-  const ticked = new Set(saved?.ids || list.filter((p) => p.miles).map((p) => p.id));
+  const ticked = new Set(saved?.ids || list.filter((p) => p.own).map((p) => p.id));
   const mine = saved?.mode === 'mine';
   return `<fieldset class="aw-progs"><legend>哩程計畫</legend>
     <div class="seg-row"><label class="chk"><input type="radio" name="pmode" value="all" ${mine ? '' : 'checked'}><span>全部計畫</span></label>
       <label class="chk"><input type="radio" name="pmode" value="mine" ${mine ? 'checked' : ''}><span>只看我勾的計畫</span></label></div>
     <div class="aw-prog-list" ${mine ? '' : 'hidden'}>
-      <p class="hint">${list.some((p) => p.miles) ? '已先勾好「我的點數」換得到的計畫（自己的哩程或信用卡點數轉入）。' : '在「點數換算器 › 我的點數」填上哩程和信用卡點數，下次會自動勾好。'}
+      <p class="hint">${list.some((p) => p.own) ? '已先勾好「我的點數」裡有哩程的計畫；信用卡點數可以轉入的也標出來了，要用的話自己勾。' : '在「點數換算器 › 我的點數」填上哩程，下次會自動勾好。'}
         <button type="button" class="linklike" data-pall="1">全選</button> <button type="button" class="linklike" data-pall="0">全不選</button></p>
-      <div class="aw-prog-grid">${list.map((p) => `<label class="chk"><input type="checkbox" name="prog" value="${esc(p.id)}" ${ticked.has(p.id) ? 'checked' : ''}><span>${esc(p.name)}</span>${p.miles ? `<small>可換約 ${fmt(p.miles)} 哩</small>` : ''}</label>`).join('')}</div>
+      <div class="aw-prog-grid">${list.map((p) => `<label class="chk"><input type="checkbox" name="prog" value="${esc(p.id)}" ${ticked.has(p.id) ? 'checked' : ''}><span>${esc(p.name)}</span>${p.own ? `<small>你有 ${fmt(p.own)} 哩</small>` : p.total ? `<small>信用卡點數可轉約 ${fmt(p.total)} 哩</small>` : ''}</label>`).join('')}</div>
     </div></fieldset>`;
 }
 function awProgPick(f) {
   if (f.pmode.value !== 'mine') return null;
-  return $$('input[name=prog]:checked', f).map((i) => i.value);
+  return $$('input[name=prog]:checked', f).flatMap((i) => i.value.split(','));
 }
 function awProgFollow(f) {
   const mine = f.pmode.value === 'mine';

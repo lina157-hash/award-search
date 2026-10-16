@@ -1906,6 +1906,8 @@ a.panel-link span { font-weight: 400; }
 a.panel-link:hover { border-color: var(--accent); }
 .rtw-back { margin: 0 0 4px; font-size: .9rem; }
 .rtw-back a { color: inherit; }
+.rtw-vs { margin: 8px 0 0; color: inherit; opacity: .92; }
+.rtw-vs a { color: inherit; font-weight: 700; }
 .rtw-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; margin: 16px 0 32px; }
 .rtw-side { position: sticky; top: calc(var(--hdr-h, 64px) + 12px); min-width: 0; }
 .rtw-map { height: min(560px, calc(100vh - var(--hdr-h, 64px) - 90px)); min-height: 320px; }

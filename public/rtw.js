@@ -60,19 +60,32 @@ function rtwStays(plan, trip) {
   });
 }
 
-// Price from the program's official chart: { miles, unit, band: { idx, lo, hi } } or { pending } / { over } / null.
+// The distance a program prices: flown miles, plus the surface legs (開口) for some; Qantas also adds the direct way back
+// to the origin when the trip ends somewhere else (its T&C 14.4.3: a one-way trip is charged as a return). → { d, back }
+function rtwDistance(prog, trip) {
+  const pr = prog.price;
+  const d = pr.basis === 'withSurface' ? trip.total : trip.flown;
+  const a = trip.pts?.[0]?.ap;
+  const b = trip.pts?.at(-1)?.ap;
+  let back = 0;
+  if (pr.returnToOrigin && a?.lat != null && b?.lat != null) back = haversineMiles(b, a);
+  if (back < 50) back = 0; // back in the same city (TSA for TPE)
+  return { d: d + back, back };
+}
+
+// Price from the program's chart: { miles, unit, dist, back, band: { idx, lo, hi } } or { pending } / { over } / null.
 function rtwPrice(prog, trip, cabin, charts) {
   const pr = prog.price;
   if (!prog.cabins.includes(cabin)) return { noCabin: true };
   if (pr.kind === 'fixed') return pr[cabin] ? { miles: pr[cabin], unit: pr.unit || '哩', fixed: true } : { noCabin: true };
-  const d = pr.basis === 'withSurface' ? trip.total : trip.flown;
-  if (pr.kind === 'pending') return { pending: true, dist: d, over: d > pr.max };
+  const { d, back } = rtwDistance(prog, trip);
+  if (pr.kind === 'pending') return { pending: true, dist: d, back, over: d > pr.max };
   const bands = pr.bands || charts?.programs?.find((p) => p.id === pr.chartRef)?.tables?.[0]?.bands;
   if (!bands || !d) return null;
-  if (d > pr.max) return { over: true, dist: d };
+  if (d > pr.max) return { over: true, dist: d, back };
   const idx = bands.findIndex((b) => d <= b.upTo);
   if (idx < 0 || !bands[idx][cabin]) return { noCabin: true };
-  return { miles: bands[idx][cabin], unit: pr.unit || '哩', dist: d, band: { idx, lo: idx ? bands[idx - 1].upTo + 1 : 1, hi: bands[idx].upTo } };
+  return { miles: bands[idx][cabin], unit: pr.unit || '哩', dist: d, back, band: { idx, lo: idx ? bands[idx - 1].upTo + 1 : 1, hi: bands[idx].upTo } };
 }
 
 function rtwAddMonths(iso, n) {
@@ -102,8 +115,19 @@ function rtwChecks(prog, plan, trip, ctx) {
   if (!prog.cabins.includes(ctx.cabin)) add('bad', `這個計畫沒有${CABIN_LABEL[ctx.cabin]}`);
   const max = prog.price.max;
   if (max) {
-    const d = prog.price.basis === 'withSurface' ? trip.total : trip.flown;
-    add(d <= max ? 'ok' : 'bad', `總距離 ${fmt(d)} 哩${prog.price.basis === 'withSurface' && surfaces.length ? '（含開口）' : ''}，上限 ${fmt(max)} 哩`);
+    const { d, back } = rtwDistance(prog, trip);
+    const incl = [prog.price.basis === 'withSurface' && surfaces.length ? '開口' : '', back ? `從終點回到出發地的 ${fmt(back)} 哩` : ''].filter(Boolean);
+    add(d <= max ? 'ok' : 'bad', `總距離 ${fmt(d)} 哩${incl.length ? `（含${incl.join('和')}）` : ''}，上限 ${fmt(max)} 哩`);
+  }
+  // 開口 the program's official rules don't mention (Miles & More, TAP mid-trip): allowed by the planner, flagged here.
+  if (R.surface === 'unstated' && surfaces.length) add('warn', '官方規則沒寫中途可不可以開口（自行前往），這張票可能不接受');
+  // JAL: a surface sector longer than the way from the first departure to where it starts makes it two tickets.
+  if (R.surfaceNotLongerThanStart && origin) {
+    for (const l of surfaces) {
+      const from = pts[l.i].ap;
+      const reach = from?.lat != null && origin.lat != null ? haversineMiles(origin, from) : null;
+      if (reach != null && l.dist > reach) add('bad', `開口 ${l.from}→${l.to}（${fmt(l.dist)} 哩）比從出發地到 ${l.from}（${fmt(reach)} 哩）還遠，日航不接受這樣的開口`);
+    }
   }
   if (R.crossings) {
     const c = R.crossings;
@@ -133,9 +157,13 @@ function rtwChecks(prog, plan, trip, ctx) {
     pts.forEach((p, i) => { if (pick(i)) m.set(city(i), (m.get(city(i)) || 0) + 1); });
     return [...m].filter(([, c]) => c > 1).map(([k]) => k);
   };
+  // Asia Miles puts open-jaw cities (where a surface sector starts) under the same once-per-city and not-at-the-ends rule.
+  const openAt = (i) => Boolean(trip.legs[i]?.surface);
+  const stopLike = (i) => stays[i] === 'stop' || (R.openJawLikeStop && openAt(i));
+  const stopWord = R.openJawLikeStop ? '停留或開口' : '停留';
   if (R.stopoverOncePerCity) {
-    const twice = tally((i) => stays[i] === 'stop');
-    if (twice.length) add('bad', `${twice.join('、')} 停留超過 1 次（同一城市只能停留 1 次）`);
+    const twice = tally(stopLike);
+    if (twice.length) add('bad', `${twice.join('、')} ${stopWord}超過 1 次（同一城市只能${stopWord} 1 次）`);
   }
   if (R.maxTransfersPerCity) {
     const m = new Map();
@@ -151,8 +179,14 @@ function rtwChecks(prog, plan, trip, ctx) {
   }
   if (R.noStopoverAtEnds && pts.length > 2) {
     const ends = new Set([city(0), city(pts.length - 1)]);
-    const bad = pts.map((p, i) => i).filter((i) => stays[i] === 'stop' && ends.has(city(i))).map((i) => pts[i].code);
-    if (bad.length) add('bad', `${bad.join('、')} 是出發地或目的地，不能在這裡停留`);
+    const bad = pts.map((p, i) => i).filter((i) => i > 0 && i < pts.length - 1 && stopLike(i) && ends.has(city(i))).map((i) => pts[i].code);
+    if (bad.length) add('bad', `${bad.join('、')} 是出發地或目的地，不能在這裡${stopWord}`);
+  }
+  // Asia Miles: the T&C don't say, but the chart is for a return (round) trip and planners expect the end in the origin
+  // country; and ending in another city may itself count as one of the two open jaws.
+  if (R.endHomeWarn && origin && end && pts.length > 2) {
+    if (origin.country !== end.country) add('warn', '最後沒有回到出發的國家：官方條款沒寫，但這張哩數表是給來回（環狀）行程用的，可能不接受');
+    else if (city(0) !== city(pts.length - 1)) add('warn', `終點 ${pts.at(-1).code} 和起點 ${pts[0].code} 不同城市，可能也算 1 次開口`);
   }
   if (R.noReturnToOriginCountry && origin) {
     const outs = trip.legs.filter((l) => l.cc[0] === origin.country && l.cc[1] !== origin.country).length;
@@ -197,13 +231,15 @@ function rtwChecks(prog, plan, trip, ctx) {
         add(ok ? 'ok' : 'bad', R.validity.from === 'issue'
           ? `效期自開票日起 ${R.validity.months} 個月：最後一段 ${last}，${ok ? when : '行程超過 1 年，排不進去'}`
           : `效期自第一段起 ${R.validity.months} 個月：${first} 出發，要在 ${until} 前飛完（最後一段 ${last}）`);
+        if (R.validity.note) add('warn', R.validity.note);
       }
       if (R.minDays) {
-        const intl = dated.filter((l) => l.cc[0] !== l.cc[1]).map((l) => l.date).sort();
-        if (intl.length > 1) {
-          const gap = rtwDays(intl[0], intl.at(-1));
-          add(gap >= R.minDays ? 'ok' : 'bad', `第一段到最後一段國際線相隔 ${gap} 天，至少要 ${R.minDays} 天`);
-        }
+        // Miles & More's T&C: from the first to the last long-haul flight (here: a flight between two areas).
+        const far = dated.filter((l) => l.area[0] && l.area[1] && l.area[0] !== l.area[1]).map((l) => l.date).sort();
+        if (far.length > 1) {
+          const gap = rtwDays(far[0], far.at(-1));
+          add(gap >= R.minDays ? 'ok' : 'bad', `第一段到最後一段長程（跨洲）航班相隔 ${gap} 天，至少要 ${R.minDays} 天`);
+        } else add('na', `填上第一段和最後一段長程（跨洲）航班的日期，就能檢查「至少相隔 ${R.minDays} 天」`);
       }
     }
   }
@@ -220,7 +256,7 @@ function rtwCarriers(prog, members) {
 function rtwOpenJaw(prog) {
   const R = prog.rules || {};
   if (R.maxSurface === 0) return null;
-  return { max: R.maxSurface ?? null, stopover: Boolean(R.surfaceIsStopover), inDistance: prog.price.basis === 'withSurface' };
+  return { max: R.maxSurface ?? null, stopover: Boolean(R.surfaceIsStopover), inDistance: prog.price.basis === 'withSurface', unstated: R.surface === 'unstated' };
 }
 
 // A distance-priced program's chart as a meter: the trip's distance, the bands up to the cap with this cabin's price,
@@ -228,7 +264,7 @@ function rtwOpenJaw(prog) {
 function rtwMeter(prog, trip, cabin, charts) {
   const pr = prog.price;
   if (pr.kind !== 'distance' && pr.kind !== 'pending') return null;
-  const d = pr.basis === 'withSurface' ? trip.total : trip.flown;
+  const { d } = rtwDistance(prog, trip);
   const all = pr.kind === 'distance' ? pr.bands || charts?.programs?.find((p) => p.id === pr.chartRef)?.tables?.[0]?.bands || [] : [];
   const bands = all.filter((b, i) => i === 0 || all[i - 1].upTo < pr.max).map((b) => ({ upTo: Math.min(b.upTo, pr.max), miles: b[cabin] || null }));
   const idx = bands.findIndex((b) => d <= b.upTo);
@@ -244,7 +280,7 @@ function rtwKeyFacts(prog) {
   if (R.maxStopovers != null) f.push(`停留 ${R.maxStopovers} 次`);
   if (R.maxFlights) f.push(`${R.maxFlights} 段航班`);
   const oj = rtwOpenJaw(prog);
-  f.push(oj ? `開口${oj.max != null ? ` ${oj.max} 次` : ''}` : '不能開口');
+  f.push(!oj ? '不能開口' : oj.unstated ? '開口沒寫' : `開口${oj.max != null ? ` ${oj.max} 次` : ''}`);
   return f;
 }
 
@@ -433,7 +469,7 @@ if (typeof document !== 'undefined') {
     const last = n - 1;
     // A program without surface sectors: any 開口 kept from another program goes back to a flight.
     if (!oj) trip.legs.forEach((l) => { if (l.surface) { rtw.legs[l.i].surface = false; l.surface = false; } });
-    const openLabel = oj ? `開口（自行前往下一站${oj.stopover ? '，算 1 次停留' : ''}）` : '';
+    const openLabel = !oj ? '' : oj.unstated ? '開口（自行前往；官方沒寫，可能不行）' : `開口（自行前往下一站${oj.stopover ? '，算 1 次停留' : ''}）`;
     const stayOf = (i) => (trip.legs[i]?.surface ? 'open' : rtw.stops[i].stay === 'transfer' ? 'transfer' : 'stop');
     const stopRow = (s, i) => {
       let what = '';
@@ -487,10 +523,11 @@ if (typeof document !== 'undefined') {
       }
     }
     let head;
-    if (price?.miles) head = `<b class="rtw-miles">${fmt(price.miles)} ${rtwUnit(prog)}</b><small>${CABIN_LABEL[rtw.cabin]}・${price.fixed ? '固定價' : `總距離 ${fmt(price.dist)} 哩，落在 ${fmt(price.band.lo)}–${fmt(price.band.hi)} 哩這一級`}・每人</small>`;
+    if (price?.miles) head = `<b class="rtw-miles">${prog.price.secondary ? '約 ' : ''}${fmt(price.miles)} ${rtwUnit(prog)}</b><small>${CABIN_LABEL[rtw.cabin]}・${price.fixed ? '固定價' : `總距離 ${fmt(price.dist)} 哩${price.back ? `（含從終點回到出發地 ${fmt(price.back)} 哩）` : ''}，落在 ${fmt(price.band.lo)}–${fmt(price.band.hi)} 哩這一級`}・每人</small>`;
     else if (price?.pending) head = `<b class="rtw-miles">價格待確認</b><small>${esc(prog.price.why)} <a href="${esc(prog.price.chartUrl)}" target="_blank" rel="noopener">國泰哩數表 ↗</a>（總距離 ${fmt(price.dist)} 哩）</small>`;
     else head = `<b class="rtw-miles">${esc(rtwPriceText(prog, price))}</b>`;
-    if (price?.miles && prog.price.note) head += `<small class="rtw-price-note">${esc(prog.price.note)}</small>`;
+    const sec = prog.price.secondary;
+    if (price?.miles && sec) head += `<small class="rtw-price-note">${esc(sec.note)} ${sec.sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}・<a href="${esc(prog.price.chartUrl)}" target="_blank" rel="noopener">國泰官網哩數表 ↗</a></small>`;
     const key = prog.walletKey;
     const earn = !price?.miles ? '' : transferRates(key).length ? earnHtml(key, price.miles) : '<p class="hint">台灣的信用卡點數目前沒有直接轉入這個計畫。</p>';
     const res = `<div class="rtw-price">${head}</div>${shapeHtml}${earn}
@@ -722,6 +759,11 @@ if (typeof document !== 'undefined') {
   document.addEventListener('toggle', (e) => {
     if (e.target.open && e.target.id === 'cxmix') cxMixMount(e.target);
   }, true);
+  // 「中停／開口組合」 in the page's lead: back to 航線查詢 with that panel open.
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest?.('[data-open-combo]')) return;
+    setTimeout(() => { const p = $('#combo-panel'); if (p) { p.open = true; p.scrollIntoView({ block: 'center' }); } }, 50);
+  });
   // The 環球票規劃 page (#rtw) asks for it when it opens (app.js tabInit.rtw), or already did before this script arrived.
   window.rtwMount = rtwMount;
   if (currentTab === 'rtw') rtwMount();

@@ -354,11 +354,10 @@ test('哪裡都好: only the ticked programs, asked of seats.aero itself, with t
   assert.equal(all.regions[0].items.length, 3);
 });
 
-test('哪裡都好: the programs list puts what 我的點數 reaches first, biggest first', () => {
-  const names = { united: '聯合 MileagePlus', aeroplan: '加航 Aeroplan', asiamiles: '亞洲萬里通', alaska: '阿拉斯加 Atmos' };
-  const miles = { asiamiles: 120000, alaska: 30000 };
-  const list = awp.awProgramList(names, (id) => miles[id] || 0);
-  assert.deepEqual(list.slice(0, 2).map((p) => [p.id, p.miles]), [['asiamiles', 120000], ['alaska', 30000]]);
-  assert.deepEqual(list.slice(2).map((p) => p.miles), [0, 0]);
-  assert.equal(list.length, 4);
+test('哪裡都好: the programs list puts your own miles first, then card-point transfers, then the rest', () => {
+  const names = { united: '聯合 MileagePlus', aeroplan: '加航 Aeroplan', asiamiles: '亞洲萬里通', asiamiles_est: '亞洲萬里通（估算）', alaska: '阿拉斯加 Atmos' };
+  const r = { asiamiles: { own: 120000, total: 150000 }, alaska: { own: 30000, total: 30000 }, united: { own: 0, total: 40000 } };
+  const list = awp.awProgramList(names, (id) => r[id] || { own: 0, total: 0 });
+  assert.deepEqual(list.map((p) => [p.id, p.own, p.total]), [['asiamiles', 120000, 150000], ['alaska', 30000, 30000], ['united', 0, 40000], ['aeroplan', 0, 0]], 'the site\'s own estimate is not a seats.aero program');
+  assert.deepEqual(awp.awProgramList({ connectmiles: 'Copa ConnectMiles', copa: 'Copa ConnectMiles' }, () => ({})).map((p) => p.id), ['connectmiles,copa'], 'one row for one name');
 });

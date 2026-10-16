@@ -109,8 +109,16 @@ test('distance bands: JAL counts flown miles only, Qantas adds the surface leg; 
   assert.ok(R.rtwPrice(prog('jal_ow'), fake(9000), 'W', charts).noCabin, 'JAL has no premium economy column');
   assert.equal(R.rtwPrice(prog('mm_world'), t, 'F', charts).miles, 540000);
   assert.ok(R.rtwPrice(prog('tap_rtw'), t, 'F', charts).noCabin);
+  // Asia Miles: the official chart page is script-only, so the bands come from media copies and are marked 估算.
   const am = plain(R.rtwPrice(prog('asiamiles_ow'), t, 'J', charts));
-  assert.ok(am.pending && !am.miles, 'Asia Miles multi-carrier price is 待確認 (official chart unreadable)');
+  assert.deepEqual([am.miles, am.band.lo, am.band.hi, am.back], [230000, 18001, 20000, 0]);
+  const sec = prog('asiamiles_ow').price.secondary;
+  assert.ok(sec.note && sec.sources.length && sec.sources.every((s) => s.official === false && /^https:\/\//.test(s.url)));
+  // Qantas prices a one-way trip as if it flew home: TPE → … → SYD adds SYD → TPE.
+  const oneWay = trip(plan('TPE HKG LHR JFK LAX SYD'));
+  const qo = plain(R.rtwPrice(prog('qantas_ow'), oneWay, 'J', charts));
+  assert.ok(qo.back > 4000 && qo.dist === oneWay.total + qo.back, JSON.stringify(qo));
+  assert.equal(R.rtwPrice(prog('jal_ow'), oneWay, 'J', charts).back, 0, 'JAL prices what is flown');
 });
 
 test('rule checks: crossings, direction, return country, segment and stopover limits', () => {
@@ -171,8 +179,14 @@ test('rule checks: validity window and the Miles & More 10-day minimum, from the
   assert.match(find(checks('tap_rtw', plan(WEST, dates('2027-03-01', '', '', '', '2027-12-20'))), /效期/).t, /要在 2026-12-20 之後開票/);
   assert.match(find(checks('tap_rtw', plan(WEST, dates('2027-03-01', '', '', '', '2027-06-30'))), /效期/).t, /現在開票就來得及/);
   assert.equal(find(checks('tap_rtw', plan(WEST, dates('2027-03-01', '', '', '', '2028-03-02'))), /效期/).s, 'bad');
-  assert.equal(find(checks('mm_world', plan(WEST, dates('2027-03-01', '', '', '', '2027-03-06'))), /相隔 5 天/).s, 'bad');
-  assert.equal(find(checks('mm_world', plan(WEST, dates('2027-03-01', '', '', '', '2027-03-11'))), /相隔 10 天/).s, 'ok');
+  // Miles & More counts from the first to the last long-haul (between-area) flight; TPE→HKG doesn't count.
+  assert.equal(find(checks('mm_world', plan(WEST, dates('2027-02-20', '2027-03-01', '', '', '2027-03-06'))), /相隔 5 天/).s, 'bad');
+  assert.equal(find(checks('mm_world', plan(WEST, dates('', '2027-03-01', '', '', '2027-03-11'))), /相隔 10 天/).s, 'ok');
+  assert.equal(find(checks('mm_world', plan(WEST, dates('2027-03-01', '', '', '', ''))), /至少相隔 10 天/).s, 'na');
+  // Its validity wording differs between the T&C and the product page: the stricter one is used and the gap is shown.
+  const mmv = checks('mm_world', plan(WEST, dates('', '2027-03-01', '', '', '2027-03-11')));
+  assert.equal(find(mmv, /^效期自開票日起/).s, 'ok');
+  assert.equal(find(mmv, /產品頁寫/).s, 'warn');
   assert.equal(find(checks('mm_world', plan(WEST, dates('2027-03-05', '2027-03-01'))), /沒有照順序/).s, 'warn');
   assert.equal(R.rtwAddMonths('2027-01-31', 1), '2027-02-28');
   assert.equal(R.rtwAddMonths('2028-02-29', 12), '2029-02-28');
@@ -224,7 +238,8 @@ test('the planner offers each program\'s own airlines, open-jaw rule and key fac
   assert.deepEqual(plain(R.rtwCarriers(prog('jal_ow'), members)), prog('jal_ow').rules.carriers.list);
   assert.deepEqual(plain(R.rtwCarriers(prog('tap_rtw'), members)), members.star);
   assert.ok(R.rtwCarriers(prog('asiamiles_ow'), members).includes('CX'));
-  assert.deepEqual(plain(R.rtwOpenJaw(prog('jal_ow'))), { max: 1, stopover: true, inDistance: false });
+  assert.deepEqual(plain(R.rtwOpenJaw(prog('jal_ow'))), { max: 1, stopover: true, inDistance: false, unstated: false });
+  assert.equal(R.rtwOpenJaw(prog('mm_world')).unstated, true);
   assert.equal(R.rtwOpenJaw(prog('qantas_ow')).inDistance, true);
   assert.equal(R.rtwOpenJaw({ rules: { maxSurface: 0 }, price: {} }), null);
   assert.equal(R.rtwKeyFacts(prog('mm_world'))[0], '固定價');
@@ -255,4 +270,26 @@ test('map arcs: a great circle with longitudes carried across the date line', ()
   assert.ok(Math.max(...arc.map((p) => p[0])) > Math.max(tpe.lat, lax.lat), 'bends north');
   const same = plain(R.rtwArc(tpe, tpe));
   assert.equal(same.length, 2);
+});
+
+test('open-jaw rules per program: Asia Miles counts a 開口 like a stopover, JAL limits its length, Miles & More is unstated', () => {
+  const open = (codes, at) => plan(codes, Object.fromEntries([[at, { surface: true }]]));
+  // Asia Miles: a city may be a stopover or an open jaw once, and never at the ends.
+  const twice = checks('asiamiles_ow', open('TPE HKG LHR CDG JFK LAX HKG TPE', 2));
+  assert.equal(find(twice, /開口 1 次，上限 2 次/).s, 'ok');
+  assert.equal(find(twice, /HKG 停留或開口超過 1 次/).s, 'bad');
+  assert.equal(find(checks('asiamiles_ow', open('TPE HKG LHR JFK LAX TPE KHH', 5)), /TPE 是出發地或目的地/).s, 'bad');
+  // Ending away from home is not in the T&C, so it's a warning, not a rule.
+  assert.equal(find(checks('asiamiles_ow', plan('TPE HKG LHR JFK LAX KHH')), /終點 KHH 和起點 TPE 不同城市/).s, 'warn');
+  assert.equal(find(checks('asiamiles_ow', plan('TPE HKG LHR JFK LAX HKG')), /最後沒有回到出發的國家/).s, 'warn');
+  assert.ok(!find(checks('asiamiles_ow', plan(WEST)), /終點|最後沒有回到/), 'a closed loop gets no warning');
+  // JAL: Hong Kong → Singapore overland (~1,600 mi) is longer than Taipei → Hong Kong (~500 mi).
+  const far = checks('jal_ow', open('TPE HKG SIN LHR JFK TPE', 1));
+  assert.match(find(far, /日航不接受這樣的開口/).t, /HKG→SIN/);
+  assert.ok(!find(checks('jal_ow', open('TPE NRT LHR MAD JFK TPE', 2)), /日航不接受/), 'London → Madrid is shorter than Taipei → London');
+  // Miles & More and TAP don't say: allowed in the planner, with a warning.
+  const mm = checks('mm_world', open('TPE MUC FRA JFK SFO TPE', 1));
+  assert.equal(find(mm, /官方規則沒寫中途可不可以開口/).s, 'warn');
+  assert.ok(mm.every((x) => x.s !== 'bad'), JSON.stringify(mm));
+  assert.ok(!find(checks('mm_world', plan(WEST)), /官方規則沒寫/), 'no warning without an open jaw');
 });

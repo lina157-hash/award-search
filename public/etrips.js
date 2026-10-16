@@ -198,6 +198,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
         role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-cb-${k}-${i}"></div>
       <input type="hidden" name="${k}" value=""><div class="ac-list" id="ac-cb-${k}-${i}" role="listbox" aria-label="${label}建議" hidden></div></div>`;
     body.innerHTML = `<p class="hint">把想停留的城市拆成 2–4 段，看一個計畫能不能開成一張票、依固定哩程表大約要幾哩。估價不查座位、不用額度；按某一段的「找座位」才會查詢一次。</p>
+      <p class="hint">這是一般獎勵機票加中停或開口；想停很多站、繞地球一圈，請用 <a href="#rtw">🌏 環球票規劃</a>。</p>
       <div class="combo-ex"><span class="hint">範例</span>${(etData.examples || []).map((x, i) => `<button type="button" class="linklike" data-cex="${i}">${esc(x.label)}</button>`).join('')}</div>
       <ol class="combo-legs">${[0, 1, 2, 3].map((i) => `<li class="combo-leg-row" hidden><form class="combo-leg" id="combo-leg-${i}" data-leg="${i}" autocomplete="off">
         ${apField(i, 'from', `第 ${i + 1} 段出發`)}${apField(i, 'to', `第 ${i + 1} 段抵達`)}
