@@ -195,7 +195,7 @@ function rtwChecks(prog, plan, trip, ctx) {
   // Asia Miles: the T&C don't say, but the chart is for a return (round) trip and planners expect the end in the origin
   // country; and ending in another city may itself count as one of the two open jaws.
   if (R.endHomeWarn && origin && end && pts.length > 2) {
-    if (origin.country !== end.country) add('warn', '最後沒有回到出發的國家：條款沒寫，但國泰官網註明這張哩數表用於來回獎勵機票，可能不接受');
+    if (origin.country !== end.country) add('warn', '最後沒有回到出發的國家：條款沒寫，但國泰官網註明這張哩數表用於來回飛行獎勵，可能不接受');
     else if (city(0) !== city(pts.length - 1)) add('warn', `終點 ${pts.at(-1).code} 和起點 ${pts[0].code} 不同城市，可能也算 1 次開口`);
   }
   if (R.noReturnToOriginCountry && origin) {
@@ -684,7 +684,7 @@ if (typeof document !== 'undefined') {
     else if (price?.miles && prog.price.chartUrl) head += `<small class="rtw-price-note">哩數依官網哩數表（${esc(prog.sources.find((s) => s.url === prog.price.chartUrl)?.checked || rtwData().lastReviewed)} 核對）・<a href="${esc(prog.price.chartUrl)}" target="_blank" rel="noopener">官網哩數表 ↗</a></small>`;
     const MC = prog.mixedCabin;
     if (cab.mixed && MC) {
-      head += `<small class="rtw-price-note">混艙：${esc(MC.text)}${MC.url ? `（<a href="${esc(MC.url)}" target="_blank" rel="noopener">官方規則 ↗</a>）` : ''}${MC.cxMixLink ? `。只搭國泰（或國泰加 1 家夥伴）的一般獎勵機票，混艙改依距離比例分攤，比較省：<a href="#rules" data-cxmix-link>國泰混艙計算</a>` : ''}</small>`;
+      head += `<small class="rtw-price-note">混艙：${esc(MC.text)}${MC.url ? `（<a href="${esc(MC.url)}" target="_blank" rel="noopener">官方規則 ↗</a>）` : ''}${MC.cxMixLink ? `。只搭國泰（或國泰加 1 家夥伴）的一般飛行獎勵，混艙改依距離比例分攤，比較省：<a href="#rules" data-cxmix-link>國泰混艙計算</a>` : ''}</small>`;
     }
     const key = prog.walletKey;
     const earn = !price?.miles ? '' : transferRates(key).length ? earnHtml(key, price.miles) : '<p class="hint">台灣的信用卡點數目前沒有直接轉入這個計畫。</p>';

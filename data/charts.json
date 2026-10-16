@@ -1725,7 +1725,7 @@
    "confidence": "official",
    "sources": [
     {
-     "label": "日航台灣官網獎勵機票哩程表",
+     "label": "日航台灣官網酬賓獎勵機票哩程表",
      "url": "https://www.jal.co.jp/tw/zhtw/jalmile/use/jal/inter/routemiles.html",
      "official": true
     },
@@ -1768,7 +1768,7 @@
   },
   {
    "id": "jal_partner",
-   "name": "日航 寰宇一家獎勵機票",
+   "name": "日航 寰宇一家酬賓獎勵機票",
    "kind": "distance",
    "perSegment": false,
    "oneWay": false,
@@ -1778,7 +1778,7 @@
    "confidence": "official",
    "sources": [
     {
-     "label": "日航寰宇一家獎勵機票表",
+     "label": "日航寰宇一家酬賓獎勵機票表",
      "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/miles.html",
      "official": true
     }
@@ -1872,7 +1872,7 @@
    "confidence": "official",
    "sources": [
     {
-     "label": "ANA 台灣官網夥伴獎勵機票",
+     "label": "ANA 台灣官網夥伴酬賓獎勵機票",
      "url": "https://www.ana.co.jp/en/tw/amc/partner-flight-awards/",
      "official": true
     }
@@ -2834,7 +2834,7 @@
    "confidence": "secondary",
    "sources": [
     {
-     "label": "長榮官網獎勵機票（長榮/立榮）",
+     "label": "長榮官網酬賓機票（長榮/立榮）",
      "url": "https://www.evaair.com/zh-tw/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/eva-uni-air/",
      "official": true
     },
@@ -3002,7 +3002,7 @@
    "confidence": "official",
    "sources": [
     {
-     "label": "華航官網：獎勵機票（各區哩程）",
+     "label": "華航官網：酬賓機票（各區哩程）",
      "url": "https://www.china-airlines.com/us/en/member/miles/redeem/reward-ticket.html",
      "official": true
     },

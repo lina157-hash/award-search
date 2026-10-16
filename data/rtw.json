@@ -10,7 +10,7 @@
   "programs": [
     {
       "id": "jal_ow",
-      "name": "日航 JMB 寰宇一家獎勵機票",
+      "name": "日航 JMB 寰宇一家酬賓獎勵機票",
       "short": "日航寰宇一家",
       "alliance": "oneworld",
       "walletKey": "jal",
@@ -41,10 +41,10 @@
         "艙等混搭時整趟依最高艙等計價；商務、頭等獎勵可以含豪華經濟艙航段，經濟艙獎勵不行；馬來西亞航空沒有頭等艙",
         "機票效期自開始旅行起 1 年，且要在開票後 1 年內出發"
       ],
-      "howToBook": "日航官網的寰宇一家獎勵機票申請表（會員登入後申請）。",
+      "howToBook": "日航官網的寰宇一家酬賓獎勵機票申請表（會員登入後申請）。",
       "sources": [
-        { "label": "日航：寰宇一家獎勵機票（可搭的航空公司）", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/index.html", "official": true, "checked": "2026-10-16" },
-        { "label": "日航：寰宇一家獎勵機票哩程表", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/miles.html", "official": true, "checked": "2026-10-16" },
+        { "label": "日航：寰宇一家酬賓獎勵機票（可搭的航空公司）", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/index.html", "official": true, "checked": "2026-10-16" },
+        { "label": "日航：寰宇一家酬賓獎勵機票哩程表", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/miles.html", "official": true, "checked": "2026-10-16" },
         { "label": "日航：使用條件（段數、停留、陸路、艙等）", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/conditions.html", "official": true, "checked": "2026-10-16" },
         { "label": "日航：效期與申請方式", "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/mileage.html", "official": true, "checked": "2026-10-16" }
       ]
@@ -141,7 +141,7 @@
         "validity": { "months": 12, "from": "issue" }
       },
       "summary": [
-        "依各段飛行距離相加的總距離決定區間（開口不算），最多 50,000 哩；沒有豪華經濟艙；哩數依國泰官網「寰宇一家」聯盟成員獎勵換算表（13 個區域，2026-10-16 核對），官網註明這張表用於來回獎勵機票",
+        "依各段飛行距離相加的總距離決定區間（開口不算），最多 50,000 哩；沒有豪華經濟艙；哩數依國泰官網「寰宇一家」聯盟成員獎勵換算表（13 個區域，2026-10-16 核對），官網註明這張表用於來回飛行獎勵",
         "不搭國泰時要 2 家寰宇一家航空；有搭國泰時要 3 家以上（只有國泰加 1 家夥伴屬於一般標準獎勵）",
         "最多 5 次停留，另外可以轉機 2 次、開口 2 次；同一城市只能停留或開口 1 次，而且不能是出發地或目的地",
         "條款沒寫要不要回到出發國家，但哩數表是給來回（環狀）行程用的，規劃時最好回到出發國家",
@@ -169,13 +169,13 @@
     },
     {
       "id": "mm_world",
-      "name": "漢莎 Miles & More 星空聯盟環球獎勵機票",
+      "name": "漢莎 Miles & More 星空聯盟環球航班獎勵",
       "short": "Miles & More 環球",
       "alliance": "star",
       "walletKey": "lufthansa",
       "price": { "kind": "fixed", "Y": 195000, "J": 400000, "F": 540000 },
       "cabins": ["Y", "J", "F"],
-      "mixedCabin": { "pricing": "unstated", "text": "官方頁面和獎勵機票條款都沒寫環球獎勵能不能混艙、怎麼計價" },
+      "mixedCabin": { "pricing": "unstated", "text": "官方頁面和航班獎勵條款都沒寫環球獎勵能不能混艙、怎麼計價" },
       "example": { "stops": ["TPE", "MUC", "JFK", "SFO", "TPE"], "airlines": ["BR", "LH", "UA", "BR"] },
       "rules": {
         "carriers": { "alliance": "star" },
@@ -197,7 +197,7 @@
       "howToBook": "只接受 Miles & More 服務中心電話訂位（官網寫明）。",
       "sources": [
         { "label": "Miles & More：World Award Flight", "url": "https://www.miles-and-more.com/at/en/program/flight-benefits/award-flights/world-award-flight.html", "official": true, "checked": "2026-10-16" },
-        { "label": "Miles & More：獎勵機票條款 1.3.3、2.2", "url": "https://www.miles-and-more.com/de/en/general-information/terms-and-conditions/flight-awards.plain.html", "official": true, "checked": "2026-10-16" }
+        { "label": "Miles & More：航班獎勵條款 1.3.3、2.2", "url": "https://www.miles-and-more.com/de/en/general-information/terms-and-conditions/flight-awards.plain.html", "official": true, "checked": "2026-10-16" }
       ]
     },
     {
@@ -234,7 +234,7 @@
     }
   ],
   "ended": [
-    { "name": "全日空 ANA 星空聯盟環球獎勵機票", "text": "2025-06-23 起停止開立新票（已開的票可用到效期結束）。", "url": "https://www.ana.co.jp/en/us/amc/partner-flight-awards/around-the-world/", "checked": "2026-10-16" },
+    { "name": "全日空 ANA 星空聯盟環球酬賓獎勵機票", "text": "2025-06-23 起停止開立新票（已開的票可用到效期結束）。", "url": "https://www.ana.co.jp/en/us/amc/partner-flight-awards/around-the-world/", "checked": "2026-10-16" },
     { "name": "新航 KrisFlyer 星空聯盟環球獎勵機票", "text": "2024-05-01 起不再開票。", "url": "https://www.singaporeair.com/en_UK/th/ppsclub-krisflyer/use-miles/redeem-miles/star-alliance-round-the-world-award", "checked": "2026-10-16" },
     { "name": "韓亞 Asiana Club 星空聯盟環球獎勵", "text": "韓亞航 2026-12-16 退出星空聯盟，2026-12-17 以後的星盟獎勵機票不能使用，不建議再規劃。", "url": "https://flyasiana.com/C/US/EN/customer/notice/detail?id=CM202606090002529359", "checked": "2026-10-16" }
   ],

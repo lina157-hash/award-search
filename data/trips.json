@@ -17,10 +17,10 @@
     "eva": {
       "validMonths": 12,
       "validText": "長榮／立榮國際線酬賓機票自開票日起一年內有效（立榮國內線 6 個月）",
-      "cancel": { "before": 0, "text": "星空聯盟夥伴獎勵票在長榮官網退票免手續費；長榮／立榮航班的獎勵票要到長榮票務櫃檯退票。長榮自營航班沒搭又沒取消會收 No-show 費：長程 150、短程 100、港澳 40 美元", "backup": true },
+      "cancel": { "before": 0, "text": "星空聯盟夥伴酬賓機票在長榮官網退票免手續費；長榮／立榮航班的酬賓機票要到長榮票務櫃檯退票。長榮自營航班沒搭又沒取消會收 No-show 費：長程 150、短程 100、港澳 40 美元", "backup": true },
       "sources": [
         { "label": "長榮酬賓機票規定：長榮／立榮（官方）", "url": "https://www.evaair.com/zh-tw/infinity-mileageLands/mileage-award-program/mileage-redemption/award-ticket/eva-uni-air/" },
-        { "label": "長榮星空聯盟獎勵機票規定（官方）", "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html" }
+        { "label": "長榮星空聯盟酬賓機票規定（官方）", "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html" }
       ]
     },
     "ci": {
@@ -29,7 +29,7 @@
       "cancel": { "before": 0, "text": "2026-09-16 起開票：官網退票免手續費（官方公告本文讀不到，待確認）；2026-09-15 前開票：No-show 長程 100、短程 50 美元（官方）", "verify": true, "backup": true },
       "sources": [
         { "label": "華航國際線酬賓機票規定 PDF，2026-09-15 前開票適用（官方）", "url": "https://cms-externalcontent-prod.s3.ap-northeast-1.amazonaws.com/ci/Member/Reward-Ticket/rt-before-15SEP26-en.pdf" },
-        { "label": "華航獎勵機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket" }
+        { "label": "華航酬賓機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket" }
       ]
     },
     "aeroplan": {
@@ -58,20 +58,20 @@
     },
     "ana": {
       "cancel": { "before": 0, "text": "全程未使用、首段起飛前才能退票（3,000 日圓或 3,000 哩）", "backup": true },
-      "sources": [{ "label": "ANA 國際線獎勵機票規定（官方）", "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/" }]
+      "sources": [{ "label": "ANA 國際線酬賓獎勵機票規定（官方）", "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/" }]
     },
     "jal": {
       "cancel": { "before": 3, "text": "要在開票一年內、首段起飛前退票，線上最晚起飛前 3 小時（每張 3,100 日圓）", "backup": true },
-      "sources": [{ "label": "日航：國際線獎勵機票取消（官方）", "url": "https://www.jal.co.jp/en/jalmile/use/jal/inter/cancel.html" }]
+      "sources": [{ "label": "日航：國際線酬賓獎勵機票取消（官方）", "url": "https://www.jal.co.jp/en/jalmile/use/jal/inter/cancel.html" }]
     },
     "lufthansa": {
       "validMonths": 12,
-      "validText": "獎勵票自開票日起一年有效",
-      "sources": [{ "label": "Miles & More：獎勵機票條款（官方）", "url": "https://www.miles-and-more.com/at/en/general-information/terms-and-conditions/flight-awards.html" }]
+      "validText": "航班獎勵自開票日起一年有效",
+      "sources": [{ "label": "Miles & More：航班獎勵條款（官方）", "url": "https://www.miles-and-more.com/at/en/general-information/terms-and-conditions/flight-awards.html" }]
     },
     "eurobonus": {
       "cancel": { "before": 24, "text": "訂位後 24 小時內免費取消；之後到起飛 24 小時前都可取消，洲際線 75 歐元", "backup": true },
-      "sources": [{ "label": "SAS：獎勵機票規定（官方）", "url": "https://www.flysas.com/us-en/travel-info/ticket-types/award-tickets" }]
+      "sources": [{ "label": "SAS：獎勵航班規定（官方）", "url": "https://www.flysas.com/us-en/travel-info/ticket-types/award-tickets" }]
     },
     "aeromexico": {
       "validMonths": 12,

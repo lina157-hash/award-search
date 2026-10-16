@@ -1,6 +1,6 @@
 {
   "note": "中停、開口行程組合（E9）與外站出發建議（E10）用的規則。stopovers：單程／來回最多可中停幾次，perDirection 是每個方向的上限（null＝不另限）；openJaws：來回票最多幾個開口（99＝以單程計價、可自由組合）；pricing：direction＝每個方向依固定表計價（中停另加 stopoverMiles），segment＝每段分開計價，wholeTrip＝整趟總距離計價（只收來回），none＝浮動定價不估算；chart 是 charts.json 的 id（asiamiles 用亞萬哩數表）。文字規則來自 programs.json 的同一批來源，改規則時兩邊一起看。",
-  "lastReviewed": "2026-10-14",
+  "lastReviewed": "2026-10-16",
   "programs": [
     {
       "id": "aeroplan",
@@ -43,8 +43,8 @@
       "conditions": ["中停也算一次轉機", "全日空自家航班的行程須從日本以外出發才可中停", "開口：出發與回程地不同須同一國家；去程終點與回程起點不同須同一大區"],
       "confidence": "official",
       "sources": [
-        { "label": "ANA 國際線獎勵機票規則（官方）", "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/", "official": true },
-        { "label": "ANA 台灣官網夥伴獎勵機票", "url": "https://www.ana.co.jp/en/tw/amc/partner-flight-awards/", "official": true }
+        { "label": "ANA 國際線酬賓獎勵機票規則（官方）", "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/", "official": true },
+        { "label": "ANA 台灣官網夥伴酬賓獎勵機票", "url": "https://www.ana.co.jp/en/tw/amc/partner-flight-awards/", "official": true }
       ]
     },
     {
@@ -75,8 +75,8 @@
       "conditions": ["星盟來回去回程各 1 次，需電話開票", "長榮自家航班只有長程來回可中停 1 次，短程不可", "台灣出發的行程不可在台灣中停", "開口的兩個城市須在同一區域"],
       "confidence": "official",
       "sources": [
-        { "label": "長榮 星空聯盟獎勵機票（官方）", "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html", "official": true },
-        { "label": "長榮 自家獎勵機票（官方）", "url": "https://www.evaair.com/zh-tw/infinity-mileageLands/mileage-award-program/mileage-redemption/award-ticket/eva-uni-air/", "official": true }
+        { "label": "長榮 星空聯盟酬賓機票（官方）", "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html", "official": true },
+        { "label": "長榮 自家酬賓機票（官方）", "url": "https://www.evaair.com/zh-tw/infinity-mileageLands/mileage-award-program/mileage-redemption/award-ticket/eva-uni-air/", "official": true }
       ]
     },
     {
@@ -88,11 +88,11 @@
       "stopoverMiles": 0,
       "openJaws": 1,
       "chartNote": "價格以華航自家航班表估算，天合夥伴實際價格可能不同",
-      "conditions": ["只限天合聯盟與澳航夥伴來回票，中停點須在出發地或目的地區域", "華航自家獎勵票不可中停（台北轉機須在 24 小時內）"],
+      "conditions": ["只限天合聯盟與澳航夥伴來回票，中停點須在出發地或目的地區域", "華航自家酬賓機票不可中停（台北轉機須在 24 小時內）"],
       "confidence": "official",
       "sources": [
-        { "label": "華航 獎勵機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket", "official": true },
-        { "label": "華航 獎勵機票規則 PDF（官方）", "url": "https://cms-externalcontent-prod.s3.ap-northeast-1.amazonaws.com/ci/Member/Reward-Ticket/rt-before-15SEP26-en.pdf", "official": true }
+        { "label": "華航 酬賓機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket", "official": true },
+        { "label": "華航 酬賓機票規則 PDF（官方）", "url": "https://cms-externalcontent-prod.s3.ap-northeast-1.amazonaws.com/ci/Member/Reward-Ticket/rt-before-15SEP26-en.pdf", "official": true }
       ]
     },
     {
@@ -168,7 +168,7 @@
       "conditions": ["以整趟總飛行距離計價", "單一夥伴最多中停 3 次（第三方）；多家寰宇一家航司最多 7 次", "整趟可有一段地面段"],
       "confidence": "secondary",
       "sources": [
-        { "label": "日航 寰宇一家獎勵機票表（官方）", "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/miles.html", "official": true },
+        { "label": "日航 寰宇一家酬賓獎勵機票表（官方）", "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/miles.html", "official": true },
         { "label": "One Mile at a Time：中停規則整理", "url": "https://onemileatatime.com/stopover-rules-on-award-tickets/", "official": false }
       ]
     },

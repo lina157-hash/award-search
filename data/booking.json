@@ -393,7 +393,7 @@
     "asiamiles": {
       "days": 360,
       "partnerDays": null,
-      "windowNote": "國泰標準獎勵機票最早出發前 360 天可訂（第三方觀察約香港時間午夜開放）；夥伴航班依各航空而異",
+      "windowNote": "國泰標準獎勵最早出發前 360 天可訂（第三方觀察約香港時間午夜開放）；夥伴航班依各航空而異",
       "booking": {
         "ownOnline": true,
         "partnerOnline": "partial",
@@ -446,7 +446,7 @@
     "delta": {
       "days": 331,
       "partnerDays": null,
-      "windowNote": "獎勵機位可能於出發前 331 天開放；動態定價，越早查通常越便宜",
+      "windowNote": "獎勵座位可能於出發前 331 天開放；動態定價，越早查通常越便宜",
       "booking": {
         "ownOnline": true,
         "partnerOnline": true,
@@ -456,7 +456,7 @@
       "confidence": "official",
       "sources": [
         {
-          "label": "Delta 獎勵機票小撇步",
+          "label": "Delta 旅遊獎勵機票小撇步",
           "url": "https://www.delta.com/content/www/en_US/skymiles/use-miles/award-travel/about-award-travel/award_travel_tips.html",
           "official": true
         },
@@ -620,7 +620,7 @@
       "confidence": "secondary",
       "sources": [
         {
-          "label": "長榮：星空聯盟獎勵機票",
+          "label": "長榮：星空聯盟酬賓機票",
           "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html",
           "official": true
         },
@@ -683,12 +683,12 @@
       "confidence": "official",
       "sources": [
         {
-          "label": "JAL 國際線獎勵機票申請方式",
+          "label": "JAL 國際線酬賓獎勵機票申請方式",
           "url": "https://www.jal.co.jp/jp/en/jalmile/use/jal/inter/application.html",
           "official": true
         },
         {
-          "label": "JAL 寰宇一家夥伴獎勵機票",
+          "label": "JAL 寰宇一家夥伴酬賓獎勵機票",
           "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/application.html",
           "official": true
         },
@@ -712,12 +712,12 @@
       "confidence": "official",
       "sources": [
         {
-          "label": "ANA 國際線獎勵機票",
+          "label": "ANA 國際線酬賓獎勵機票",
           "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/",
           "official": true
         },
         {
-          "label": "ANA 夥伴航空獎勵機票",
+          "label": "ANA 夥伴航空酬賓獎勵機票",
           "url": "https://www.ana.co.jp/en/us/amc/partner-flight-awards/",
           "official": true
         }

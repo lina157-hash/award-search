@@ -130,7 +130,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
         <p><b>${CABIN_LABEL[c]}國泰有位 ${info.days} 天</b>（亞洲萬里通欄沒有位的日子，由${esc(names)}欄推估）：${shown}</p>
         <p>國泰通常把同樣的獎勵位同時開給夥伴計畫和自家會員，所以${esc(info.sources.map(srcName).join('、'))} 查得到的國泰座位，亞洲萬里通多半也訂得到；這是推估，不保證有位，請到國泰官網確認。</p>
         ${info.est ? `<p class="hint">這幾天約 ${fmt(info.est.miles)} 哩：國泰航班標準獎勵表，${esc(info.est.origin)}–${esc(info.est.destination)} ${info.est.via ? `${AM_VIA_TEXT} ` : ''}${fmt(info.est.dist)} 哩（${esc(cxBandName(info.est.band))}），每人單程，未含稅金與附加費。</p>` : '<p class="hint">這幾天的座位含其他航空的航段，亞洲萬里通哩數無法用國泰航班表估算。</p>'}
-        <div class="cx-actions"><a class="cx-link" href="${esc(cxUrl())}" target="_blank" rel="noopener">到國泰官網查獎勵機票 ↗</a>${onlyCx ? '' : '<button type="button" class="outline" data-cx-only>只看國泰航班・重新搜尋（用 1 次查詢）</button>'}</div>
+        <div class="cx-actions"><a class="cx-link" href="${esc(cxUrl())}" target="_blank" rel="noopener">到國泰官網查飛行獎勵 ↗</a>${onlyCx ? '' : '<button type="button" class="outline" data-cx-only>只看國泰航班・重新搜尋（用 1 次查詢）</button>'}</div>
       </div>`;
     },
   };

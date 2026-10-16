@@ -304,7 +304,7 @@
         "W": [{ "id": "w", "label": "豪華經濟艙", "codes": ["W", "R"] }],
         "J": [{ "id": "j", "label": "商務艙", "codes": ["J", "C", "D", "I"] }]
       },
-      "notEligible": { "*": "團體票、個人或團體包辦旅遊票價、特殊折扣票價與 JMB 獎勵機票不能升等；J、Y 以外的艙等，日本出發的動態套裝與套裝行程也不行" },
+      "notEligible": { "*": "團體票、個人或團體包辦旅遊票價、特殊折扣票價與 JMB 酬賓獎勵機票不能升等；J、Y 以外的艙等，日本出發的動態套裝與套裝行程也不行" },
       "charts": [
         { "from": "Y", "to": "W", "label": "", "rows": [
           { "between": ["JP", "KR"], "name": "日本—首爾", "miles": { "y": 9000 } },
@@ -591,9 +591,9 @@
       "unit": "點",
       "kind": "distance",
       "confidence": "official",
-      "notEligible": { "Y": "國際線經濟艙折扣票（E、N、O、Q 艙）不能升等", "J": "國際線商務艙 Classic Flight Reward 獎勵機票不能升等" },
+      "notEligible": { "Y": "國際線經濟艙折扣票（E、N、O、Q 艙）不能升等", "J": "國際線商務艙經典航班獎勵（Classic Flight Reward）不能升等" },
       "charts": [
-        { "from": "Y", "to": "W", "label": "", "fares": [{ "id": "reward", "label": "經濟艙獎勵機票", "codes": [] }, { "id": "eco", "label": "經濟艙", "codes": ["G", "K", "L", "M", "S", "V"] }, { "id": "flex", "label": "經濟艙 Flex", "codes": ["B", "H", "Y"] }],
+        { "from": "Y", "to": "W", "label": "", "fares": [{ "id": "reward", "label": "經濟艙航班獎勵", "codes": [] }, { "id": "eco", "label": "經濟艙", "codes": ["G", "K", "L", "M", "S", "V"] }, { "id": "flex", "label": "經濟艙 Flex", "codes": ["B", "H", "Y"] }],
           "bands": [
             { "upTo": 600, "miles": { "reward": 9600, "eco": 7200, "flex": 2300 } },
             { "upTo": 1200, "miles": { "reward": 14300, "eco": 11300, "flex": 3500 } },
@@ -606,7 +606,7 @@
             { "upTo": 9600, "miles": { "reward": 104600, "eco": 81700, "flex": 26200 } },
             { "upTo": null, "miles": { "reward": 117700, "eco": 98000, "flex": 31300 } }
           ] },
-        { "from": "Y", "to": "J", "label": "", "fares": [{ "id": "reward", "label": "經濟艙獎勵機票", "codes": [] }, { "id": "eco", "label": "經濟艙", "codes": ["G", "K", "L", "M", "S", "V"] }, { "id": "flex", "label": "經濟艙 Flex", "codes": ["B", "H", "Y"] }],
+        { "from": "Y", "to": "J", "label": "", "fares": [{ "id": "reward", "label": "經濟艙航班獎勵", "codes": [] }, { "id": "eco", "label": "經濟艙", "codes": ["G", "K", "L", "M", "S", "V"] }, { "id": "flex", "label": "經濟艙 Flex", "codes": ["B", "H", "Y"] }],
           "bands": [
             { "upTo": 600, "miles": { "reward": 14300, "eco": 12000, "flex": 6500 } },
             { "upTo": 1200, "miles": { "reward": 21600, "eco": 17900, "flex": 10100 } },
@@ -619,7 +619,7 @@
             { "upTo": 9600, "miles": { "reward": 143900, "eco": 130800, "flex": 72000 } },
             { "upTo": null, "miles": { "reward": 162100, "eco": 157000, "flex": 86300 } }
           ] },
-        { "from": "W", "to": "J", "label": "", "fares": [{ "id": "reward", "label": "豪經獎勵機票", "codes": [] }, { "id": "disc", "label": "豪經 Discount", "codes": [] }, { "id": "std", "label": "豪經", "codes": [] }, { "id": "flex", "label": "豪經 Flexible", "codes": [] }],
+        { "from": "W", "to": "J", "label": "", "fares": [{ "id": "reward", "label": "豪經航班獎勵", "codes": [] }, { "id": "disc", "label": "豪經 Discount", "codes": [] }, { "id": "std", "label": "豪經", "codes": [] }, { "id": "flex", "label": "豪經 Flexible", "codes": [] }],
           "bands": [
             { "upTo": 600, "miles": { "reward": 8400, "disc": 6500, "std": 5900, "flex": 5400 } },
             { "upTo": 1200, "miles": { "reward": 12500, "disc": 10100, "std": 8900, "flex": 7700 } },
@@ -632,7 +632,7 @@
             { "upTo": 9600, "miles": { "reward": 98000, "disc": 72000, "std": 65400, "flex": 58800 } },
             { "upTo": null, "miles": { "reward": 111100, "disc": 86300, "std": 78500, "flex": 70600 } }
           ] },
-        { "from": "J", "to": "F", "label": "", "fares": [{ "id": "reward", "label": "商務艙 Classic Plus 獎勵機票", "codes": [] }, { "id": "disc", "label": "商務艙 Discount", "codes": [] }, { "id": "std", "label": "商務艙", "codes": [] }, { "id": "flex", "label": "商務艙 Flexible", "codes": [] }],
+        { "from": "J", "to": "F", "label": "", "fares": [{ "id": "reward", "label": "商務艙 Classic Plus 航班獎勵", "codes": [] }, { "id": "disc", "label": "商務艙 Discount", "codes": [] }, { "id": "std", "label": "商務艙", "codes": [] }, { "id": "flex", "label": "商務艙 Flexible", "codes": [] }],
           "bands": [
             { "upTo": 600, "miles": { "reward": 9900, "disc": 7700, "std": 6800, "flex": 5900 } },
             { "upTo": 1200, "miles": { "reward": 15400, "disc": 11300, "std": 10100, "flex": 8900 } },

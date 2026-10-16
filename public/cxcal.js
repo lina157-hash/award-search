@@ -976,7 +976,7 @@
     const code = bookmarkletCode(location.origin);
     let last = null;
     try { last = JSON.parse(localStorage.getItem(LAST) || 'null'); } catch { /* storage blocked */ }
-    $('#cx-body').innerHTML = `<p class="hint">seats.aero 幾乎沒有從台北出發的亞洲萬里通資料。這個「書籤小工具」在你登入國泰官網、查獎勵機票時，把畫面上已顯示的日期與各艙等最低哩程記下來，排成月曆；點其他日期或艙等，月曆會自己補上，也能匯出到這裡看。</p>
+    $('#cx-body').innerHTML = `<p class="hint">seats.aero 幾乎沒有從台北出發的亞洲萬里通資料。這個「書籤小工具」在你登入國泰官網、查飛行獎勵時，把畫面上已顯示的日期與各艙等最低哩程記下來，排成月曆；點其他日期或艙等，月曆會自己補上，也能匯出到這裡看。</p>
       <p class="gf-drag"><a class="outline btn primary-link" id="cx-link" href="${esc(code)}">🗓 國泰日曆</a><span class="hint">← 電腦上把這個按鈕拖到書籤列</span></p>
       <div class="gf-how">
         <div><b>怎麼用（電腦版 Chrome／Edge）</b><ol><li>按 Ctrl＋Shift＋B（Mac：⌘＋Shift＋B）打開書籤列，把「🗓 國泰日曆」拖上去。</li><li>到國泰官網登入，用哩數兌換搜尋航班，停在「選擇航班」結果頁。</li><li>點書籤列的「🗓 國泰日曆」：右下角出現月曆。之後照常點日期、切換艙等，月曆會逐格填上。</li><li>裝了 Unelevated 外掛的話：先按它的「批次搜尋 20 天」，跑完再點這個書籤，會一次讀完所有日期。</li></ol>
