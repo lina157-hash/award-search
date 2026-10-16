@@ -3112,6 +3112,7 @@ function amChartHtml() {
     <p class="hint">${esc(am.note)} ${esc(am.shortType2Note)}</p>
     <div class="am-tables">${table(am.charts.cx)}${table(am.charts.partner)}</div>
     <p class="hint">尚待確認：${am.uncertain.map((u) => esc(u.replace(/。$/, ''))).join('；')}</p>
+    ${typeof cxMixHtml === 'function' ? cxMixHtml() : ''}
     <p class="hint">來源：${am.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>${x.official ? '（官方）' : ''}`).join('、')}</p>`;
 }
 
@@ -3163,11 +3164,11 @@ function renderVersion(config) {
 // The data comes in two bundles, each cached per release (?v=): `core` for the first screen (index.html preloads it)
 // and `more` (points, charts, rules, booking notes) once a search, a flight's details or a tab that needs it opens.
 const DATA_CORE = ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'];
-const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters'];
+const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw'];
 const DATA_KEY = { sourcenames: 'sourceNames', airlinenames: 'airlineNames', airportnames: 'airportNames' };
 // Niceties the page works without: Chinese airline and airport names (codes show as they are), expiry rules,
 // buy-miles prices, dated rule changes, and the fee, hold, cost-per-mile and upgrade notes.
-const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters'];
+const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw'];
 async function loadPart(part, names) {
   try {
     const all = await api(`/api/data/${part}${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);

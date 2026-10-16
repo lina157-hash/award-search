@@ -1,0 +1,199 @@
+{
+  "lastReviewed": "2026-10-16",
+  "note": "環球（多段）獎勵機票：只收官方網頁讀得到的規則與哩數表。距離用本站的大圓距離，和航空公司系統可能差幾哩；座位要另外查。",
+  "areas": {
+    "note": "依 IATA 三大區粗分（1 美洲、2 歐洲・非洲・中東、3 亞洲・大洋洲），用來判斷有沒有跨太平洋、跨大西洋與飛行方向；俄羅斯以東經 60 度（烏拉山）分成 2、3 區。不在下列國家名單裡的都算 2 區。",
+    "tc1": ["AG", "AI", "AR", "AW", "BB", "BL", "BM", "BO", "BQ", "BR", "BS", "BZ", "CA", "CL", "CO", "CR", "CU", "CW", "DM", "DO", "EC", "FK", "GD", "GF", "GL", "GP", "GT", "GY", "HN", "HT", "JM", "KN", "KY", "LC", "MF", "MQ", "MS", "MX", "NI", "PA", "PE", "PM", "PR", "PY", "SR", "SV", "SX", "TC", "TT", "US", "UY", "VC", "VE", "VG", "VI"],
+    "tc3": ["AF", "AS", "AU", "BD", "BN", "BT", "CC", "CK", "CN", "CX", "FJ", "FM", "GU", "HK", "ID", "IN", "JP", "KG", "KH", "KI", "KP", "KR", "KZ", "LA", "LK", "MH", "MM", "MN", "MO", "MP", "MV", "MY", "NC", "NF", "NP", "NR", "NU", "NZ", "PF", "PG", "PH", "PK", "PW", "SB", "SG", "TH", "TJ", "TL", "TM", "TO", "TV", "TW", "UM", "UZ", "VN", "VU", "WF", "WS"],
+    "splitLon": { "RU": 60 }
+  },
+  "programs": [
+    {
+      "id": "jal_ow",
+      "name": "日航 JMB 寰宇一家獎勵機票",
+      "short": "日航寰宇一家",
+      "alliance": "oneworld",
+      "walletKey": "jal",
+      "price": { "kind": "distance", "chartRef": "jal_partner", "basis": "flown", "max": 50000 },
+      "cabins": ["Y", "J", "F"],
+      "rules": {
+        "carriers": { "list": ["JL", "AS", "AA", "BA", "CX", "FJ", "AY", "IB", "MH", "WY", "QF", "QR", "AT", "RJ", "UL"], "min": 2 },
+        "maxFlights": 8,
+        "maxStopovers": 7,
+        "surfaceIsStopover": true,
+        "maxSurface": 1,
+        "stopoverOncePerCity": true,
+        "cityMaxVisits": 3,
+        "noReturnToOriginCountry": true,
+        "maxDomestic": { "country": "JP", "n": 2 },
+        "noStopoverInOriginCountry": ["JP"],
+        "validity": { "months": 12, "from": "first" }
+      },
+      "summary": [
+        "依整趟總飛行距離計價（陸路不算），單程也可以，起點和終點可以不同",
+        "至少搭 2 家寰宇一家航空（日航可以算一家）；共用班號、包機不行",
+        "最多 8 段航班（日本國內最多 2 段）、最多 7 次停留（超過 24 小時；陸路算 1 次停留），陸路最多 1 段",
+        "同一城市最多經過 3 次、只能停留 1 次；不能中途回到出發國家再飛往第三國",
+        "艙等混搭時整趟依最高艙等計價；機票效期自開始旅行起 1 年，且要在開票後 1 年內出發"
+      ],
+      "howToBook": "日航官網的寰宇一家獎勵機票申請表（會員登入後申請）。",
+      "sources": [
+        { "label": "日航：寰宇一家獎勵機票（可搭的航空公司）", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/index.html", "official": true, "checked": "2026-10-16" },
+        { "label": "日航：寰宇一家獎勵機票哩程表", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/miles.html", "official": true, "checked": "2026-10-16" },
+        { "label": "日航：使用條件（段數、停留、陸路、艙等）", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/conditions.html", "official": true, "checked": "2026-10-16" },
+        { "label": "日航：效期與申請方式", "url": "https://www.jal.co.jp/jp/en/jalmile/use/partner_air/oneworld/mileage.html", "official": true, "checked": "2026-10-16" }
+      ]
+    },
+    {
+      "id": "qantas_ow",
+      "name": "澳航 寰宇一家 Classic Flight Reward",
+      "short": "澳航寰宇一家",
+      "alliance": "oneworld",
+      "walletKey": "qantas",
+      "price": {
+        "kind": "distance",
+        "basis": "withSurface",
+        "max": 35000,
+        "bands": [
+          { "upTo": 1200, "Y": 20000, "W": 31600, "J": 40000, "F": 58000 },
+          { "upTo": 2400, "Y": 28000, "W": 47500, "J": 60000, "F": 87000 },
+          { "upTo": 4800, "Y": 40000, "W": 69000, "J": 87600, "F": 129000 },
+          { "upTo": 7200, "Y": 49000, "W": 97000, "J": 122400, "F": 179600 },
+          { "upTo": 9600, "Y": 60400, "W": 118000, "J": 150000, "F": 215500 },
+          { "upTo": 11600, "Y": 75600, "W": 141600, "J": 180000, "F": 258600 },
+          { "upTo": 14000, "Y": 90000, "W": 163600, "J": 209000, "F": 299600 },
+          { "upTo": 16800, "Y": 100600, "W": 187000, "J": 238400, "F": 341600 },
+          { "upTo": 19200, "Y": 123000, "W": 218000, "J": 278400, "F": 398600 },
+          { "upTo": 35000, "Y": 132400, "W": 249600, "J": 318000, "F": 455000 }
+        ],
+        "unit": "點"
+      },
+      "cabins": ["Y", "W", "J", "F"],
+      "rules": {
+        "carriers": { "alliance": "oneworld", "min": 2, "notCounting": ["QF"] },
+        "maxSegments": 16,
+        "maxStopovers": 5,
+        "stopoverOncePerCity": true,
+        "maxTransfersPerCity": 2,
+        "noReturnToOriginCountry": true,
+        "validity": { "months": 12, "from": "first" }
+      },
+      "summary": [
+        "依整趟總距離計價（陸路的距離也算進去），最多 35,000 哩；單程也照同一張表收",
+        "除了澳航以外至少要搭 2 家寰宇一家航空，不能有非寰宇一家的航班",
+        "最多 16 段（含陸路）、最多 5 次停留（超過 24 小時）；同一城市只能停留 1 次、轉機最多 2 次",
+        "出發城市或國家只能出發 1 次；整趟依最高艙等計價；機票效期自原訂出發日起 1 年"
+      ],
+      "howToBook": "澳航官網（網站最多約 10 段）或澳航客服。",
+      "sources": [
+        { "label": "澳航：Classic Flight Reward 點數表（寰宇一家）", "url": "https://qantas.com/au/en/frequent-flyer/use-points/classic-flight-rewards/tables.html", "official": true, "checked": "2026-10-16" },
+        { "label": "澳航常客條款 14.4（寰宇一家獎勵）、13.2.3、13.3.4、14.2.6", "url": "https://www.qantas.com/au/en/frequent-flyer/discover-and-join/terms-and-conditions.html#classic-flight-rewards", "official": true, "checked": "2026-10-16" },
+        { "label": "澳航：環球旅行", "url": "https://www.qantas.com/au/en/book-a-trip/flights/round-the-world.html", "official": true, "checked": "2026-10-16" }
+      ]
+    },
+    {
+      "id": "asiamiles_ow",
+      "name": "亞洲萬里通 寰宇一家多航空公司獎勵",
+      "short": "亞萬多航司",
+      "alliance": "oneworld",
+      "walletKey": "asiamiles",
+      "price": { "kind": "pending", "basis": "flown", "max": 50000, "chartUrl": "https://flights.cathaypacific.com/en_HK/redeem-flights/flight-award-chart.html", "why": "國泰官網的哩數表要用瀏覽器執行 JavaScript 才會顯示，本站讀不到，價格待確認；請開官網表格對照總距離。" },
+      "cabins": ["Y", "J", "F"],
+      "rules": {
+        "carriers": { "alliance": "oneworld", "min": 2, "withCX": 3 },
+        "maxStopovers": 5,
+        "maxTransfers": 2,
+        "maxSurface": 2,
+        "stopoverOncePerCity": true,
+        "noStopoverAtEnds": true,
+        "validity": { "months": 12, "from": "issue" }
+      },
+      "summary": [
+        "依各段距離相加的總距離決定區間，最多 50,000 哩；沒有豪華經濟艙",
+        "不搭國泰時要 2 家寰宇一家航空；有搭國泰時要 3 家以上（只有國泰加 1 家夥伴屬於一般標準獎勵）",
+        "最多 5 次停留，另外可以轉機 2 次、開口 2 次；同一城市只能停留或開口 1 次，而且不能是出發地或目的地",
+        "整趟依最高艙等計價；機票效期自開票起 12 個月"
+      ],
+      "howToBook": "國泰官網會員登入後線上兌換（複雜行程用官網的獎勵機票申請）。",
+      "sources": [
+        { "label": "國泰會員計劃條款 2026（寰宇一家多航空公司獎勵第 1–6 條）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "official": true, "checked": "2026-10-16" },
+        { "label": "國泰：飛行獎勵哩數表（需瀏覽器開啟）", "url": "https://flights.cathaypacific.com/en_HK/redeem-flights/flight-award-chart.html", "official": true, "checked": "2026-10-16" }
+      ]
+    },
+    {
+      "id": "mm_world",
+      "name": "漢莎 Miles & More 星空聯盟環球獎勵機票",
+      "short": "Miles & More 環球",
+      "alliance": "star",
+      "walletKey": "lufthansa",
+      "price": { "kind": "fixed", "Y": 195000, "J": 400000, "F": 540000 },
+      "cabins": ["Y", "J", "F"],
+      "rules": {
+        "carriers": { "alliance": "star" },
+        "crossings": { "pacific": 1, "atlantic": 1, "exact": true },
+        "maxFlights": 10,
+        "maxStopovers": 7,
+        "minDays": 10,
+        "validity": { "months": 12, "from": "first" }
+      },
+      "summary": [
+        "固定價：經濟 195,000、商務 400,000、頭等 540,000 哩",
+        "跨大西洋、跨太平洋各 1 次；最多 10 段航班、7 次停留",
+        "第一段和最後一段國際線之間至少 10 天；效期自第一段航班起 12 個月",
+        "官網寫明只能打電話給 Miles & More 服務中心訂位"
+      ],
+      "howToBook": "只接受 Miles & More 服務中心電話訂位（官網寫明）。",
+      "sources": [
+        { "label": "Miles & More：World Award Flight", "url": "https://www.miles-and-more.com/at/en/program/flight-benefits/award-flights/world-award-flight.html", "official": true, "checked": "2026-10-16" }
+      ]
+    },
+    {
+      "id": "tap_rtw",
+      "name": "葡萄牙航空 Miles&Go 環球獎勵機票",
+      "short": "TAP 環球",
+      "alliance": "star",
+      "walletKey": "tap",
+      "price": { "kind": "fixed", "Y": 450000, "J": 550000 },
+      "cabins": ["Y", "J"],
+      "rules": {
+        "carriers": { "alliance": "star" },
+        "crossings": { "pacific": 1, "atlantic": 1 },
+        "sameDirection": true,
+        "endInOriginCountry": true,
+        "maxFlights": 10,
+        "maxStopovers": 6,
+        "validity": { "months": 12, "from": "issue" }
+      },
+      "summary": [
+        "固定價：經濟 450,000、商務 550,000 哩",
+        "全程往東或往西、方向不能改變；要跨大西洋和太平洋，最後回到出發的國家（起訖機場可以不同）",
+        "最多 10 段航班、6 次停留（超過 24 小時）；只限星空聯盟定期航班",
+        "整趟依最高艙等計價；開票後只能改日期，效期自開票日起 1 年"
+      ],
+      "howToBook": "TAP Miles&Go（或星空聯盟夥伴）。",
+      "sources": [
+        { "label": "TAP Miles&Go：Trip around the world", "url": "https://www.flytap.com/en-us/miles-and-go/use-miles/trip-around-the-world", "official": true, "checked": "2026-10-16" }
+      ]
+    }
+  ],
+  "ended": [
+    { "name": "全日空 ANA 星空聯盟環球獎勵機票", "text": "2025-06-23 起停止開立新票（已開的票可用到效期結束）。", "url": "https://www.ana.co.jp/en/us/amc/partner-flight-awards/around-the-world/", "checked": "2026-10-16" },
+    { "name": "新航 KrisFlyer 星空聯盟環球獎勵機票", "text": "2024-05-01 起不再開票。", "url": "https://www.singaporeair.com/en_UK/th/ppsclub-krisflyer/use-miles/redeem-miles/star-alliance-round-the-world-award", "checked": "2026-10-16" },
+    { "name": "韓亞 Asiana Club 星空聯盟環球獎勵", "text": "韓亞航 2026-12-16 退出星空聯盟，2026-12-17 以後的星盟獎勵機票不能使用，不建議再規劃。", "url": "https://flyasiana.com/C/US/EN/customer/notice/detail?id=CM202606090002529359", "checked": "2026-10-16" }
+  ],
+  "cashFares": [
+    { "name": "星空聯盟環球票（現金票）", "url": "https://roundtheworld.staralliance.com/staralliance/en/round-the-world" },
+    { "name": "寰宇一家環球票 oneworld Explorer／Global Explorer（現金票）", "url": "https://www.oneworld.com/round-the-world" }
+  ],
+  "cxMixed": {
+    "rule": "標準獎勵可以混艙：每個方向（去程、回程分開算）先用各段距離相加決定距離區間，再依各段大圓距離佔全程的比例，分攤各段艙等在該區間的哩數，加總後無條件捨去到百位。",
+    "notes": [
+      "只適用標準獎勵；同行者獎勵、升級獎勵不能混艙。",
+      "寰宇一家多航空公司獎勵不分攤，整趟依最高艙等計價。",
+      "條款沒有寫同一方向同時搭國泰和夥伴航空時用哪一張表，所以這裡只算全程國泰或全程同一家夥伴。",
+      "各區間的哩數是本站「亞洲萬里通哩數表」的估算值（國泰不公開哩數表），算出來也是估算；規則本身來自官方條款。"
+    ],
+    "source": { "label": "國泰會員計劃條款 2026：Flight Awards – Standard Awards 第 3 條", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "quote": "Standard Award allows mixed cabin redemption. The mileage requirement calculation is based on the haul of each inbound and outbound direction and the prorated ratio derived from Great Circle Distance for each sector. The mileage sum is rounded down to the nearest hundred.", "effective": "2026-01-01", "checked": "2026-10-16" },
+    "example": { "kind": "cx", "stops": ["TPE", "HKG", "LHR"], "cabins": ["J", "F"] }
+  }
+}
