@@ -75,7 +75,7 @@ function renderWalletExpiry() {
     const soon = x.days <= 90;
     const how = x.rule?.kind === 'activity' ? `<small>最後活動 ${ewYmd(x.entered, today)} 加 ${x.rule.months} 個月</small>` : '';
     return `<li class="${x.days < 0 ? 'gone' : soon ? 'soon' : ''}"><span><b>${esc(programName(x.key))}</b> ${fmt(x.miles)} 哩${how}</span>
-      <span class="exp-when">${ewYmd(x.date, today)} 到期 <span class="tag ${soon ? 'until soon' : 'until'}">${ewLeft(x.days)}</span></span></li>`;
+      <span class="exp-when">${ewYmd(x.date, today)} 到期 <span class="tag ${soon ? 'until soon' : 'until'}">${ewLeft(x.days)}</span></span>${typeof expiryHelpHtml === 'function' ? expiryHelpHtml(x) : ''}</li>`;
   };
   host.innerHTML = `<h3 class="sub">⏰ 哩程到期</h3><ul class="exp-list">${list.map(li).join('')}</ul>${expiryRemindHtml(list)}`;
 }
@@ -84,11 +84,11 @@ async function saveOwnerRemind(form) {
   const btn = $('button[type=submit]', form);
   btn.disabled = true;
   try {
-    const r = await cashApi('/api/expiry', { method: 'POST', body: JSON.stringify({ email, wallet: { miles: wallet.miles, expiry: wallet.expiry } }), headers: { 'content-type': 'application/json' } });
+    const r = await cashApi('/api/expiry', { method: 'POST', body: JSON.stringify({ email, wallet: { miles: wallet.miles, expiry: wallet.expiry, ...(typeof p6RemindExtras === 'function' ? p6RemindExtras() : {}) } }), headers: { 'content-type': 'application/json' } });
     store.set(EXP_REMIND_KEY, { email: r.email ?? email, sig: expirySig() });
     if (email) store.set(ALERT_EMAIL_KEY, email);
-    toast(r.count ? `已設定 ${r.count} 筆哩程的到期提醒` : '已清除到期提醒');
-    renderWalletExpiry();
+    toast(r.count ? `已設定 ${r.count} 筆到期提醒` : '已清除到期提醒');
+    renderWalletExtras();
   } catch (err) {
     toast(err.message);
   } finally {
@@ -160,7 +160,7 @@ function goalGroups(key) {
     }
     if (t) {
       for (const r of data.points.calc.hotels.rates || []) {
-        const partner = r.source === src.id && hotelPartner(r.to, key);
+        const partner = r.source === src.id && !(typeof calcRateExpired === 'function' && calcRateExpired(null, r)) && hotelPartner(r.to, key);
         if (!partner) continue;
         const fn = (x) => { const hp = calcConvert(hotelRate(r), x, 'p2m').value || 0; return hp ? hotelToAir(r.to, partner, hp).value || 0 : 0; };
         choices.push({ label: `${src.bank} ${src.program}`, via: hotelNames[r.to] || r.to, balance: bal, fn });
@@ -241,6 +241,7 @@ function renderGoalOut() {
 function renderWalletExtras() {
   renderWalletExpiry();
   renderWalletGoal();
+  if (typeof renderWallet6 === 'function') renderWallet6(); // 約值, vouchers, promo deadlines, family, ledger
 }
 function bindWalletExtras(host) {
   host.addEventListener('change', (e) => {
@@ -335,8 +336,8 @@ function untilTag(x) {
   if (!date) return '';
   const today = isoDate(0);
   const days = ewDays(today, date);
-  if (days < 0) return `<span class="tag until gone" title="這個比率只保證到 ${date}，可能已經調整">比率期限已過，待確認</span>`;
-  return `<span class="tag until${days <= 30 ? ' soon' : ''}" title="這個比率只保證到 ${date}">${days <= 60 ? ewLeft(days) : `到 ${ewYmd(date, today)}`}</span>`;
+  if (days < 0) return `<span class="tag until gone" title="這個比率只保證到 ${date}，可能已經調整；不算進最划算的結果">比率期限已過，待確認</span>`;
+  return `<span class="tag until${days <= 30 ? ' soon' : ''}" title="這個比率只保證到 ${date}">${days <= 60 ? `比率${ewLeft(days)}` : `比率到 ${ewYmd(date, today)}`}</span>`;
 }
 const bankProgram = (x) => (String(x.program).startsWith(x.bank) ? x.program : `${x.bank} ${x.program}`);
 // Everything dated that is still ahead: { date, days, title, advice, kind, source }, soonest first.

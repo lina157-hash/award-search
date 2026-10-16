@@ -1726,3 +1726,100 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .nl-row button { padding: 10px 16px; }
   .nl-go { font-size: .86rem; }
 }
+
+/* ---- round 6: 點數與錢包 (points6.js) ---- */
+/* U10: a rate past its date is greyed and never the best */
+.calc-table td.expired, .calc-table td.others div.expired { color: var(--muted); }
+.calc-table td.expired b, .calc-table td.others div.expired b { color: var(--muted); font-weight: 500; }
+.calc-table .tag.verify { margin-left: 4px; font-size: .68rem; }
+.calc-table small.hist6 { color: var(--muted); }
+/* U11: on phones one line per bank (its best result), tap to see every program */
+.calc-sum6 { display: none; }
+@media (max-width: 600px) {
+  .calc-sum6 { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; margin-top: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
+  .calc-sum6 b { color: var(--accent); white-space: nowrap; }
+  .calc-sum6 i { font-style: normal; color: var(--muted); transition: transform .15s; }
+  .calc-table tr.open .calc-sum6 i { transform: rotate(180deg); }
+  .calc-table tbody tr:not(.open):has(.calc-sum6) td { display: none; }
+  .calc-table tbody tr:has(.calc-sum6) { padding-bottom: 10px; }
+}
+/* N4: last safe transfer day and 我已登記 */
+.p6-dl { margin-top: 6px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); }
+.p6-dl-h { font-weight: 600; }
+.promos .p6-dl-list, .p6-dl-list { list-style: none; padding: 0; margin: 2px 0 4px; display: grid; gap: 2px; }
+.p6-dl-list li { font-size: .86rem; }
+.p6-dl-list li small { display: block; color: var(--muted); font-size: .76rem; }
+.p6-dl-list li.late { color: var(--muted); }
+.p6-reg { margin-top: 4px; font-size: .88rem; }
+.p6-reg label { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-weight: 600; cursor: pointer; }
+.p6-reg input { width: 20px; height: 20px; margin: 0; padding: 0; accent-color: var(--accent); }
+.p6-reg small { display: block; color: var(--muted); font-size: .76rem; }
+.p6-reg.done label { color: var(--heat-4); }
+.p6-promo { padding: 8px 0; border-bottom: 1px dashed var(--border); }
+.p6-promo p { margin: 0 0 2px; font-size: .9rem; }
+.p6-promo .pill { font-size: .72rem; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.p6-promo p small { color: var(--muted); }
+.p6-watch { margin: 8px 0; }
+.p6-watch .linklike { text-align: left; }
+.p6-watch-form { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 8px; }
+.p6-watch-form input { flex: 1 1 220px; min-width: 0; }
+/* wallet extras: value line, vouchers, family, ledger, expiry help */
+.p6-value { margin: 12px 0 4px; font-size: .95rem; }
+.p6-value b { font-size: 1.15rem; color: var(--accent); }
+.p6-value small { display: block; color: var(--muted); font-size: .8rem; }
+.p6-value small.p6-muted { font-size: .74rem; }
+.p6-box { margin: 12px 0; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.p6-box > summary { margin: 0; padding: 11px 0; min-height: 44px; box-sizing: border-box; color: var(--text); font-weight: 600; font-size: .92rem; }
+.p6-box > summary small { color: var(--muted); font-weight: 400; font-size: .8rem; margin-left: 4px; }
+.p6-box[open] { padding-bottom: 10px; }
+.p6-box .hint { font-size: .8rem; }
+.p6-vadd { border-style: dashed; }
+.p6-vform { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin: 4px 0 8px; }
+.p6-vform select { flex: 0 1 150px; }
+.p6-vform input[name=name] { flex: 1 1 200px; }
+.p6-vform input[name=count] { flex: 0 1 100px; text-align: right; }
+.p6-vdate { display: flex; flex-direction: column; flex: 0 1 170px; }
+.p6-vdate small { color: var(--muted); font-size: .74rem; }
+.p6-vlist .w-del, .p6-llist .w-del { margin-left: 6px; }
+.p6-mem { margin: 8px 0; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.p6-mem-head { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.p6-mem-head .p6-mname { flex: 0 1 180px; font-weight: 700; background: var(--surface); }
+.p6-mem .w-add { margin-top: 6px; }
+.p6-mem input, .p6-mem select { background: var(--surface); }
+.p6-famq { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 10px 0 6px; font-size: .9rem; }
+.p6-famq label { display: inline-flex; align-items: center; gap: 6px; }
+.p6-famq input { width: 120px; text-align: right; }
+.p6-famq #p6-fam-pax { width: 70px; }
+.p6-fam-table td small { display: block; }
+.p6-fam-table td small.ok-text, .p6-fam-table td small.warn { font-weight: 700; font-size: .8rem; }
+.p6-year { margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); font-size: .9rem; }
+.p6-year h4 { margin: 0 0 2px; font-size: .95rem; }
+.p6-year p { margin: 2px 0; }
+.p6-year small { display: block; color: var(--muted); font-size: .78rem; }
+.p6-verdict b { color: var(--accent); }
+.p6-cash { display: inline-flex; align-items: center; gap: 4px; }
+.p6-cash label { display: inline-flex; align-items: center; gap: 4px; }
+.p6-cash input { width: 110px; padding: 6px 8px; text-align: right; }
+.p6-ledger-plan { margin-top: 10px; }
+.p6-ticks { list-style: none; padding: 0; margin: 0 0 6px; }
+.p6-ticks li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: .88rem; }
+.p6-ticks li small { display: block; color: var(--muted); font-size: .76rem; }
+.exp-list li .p6-exphelp { flex-basis: 100%; margin: 2px 0 0; }
+.p6-exphelp > summary { margin: 0; padding: 6px 0; color: var(--accent); font-size: .84rem; }
+.p6-exphelp ul { list-style: none; padding: 0; margin: 2px 0 4px; }
+.p6-exphelp li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; padding: 3px 0; border: 0; font-size: .85rem; }
+.p6-exphelp p { margin: 2px 0; }
+.p6-exphelp .linklike { min-height: 32px; }
+@media (max-width: 600px) {
+  .p6-cash input { width: 96px; }
+  .p6-mem-head .p6-mname { flex: 1 1 auto; }
+  .p6-mem-head .linklike { white-space: nowrap; }
+  .p6-fam-table thead { display: none; }
+  .p6-fam-table, .p6-fam-table tbody, .p6-fam-table tr, .p6-fam-table td { display: block; }
+  .p6-fam-table tr { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .p6-fam-table tbody tr:last-child { border-bottom: 0; }
+  .p6-fam-table td { position: static; padding: 2px 0; border: 0; white-space: normal; }
+  .p6-fam-table td[data-l] { display: grid; grid-template-columns: 3.4em minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
+  .p6-fam-table td[data-l]::before { content: attr(data-l); grid-row: 1 / span 4; color: var(--muted); font-size: .76rem; }
+  .p6-fam-table td[data-l] > * { grid-column: 2; }
+}

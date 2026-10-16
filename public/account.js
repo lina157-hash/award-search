@@ -4,7 +4,8 @@
 // Classic script loaded last; uses the globals of app.js, features.js and hotels.js (store, toast, cashApi, $…).
 
 // localStorage keys carried by the account. The passcode (cashPass) never leaves the device.
-const SYNC_KEYS = ['favSearches', 'recentSearches', 'wallet:v1', 'plan:v1', 'cashSeen:v1', 'hotelSearch:v1', 'alertEmail', 'mileCost:v1'];
+// points6.js adds family members, vouchers, 已登記, the redemption ledger and the expiry suggestions.
+const SYNC_KEYS = ['favSearches', 'recentSearches', 'wallet:v1', 'plan:v1', 'cashSeen:v1', 'hotelSearch:v1', 'alertEmail', 'mileCost:v1', ...(typeof P6_SYNC_KEYS !== 'undefined' ? P6_SYNC_KEYS : [])];
 // What this device last agreed with the server: { email, joined, rev, base, syncedAt }.
 const ACCT_SYNC = 'acct:sync';
 const acct = { configured: false, emailEnabled: false, status: null, syncing: false, syncErr: '', timer: 0, conflicts: 0, lockFlipped: false, lastPull: 0, pending: false };
@@ -91,6 +92,7 @@ const MERGE = {
     return out;
   },
   alertEmail: (l, r, b, hasBase) => (hasBase ? l : typeof r === 'string' && r ? r : l),
+  ...(typeof P6_MERGE !== 'undefined' ? P6_MERGE : {}),
 };
 // Single values (hotelSearch:v1 and anything new): the account's value on a first sync, else this device's newer edit.
 const keepOne = (l, r, b, hasBase) => (hasBase ? l : r !== undefined ? r : l);
@@ -138,6 +140,7 @@ function refreshViews(keys) {
   }
   if (has('plan:v1')) { plan = cleanPlan(store.get(PLAN_KEY, null)); renderPlan(); }
   if (has('cashSeen:v1')) cashSeen = loadCashSeen();
+  if (typeof P6_SYNC_KEYS !== 'undefined' && keys.some((k) => P6_SYNC_KEYS.includes(k))) p6Refresh();
   // hotelSearch:v1 and alertEmail are read when their form opens.
 }
 // What the merge dialog lists: only the things people would miss.

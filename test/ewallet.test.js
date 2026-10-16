@@ -68,9 +68,10 @@ test('walletExpiries lists dated balances soonest first; reminders go out once a
   assert.ok(moved.due.some((d) => d.key === 'asiamiles'));
 });
 
-test('cleanWallet keeps only dated programs with valid dates', () => {
-  assert.deepEqual(cleanWallet({ miles: { eva: 5000, ci: 100 }, banks: { x: 1 }, expiry: { eva: '2027-01-31', ci: '2027-13-01', 'bad key!': '2027-01-01' } }), { miles: { eva: 5000 }, expiry: { eva: '2027-01-31' } });
-  assert.deepEqual(cleanWallet(null), { miles: {}, expiry: {} });
+test('cleanWallet keeps only dated programs with valid dates (plus bank ids, vouchers, 已登記 and tips for points6.js)', () => {
+  const empty = { banks: [], vouchers: [], reg: {}, tips: {} };
+  assert.deepEqual(cleanWallet({ miles: { eva: 5000, ci: 100 }, banks: { x: 1 }, expiry: { eva: '2027-01-31', ci: '2027-13-01', 'bad key!': '2027-01-01' } }), { ...empty, miles: { eva: 5000 }, expiry: { eva: '2027-01-31' }, banks: ['x'] });
+  assert.deepEqual(cleanWallet(null), { ...empty, miles: {}, expiry: {} });
 });
 
 test('createExpiry: tracked accounts and the owner list are reminded once per step; empty wallets leave the list', async () => {
