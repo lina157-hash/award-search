@@ -97,20 +97,21 @@ test('generator: freighter and charter number ranges drop; stale routes listed b
   assert.deepEqual(plain(R.rtwLegAir(index, 'HKG', 'LHR', R.rtwCarriers(prog('asiamiles_ow'), members))).flying.sort(), ['BA', 'CX']);
 });
 
-test('generator: every oneworld and Star Alliance member has an operator; regionals map to a member', () => {
+test('generator: every member of the three alliances has an operator; regionals map to a member', () => {
   const ops = new Set(Object.values(B.OPERATORS));
-  for (const id of ['oneworld', 'star']) for (const c of members[id]) assert.ok(ops.has(c), `${c} (${id}) has no operator in build-rtw-routes.js`);
+  for (const id of ['oneworld', 'star', 'skyteam']) for (const c of members[id]) assert.ok(ops.has(c), `${c} (${id}) has no operator in build-rtw-routes.js`);
+  for (const c of B.EXTRA_CARRIERS) assert.ok(ops.has(c), c);
   for (const op of B.REGIONAL) assert.ok(B.OPERATORS[op], op);
 });
 
 // ---------- the data file ----------
-test('rtw-routes.json: CC0 source with its date, alliance airlines only, known airports, each pair once and in order', () => {
+test('rtw-routes.json: CC0 source with its date, the covered airlines only, known airports, each pair once and in order', () => {
   assert.equal(routes.source.licence, 'CC0 1.0');
   assert.match(routes.source.url, /^https:\/\/github\.com\/vradarserver\/standing-data$/);
   assert.match(routes.source.fetched, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(routes.airportCodes.licence, 'Public domain');
   assert.ok(routes.method.length >= 3 && /可能漏掉/.test(routes.note));
-  const allianceCodes = new Set([...members.oneworld, ...members.star]);
+  const allianceCodes = new Set([...members.oneworld, ...members.star, ...members.skyteam, ...B.EXTRA_CARRIERS]);
   assert.deepEqual(routes.carriers, [...allianceCodes].sort());
   const AP = new Set(ap.keys());
   let n = 0;

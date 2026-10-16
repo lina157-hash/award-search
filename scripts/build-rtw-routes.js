@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Builds data/rtw-routes.json: which oneworld and Star Alliance airlines fly each airport pair nonstop, for the airline
-// menu of 環球票規劃 (public/rtw.js shows only the airlines that fly a leg).
+// Builds data/rtw-routes.json: which airlines fly each airport pair nonstop: the three alliances plus Emirates, Etihad,
+// Starlux and Mandarin. Used by the airline menu of 環球票規劃 (public/rtw.js shows only the airlines that fly a leg) and
+// by 兌換地圖 / 哩程試算 / 中停／開口組合 (public/mapkit.js: 可搭直飛, 只看有直飛, flight-time estimates).
 //
 // Source: Virtual Radar Server standing data (CC0 1.0, github.com/vradarserver/standing-data): flight callsign →
 // airports, collected by plane spotters from ADS-B. It has no dates, so it also keeps some routes that stopped flying,
@@ -8,7 +9,7 @@
 // OurAirports (public domain). Only airports in public/airports.min.json are kept.
 //
 // Usage:
-//   node scripts/build-rtw-routes.js --download <dir>   fetch the files into <dir> (needs direct internet access)
+//   node scripts/build-rtw-routes.js --download <dir> [ICAO,…]   fetch the files into <dir> (all operators, or the listed ones)
 //   node scripts/build-rtw-routes.js <dir> [YYYY-MM-DD] build from <dir> (date = when the files were fetched; default today)
 // <dir> holds airlines.csv, ourairports.csv and routes/<ICAO>.csv (one file per operator, the VRS files joined).
 const fs = require('node:fs');
@@ -44,15 +45,37 @@ const OPERATORS = {
   AAR: 'OZ', AUA: 'OS', AVA: 'AV', BEL: 'SN', CMP: 'CM', CTN: 'OU', MSR: 'MS', ETH: 'ET', EVA: 'BR', ITY: 'AZ', LOT: 'LO',
   DLH: 'LH', DLA: 'LH', LHX: 'LH', // Air Dolomiti, Lufthansa City Airlines
   CSZ: 'ZH', SIA: 'SQ', SAA: 'SA', SWR: 'LX', TAP: 'TP', THA: 'TG', THY: 'TK', UAL: 'UA',
+  // SkyTeam
+  ARG: 'AR', AEA: 'UX', AFR: 'AF', CAL: 'CI', CES: 'MU', GIA: 'GA', KQA: 'KQ', KAL: 'KE', MEA: 'ME', SVA: 'SV', ROT: 'RO',
+  HVN: 'VN', VIR: 'VS', CXA: 'MF',
+  AMX: 'AM', SLI: 'AM', // Aeroméxico Connect (wholly owned)
+  DAL: 'DL', EDV: 'DL', // Endeavor Air (wholly owned, Delta Connection only)
+  KLM: 'KL', KLC: 'KL', // KLM Cityhopper (wholly owned)
+  SAS: 'SK', SZS: 'SK', // SAS Connect (wholly owned)
+  // Outside the alliances, booked with the site's programs (data/airlines.json bookableVia, data/charts.json)
+  UAE: 'EK', ETD: 'EY', SJX: 'JX',
+  MDA: 'AE', // Mandarin Airlines (China Airlines group; its own AE flight numbers, on Dynasty Flyer's chart)
+  HOP: 'AF', // Air France Hop (wholly owned)
 };
+// Carriers outside the three alliances that the file covers.
+const EXTRA_CARRIERS = ['AE', 'EK', 'EY', 'JX'];
 // The regional and group airlines above: their callsigns use high flight numbers, so the number rule below skips them.
-const REGIONAL = new Set(['ENY', 'PDT', 'JIA', 'QXE', 'CFE', 'EFW', 'IBS', 'JLJ', 'QLK', 'QJE', 'EAQ', 'NWK', 'FJA', 'JZA', 'ROU', 'CCD', 'CNM', 'RLK', 'NZM', 'AKX', 'DLA', 'LHX']);
+const REGIONAL = new Set(['ENY', 'PDT', 'JIA', 'QXE', 'CFE', 'EFW', 'IBS', 'JLJ', 'QLK', 'QJE', 'EAQ', 'NWK', 'FJA', 'JZA', 'ROU', 'CCD', 'CNM', 'RLK', 'NZM', 'AKX', 'DLA', 'LHX', 'SLI', 'EDV', 'KLC', 'SZS', 'HOP']);
 // A mainline callsign numbered from this up is mostly a charter, ferry, cargo or extra section (e.g. AA 9xxx, TK 6xxx).
 const MAX_FLIGHT_NO = 5000;
 // Lower number ranges some airlines use for freighters or charters (seen in the VRS files: CX 1–99 and 2xxx–3xxx fly
 // multi-stop cargo routes via Anchorage and Dubai World Central, ET 2xxx–3xxx to Liège, BR 6xx via Anchorage, BR
-// 1xxx–2xxx are charters to small Japanese airports). A letter after the number (CX 71D) counts as the same flight.
-const NON_PASSENGER = { CPA: [[0, 99], [2000, 4999]], ETH: [[2000, 4999]], EVA: [[600, 699], [1000, 4999]] };
+// 1xxx–2xxx are charters to small Japanese airports; KE 2xx stop in Anchorage and KE 5xx in Navoi and Zaragoza, SV 9xx
+// and 39xx in Liège and Maastricht, EY 9xx in Liège, Hahn and East Midlands, KQ 23xx in Sharjah). CI's freighters
+// (5xxx–6xxx) and charters (7xxx) are above MAX_FLIGHT_NO. A letter after the number (CX 71D) counts as the same flight.
+const NON_PASSENGER = {
+  CPA: [[0, 99], [2000, 4999]], ETH: [[2000, 4999]], EVA: [[600, 699], [1000, 4999]],
+  KAL: [[200, 299], [500, 599]], SVA: [[900, 999], [3900, 3999]], ETD: [[900, 999]], KQA: [[2300, 2399]],
+};
+// Airports an operator reaches only with freighters: Emirates flies passengers from Dubai International (DXB); in the
+// VRS files every Emirates flight at Al Maktoum (DWC) or Rickenbacker (LCK) is a 9xxx SkyCargo number, a DXB–DWC
+// positioning hop, or a lettered callsign on a multi-stop cargo loop.
+const NON_PASSENGER_AIRPORTS = { UAE: ['DWC', 'LCK'] };
 // Routes that stopped flying but are still in the VRS files, checked by hand: [airline, airport, airport, why].
 const STALE = [
   ['MH', 'LAX', 'TPE', '馬航吉隆坡–台北–洛杉磯 2014 年停飛'],
@@ -64,7 +87,8 @@ const METHOD = [
   `主線航空公司只用 ${MAX_FLIGHT_NO} 號以下的航班呼號，並排除 VRS 標示的調機、包機號碼`,
   '同一家航空公司兩個方向都有紀錄才算（單向紀錄多半是改降或臨時航班）',
   '同城市的兩個機場之間（例如 NRT–HND）不算',
-  '排除貨機和包機常用的航班號碼（國泰 1–99 和 2000–4999 號、衣索比亞 2000–4999 號，長榮 600–699 和 1000–4999 號）',
+  '排除貨機和包機常用的航班號碼（國泰 1–99 和 2000–4999 號、衣索比亞 2000–4999 號、長榮 600–699 和 1000–4999 號、大韓 200–299 和 500–599 號、沙烏地 900–999 和 3900–3999 號、阿提哈德 900–999 號、肯亞 2300–2399 號）',
+  '阿聯酋航空在杜拜阿勒馬克圖姆（DWC）和美國 Rickenbacker（LCK）只有貨機，不算',
   `手動刪掉已知停飛的航線（${STALE.map(([c, a, b]) => `${c} ${a}–${b}`).join('、')}）`,
 ];
 
@@ -94,7 +118,7 @@ function parseCsv(text) {
 // The pure part. rows: [{ Callsign, AirlineCode, AirportCodes }]; icaoToIata: Map; keep: Set of IATA codes to keep;
 // cityOf: IATA → city key (same-city pairs dropped); patterns: ICAO → [RegExp] of positioning/charter flight numbers.
 // → { 'AAA': { 'BBB': ['CX', 'JL'] } } with each pair once, under the code that sorts first; carriers sorted.
-function buildRoutes(rows, { icaoToIata, keep, cityOf = (c) => c, patterns = {}, operators = OPERATORS, regional = REGIONAL, nonPassenger = NON_PASSENGER, stale = STALE }) {
+function buildRoutes(rows, { icaoToIata, keep, cityOf = (c) => c, patterns = {}, operators = OPERATORS, regional = REGIONAL, nonPassenger = NON_PASSENGER, cargoAirports = NON_PASSENGER_AIRPORTS, stale = STALE }) {
   const seen = new Map(); // 'CX AAA BBB' (directed) → true
   for (const r of rows) {
     const op = r.AirlineCode;
@@ -110,6 +134,7 @@ function buildRoutes(rows, { icaoToIata, keep, cityOf = (c) => c, patterns = {},
     for (let i = 1; i < codes.length; i++) {
       const [a, b] = [codes[i - 1], codes[i]];
       if (!a || !b || a === b || !keep.has(a) || !keep.has(b) || cityOf(a) === cityOf(b)) continue;
+      if (cargoAirports[op]?.includes(a) || cargoAirports[op]?.includes(b)) continue;
       seen.set(`${carrier} ${a} ${b}`, true);
     }
   }
@@ -143,12 +168,12 @@ function icaoMap(ourRows) {
   return m;
 }
 
-async function download(dir) {
+async function download(dir, only) {
   fs.mkdirSync(path.join(dir, 'routes'), { recursive: true });
   const get = async (url) => { const r = await fetch(url); return r.ok ? r.text() : null; };
   fs.writeFileSync(path.join(dir, 'airlines.csv'), await get(`${VRS}/airlines/schema-01/airlines.csv`));
   fs.writeFileSync(path.join(dir, 'ourairports.csv'), await get(OURAIRPORTS));
-  for (const op of Object.keys(OPERATORS)) {
+  for (const op of only || Object.keys(OPERATORS)) {
     const base = `${VRS}/routes/schema-01/${op[0]}/${op}`;
     let text = await get(`${base}-all.csv`);
     // Big airlines are split by the first digit of the flight number.
@@ -161,7 +186,7 @@ async function download(dir) {
 function main(dir, fetched) {
   const root = path.join(__dirname, '..');
   const alliances = JSON.parse(fs.readFileSync(path.join(root, 'data', 'alliances.json'), 'utf8')).alliances;
-  const carriers = [...new Set(alliances.filter((a) => a.id === 'oneworld' || a.id === 'star').flatMap((a) => a.members))].sort();
+  const carriers = [...new Set([...alliances.flatMap((a) => a.members), ...EXTRA_CARRIERS])].sort();
   const operators = Object.fromEntries(Object.entries(OPERATORS).filter(([, c]) => carriers.includes(c)));
   const ap = JSON.parse(fs.readFileSync(path.join(root, 'public', 'airports.min.json'), 'utf8'));
   const keep = new Set(ap.airports.map((r) => r[0]));
@@ -183,7 +208,7 @@ function main(dir, fetched) {
   });
   const pairs = Object.values(routes).reduce((n, x) => n + Object.keys(x).length, 0);
   const out = {
-    note: '每個機場之間有哪些寰宇一家、星空聯盟航空公司直飛（兩個方向都有紀錄才算）。資料來自飛機愛好者以 ADS-B 收集的航班呼號航線，不是航空公司的時刻表：可能漏掉新航線，也可能留著已停飛、季節性或貨運的航線。',
+    note: '每個機場之間有哪些航空公司直飛（寰宇一家、星空聯盟、天合聯盟，加上阿聯酋、阿提哈德、星宇、華信；兩個方向都有紀錄才算）。資料來自飛機愛好者以 ADS-B 收集的航班呼號航線，不是航空公司的時刻表：可能漏掉新航線，也可能留著已停飛、季節性或貨運的航線。',
     source: { label: 'Virtual Radar Server standing data（航班呼號航線）', url: 'https://github.com/vradarserver/standing-data', licence: 'CC0 1.0', fetched },
     airportCodes: { label: 'OurAirports（ICAO 轉 IATA 機場代碼）', url: 'https://ourairports.com/data/', licence: 'Public domain', fetched },
     method: METHOD,
@@ -199,7 +224,8 @@ function main(dir, fetched) {
 
 if (require.main === module) {
   const [a, b] = process.argv.slice(2);
-  if (a === '--download' && b) download(b).catch((e) => { console.error(e); process.exit(1); });
+  const only = process.argv[4]?.split(',').filter((op) => OPERATORS[op]);
+  if (a === '--download' && b) download(b, only?.length ? only : null).catch((e) => { console.error(e); process.exit(1); });
   else if (a && fs.existsSync(a)) main(a, b || new Date().toISOString().slice(0, 10));
   else {
     console.error('usage: node scripts/build-rtw-routes.js --download <dir>   then   node scripts/build-rtw-routes.js <dir> [YYYY-MM-DD]');
@@ -207,4 +233,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { OPERATORS, REGIONAL, MAX_FLIGHT_NO, NON_PASSENGER, STALE, parseCsv, buildRoutes, packRoutes, icaoMap };
+module.exports = { OPERATORS, EXTRA_CARRIERS, REGIONAL, MAX_FLIGHT_NO, NON_PASSENGER, NON_PASSENGER_AIRPORTS, STALE, parseCsv, buildRoutes, packRoutes, icaoMap };
