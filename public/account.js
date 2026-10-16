@@ -300,6 +300,7 @@ const baseLockHint = updateLockHint;
 updateLockHint = function () {
   baseLockHint();
   if (ownerHere()) loadAdmin();
+  if (ownerHere() && typeof loadOwnerScripts === 'function') loadOwnerScripts(); // 哪裡都好, 我的條件通知, 一句話搜尋 (app.js)
   if (!acct.lockFlipped || cashCfg.locked) return;
   const el = $('#cash-lock');
   el.hidden = false;
@@ -657,7 +658,7 @@ function bindSettings(form) {
     } catch (err) { showErr(delSec, errOf(err)); } finally { done(); }
   });
   tgRender($('#tg-settings', form));
-  if (typeof lineRender === 'function') lineRender($('#line-settings', form));
+  loadScripts(['line']).then(() => { if (typeof lineRender === 'function') lineRender($('#line-settings', form)); }); // LINE (line.js, fetched here)
   if (typeof dsubRender === 'function') dsubRender($('#dsub-settings', form));
 }
 

@@ -2249,6 +2249,9 @@ form.need, .detour { display: grid; gap: 12px; }
   /* 查航班動態 / 這班過去準點率 wrap onto two lines in a narrow leg cell; without the -12px margins they stop overlapping. */
   .fst-acts .linklike { margin-top: 0; margin-bottom: 0; min-height: 40px; }
 }
+/* P3: these tabs draw after the data arrives and are all taller than the screen once drawn; opened from a link,
+   they hold the footer below the fold meanwhile instead of letting it jump down the page. */
+#tab-points, #tab-rules, #tab-map, #tab-rtw { min-height: calc(100vh - var(--hdr-h, 67px)); }
 /* C8: 我的行程's extras (已開票追蹤, 護照, 提醒, 兌換紀錄) under one 「更多」 fold at the end of the panel. */
 .plan-more { margin-top: 12px; border-top: 1px dashed var(--border); }
 .plan-more > summary { list-style: none; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 4px 0; color: var(--accent); font-size: .88rem; }

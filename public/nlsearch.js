@@ -15,7 +15,7 @@ const NL_ALLIANCE = { star: '星空聯盟', skyteam: '天合聯盟', oneworld: '
 
 const nlOwnerHere = () => Boolean(store.get(PASS_KEY, '') || (typeof acct !== 'undefined' && acct.status?.unlocked) || (!cashCfg.locked && !$('#mock-banner').hidden));
 
-// Called by app.js once /api/config has answered.
+// Run once /api/config has answered (this script arrives after the page: app.js OWNER_SCRIPTS and SEARCH_SCRIPTS).
 function nlInit(config) {
   nl.on = Boolean(config.nl);
   if (!nl.on) return;
@@ -237,3 +237,5 @@ function nlToExplore() {
   f.scrollIntoView({ block: 'center' });
   toast('已選好區域，按「開始探索」查詢');
 }
+
+if (typeof configP === 'object') configP.then(nlInit);

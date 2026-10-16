@@ -318,6 +318,8 @@
       </div>
     </section>
   </main>
+  <!-- A linked tab (#points, #rules…) shows from the first paint instead of 航線查詢 first; app.js showTab takes over. -->
+  <script>(function () { var p = document.getElementById('tab-' + location.hash.slice(1).split('/')[0]); if (p && p.classList.contains('panel')) document.querySelectorAll('main > .panel').forEach(function (s) { s.hidden = s !== p; }); })();</script>
 
   <dialog id="trip-dialog">
     <div class="dialog-head"><h2 id="trip-title">航班明細</h2><button class="ghost" id="trip-close" aria-label="關閉">✕</button></div>
@@ -360,26 +362,23 @@
   <script src="/backnav.js?v=1.34.2"></script>
   <script src="/app.js?v=1.34.2"></script>
   <script src="/features.js?v=1.34.2"></script>
-  <script src="/nlsearch.js?v=1.34.2"></script>
   <script src="/logos.js?v=1.34.2"></script>
   <!-- Loaded when first needed (app.js loadScripts): rtw.js, award-tools.js and ewallet.js with the results, 航班明細,
-       點數換算器 and 規則庫; etrips.js, flightplus.js and pairing.js with the search scripts; hotels.js and
-       hotelwatch.js on 查飯店; admin.js on the owner's device (account.js). points6.js stays here: account.js reads its
-       sync keys when it loads. trips.js, leave.js and sweet.js stay here too: 我的行程, the results and 今日好康 draw
-       with them, and sweet.js wraps app.js's tabInit.map before the map tab first opens. -->
+       點數換算器 and 規則庫; etrips.js, flightplus.js, pairing.js and aihelper.js with the search scripts (aihelper.js
+       also with the first 航班明細); hotels.js and hotelwatch.js on 查飯店; cashverdict.js on 查現金票; flightstatus.js
+       when 我的行程 opens with legs; line.js with 帳號設定 or 通知設定; admin.js, anywhere.js and dealrules.js on the
+       owner's device (account.js); nlsearch.js there and with the search scripts.
+       points6.js stays here: account.js reads its sync keys when it loads. trips.js, leave.js and sweet.js stay here
+       too: 我的行程, the results and 今日好康 draw with them, and sweet.js wraps app.js's tabInit.map before the map tab
+       first opens. notify.js stays for the 機位提醒 form and lists that visitors see before the passcode, and
+       dealsub.js for 今日好康's 📬 每天寄給我 on the first tab and the #unsub= links from its mail. -->
   <script src="/trips.js?v=1.34.2"></script>
   <script src="/leave.js?v=1.34.2"></script>
   <script src="/sweet.js?v=1.34.2"></script>
-  <script src="/aihelper.js?v=1.34.2"></script>
   <script src="/points6.js?v=1.34.2"></script>
   <script src="/account.js?v=1.34.2"></script>
   <script src="/dealsub.js?v=1.34.2"></script>
-  <script src="/line.js?v=1.34.2"></script>
   <script src="/notify.js?v=1.34.2"></script>
-  <script src="/flightstatus.js?v=1.34.2"></script>
-  <script src="/cashverdict.js?v=1.34.2"></script>
-  <script src="/anywhere.js?v=1.34.2"></script>
-  <script src="/dealrules.js?v=1.34.2"></script>
   <script src="/siteopts.js?v=1.34.2"></script>
 </body>
 </html>

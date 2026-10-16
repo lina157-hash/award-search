@@ -69,7 +69,7 @@ function openNotifySettings() {
     dlg.addEventListener('close', () => notifyRefresh(true));
   }
   tgRender($('#nf-tg'));
-  if (typeof lineRender === 'function') lineRender($('#nf-line'));
+  loadScripts(['line']).then(() => { if (typeof lineRender === 'function') lineRender($('#nf-line')); }); // line.js, fetched on first use
   dlg.showModal();
   $('.acct-x', dlg).focus();
 }

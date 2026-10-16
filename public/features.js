@@ -1455,6 +1455,7 @@ function renderPlan() {
   $('#plan-import')?.addEventListener('click', () => { plan = sharedPlan; sharedPlan = null; savePlan(); toast('已存成我的行程'); });
   $('#plan-dismiss')?.addEventListener('click', () => { sharedPlan = null; renderPlan(); });
   if (typeof fstBind === 'function') fstBind(body); // 查航班動態／這班過去準點率 (flightstatus.js)
+  else if ($('#plan-panel')?.open && $('.plan-table tr', body)) loadScripts(['flightstatus']); // binds #plan-body when it arrives
   planFold(body);
 }
 // 我的行程's extras (航班動態的用量, 已開票追蹤, 護照, 提醒, and points6.js's 兌換紀錄) sit under one 「更多」 fold at the

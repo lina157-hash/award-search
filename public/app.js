@@ -1886,6 +1886,7 @@ async function openTrips(id, title, cabin) {
   $('#trip-title').textContent = title;
   $('#trip-body').innerHTML = skeleton(3);
   dlg.showModal();
+  const aiP = loadScripts(['aihelper']);
   try {
     const [body] = await Promise.all([api(`/api/trips/${encodeURIComponent(id)}`), loadMore(), loadTools()]);
     if (!fresh()) return;
@@ -1909,7 +1910,9 @@ async function openTrips(id, title, cabin) {
       (first ? bookingNotesHtml(first.source, first.miles * pax) + homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
     $$('[data-plan]', $('#trip-body')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
-    if (main[0] && typeof aiHelperMount === 'function') aiHelperMount(main[0], pax, main.length); // public/aihelper.js
+    // 交給 AI 助理 (public/aihelper.js): fetched with the first 航班明細 (see aiP above) unless the search scripts brought it.
+    const aiMount = () => { if (fresh() && typeof aiHelperMount === 'function') aiHelperMount(main[0], pax, main.length); };
+    if (main[0]) { if (typeof aiHelperMount === 'function') aiMount(); else aiP.then(aiMount); }
     if (typeof mixedMount === 'function') mixedMount(id, cabin); // 也看混艙行程 (public/flightplus.js)
   } catch (err) {
     if (!fresh()) return;
@@ -3380,8 +3383,17 @@ function withTools(host, draw) {
 // Scripts only the route search uses (中停／開口組合 and 外站出發, the 國泰 card and calendars, 請 AI 助理查官網, seat
 // history; about 65 KB gzipped): fetched on the first sign of a search instead of with the page. In this order: each one
 // builds on the one before. The 規則庫 tab (the 書籤小工具 cards), and #cxcal= and #gf? landing links load them too.
-const SEARCH_SCRIPTS = ['etrips', 'flightplus', 'pairing', 'seathistory', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'cxmuse', 'cxshot', 'cxcard'];
+// aihelper.js (交給 AI 助理) comes before cxmuse.js, which copies with its aiCopy; nlsearch.js before cxshot.js, whose
+// 貼上截圖 shows when nl.on (the server has the 一句話搜尋 model).
+const SEARCH_SCRIPTS = ['etrips', 'flightplus', 'pairing', 'seathistory', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'aihelper', 'nlsearch', 'cxmuse', 'cxshot', 'cxcard'];
 const loadSearchScripts = () => loadScripts([...TOOL_SCRIPTS, ...SEARCH_SCRIPTS]);
+// The owner's tools, fetched on the owner's device only (account.js, next to 帳號管理): 哪裡都好 under 區域探索,
+// 今日好康's 🎯 我的條件通知 and the 一句話搜尋 box draw themselves when they arrive and follow the passcode after that.
+const OWNER_SCRIPTS = ['anywhere', 'dealrules', 'nlsearch'];
+const loadOwnerScripts = () => loadScripts(OWNER_SCRIPTS);
+// /api/config as init got it, for scripts that arrive later and set themselves up from it (nlsearch.js); {} if init failed.
+let configDone;
+const configP = new Promise((resolve) => { configDone = resolve; });
 
 tabInit.rules = () => { renderRules(); loadSearchScripts(); };
 tabInit.points = () => renderPoints();
@@ -3399,7 +3411,11 @@ tabInit.hotels = () => {
     $('.retry', host).addEventListener('click', () => ensureTab('hotels'));
   });
 };
-tabInit.cash = () => loadCashQuota();
+// 買或等 (cashverdict.js) comes with the tab; fares that were drawn before it arrived are drawn again with it.
+tabInit.cash = () => {
+  loadCashQuota();
+  loadScripts(['cashverdict']).then(([ok]) => { if (ok && $('#cash-results .insight') && !$('#cash-results .cash-verdict')) renderCash(); });
+};
 
 (async function init() {
   // A shared search link starts its search now, alongside the page data, instead of after it.
@@ -3458,7 +3474,7 @@ tabInit.cash = () => loadCashQuota();
   // Search and cash forms start blank (owner's choice); only region explore gets a default window.
   datePickers.explore.set(isoDate(30), isoDate(44));
   initFeatures();
-  if (typeof nlInit === 'function') nlInit(config); // 一句話搜尋 (nlsearch.js)
+  configDone(config); // 一句話搜尋 (nlsearch.js) sets itself up from it when it arrives
   if (typeof notifyInit === 'function') notifyInit(config); // 通知狀態、已開票追蹤 (notify.js)
   // Hidden tabs (rules, points, hotels) and the cash quota are set up when first opened.
   dataReady = true;
@@ -3468,5 +3484,6 @@ tabInit.cash = () => loadCashQuota();
   if (share.get('x') && share.get('program')) applyExploreShare(tabParams('explore'));
   else if (isShare) applyShare(tabParams('search'), true, pre);
 })().catch((err) => {
+  configDone({});
   showError($('#search-status'), new Error(`初始化失敗：${err.message}`), () => location.reload());
 });
