@@ -81,6 +81,21 @@ test('generator: mainline charter/ferry numbers and VRS positioning patterns dro
   assert.deepEqual(B.parseCsv('﻿Callsign,AirlineCode\nCPA1,CPA\nCallsign,AirlineCode\nCPA2,CPA\n').map((r) => r.Callsign), ['CPA1', 'CPA2']);
 });
 
+test('generator: freighter and charter number ranges drop; stale routes listed by hand drop', () => {
+  const out = build([
+    row('CPA2025', 'CPA', 'RCTP-VHHH'), row('CPA2026', 'CPA', 'VHHH-RCTP'), // CX 2xxx: freighters
+    row('EVA632', 'EVA', 'RCTP-EGLL'), row('EVA631', 'EVA', 'EGLL-RCTP'), // BR 6xx: freighters
+    row('EVA1361', 'EVA', 'RCTP-RJAA'), row('EVA1362', 'EVA', 'RJAA-RCTP'), // BR 1xxx: charters
+    row('EVA195', 'EVA', 'RJAA-RCTP'), row('EVA196', 'EVA', 'RCTP-RJAA'), // a scheduled number: kept
+    row('ANZ38', 'ANZ', 'EGLL-VHHH'), row('ANZ39', 'ANZ', 'VHHH-EGLL'), // listed as stale below
+  ], { operators: { CPA: 'CX', EVA: 'BR', ANZ: 'NZ' }, stale: [['NZ', 'LHR', 'HKG', 'test']] });
+  assert.deepEqual(out, { NRT: { TPE: ['BR'] } });
+  // The real lists: each stale entry names an alliance airline and two known airports, with a reason.
+  for (const [c, a, b, why] of B.STALE) assert.ok(members.oneworld.concat(members.star).includes(c) && ap.has(a) && ap.has(b) && why, `${c} ${a}-${b}`);
+  assert.deepEqual(plain(R.rtwLegAir(index, 'TPE', 'LAX', ['MH'])).flying, [], 'MH TPE-LAX is gone');
+  assert.deepEqual(plain(R.rtwLegAir(index, 'HKG', 'LHR', R.rtwCarriers(prog('asiamiles_ow'), members))).flying.sort(), ['BA', 'CX']);
+});
+
 test('generator: every oneworld and Star Alliance member has an operator; regionals map to a member', () => {
   const ops = new Set(Object.values(B.OPERATORS));
   for (const id of ['oneworld', 'star']) for (const c of members[id]) assert.ok(ops.has(c), `${c} (${id}) has no operator in build-rtw-routes.js`);

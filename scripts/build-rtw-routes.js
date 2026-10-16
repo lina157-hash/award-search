@@ -49,11 +49,23 @@ const OPERATORS = {
 const REGIONAL = new Set(['ENY', 'PDT', 'JIA', 'QXE', 'CFE', 'EFW', 'IBS', 'JLJ', 'QLK', 'QJE', 'EAQ', 'NWK', 'FJA', 'JZA', 'ROU', 'CCD', 'CNM', 'RLK', 'NZM', 'AKX', 'DLA', 'LHX']);
 // A mainline callsign numbered from this up is mostly a charter, ferry, cargo or extra section (e.g. AA 9xxx, TK 6xxx).
 const MAX_FLIGHT_NO = 5000;
+// Lower number ranges some airlines use for freighters or charters (seen in the VRS files: CX 2xxx–3xxx fly to cargo
+// hubs such as Dubai World Central and Anchorage, ET 2xxx–3xxx to Liège, BR 6xx via Anchorage, BR 1xxx–2xxx are
+// charters to small Japanese airports).
+const NON_PASSENGER = { CPA: [[2000, 4999]], ETH: [[2000, 4999]], EVA: [[600, 699], [1000, 4999]] };
+// Routes that stopped flying but are still in the VRS files, checked by hand: [airline, airport, airport, why].
+const STALE = [
+  ['MH', 'LAX', 'TPE', '馬航吉隆坡–台北–洛杉磯 2014 年停飛'],
+  ['NZ', 'HKG', 'LHR', '紐航奧克蘭–香港–倫敦 2013 年停飛'],
+  ['CX', 'DME', 'HKG', '國泰沒有飛莫斯科的客運航班'],
+];
 const METHOD = [
   '多站的航班（例如 HKG–TPE–NRT）拆成每一段直飛',
   `主線航空公司只用 ${MAX_FLIGHT_NO} 號以下的航班呼號，並排除 VRS 標示的調機、包機號碼`,
   '同一家航空公司兩個方向都有紀錄才算（單向紀錄多半是改降或臨時航班）',
   '同城市的兩個機場之間（例如 NRT–HND）不算',
+  '排除貨機和包機常用的航班號碼（國泰、衣索比亞 2000–4999 號，長榮 600–699 和 1000–4999 號）',
+  `手動刪掉已知停飛的航線（${STALE.map(([c, a, b]) => `${c} ${a}–${b}`).join('、')}）`,
 ];
 
 function parseCsv(text) {
@@ -82,7 +94,7 @@ function parseCsv(text) {
 // The pure part. rows: [{ Callsign, AirlineCode, AirportCodes }]; icaoToIata: Map; keep: Set of IATA codes to keep;
 // cityOf: IATA → city key (same-city pairs dropped); patterns: ICAO → [RegExp] of positioning/charter flight numbers.
 // → { 'AAA': { 'BBB': ['CX', 'JL'] } } with each pair once, under the code that sorts first; carriers sorted.
-function buildRoutes(rows, { icaoToIata, keep, cityOf = (c) => c, patterns = {}, operators = OPERATORS, regional = REGIONAL }) {
+function buildRoutes(rows, { icaoToIata, keep, cityOf = (c) => c, patterns = {}, operators = OPERATORS, regional = REGIONAL, nonPassenger = NON_PASSENGER, stale = STALE }) {
   const seen = new Map(); // 'CX AAA BBB' (directed) → true
   for (const r of rows) {
     const op = r.AirlineCode;
@@ -91,6 +103,7 @@ function buildRoutes(rows, { icaoToIata, keep, cityOf = (c) => c, patterns = {},
     const no = String(r.Callsign || '').slice(op.length);
     if ((patterns[op] || []).some((re) => re.test(no))) continue;
     if (!regional.has(op) && /^\d+$/.test(no) && Number(no) >= MAX_FLIGHT_NO) continue;
+    if (/^\d+$/.test(no) && (nonPassenger[op] || []).some(([lo, hi]) => Number(no) >= lo && Number(no) <= hi)) continue;
     // A flight with stops (HKG-TPE-NRT) is one nonstop leg per pair of neighbours.
     const codes = String(r.AirportCodes || '').split('-').map((c) => icaoToIata.get(c));
     for (let i = 1; i < codes.length; i++) {
@@ -99,10 +112,12 @@ function buildRoutes(rows, { icaoToIata, keep, cityOf = (c) => c, patterns = {},
       seen.set(`${carrier} ${a} ${b}`, true);
     }
   }
+  const gone = new Set(stale.map(([c, a, b]) => `${c} ${[a, b].sort().join(' ')}`));
   const out = {};
   for (const k of seen.keys()) {
     const [c, a, b] = k.split(' ');
     if (a > b || !seen.has(`${c} ${b} ${a}`)) continue; // both directions, each pair once
+    if (gone.has(k)) continue;
     ((out[a] ||= {})[b] ||= []).push(c);
   }
   for (const a of Object.keys(out)) for (const b of Object.keys(out[a])) out[a][b].sort();
@@ -191,4 +206,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { OPERATORS, REGIONAL, MAX_FLIGHT_NO, parseCsv, buildRoutes, packRoutes, icaoMap };
+module.exports = { OPERATORS, REGIONAL, MAX_FLIGHT_NO, NON_PASSENGER, STALE, parseCsv, buildRoutes, packRoutes, icaoMap };
