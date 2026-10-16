@@ -1163,6 +1163,7 @@ function renderDeals() {
   }));
   if (typeof dealSubMount === 'function') dealSubMount(host); // 📬 每天寄給我 (dealsub.js)
   if (typeof dealRulesMount === 'function') dealRulesMount(host); // 🎯 我的條件 (dealrules.js)
+  if (typeof ttUpcomingMount === 'function') ttUpcomingMount(host); // 即將開航 (flightdata.js)
 }
 
 // ---------- explore map (Leaflet, loaded on first use) ----------

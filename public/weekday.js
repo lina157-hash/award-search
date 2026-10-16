@@ -2,7 +2,8 @@
 // Two sources: this search's own rows (the cabin and program filters on screen apply), and the weekday counts the
 // server keeps from the searches its daily jobs already make (/api/history, already fetched by seathistory.js for the
 // heatmap; any program, the cabin on screen). No extra calls. Folded by default; hidden when the sample is too small.
-// Classic script; uses the globals of app.js ($, esc, state, visibleRows) and seathistory.js (histSeq).
+// Classic script; uses the globals of app.js ($, esc, state, visibleRows), seathistory.js (histSeq) and flightdata.js
+// (ttLfHtml: 各月載客率 from 民航局, round 9).
 
 const WK_NAMES = ['一', '二', '三', '四', '五', '六', '日'];
 const WK_DAY = 864e5;
@@ -74,8 +75,10 @@ function wkRender() {
   const past = wkHistory();
   const useMine = wkUsable(mine) && mine.has.some(Boolean);
   const usePast = wkUsable(past);
-  if (!useMine && !usePast) return;
-  const head = useMine ? `這次搜尋：${wkVerdict(mine)}` : `過去 ${past.days} 天：${wkVerdict(past)}`;
+  // 各月載客率 (flightdata.js, 民航局; Taiwan routes only), folded inside.
+  const lf = typeof ttLfHtml === 'function' ? ttLfHtml() : '';
+  if (!useMine && !usePast && !lf) return;
+  const head = useMine ? `這次搜尋：${wkVerdict(mine)}` : usePast ? `過去 ${past.days} 天：${wkVerdict(past)}` : '各月載客率（民航局）';
   const rows = [
     useMine ? wkRow('這次搜尋', esc(mine.note), mine) : `<p class="hint wk-small">這次搜尋${mine && mine.span < WK_MIN_SPAN ? '的日期範圍不到 3 週' : '沒有位子'}，看不出星期幾的差別。</p>`,
     usePast ? wkRow(`過去 ${past.days} 天累積`, `每日排程・所有計畫${past.mock ? '（示範）' : ''}`, past) : '',
@@ -83,11 +86,12 @@ function wkRender() {
   const heat = $('#search-hist details.hist') ? ' <button type="button" class="linklike" data-wk-hist>看每天的釋位熱度圖</button>' : '';
   cal.insertAdjacentHTML('afterend', `<details class="cal-fold wk-fold" id="wk-fold"${wkOpen ? ' open' : ''}>
     <summary><h2 class="section-title">星期幾比較有位 <small>${esc(head)}</small></h2></summary>
-    <div class="wk-grid">
+    ${useMine || usePast ? `<div class="wk-grid">
       <div class="wk-row wk-head"><span></span>${WK_NAMES.map((n) => `<span>${n}</span>`).join('')}</div>
       ${rows}
     </div>
-    <p class="hint wk-how">有位的出發日 ÷ 查到的出發日，依目前選的艙等${useMine ? '；「這次搜尋」也依勾選的計畫' : ''}。${usePast ? '「過去累積」是每天排程（每日精選、機位提醒）順手記下的，不另外花查詢額度。' : ''}${heat}</p>
+    <p class="hint wk-how">有位的出發日 ÷ 查到的出發日，依目前選的艙等${useMine ? '；「這次搜尋」也依勾選的計畫' : ''}。${usePast ? '「過去累積」是每天排程（每日精選、機位提醒）順手記下的，不另外花查詢額度。' : ''}${heat}</p>` : '<p class="hint wk-small">這次搜尋看不出星期幾的差別，先看各月的載客率。</p>'}
+    ${lf}
   </details>`);
   $('#wk-fold').addEventListener('toggle', (e) => { wkOpen = e.target.open; });
 }

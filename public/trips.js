@@ -7,7 +7,7 @@
 // status ('held' | 'waitlist' | 'ticketed', none = 規劃中; the names points6.js and notify.js read too), holdUntil, ticketedOn, backup, dep, arr, arrDays, pnr, tk.
 // Saving a status fires `plan:status` on document ({ leg, index, from, to }). The date math up to 「page」 needs no DOM
 // and is exported for test/trips.test.js.
-/* global $, $$, esc, fmt, mmdd, dowOf, data, loadMore, loadAirports, AP, AL, isoDate, store, toast, api, cashApi, plan, savePlan, renderPlan, programName, programKeyOf, CABIN_LABEL, countryZh, VISA_TYPE, acct, signedIn, joinedHere, alertCfg, nl, nlOwnerHere, addLegs, ALERT_EMAIL_KEY, PLAN_KEY, cash */
+/* global $, $$, esc, fmt, mmdd, dowOf, data, loadMore, loadAirports, AP, AL, isoDate, store, toast, api, cashApi, plan, savePlan, renderPlan, programName, programKeyOf, CABIN_LABEL, countryZh, VISA_TYPE, acct, signedIn, joinedHere, alertCfg, nl, nlOwnerHere, addLegs, ALERT_EMAIL_KEY, PLAN_KEY, cash, configP, loadScripts, ttLegTerminal, ttLoadTerminals */
 
 const TRIP_STATUS = { held: '已保留', waitlist: '候補中', ticketed: '已開票' }; // no status = 規劃中
 const tpPad = (n) => String(n).padStart(2, '0');
@@ -88,8 +88,46 @@ function tripNotes(p, ctx = {}) {
   return out.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 30);
 }
 
-// The whole trip as an .ics: one all-day event per leg (times in the title: the airports' time zones aren't known
-// here) and one per dated key date, those with a reminder ringing at 9:00 that day.
+// Minutes a time zone is ahead of UTC at the instant `ms` (Intl, so no zone data is shipped); null for an unknown zone.
+const tzFmts = new Map();
+function tzOffsetMin(tz, ms = Date.now()) {
+  if (!tz) return null;
+  try {
+    let f = tzFmts.get(tz);
+    if (!f) { f = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }); tzFmts.set(tz, f); }
+    const p = Object.fromEntries(f.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+    return Math.round((Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute) - Math.floor(ms / 60000) * 60000) / 60000);
+  } catch { return null; }
+}
+// The zone's clock changes from `fromMs` on, `days` ahead: [{ at (ms, to the minute), from, to (offsets) }].
+function tzChanges(tz, fromMs, days = 400) {
+  const out = [];
+  let prev = tzOffsetMin(tz, fromMs);
+  if (prev == null) return out;
+  for (let d = 1; d <= days; d++) {
+    const t = fromMs + d * 864e5;
+    const cur = tzOffsetMin(tz, t);
+    if (cur === prev) continue;
+    let lo = t - 864e5;
+    let hi = t;
+    while (hi - lo > 60e3) { const mid = Math.floor((lo + hi) / 2 / 60e3) * 60e3; if (tzOffsetMin(tz, mid) === prev) lo = mid; else hi = mid; }
+    out.push({ at: hi, from: prev, to: cur });
+    prev = cur;
+  }
+  return out;
+}
+// The UTC instant of a local wall time (date 'YYYY-MM-DD', time 'HH:MM') in `tz`.
+function tzInstant(tz, date, time) {
+  const wall = Date.parse(`${date}T${time}:00Z`);
+  let off = tzOffsetMin(tz, wall);
+  if (off == null) return null;
+  off = tzOffsetMin(tz, wall - off * 60e3) ?? off; // the offset at the instant itself, across a clock change
+  return wall - off * 60e3;
+}
+
+// The whole trip as an .ics: each leg with a departure time and known airports at the real time in their own time
+// zones (TZID, with the zones' rules as VTIMEZONE; a reminder 3 hours before), other legs as all-day events (times in
+// the title), and one all-day event per dated key date, those with a reminder ringing at 9:00 that day.
 function tripIcs(p, ctx = {}) {
   const stamp = ctx.stamp || `${(ctx.today || '2026-01-01').replace(/-/g, '')}T000000Z`;
   const txt = (s) => String(s).replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
@@ -114,18 +152,51 @@ function tripIcs(p, ctx = {}) {
     ...(alarm ? ['BEGIN:VALARM', 'TRIGGER:PT9H', 'ACTION:DISPLAY', `DESCRIPTION:${txt(summary)}`, 'END:VALARM'] : []), 'END:VEVENT'];
   const legs = p?.legs || [];
   const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//award-search//trip//ZH', 'CALSCALE:GREGORIAN', `X-WR-CALNAME:${txt(p?.name || '我的行程')}`];
+  const zones = new Map(); // tz → [first, last] instant used
+  const tzOf = (c) => ctx.ap?.(c)?.tz || '';
+  const wall = (date, time) => `${day(date)}T${time.replace(':', '')}00`;
+  const events = [];
   legs.forEach((l, i) => {
     const time = l.dep ? ` ${l.dep}${l.arr ? `–${l.arr}${l.arrDays ? `(+${l.arrDays})` : ''}` : ''}` : '';
     const what = l.k === 'a' ? `${l.miles ? `${(l.miles * (l.pax || 1)).toLocaleString('en-US')} 哩` : '哩程票'}${l.program && ctx.name ? `・${ctx.name(l.program)}` : ''}` : `現金票${l.price ? `・NT$${l.price.toLocaleString('en-US')}` : ''}`;
     const desc = [TRIP_STATUS[l.status] || '規劃中', l.status === 'held' && l.holdUntil ? `保留到 ${l.holdUntil}` : '', l.ticketedOn ? `開票日 ${l.ticketedOn}` : '', l.backup ? `備案：${l.backup}` : '', what, l.pnr ? `訂位代號 ${l.pnr}` : '', '時間為當地時間'].filter(Boolean).join('\n');
-    lines.push(...ev(`leg-${i}-${l.from}${l.to}-${day(l.date)}`, l.date, `✈ ${l.flights ? `${l.flights} ` : ''}${l.from}→${l.to}${time}`, desc, false));
+    const tzA = l.dep && /^\d{2}:\d{2}$/.test(l.dep) ? tzOf(l.from) : '';
+    const t0 = tzA ? tzInstant(tzA, l.date, l.dep) : null;
+    if (t0 != null) {
+      // At the real time: leaves in the departure airport's zone, lands in the arrival airport's (when both are known).
+      const tzB = l.arr && /^\d{2}:\d{2}$/.test(l.arr) ? tzOf(l.to) : '';
+      const arrDate = tpAddDays(l.date, l.arrDays || 0);
+      const t1 = tzB ? tzInstant(tzB, arrDate, l.arr) : null;
+      const use = (tz, t) => { const z = zones.get(tz) || [t, t]; zones.set(tz, [Math.min(z[0], t), Math.max(z[1], t)]); };
+      use(tzA, t0);
+      if (t1 != null && t1 > t0) use(tzB, t1);
+      const summary = `✈ ${l.flights ? `${l.flights} ` : ''}${l.from}→${l.to}`;
+      events.push(['BEGIN:VEVENT', `UID:leg-${i}-${l.from}${l.to}-${day(l.date)}@award-search`, `DTSTAMP:${stamp}`, `DTSTART;TZID=${tzA}:${wall(l.date, l.dep)}`,
+        ...(t1 != null && t1 > t0 ? [`DTEND;TZID=${tzB}:${wall(arrDate, l.arr)}`] : []), `SUMMARY:${txt(summary)}`, `DESCRIPTION:${txt(desc)}`,
+        'BEGIN:VALARM', 'TRIGGER:-PT3H', 'ACTION:DISPLAY', `DESCRIPTION:${txt(`${summary} 3 小時後起飛`)}`, 'END:VALARM', 'END:VEVENT']);
+    } else events.push(ev(`leg-${i}-${l.from}${l.to}-${day(l.date)}`, l.date, `✈ ${l.flights ? `${l.flights} ` : ''}${l.from}→${l.to}${time}`, desc, false));
     for (const d of legKeyDates(l, legs, ctx)) {
       if (!d.date || d.kind === 'wait' || (d.kind === 'cancel' && !d.steps)) continue; // the cancel rule only matters for a backup
-      lines.push(...ev(`${d.kind}-${l.from}${l.to}-${day(l.date)}`, d.date, `${d.label}${d.time ? ` ${d.time}` : ''}：${l.from}→${l.to}（${tpMd(l.date)}）`, d.text || '', Boolean(d.steps)));
+      events.push(ev(`${d.kind}-${l.from}${l.to}-${day(l.date)}`, d.date, `${d.label}${d.time ? ` ${d.time}` : ''}：${l.from}→${l.to}（${tpMd(l.date)}）`, d.text || '', Boolean(d.steps)));
     }
   });
+  for (const [tz, [a, b]] of zones) lines.push(...vtimezone(tz, a - 40 * 864e5, b));
+  for (const e of events) lines.push(...e);
   lines.push('END:VCALENDAR');
   return `${lines.map(fold).join('\r\n')}\r\n`;
+}
+
+// A zone's rules around [fromMs, toMs] for the .ics (RFC 5545 VTIMEZONE): the offset in force at the start, then each
+// clock change up to the end. Offsets as ±HHMM; an observance's DTSTART is the local time before the change.
+function vtimezone(tz, fromMs, toMs) {
+  const hhmm = (m) => `${m < 0 ? '-' : '+'}${tpPad(Math.floor(Math.abs(m) / 60))}${tpPad(Math.abs(m) % 60)}`;
+  const local = (ms, off) => new Date(ms + off * 60e3).toISOString().slice(0, 19).replace(/[-:]/g, '');
+  const first = tzOffsetMin(tz, fromMs);
+  const changes = tzChanges(tz, fromMs, Math.ceil((toMs - fromMs) / 864e5) + 1);
+  const all = [first, ...changes.map((c) => c.to)];
+  const std = Math.min(...all);
+  const part = (start, from, to) => [`BEGIN:${to > std ? 'DAYLIGHT' : 'STANDARD'}`, `DTSTART:${start}`, `TZOFFSETFROM:${hhmm(from)}`, `TZOFFSETTO:${hhmm(to)}`, `END:${to > std ? 'DAYLIGHT' : 'STANDARD'}`];
+  return ['BEGIN:VTIMEZONE', `TZID:${tz}`, ...part('19700101T000000', first, first), ...changes.flatMap((c) => part(local(c.at, c.from), c.from, c.to)), 'END:VTIMEZONE'];
 }
 
 const tpMiles = (a, b) => {
@@ -211,7 +282,7 @@ function planCountries(legs, ctx = {}) {
 }
 
 if (typeof module === 'object' && module.exports) {
-  module.exports = { TRIP_STATUS, tpAddMonths, tpBefore, sameTicket, legKeyDates, tripNotes, tripIcs, tripConnections, passportRuleText, passportCheck, planCountries };
+  module.exports = { TRIP_STATUS, tpAddMonths, tpBefore, sameTicket, legKeyDates, tripNotes, tripIcs, tripConnections, passportRuleText, passportCheck, planCountries, tzOffsetMin, tzChanges, tzInstant };
 }
 
 // ---------- page ----------
@@ -230,6 +301,14 @@ function tpEnsure() {
   tp.loading = true;
   const done = () => { tp.loading = false; tp.tried = true; tripRemindSync(); renderPlan(); }; // one try per page view
   Promise.all([loadMore(), loadAirports()]).then(done, done);
+}
+// The TPE terminals (flightdata.js) once per page view, when the site has them; the plan redraws with them.
+function tpTermEnsure() {
+  if (tp.termTried || typeof configP === 'undefined') return;
+  tp.termTried = true;
+  configP.then((c) => (c.flightdata?.terminals ? loadScripts(['flightdata']) : [false]))
+    .then(([ok]) => (ok && typeof ttLoadTerminals === 'function' ? ttLoadTerminals() : null))
+    .then((t) => { if (t) renderPlan(); }).catch(() => {});
 }
 function tpWantVisa(cc) {
   if (!cc || cc === 'TW' || tp.visa.has(cc) || tp.visaWant.has(cc)) return;
@@ -262,7 +341,9 @@ function tripRowHtml(p, i, editable) {
   if (conn?.country) tpWantVisa(conn.country);
   const chip = (d) => (d.kind === 'wait' ? `<span class="tp-date"><b>備案</b> ${esc(l.backup || '還沒填')}</span>`
     : (d.date && (d.kind !== 'cancel' || d.steps)) || d.kind === 'hold' ? `<span class="tp-date${d.warn ? ' warn' : ''}"><b>${esc(d.label)}</b> ${d.date ? tpWhen(d, ctx.today) : '還沒填'}${d.verify && d.date ? ' <span class="tag verify">待確認</span>' : ''}</span>` : '');
-  const chips = dates.map(chip).join('');
+  // 桃園機場航廈 (flightdata.js, 桃園機場's weekly schedule) for a leg leaving or landing at TPE.
+  const term = typeof ttLegTerminal === 'function' ? ttLegTerminal(l) : null;
+  const chips = dates.map(chip).join('') + (term ? `<span class="tp-date" title="資料來源：${esc(term.src)}（${esc(term.updated)} 更新）"><b>桃園${term.dir}</b> 第 ${esc(term.t)} 航廈</span>` : '');
   const srcs = [...new Map(dates.flatMap((d) => d.src || []).map((s) => [s.url, s])).values()];
   const more = dates.filter((d) => d.text);
   const info = more.length ? `<details class="tp-more"><summary>ⓘ 規定與來源</summary><ul>${more.map((d) => `<li><b>${esc(d.label)}</b>：${esc(d.text)}${d.verify ? '（官方資料待確認）' : ''}</li>`).join('')}</ul>${srcs.length ? `<p class="hint">${srcs.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a>`).join('　')}（${esc(ctx.trips.lastReviewed || '')} 查核）</p>` : ''}</details>` : '';
@@ -324,6 +405,7 @@ function tripPlanExtras(p) {
   if (!p.legs.length) return '';
   // The rules (data more) and the 270 KB airport list load once the panel is open or a leg has a status.
   if ($('#plan-panel')?.open || p.legs.some((l) => l.status)) tpEnsure();
+  if ($('#plan-panel')?.open && p.legs.some((l) => l.from === 'TPE' || l.to === 'TPE')) tpTermEnsure();
   return `${tpPlanPassport(p)}${tpRemindHtml(p)}`;
 }
 function tripActionsHtml(p) {
