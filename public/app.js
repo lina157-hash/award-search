@@ -1861,15 +1861,18 @@ function tripHtml(t, i) {
   // 「NT$8,500」, or 「USD 56」 without a symbol (not both, as 「NT$8,500 TWD」 read).
   const taxes = t.taxes != null ? esc(taxText({ symbol: t.taxesSymbol, currency: t.taxesCurrency, amount: t.taxes / 100 })) : '稅金未提供';
   const dur = t.durationMin ? `${Math.floor(t.durationMin / 60)} 小時 ${t.durationMin % 60} 分` : '';
+  // Layovers, +1 days and the time difference (public/flightdata.js).
+  const fx = typeof ttTripExtras === 'function' ? ttTripExtras(t) : null;
+  const plusDay = (n) => (n ? `<sup class="plus-day">${n > 0 ? '+' : ''}${n}</sup>` : '');
   return `<div class="trip">
     <div class="trip-top">
       <div><b>${esc(t.flightNumbers)}</b><span class="pill">${esc(CABIN_ZH[t.cabin] || t.cabin)}</span><span class="pill">${t.stops ? `轉機 ${t.stops} 次` : '直飛'}</span>${t.seats ? `<span class="pill">剩 ${t.seats} 位</span>` : ''}</div>
       <div><span class="miles">${fmt(t.miles)} 哩</span> ＋ ${taxes}${i != null ? `<button type="button" class="outline add-plan" data-plan="${i}">＋ 加入我的行程</button>` : ''}</div>
     </div>
     ${phantomHtml(t.source, t.carriers)}${typeof mixedHtml === 'function' ? mixedHtml(t) : ''}
-    ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
+    ${t.segments.map((s, k) => `${k ? fx?.conns[k - 1] || '' : ''}<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)}${plusDay(fx?.dep?.[k])} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${plusDay(fx?.plus[k])}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
       <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod" title="${PROD_3P_TITLE}">${esc(p.name)}<sup class="mk-3p" aria-hidden="true">*</sup></span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
-    ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
+    ${dur || fx?.tz ? `<div class="hint" style="margin-top:6px">${dur ? `總飛行時間 ${dur}` : ''}${dur && fx?.tz ? '・' : ''}${fx?.tz || ''}</div>` : ''}
     ${amTripLine(t)}${typeof alsoFoldHtml === 'function' ? alsoFoldHtml(t) : ''}
   </div>`;
 }
@@ -1893,13 +1896,19 @@ async function openTrips(id, title, cabin) {
   dlg.showModal();
   const aiP = loadScripts(['aihelper']);
   try {
+    // flightdata.js and the airport list (time zones) for the layovers and the time difference.
+    const extras = Promise.all([loadScripts(['flightdata']), loadAirports()]);
     const [body] = await Promise.all([api(`/api/trips/${encodeURIComponent(id)}`), loadMore(), loadTools()]);
+    await extras;
     if (!fresh()) return;
     const want = CABIN_API[cabin];
     const byMiles = (a, b) => a.miles - b.miles || a.stops - b.stops;
     const main = body.trips.filter((t) => !want || t.cabin === want).sort(byMiles);
     const rest = body.trips.filter((t) => want && t.cabin !== want).sort(byMiles);
     const all = [...main, ...rest];
+    // 排序: by miles (the default), flight time or stops, for longer lists.
+    const SORTS = { miles: byMiles, dur: (a, b) => (a.durationMin || 1e9) - (b.durationMin || 1e9) || byMiles(a, b), stops: (a, b) => a.stops - b.stops || (a.durationMin || 1e9) - (b.durationMin || 1e9) || byMiles(a, b) };
+    const sortHtml = main.length > 2 ? `<div class="trip-sort"><label>排序 <select id="trip-sort"><option value="miles">哩程最少</option><option value="dur">飛行時間最短</option><option value="stops">轉機次數最少</option></select></label></div>` : '';
     const pax = $('#tab-search').hidden ? Number(ex.f?.pax) || 1 : state.pax || 1;
     const first = main[0] || rest[0];
     // seats.aero labels some links with the raw program id ("american 官網訂位"); show the program's name instead.
@@ -1907,7 +1916,7 @@ async function openTrips(id, title, cabin) {
     const linkLabel = (l) => (src && l.label.startsWith(src) ? `${srcName(src)}${l.label.slice(src.length)}` : l.label);
     const links = body.bookingLinks.map((l) => `<a href="${esc(l.link)}" target="_blank" rel="noopener">${esc(linkLabel(l))} ↗</a>`).join('');
     // The flights come first; booking guidance is one tap away.
-    $('#trip-body').innerHTML = (main.map((t, i) => tripHtml(t, i)).join('') || '<p class="hint">此艙等沒有航班明細。</p>') +
+    $('#trip-body').innerHTML = sortHtml + `<div id="trip-main">${main.map((t, i) => tripHtml(t, i)).join('') || '<p class="hint">此艙等沒有航班明細。</p>'}</div>` +
       (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map((t, i) => tripHtml(t, main.length + i)).join('')}</details>` : '') +
       (all.some((t) => t.segments.some((s) => productOfSegment(s).length)) ? `<p class="hint prod-3p-note">${PROD_3P_NOTE}</p>` : '') +
       (main.length && cashCfg.enabled ? `<div class="value-box" id="value-box"><button type="button" class="outline" id="value-btn">💵 和當天現金票比一比，算每哩價值（用 1 次查價）</button></div>` : '') +
@@ -1915,6 +1924,12 @@ async function openTrips(id, title, cabin) {
       (first ? bookingNotesHtml(first.source, first.miles * pax) + homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
     $$('[data-plan]', $('#trip-body')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
+    $('#trip-sort')?.addEventListener('change', (e) => {
+      main.sort(SORTS[e.target.value] || byMiles);
+      all.splice(0, main.length, ...main);
+      $('#trip-main').innerHTML = main.map((t, i) => tripHtml(t, i)).join('');
+      $$('[data-plan]', $('#trip-main')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
+    });
     // 交給 AI 助理 (public/aihelper.js): fetched with the first 航班明細 (see aiP above) unless the search scripts brought it.
     const aiMount = () => { if (fresh() && typeof aiHelperMount === 'function') aiHelperMount(main[0], pax, main.length); };
     if (main[0]) { if (typeof aiHelperMount === 'function') aiMount(); else aiP.then(aiMount); }
