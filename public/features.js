@@ -1176,8 +1176,9 @@ function rmapListHtml(dests) {
       <td><button type="button" class="linklike" data-rm-search="${esc(d.codes.join(','))}">到航線查詢</button></td></tr>`).join('')}
     </tbody></table></div>`;
 }
-// Map background: CARTO tiles; if they will not load (blocked network, an ad blocker, CARTO down), OpenStreetMap's own
-// tiles; if those fail too, a plain outline of the continents shipped with the site (Natural Earth, public domain).
+// Map background: the 地圖樣式 picked on this device (mapstyle.js; OpenStreetMap's own tiles by default); if its tiles
+// will not load (blocked network, an ad blocker, the provider down), OpenStreetMap's own tiles; if those fail too, a
+// plain outline of the continents shipped with the site (Natural Earth, public domain).
 // CARTO now serves an "API KEY REQUIRED" watermark tile without a key, so it is no longer used.
 const BASEMAPS = [
   () => ({ url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', cls: 'map-osm', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }),
@@ -1185,23 +1186,24 @@ const BASEMAPS = [
 let landJson = null;
 function addBaseMap(map, i = 0) {
   const L = window.L;
-  if (i >= BASEMAPS.length) {
+  const bases = typeof mapStyleBases === 'function' ? mapStyleBases(map) : BASEMAPS.map((f) => f()); // and its 地圖樣式 select
+  if (i >= bases.length) {
     map.getContainer().classList.add('map-plain');
     (landJson ||= fetch('/land.json').then((r) => r.json())).then((g) => {
-      if (!map.getContainer().isConnected) return;
+      if (!map.getContainer().isConnected || !map.getContainer().classList.contains('map-plain')) return; // another style since
       L.geoJSON(g, { interactive: false, style: { className: 'map-land', weight: 0.8, fillOpacity: 1 } }).addTo(map).bringToBack();
       map.attributionControl.addAttribution('Natural Earth');
     }).catch(() => { landJson = null; });
     return;
   }
-  const b = BASEMAPS[i]();
-  const layer = L.tileLayer(b.url, { maxZoom: 12, attribution: b.attribution }).addTo(map);
+  const b = bases[i];
+  const layer = L.tileLayer(b.url, { maxZoom: 12, attribution: b.attribution, subdomains: b.subdomains || 'abc' }).addTo(map);
   if (b.cls) map.getContainer().classList.add(b.cls);
   let loaded = 0;
   let failed = 0;
   layer.on('tileload', () => { loaded++; });
   layer.on('tileerror', () => {
-    if (loaded || ++failed < 4) return;
+    if (!map.hasLayer(layer) || loaded || ++failed < 4) return; // a style changed since: that layer is gone
     map.removeLayer(layer);
     if (b.cls) map.getContainer().classList.remove(b.cls);
     addBaseMap(map, i + 1);
@@ -1381,6 +1383,7 @@ function renderPlan() {
   });
   $('#plan-import')?.addEventListener('click', () => { plan = sharedPlan; sharedPlan = null; savePlan(); toast('已存成我的行程'); });
   $('#plan-dismiss')?.addEventListener('click', () => { sharedPlan = null; renderPlan(); });
+  if (typeof fstBind === 'function') fstBind(body); // 查航班動態／這班過去準點率 (flightstatus.js)
 }
 function readSharedPlan() {
   const raw = new URLSearchParams(location.search).get('plan');
