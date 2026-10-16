@@ -664,8 +664,50 @@ function bindDetour(host) {
   renderDetour();
 }
 
+// ---------- nonstop routes (data/rtw-routes.json, fetched on first use; 環球票規劃 and mapkit.js read it) ----------
+// raw.routes holds each pair once, under the code that sorts first: { HKG: 'NRT:CXJLNH TPE:BRCX' } (two-letter codes).
+// → { pairs: Map('HKG NRT' → ['CX', 'JL', 'NH']), from: Map('HKG' → Map('NRT' → [...])), source }
+const nonstopKey = (a, b) => (a < b ? `${a} ${b}` : `${b} ${a}`);
+function nonstopIndex(raw) {
+  const pairs = new Map();
+  const from = new Map();
+  const link = (a, b, list) => { if (!from.has(a)) from.set(a, new Map()); from.get(a).set(b, list); };
+  for (const [a, s] of Object.entries(raw?.routes || {})) {
+    for (const e of String(s).split(' ')) {
+      const [b, codes] = e.split(':');
+      const list = codes?.match(/[A-Z0-9]{2}/g);
+      if (!/^[A-Z]{3}$/.test(b || '') || !list) continue;
+      pairs.set(nonstopKey(a, b), list);
+      link(a, b, list);
+      link(b, a, list);
+    }
+  }
+  return { pairs, from, source: raw?.source || null };
+}
+let nonstopData = null; // the index, with meta { note, source } for the attribution line
+let nonstopP = null;
+// Resolves to the index, or null when it would not load (asked again next time).
+const nonstopLoad = () => (nonstopP ||= api('/api/data/rtwroutes').then((raw) => {
+  nonstopData = Object.assign(nonstopIndex(raw), { meta: { note: raw.note, source: raw.source } });
+  return nonstopData;
+}, () => { nonstopP = null; return null; }));
+// The airlines on record flying a↔b nonstop: [] when none, null before the data has loaded. Every caller goes through
+// this one function, so an official timetable can replace it later.
+function nonstopCarriers(a, b) { return nonstopData ? nonstopData.pairs.get(nonstopKey(a, b)) || [] : null; }
+// A distance with its kilometres: 「4,528 哩（7,287 公里）」 (statute miles, as the award charts count).
+const miKm = (mi) => `${fmt(mi)} 哩（${fmt(Math.round(mi * 1.609344))} 公里）`;
+// mapkit.js (可搭直飛 tags, 級距提醒, 經過 comparison, 兌換地圖 layers) and the nonstop data, fetched together on first
+// use. Resolves either way; until mapkitDone the pages wait for it once, after that they draw without what failed.
+let mapkitP = null;
+let mapkitDone = false;
+const mapkitIn = () => typeof mkNeed === 'function' && Boolean(nonstopData);
+const loadMapkit = () => (mapkitP ||= Promise.all([loadScripts(['mapkit']), nonstopLoad()]).then(() => {
+  mapkitDone = true;
+  if (!mapkitIn()) mapkitP = null;
+}));
+
 // ---------- miles needed (fixed award charts, no seat search) ----------
-const need = { origin: '', destination: '', cabin: 'J', trip: 'ow' };
+const need = { origin: '', destination: '', cabin: 'J', trip: 'ow', vias: [] };
 function haversineMiles(a, b) {
   const rad = Math.PI / 180;
   const h = Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;

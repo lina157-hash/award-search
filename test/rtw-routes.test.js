@@ -29,9 +29,11 @@ const ctx = {
 vm.createContext(ctx);
 vm.runInContext([
   grab('features.js', /function haversineMiles\(a, b\) \{[\s\S]*?\n\}/),
+  grab('features.js', /const nonstopKey = [^\n]*/),
+  grab('features.js', /function nonstopIndex\(raw\) \{[\s\S]*?\n\}/),
   grab('app.js', /function amBand\(dist, o, d\) \{[\s\S]*?\n\}/),
   fs.readFileSync(path.join(__dirname, '..', 'public', 'rtw.js'), 'utf8'),
-  'this.R = { rtwTrip, rtwChecks, rtwPrice, rtwCarriers, rtwRouteIndex, rtwLegAir, rtwNextStops, rtwLegCabins, rtwCabinsOf, cxBandRoom };',
+  'this.R = { rtwTrip, rtwChecks, rtwPrice, rtwCarriers, rtwRouteIndex: nonstopIndex, rtwLegAir, rtwNextStops, rtwLegCabins, rtwCabinsOf, cxBandRoom };',
 ].join('\n'), ctx);
 const { R } = ctx;
 const plain = (x) => JSON.parse(JSON.stringify(x));
@@ -242,5 +244,7 @@ test('/api/data/rtwroutes serves the route data when the page opens, outside the
   assert.equal(res.status, 200);
   assert.deepEqual(await res.json(), routes);
   for (const part of ['all', 'core', 'more']) assert.ok(!('rtwroutes' in (await (await fetch(`${base}/api/data/${part}`)).json())), part);
-  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'rtw.js'), 'utf8'), /api\('\/api\/data\/rtwroutes'\)/);
+  // One loader (features.js nonstopLoad) for 環球票規劃 and mapkit.js.
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'features.js'), 'utf8'), /api\('\/api\/data\/rtwroutes'\)/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'rtw.js'), 'utf8'), /nonstopLoad\(\)/);
 });

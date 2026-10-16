@@ -278,30 +278,12 @@ function rtwCarriers(prog, members) {
 }
 
 // ---- 航線資料 (data/rtw-routes.json, fetched when the page opens): which airlines fly each airport pair nonstop ----
-// raw.routes holds each pair once, under the code that sorts first: { HKG: 'NRT:CXJLNH TPE:BRCX' } (two-letter codes).
-// → { pairs: Map('HKG NRT' → ['CX', 'JL', 'NH']), from: Map('HKG' → Map('NRT' → [...])), source }
-const rtwPairKey = (a, b) => (a < b ? `${a} ${b}` : `${b} ${a}`);
-function rtwRouteIndex(raw) {
-  const pairs = new Map();
-  const from = new Map();
-  const link = (a, b, list) => { if (!from.has(a)) from.set(a, new Map()); from.get(a).set(b, list); };
-  for (const [a, s] of Object.entries(raw?.routes || {})) {
-    for (const e of String(s).split(' ')) {
-      const [b, codes] = e.split(':');
-      const list = codes?.match(/[A-Z0-9]{2}/g);
-      if (!/^[A-Z]{3}$/.test(b || '') || !list) continue;
-      pairs.set(rtwPairKey(a, b), list);
-      link(a, b, list);
-      link(b, a, list);
-    }
-  }
-  return { pairs, from, source: raw?.source || null };
-}
+// `index` is features.js nonstopIndex: { pairs: Map('HKG NRT' → ['CX', 'JL', 'NH']), from: Map('HKG' → Map(…)) }.
 
 // One leg: the allowed airlines that fly it nonstop (in the program's order) and the other alliance airlines that do.
 function rtwLegAir(index, from, to, allowed) {
   if (!index) return null;
-  const list = index.pairs.get(rtwPairKey(from, to)) || [];
+  const list = index.pairs.get(nonstopKey(from, to)) || [];
   return { flying: allowed.filter((c) => list.includes(c)), others: list.filter((c) => !allowed.includes(c)), known: list.length > 0 };
 }
 
@@ -457,17 +439,17 @@ if (typeof document !== 'undefined') {
   let rtwAirOpen = -1; // the leg whose airline list is open
   let rtwAirAll = false; // that list also shows the allowed airlines with no nonstop record
   let rtwNextOpen = false; // the 「直飛的機場」 list under the stop picker is open
-  // data/rtw-routes.json (which airlines fly each airport pair), fetched when the page opens; until then every allowed
-  // airline is offered.
+  // data/rtw-routes.json (which airlines fly each airport pair, features.js nonstopLoad), fetched when the page opens;
+  // until then every allowed airline is offered.
   let rtwRoutes = null;
   let rtwRoutesP = null;
   let rtwRoutesFailed = false;
-  const rtwRoutesLoad = () => (rtwRoutesP ||= api('/api/data/rtwroutes').then((raw) => {
-    rtwRoutes = rtwRouteIndex(raw);
-    rtwRoutes.meta = { note: raw.note, source: raw.source };
-    rtwRoutesFailed = false;
+  const rtwRoutesLoad = () => (rtwRoutesP ||= nonstopLoad().then((ix) => {
+    rtwRoutes = ix;
+    rtwRoutesFailed = !ix;
+    if (!ix) rtwRoutesP = null;
     rtwDraw();
-  }, () => { rtwRoutesP = null; rtwRoutesFailed = true; rtwDraw(); }));
+  }));
 
   function rtwMount() {
     const host = $('#rtw-page');
