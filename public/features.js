@@ -664,8 +664,50 @@ function bindDetour(host) {
   renderDetour();
 }
 
+// ---------- nonstop routes (data/rtw-routes.json, fetched on first use; 環球票規劃 and mapkit.js read it) ----------
+// raw.routes holds each pair once, under the code that sorts first: { HKG: 'NRT:CXJLNH TPE:BRCX' } (two-letter codes).
+// → { pairs: Map('HKG NRT' → ['CX', 'JL', 'NH']), from: Map('HKG' → Map('NRT' → [...])), source }
+const nonstopKey = (a, b) => (a < b ? `${a} ${b}` : `${b} ${a}`);
+function nonstopIndex(raw) {
+  const pairs = new Map();
+  const from = new Map();
+  const link = (a, b, list) => { if (!from.has(a)) from.set(a, new Map()); from.get(a).set(b, list); };
+  for (const [a, s] of Object.entries(raw?.routes || {})) {
+    for (const e of String(s).split(' ')) {
+      const [b, codes] = e.split(':');
+      const list = codes?.match(/[A-Z0-9]{2}/g);
+      if (!/^[A-Z]{3}$/.test(b || '') || !list) continue;
+      pairs.set(nonstopKey(a, b), list);
+      link(a, b, list);
+      link(b, a, list);
+    }
+  }
+  return { pairs, from, source: raw?.source || null };
+}
+let nonstopData = null; // the index, with meta { note, source } for the attribution line
+let nonstopP = null;
+// Resolves to the index, or null when it would not load (asked again next time).
+const nonstopLoad = () => (nonstopP ||= api('/api/data/rtwroutes').then((raw) => {
+  nonstopData = Object.assign(nonstopIndex(raw), { meta: { note: raw.note, source: raw.source } });
+  return nonstopData;
+}, () => { nonstopP = null; return null; }));
+// The airlines on record flying a↔b nonstop: [] when none, null before the data has loaded. Every caller goes through
+// this one function, so an official timetable can replace it later.
+function nonstopCarriers(a, b) { return nonstopData ? nonstopData.pairs.get(nonstopKey(a, b)) || [] : null; }
+// A distance with its kilometres: 「4,528 哩（7,287 公里）」 (statute miles, as the award charts count).
+const miKm = (mi) => `${fmt(mi)} 哩（${fmt(Math.round(mi * 1.609344))} 公里）`;
+// mapkit.js (可搭直飛 tags, 級距提醒, 經過 comparison, 兌換地圖 layers) and the nonstop data, fetched together on first
+// use. Resolves either way; until mapkitDone the pages wait for it once, after that they draw without what failed.
+let mapkitP = null;
+let mapkitDone = false;
+const mapkitIn = () => typeof mkNeed === 'function' && Boolean(nonstopData);
+const loadMapkit = () => (mapkitP ||= Promise.all([loadScripts(['mapkit']), nonstopLoad()]).then(() => {
+  mapkitDone = true;
+  if (!mapkitIn()) mapkitP = null;
+}));
+
 // ---------- miles needed (fixed award charts, no seat search) ----------
-const need = { origin: '', destination: '', cabin: 'J', trip: 'ow' };
+const need = { origin: '', destination: '', cabin: 'J', trip: 'ow', vias: [] };
 function haversineMiles(a, b) {
   const rad = Math.PI / 180;
   const h = Math.sin(((b.lat - a.lat) * rad) / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(((b.lon - a.lon) * rad) / 2) ** 2;
@@ -691,7 +733,8 @@ function alaskaArea(a, b) {
   if (zones.includes('ATL')) return 'EMEA';
   return 'AMERICAS';
 }
-// Price one program's chart for a route; returns [{ label, miles, note }].
+// Price one program's chart for a route; returns [{ label, miles, note }], plus { bands, d } when a distance band set
+// the price (mapkit.js's 級距提醒). from.via may list connection airports (a table that counts a country it touches).
 function chartPrices(p, from, to, cabin, dist) {
   const out = [];
   if (p.unknownCabins?.includes(cabin)) return out;
@@ -706,14 +749,16 @@ function chartPrices(p, from, to, cabin, dist) {
   for (const t of p.tables || []) {
     if (t.appliesWhen && t.appliesWhen !== area) continue;
     // A home-carrier table that only counts when the route touches its hub country (Etihad flies everything via Abu Dhabi).
-    if (t.touchesCountries && ![from, to].some((ap) => t.touchesCountries.includes(ap.country))) continue;
+    if (t.touchesCountries && ![from, to, ...(from.via || [])].some((ap) => t.touchesCountries.includes(ap.country))) continue;
     let miles = null;
     let note = '';
+    let edge = null;
     if (p.kind === 'distance') {
       const d = p.distanceBasis === 'roundTripTotal' ? dist * 2 : dist;
       const band = bandFor(t.bands, d);
       miles = band ? band[cabin] : null;
       if (band) note = p.oneWay === false ? `來回總價；來回 ${bandNote(d, band)}` : bandNote(d, band);
+      edge = { bands: t.bands, d };
     } else if (p.kind === 'zone') {
       // Zone charts here are priced from Taiwan.
       const [home, away] = from.country === 'TW' ? [from, to] : to.country === 'TW' ? [to, from] : [];
@@ -730,8 +775,9 @@ function chartPrices(p, from, to, cabin, dist) {
       const band = pair.bands ? bandFor(pair.bands, dist) : pair;
       miles = band ? band[cabin] : null;
       if (band) note = `${p.regions[ra].name} ↔ ${p.regions[rb].name}${pair.bands ? `・${bandNote(dist, band)}` : ''}`;
+      if (pair.bands) edge = { bands: pair.bands, d: dist };
     }
-    if (miles) out.push({ label: t.label, miles, note });
+    if (miles) out.push({ label: t.label, miles, note, ...edge });
   }
   return out;
 }
@@ -754,9 +800,11 @@ function needHtml() {
         <div class="ac-list" id="ac-n-destination" role="listbox" aria-label="目的地建議" hidden></div>
       </div>
     </div>
+    <label class="field mk-via" ${need.vias.length ? '' : 'hidden'}>經過（選填，和直飛並排比較）<input name="via" value="${esc(need.vias.map((v) => v.join('-')).join(', '))}" placeholder="例如 HKG；多種轉法用逗號隔開：HKG, NRT" autocapitalize="characters" spellcheck="false"></label>
     <div class="opts-row">
       <fieldset class="seg" aria-label="單程或來回">${[['ow', '單程'], ['rt', '來回']].map(([k, l]) => `<label><input type="radio" name="trip" value="${k}" ${need.trip === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
       <fieldset class="seg" aria-label="艙等">${Object.entries({ Y: '經濟', W: '豪經', J: '商務', F: '頭等' }).map(([k, l]) => `<label><input type="radio" name="cabin" value="${k}" ${need.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
+      <button type="button" class="linklike" id="need-via-add" ${need.vias.length ? 'hidden' : ''}>＋ 加轉機點比較</button>
       <button type="submit" class="primary">試算</button>
     </div>
   </form>
@@ -764,7 +812,24 @@ function needHtml() {
 }
 function bindNeed(host) {
   const form = $('#need-form', host);
-  const pk = { origin: createAirportPicker(form, 'origin'), destination: createAirportPicker(form, 'destination') };
+  const via = form.via;
+  const showVia = () => { $('.mk-via', form).hidden = false; $('#need-via-add', form).hidden = true; };
+  // 出發地 takes a whole route (TPE-HKG-LHR, or several: TPE-HKG-LHR, TPE-NRT-LHR): its ends fill the fields, the stops
+  // between go to 經過, and it is priced at once.
+  const onRoute = (routes) => {
+    const [first] = routes;
+    const same = routes.filter((r) => r[0][0] === first[0][0] && r.at(-1)[0] === first.at(-1)[0]);
+    pk.origin.set([first[0][0]]);
+    pk.destination.set([first.at(-1)[0]]);
+    const mids = same.map((r) => r.slice(1, -1).map((st) => st[0])).filter((m) => m.length);
+    via.value = mids.map((m) => m.join('-')).join(', ');
+    if (mids.length) showVia();
+    if (same.length < routes.length) toast('起訖不同的路線沒有帶入，只比較同一組起訖');
+    form.requestSubmit();
+    return true;
+  };
+  const pk = { origin: createAirportPicker(form, 'origin', { onRoute }), destination: createAirportPicker(form, 'destination') };
+  $('#need-via-add', form).addEventListener('click', () => { showVia(); via.focus(); });
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     await loadAirports();
@@ -772,6 +837,15 @@ function bindNeed(host) {
       const unknown = p.commit();
       if (unknown.length || !p.codes().length) { toast(unknown.length ? `找不到「${unknown.join('、')}」` : `請輸入${p.label}`); p.focus(); return; }
     }
+    // 經過: up to three ways round, each of up to three stops (HKG, NRT, HKG-DOH; names work too).
+    const vias = [];
+    for (const alt of String(via.value).split(/\s*[,，、;；]\s*/).filter(Boolean).slice(0, 3)) {
+      const stops = alt.split(/\s*(?:->|=>|[-→>＞/\s])\s*/).filter(Boolean).slice(0, 3).map((s) => ({ s, code: resolveAirports(s).codes[0] }));
+      const bad = stops.filter((x) => !x.code || !AP.byCode.get(x.code));
+      if (bad.length) { toast(`找不到「${bad.map((x) => x.s).join('、')}」`); via.focus(); return; }
+      if (stops.length) vias.push(stops.map((x) => x.code));
+    }
+    need.vias = vias;
     need.origin = pk.origin.codes()[0];
     need.destination = pk.destination.codes()[0];
     need.cabin = new FormData(form).get('cabin') || 'J';
@@ -785,6 +859,9 @@ function renderNeed() {
   const a = AP.byCode.get(need.origin);
   const b = AP.byCode.get(need.destination);
   if (!host || !a || !b || a.lat == null || b.lat == null) return;
+  // The first time, wait for mapkit.js and the nonstop data (可搭直飛, 級距提醒, 經過); after that draw with what came.
+  if (!mapkitIn() && !mapkitDone) { host.innerHTML = skeleton(4); loadMapkit().then(renderNeed); return; }
+  const kit = mapkitIn();
   const dist = haversineMiles(a, b);
   const c = need.cabin;
   // Round trip, as on 兌換地圖: two one-ways, except charts that only sell round trips (used as they are, and left out
@@ -794,7 +871,7 @@ function renderNeed() {
   // Asia Miles from the chart the site already carries; Cathay's own flights by the distance Asia Miles counts
   // (through Hong Kong unless nonstop, app.js amCxDist).
   for (const am of amRoutePrices(a, b, dist, c)) {
-    rows.push({ key: 'asiamiles', label: am.kind === 'cx' ? '國泰航班' : '夥伴航班', miles: am.miles * (rt ? 2 : 1), note: am.via ? `${AM_VIA_TEXT} ${fmt(am.dist)} 哩` : `${fmt(dist)} 哩`, confidence: 'official' });
+    rows.push({ key: 'asiamiles', kind: am.kind, via: am.via, bands: data.asiamiles.bands, d: am.dist, label: am.kind === 'cx' ? '國泰航班' : '夥伴航班', miles: am.miles * (rt ? 2 : 1), note: am.via ? `${AM_VIA_TEXT} ${fmt(am.dist)} 哩` : `${fmt(dist)} 哩`, confidence: 'official' });
   }
   for (const p of data.charts?.programs || []) {
     if (!['distance', 'zone', 'regionMatrix', 'routeSpecific'].includes(p.kind) || (p.oneWay === false && !rt)) continue;
@@ -804,17 +881,22 @@ function renderNeed() {
     if (!prices.length) continue;
     const [x] = prices;
     const top = prices[prices.length - 1].miles;
-    rows.push({ key: p.id, name: p.name, label: x.label, miles: x.miles, note: `${x.note}${top > x.miles ? `；其他航空最高 ${fmt(top)} 哩` : ''}`, confidence: p.confidence, perSegment: p.perSegment, src: p.sources?.[0], pnote: p.note });
+    rows.push({ key: p.id, kind: '', via: '', bands: x.bands, d: x.d, name: p.name, label: x.label, miles: x.miles, note: `${x.note}${top > x.miles ? `；其他航空最高 ${fmt(top)} 哩` : ''}`, confidence: p.confidence, perSegment: p.perSegment, src: p.sources?.[0], pnote: p.note });
   }
   rows.sort((x, y) => x.miles - y.miles);
   const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic' || (p.kind === 'routeSpecific' && !p.routes?.length)).map((p) => rmapProgramName(p.id));
-  host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${rt ? '來回・' : ''}${CABIN_LABEL[c]}・直線距離 ${fmt(dist)} 哩</h3>
-    ${rows.length ? `<div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>${rt ? '來回' : '單程'}哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
+  // mapkit.js: each row's 可搭直飛 tag, band-edge warning and cheaper Taiwan airport; with 經過, the routes side by side.
+  const kitFoot = kit ? mkNeed(a, b, rows, c, rt).foot : '';
+  const compare = kit && need.vias.length ? mkCompareHtml(a, b, need.vias, c, rt) : '';
+  host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${rt ? '來回・' : ''}${CABIN_LABEL[c]}・直線距離 ${miKm(dist)}</h3>
+    ${compare ? `<h4 class="mk-h">轉機走法比較</h4>${compare}<h4 class="mk-h">各計畫明細（${esc(need.origin)} → ${esc(need.destination)} 直飛距離）</h4>` : ''}
+    ${rows.length ? `<div class="table-wrap"><table class="need-table need-main"><thead><tr><th>計畫</th><th>${rt ? '來回' : '單程'}哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(chartProgram(r.key, r.name).name)}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b>${shortfallHtml(r.key, r.miles)}</td>
-        <td><small>${esc(r.note)}${r.perSegment ? '；每段航班分開計價，轉機會更貴' : ''}</small></td>
+        <td><small>${esc(r.note)}${r.perSegment ? '；每段航班分開計價，轉機會更貴' : ''}</small>${r.extra ? `<span class="mk-bits">${r.extra}</span>` : ''}</td>
         <td>${CONFIDENCE_TAG[r.confidence] || ''}${r.src ? `<small><a href="${esc(r.src.url)}" target="_blank" rel="noopener">${esc(r.src.label)} ↗</a></small>` : ''}</td></tr>`).join('')}
     </tbody></table></div>` : '<p class="hint">這條航線找不到適用的固定哩程表。</p>'}
-    <p class="hint">${rt ? '來回是兩張單程相加；只賣來回的表照表上的來回價。' : ''}以直線距離或區域估算，最低（Saver）價格；實際轉機路線、旺季與燃油附加費可能讓價格不同。${dyn.length ? `${esc(dyn.join('、'))} 為動態定價，不列入。` : ''}</p>
+    <p class="hint">${rt ? '來回是兩張單程相加；只賣來回的表照表上的來回價。' : ''}以直線距離或區域估算，最低（Saver）價格；實際轉機路線、旺季與燃油附加費可能讓價格不同。${dyn.length ? `${esc(dyn.join('、'))} 為動態定價，不列入。` : ''}${kit ? '距離是兩地的大圓距離（英里；規則庫「名詞解釋」有說明），和航空公司的計算可能差幾哩。' : ''}</p>
+    ${kitFoot}
     <button type="button" class="outline" id="need-search">用航線查詢找實際座位</button>`;
   $('#need-search').addEventListener('click', () => {
     pickers.origin.set([need.origin]);
@@ -827,7 +909,8 @@ function renderNeed() {
 }
 
 // ---------- 兌換地圖 tab: where the fixed award charts can take you from one airport (no seat search, no quota) ----------
-const rmap = { origins: ['TPE'], cabin: 'J', trip: 'ow', program: '', budget: 0, mine: false, drawnWallet: '' };
+// direct, air, rings, sort, listOpen: mapkit.js's layers (只看有直飛 by airline or alliance, 距離級距圈, the city list).
+const rmap = { origins: ['TPE'], cabin: 'J', trip: 'ow', program: '', budget: 0, mine: false, drawnWallet: '', direct: false, air: '', rings: false, sort: 'miles', listOpen: false };
 let rmapMap = null;
 // Every program with a fixed chart, one-way prices; 日航寰宇一家 only prices round trips.
 const rmapPrograms = () => ['asiamiles', ...(data.charts?.programs || []).filter((p) => ['distance', 'zone', 'regionMatrix', 'routeSpecific'].includes(p.kind) && (p.routes?.length || p.tables?.length)).map((p) => p.id)];
@@ -982,15 +1065,20 @@ async function renderRmap() {
   if (!out) return;
   const froms = rmapFroms();
   if (!froms.length) return;
+  // The first time, wait for mapkit.js and the nonstop data (the layers row, flight times); after that draw without.
+  if (!mapkitIn() && !mapkitDone) { out.innerHTML = skeleton(3); await loadMapkit(); }
+  const kit = mapkitIn();
   rmap.drawnWallet = JSON.stringify(wallet);
   const multi = froms.length > 1;
-  const dests = rmapDestinations();
+  const dests = kit ? mkMapDests(rmapDestinations()) : rmapDestinations();
   const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic').map((p) => rmapProgramName(p.id));
   const label = `${froms.map((f) => `${f.code} ${airportCity(f.code)}`).join('、')} 出發・${rmap.trip === 'rt' ? '來回' : '單程'}・${CABIN_LABEL[rmap.cabin]}${rmap.program ? `・${rmapProgramName(rmap.program)}` : ''}`;
   out.innerHTML = `<h3 class="sub">${esc(label)}　${dests.length ? `${fmt(dests.length)} 個城市` : ''}</h3>
-    ${dests.length ? '<div id="rmap" class="ex-map rmap"><p class="hint">地圖載入中…</p></div>' : `<p class="hint">${rmap.budget || rmap.mine ? '這個哩數換不到任何城市，放寬條件看看。' : '這個出發地和艙等找不到適用的固定哩程表。'}</p>`}
+    ${kit ? `<div class="rmap-layers" id="rmap-layers">${mkLayersHtml()}</div>` : ''}
+    ${dests.length ? '<div id="rmap" class="ex-map rmap"><p class="hint">地圖載入中…</p></div>' : `<p class="hint">${kit && rmap.direct ? '沒有符合「只看有直飛」的城市，換一家航空公司、換計畫或關掉它看看。' : rmap.budget || rmap.mine ? '這個哩數換不到任何城市，放寬條件看看。' : '這個出發地和艙等找不到適用的固定哩程表。'}</p>`}
     <p class="hint">${multi ? '有多個出發地時，每個計畫取最便宜的出發地。' : ''}標的是最低價（Saver），以兩地直線距離或區域估算；實際轉機路線、旺季與燃油附加費可能讓價格不同。長榮、華航、全日空等依區域計價的表只適用台灣出發。${dyn.length ? `${esc(dyn.join('、'))} 是動態定價，不列入。` : ''}</p>
-    ${dests.length && dests.some((d) => d.prices.some((x) => rmapThirdParty(x.id))) ? '<p class="hint">標「第三方整理」的哩程表取自第三方整理，未能在計畫官網逐項核對。</p>' : ''}`;
+    ${dests.length && dests.some((d) => d.prices.some((x) => rmapThirdParty(x.id))) ? '<p class="hint">標「第三方整理」的哩程表取自第三方整理，未能在計畫官網逐項核對。</p>' : ''}
+    ${kit && dests.length ? mkAfterMapHtml(dests) : ''}`;
   if (!dests.length) return;
   // No map (Leaflet would not load, or would not draw): say so with a 重試, and list the same cities instead.
   const noMap = (err) => {
@@ -1021,10 +1109,13 @@ function drawRmap(el, froms, dests, multi) {
   // On a phone the map is short: fewer rows, and never taller than the map (Leaflet scrolls the rest).
   const narrow = matchMedia('(max-width: 640px)').matches;
   const rows = narrow ? 5 : 8;
+  // A phone's card fits beside the zoom buttons (autoPanPaddingTopLeft) with Leaflet's own padding.
+  const popW = Math.max(200, Math.min(320, el.clientWidth - 110));
   const marks = [];
   dests.forEach((d, i) => {
-    const icon = L.divIcon({ className: `rm-pin t${tier(d.min)}`, html: `<span class="rm-k">${Math.round(d.min / 1000)}</span><span class="rm-label"><b>${esc(d.city)}</b>${fmt(d.min)} 哩起</span>`, iconSize: null, iconAnchor: [14, 14] });
+    const icon = L.divIcon({ className: `rm-pin t${tier(d.min)}${d.ring ? ' rm-direct' : ''}`, html: `<span class="rm-k">${Math.round(d.min / 1000)}</span><span class="rm-label"><b>${esc(d.city)}</b>${fmt(d.min)} 哩起</span>`, iconSize: null, iconAnchor: [14, 14] });
     const m = L.marker([d.ap.lat, d.ap.lon], { icon, title: `${d.city} ${fmt(d.min)} 哩起${multi ? `（${d.from} 出發）` : ''}`, zIndexOffset: (dests.length - i) * 10 }).addTo(rmapMap);
+    d.marker = m;
     marks.push({ m, d, w: 40 + Math.max(d.city.length * 13, fmt(d.min).length * 8 + 30) });
     // Each row names its origin only when the rows came from different ones, and its airport when the city's
     // programs price different airports. A chart from a third-party summary says so (the hint under the map explains).
@@ -1033,11 +1124,14 @@ function drawRmap(el, froms, dests, multi) {
     // Straight distance from the cheapest row's origin, as a range when its rows go to different airports.
     const ds = d.prices.filter((x) => x.from === d.from).map((x) => x.dist);
     const [lo, hi] = [Math.min(...ds), Math.max(...ds)];
-    m.bindPopup(`<b>${esc(d.city)}</b> <small>${esc(d.tos.join('/'))}・${multi ? `距 ${esc(d.from)} ` : ''}直線 ${fmt(lo)}${hi > lo ? `–${fmt(hi)}` : ''} 哩</small>
-      <table class="rm-pop">${d.prices.slice(0, rows).map((x) => `<tr><td>${esc(rmapProgramName(x.id))}<small>${esc(x.label)}${mixedTo ? `・${esc(x.to)}` : ''}${mixed ? `・${esc(x.from)} 出發` : ''}${rmapThirdParty(x.id) ? '・第三方整理' : ''}</small></td><td><b>${fmt(x.miles)}</b></td></tr>`).join('')}</table>
+    // Built when the card opens (mapkit.js adds flight time, nonstop airlines and band notes).
+    const kit = mapkitIn();
+    m.bindPopup(() => `<b>${esc(d.city)}</b> <small>${esc(d.tos.join('/'))}・${multi ? `距 ${esc(d.from)} ` : ''}直線 ${hi > lo ? `${fmt(lo)}–${fmt(hi)} 哩` : miKm(lo)}</small>
+      <table class="rm-pop">${d.prices.slice(0, rows).map((x) => `<tr><td>${esc(rmapProgramName(x.id))}<small>${esc(x.label)}${mixedTo ? `・${esc(x.to)}` : ''}${mixed ? `・${esc(x.from)} 出發` : ''}${rmapThirdParty(x.id) ? '・第三方整理' : ''}${kit ? mkRowTag(x) : ''}</small></td><td><b>${fmt(x.miles)}</b></td></tr>`).join('')}</table>
       ${d.prices.length > rows ? `<small>還有 ${d.prices.length - rows} 個計畫</small>` : ''}
+      ${kit ? mkPopupHtml(d) : ''}
       <div class="map-actions"><button type="button" data-rm-search="${esc(d.codes.join(','))}">到航線查詢找座位</button><button type="button" data-rm-need="${esc(d.ap.code)}" data-rm-from="${esc(d.from)}">看計算依據</button></div>`,
-    { minWidth: narrow ? 220 : 240, maxWidth: 320, autoPanPaddingTopLeft: L.point(52, 12), ...(narrow ? { maxHeight: Math.max(200, el.clientHeight - 70) } : {}) });
+    { minWidth: narrow ? Math.min(220, popW) : 240, maxWidth: narrow ? popW : 320, autoPanPaddingTopLeft: L.point(52, 12), ...(narrow ? { maxHeight: Math.max(200, el.clientHeight - 70) } : {}) });
   });
   // Declutter on every move: in rank order, a pin gets its label when the label has room, only its dot when the dot
   // has room, and hides otherwise (zoom in to see it).
@@ -1062,6 +1156,7 @@ function drawRmap(el, froms, dests, multi) {
   const fit = multi && el.clientWidth ? rmapMap.getBoundsZoom(L.latLngBounds(pts), false, L.point(80, 80)) : 4;
   rmapMap.setView(multi ? L.latLngBounds(pts).getCenter() : pts[0], Math.min(4, fit));
   declutter();
+  if (mapkitIn()) mkDrawLayers(rmapMap, froms, dests);
 }
 // Places most people fly to from Taiwan; they win the label space.
 const RMAP_POPULAR = ['東京', '大阪', '首爾', '曼谷', '香港', '新加坡', '上海', '沖繩那霸', '札幌', '福岡', '名古屋中部', '釜山', '峴港', '胡志明市', '河內', '吉隆坡', '峇里島', '馬尼拉', '宿霧', '北京', '倫敦', '巴黎', '法蘭克福', '阿姆斯特丹', '羅馬', '米蘭', '維也納', '蘇黎世', '伊斯坦堡', '杜拜', '杜哈', '洛杉磯', '舊金山灣區', '紐約', '西雅圖', '溫哥華', '多倫多', '芝加哥', '雪梨', '墨爾本', '布里斯本', '奧克蘭', '關島', '夏威夷', '濟州', '清邁', '普吉島', '雅加達', '德里', '孟買', '開羅', '約翰尼斯堡'];
@@ -1075,7 +1170,7 @@ document.addEventListener('click', (e) => {
   const n = e.target.closest?.('[data-rm-need]');
   if (n) {
     // The basis for the prices in the popup: from the origin they came from, one-way or round trip as on the map.
-    Object.assign(need, { origin: n.dataset.rmFrom || rmap.origins[0], destination: n.dataset.rmNeed, cabin: rmap.cabin, trip: rmap.trip });
+    Object.assign(need, { origin: n.dataset.rmFrom || rmap.origins[0], destination: n.dataset.rmNeed, cabin: rmap.cabin, trip: rmap.trip, vias: [] });
     setPointsView('need');
     showTab('points');
     renderPoints();

@@ -390,6 +390,26 @@ const regionName = (() => {
 })();
 const normQ = (s) => s.trim().replace(/臺/g, '台');
 const splitCodes = (v) => v.split(/\s*[,，、]\s*/);
+// A route written the gcmap way: 「TPE-YVR」, 「TPE→YVR,YYZ」, 「TPE-HKG-LHR, TPE-LHR」, or two codes with a space
+// (「tpe yvr」, `spaced`). Commas separate routes; a comma part without a dash adds an airport to the stop before it
+// (YVR,YYZ = either one), as gcmap's slash does (YVR/YYZ). Stops stay as typed (codes upper-cased, names as they are).
+// → { routes: [[['TPE'], ['YVR', 'YYZ']]], spaced }, or null when the text is not a whole route.
+function parseRouteText(v) {
+  const s = String(v || '').trim().replace(/\s*(?:->|=>|[→➔➝⇒>＞–—－~～])\s*/g, '-');
+  if (!s.includes('-')) {
+    const m = s.match(/^([A-Za-z]{3})\s+([A-Za-z]{3})$/);
+    return m ? { routes: [[[m[1].toUpperCase()], [m[2].toUpperCase()]]], spaced: true } : null;
+  }
+  const routes = [];
+  for (const part of s.split(/\s*[,，、;；\n]\s*/).filter(Boolean)) {
+    const stops = part.split(/\s*-\s*/).map((x) => x.split(/\s*\/\s*/).filter(Boolean));
+    if (stops.length > 1) routes.push(stops);
+    else if (routes.length) routes.at(-1).at(-1).push(...stops[0]);
+    else return null;
+  }
+  if (!routes.length || routes.some((r) => r.some((st) => !st.length))) return null;
+  return { routes: routes.map((r) => r.map((st) => st.map((x) => (/^[A-Za-z]{3}$/.test(x) ? x.toUpperCase() : x)))), spaced: false };
+}
 
 // The list is 270 KB, so it loads only when an airport field is first used (or a view that needs coordinates opens).
 let airportsP = null;
@@ -457,7 +477,9 @@ function resolveAirports(value) {
 // Airport field with chips: each picked airport is a removable chip, so several can be searched at once.
 // The hidden input (name=origin / destination) keeps the comma-separated codes the rest of the page reads.
 const MAX_AIRPORTS = 10;
-function createAirportPicker(form, name) {
+// opts.onRoute(routes, spaced): a whole route pasted, or typed and confirmed with Enter (parseRouteText), with each stop
+// resolved to codes; it returns true when it used the route.
+function createAirportPicker(form, name, opts = {}) {
   const hidden = form[name];
   const box = $(`.chips-box[data-for=${name}]`, form);
   const q = $('input.chips-q', box);
@@ -483,8 +505,24 @@ function createAirportPicker(form, name) {
     hidden.dispatchEvent(new Event('change', { bubbles: true }));
   };
   const add = (more) => set([...codes(), ...more]);
+  // A route in the box goes to opts.onRoute. → null when it is not one (or onRoute passed), else the stops that matched
+  // nothing ([] when it was taken).
+  const takeRoute = () => {
+    const r = opts.onRoute && parseRouteText(q.value);
+    if (!r) return null;
+    const bad = [];
+    const routes = r.routes.map((stops) => stops.map((st) => { const x = resolveAirports(st.join(',')); bad.push(...x.unknown); return x.codes; }));
+    if (bad.length) return bad;
+    if (!opts.onRoute(routes, r.spaced)) return null;
+    q.value = '';
+    close();
+    return [];
+  };
+  const routeTyped = () => { const bad = takeRoute(); if (bad?.length) toast(`找不到「${bad.join('、')}」`); return Boolean(bad); };
   // Turn leftover typed text into chips; returns the parts that matched nothing.
   const commit = () => {
+    const bad = takeRoute();
+    if (bad) return bad;
     const { codes: found, unknown } = resolveAirports(q.value);
     if (found.length) add(found);
     q.value = unknown.join(',');
@@ -531,10 +569,13 @@ function createAirportPicker(form, name) {
   };
 
   q.addEventListener('focus', loadAirports, { once: true });
-  q.addEventListener('input', () => loadAirports().then(() => {
+  q.addEventListener('input', (e) => loadAirports().then(() => {
+    // A pasted route fills the fields at once; a typed one waits for Enter (half a route would match a wrong airport).
+    if (/^insertFrom(Paste|Drop)$/.test(e.inputType || '') && routeTyped()) return;
+    const routing = opts.onRoute && /[-→➔➝⇒>＞–—－]/.test(q.value);
     // A comma after a name or code (or a space after a 3-letter code) turns what came before it into chips.
     if (/^[A-Za-z]{3}\s+$/.test(q.value)) q.value = `${q.value.trim()},`;
-    if (/[,，、]/.test(q.value)) {
+    if (!routing && /[,，、]/.test(q.value)) {
       const parts = splitCodes(q.value);
       const tail = parts.pop();
       const { codes: found, unknown } = resolveAirports(parts.join(','));
@@ -546,6 +587,7 @@ function createAirportPicker(form, name) {
   q.addEventListener('blur', close);
   q.addEventListener('keydown', (e) => {
     if (e.key === 'Backspace' && !q.value && codes().length) { set(codes().slice(0, -1)); return; }
+    if (e.key === 'Enter' && routeTyped()) { e.preventDefault(); return; }
     if (list.hidden) {
       if (e.key === 'Enter' && q.value.trim()) { e.preventDefault(); commit(); }
       return;
@@ -570,7 +612,19 @@ function createAirportPicker(form, name) {
   onAirports(renderChips);
   return { codes, set, commit, label, focus: () => q.focus() };
 }
-const pickers = { origin: createAirportPicker($('#search-form'), 'origin'), destination: createAirportPicker($('#search-form'), 'destination') };
+// 出發地 also takes a whole route (TPE-YVR, TPE→YVR,YYZ, tpe yvr): the first stop fills 出發地 and the last 目的地.
+function searchRoute(routes, spaced) {
+  const stops = routes[0];
+  const [from, to] = [stops[0], stops.at(-1)];
+  // Two codes with a space are a route only between countries; 「TPE TSA」 stays two origins.
+  if (spaced && AP.byCode.get(from[0])?.country === AP.byCode.get(to[0])?.country) return false;
+  pickers.origin.set(from);
+  pickers.destination.set(to);
+  const mid = [...new Set(stops.slice(1, -1).flat())];
+  toast(`已填入 ${from.join('/')} → ${to.join('/')}${mid.length ? `；航線查詢只看起訖，${mid.join('、')} 沒有帶入` : ''}`);
+  return true;
+}
+const pickers = { origin: createAirportPicker($('#search-form'), 'origin', { onRoute: searchRoute }), destination: createAirportPicker($('#search-form'), 'destination') };
 
 // ---------- date range picker ----------
 // Pick departure dates by clicking a range on a calendar, or one date plus ± days (like seats.aero).
