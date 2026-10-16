@@ -398,9 +398,9 @@ const onAirports = (fn) => (AP.loaded ? fn() : airportsWaiting.push(fn));
 const loadAirports = () => (airportsP ||= fetch(`/airports.min.json${ASSET_V ? `?v=${ASSET_V}` : ''}`).then((r) => r.json()).then((body) => {
   AP.groups = body.groups.map((g) => ({ ...g, enL: g.en.toLowerCase() }));
   for (const g of AP.groups) g.codes.forEach((c, i) => AP.rank.set(c, i)); // main airport first on ties
-  AP.list = body.airports.map(([code, city, name, country, , large, zh, alt, lat, lon]) => {
+  AP.list = body.airports.map(([code, city, name, country, , large, zh, alt, lat, lon, tz]) => {
     const c = regionName(country);
-    const a = { code, city, name, country, large, zh, alt, lat, lon, cn: c.zh, cnL: c.en.toLowerCase(), cityL: city.toLowerCase(), altL: alt.toLowerCase() };
+    const a = { code, city, name, country, large, zh, alt, lat, lon, tz: body.tzs?.[tz] || '', cn: c.zh, cnL: c.en.toLowerCase(), cityL: city.toLowerCase(), altL: alt.toLowerCase() };
     a.words = `${city} ${alt} ${name}`.toLowerCase().split(/[\s\-/'.]+/).filter(Boolean);
     a.hay = `${city} ${alt} ${name} ${c.en}`.toLowerCase();
     return a;

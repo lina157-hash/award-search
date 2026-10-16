@@ -198,7 +198,7 @@ class BadRequest extends Error {}
 
 // Airport → country and coordinates, for the pre-trip notes.
 const AIRPORT_FILE = require('./public/airports.min.json');
-const AIRPORTS = new Map(AIRPORT_FILE.airports.map(([code, , , country, , , , , lat, lon]) => [code, { country, lat, lon }]));
+const AIRPORTS = new Map(AIRPORT_FILE.airports.map(([code, , , country, , , , , lat, lon, tz]) => [code, { country, lat, lon, tz: AIRPORT_FILE.tzs?.[tz] || '' }]));
 // A Chinese city name in English, for sources that only know English names (Booking.com's city search):
 // the multi-airport groups first (東京 → Tokyo), then a major airport whose Chinese name starts with it (曼谷 → Bangkok).
 function cityInEnglish(name) {
@@ -217,7 +217,7 @@ async function handleTripInfo(q) {
   const place = AIRPORTS.get(to);
   if (!place) throw new BadRequest('找不到這個機場');
   const info = await travelInfo.forTrip(place, start, end, { withWeather: q.get('only') !== 'holidays' });
-  return { airport: to, ...info, sources: { visa: { name: VISA.source, url: VISA.sourceUrl, asOf: VISA.asOf }, warning: { name: WARNINGS.source, url: WARNINGS.sourceUrl, asOf: WARNINGS.asOf } } };
+  return { airport: to, tz: place.tz || undefined, ...info, sources: { visa: { name: VISA.source, url: VISA.sourceUrl, asOf: VISA.asOf }, warning: { name: WARNINGS.source, url: WARNINGS.sourceUrl, asOf: WARNINGS.asOf } } };
 }
 
 // Seat alerts: Upstash Redis keeps the watches, Resend sends the mail. Demo mode keeps them in memory.
