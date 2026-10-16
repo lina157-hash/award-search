@@ -28,6 +28,8 @@ function mkBookable(p) {
 // flights ('own'; 華航's chart also has 華信), its partners ('partners') or both ('all').
 const MK_CHART_SCOPE = { eva: 'own', ci: 'own', jal: 'own', jal_partner: 'all', etihad: 'all', ana: 'partners', singapore: 'partners', turkish: 'partners', aeroplan: 'partners', american: 'partners', alaska: 'partners', british: 'partners' };
 const MK_OWN_EXTRA = { ci: ['AE'] };
+// Airlines a program books whose price that chart does not give (charts.json etihad: 星宇計價未公布).
+const MK_CHART_SKIP = { etihad: ['JX'] };
 // Asia Miles has two rows: Cathay's own flights ('cx') and one oneworld partner flown alone ('partner').
 function mkChartCarriers(id, kind) {
   const p = mkProgram(id === 'asiamiles_est' ? 'asiamiles' : id);
@@ -42,6 +44,7 @@ function mkChartCarriers(id, kind) {
   if (scope === 'own') return new Set(own);
   const all = mkBookable(p);
   if (scope === 'partners') for (const c of own) all.delete(c);
+  for (const c of MK_CHART_SKIP[id] || []) all.delete(c);
   return all;
 }
 

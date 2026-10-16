@@ -120,6 +120,7 @@ test('#25: each chart books its own airlines: own flights, partners, or both; Ca
   assert.ok(!set('asiamiles', 'partner').includes('CX') && set('asiamiles', 'partner').includes('JL'));
   assert.ok(set('ana').includes('BR') && !set('ana').includes('NH'), 'ANA partner chart: not ANA itself');
   assert.ok(set('british').includes('CX') && !set('british').includes('BA'));
+  assert.ok(set('alaska').includes('JX') && !set('etihad').includes('JX'), 'Etihad has not published Starlux prices');
   assert.deepEqual(plain(K.mkDirect('eva', '', 'TPE', 'LHR')), { direct: ['BR'], others: ['CI'] });
   const ba = plain(K.mkDirect('british', '', 'TPE', 'LHR'));
   assert.deepEqual(ba.direct, []);
