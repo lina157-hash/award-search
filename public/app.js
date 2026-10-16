@@ -101,6 +101,8 @@ function isoDateFrom(iso, offsetDays) {
   d.setUTCDate(d.getUTCDate() + offsetDays);
   return d.toISOString().slice(0, 10);
 }
+// Calendar date in Taiwan (UTC+8), the day the server's cash checks count from, wherever the visitor is.
+const twDate = (offsetDays) => isoDateFrom(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), offsetDays);
 
 // A short message at the bottom; `action` ({ label, run }) adds a button and keeps it up longer.
 function toast(msg, action) {
@@ -549,9 +551,10 @@ const ymd = (iso) => `${iso.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${iso.slic
 const dayLabel = (iso) => `${ymd(iso)}（${dowOf(iso)}）`;
 
 // opts.single: one date only (cash fares, hotels), written to the hidden input named opts.name inside opts.field;
-// opts.min / opts.maxDays narrow the selectable days.
+// opts.min / opts.maxDays narrow the selectable days; opts.today (twDate for the cash fares) is the day they count from.
 function createDatePicker(form, label, opts = {}) {
   const single = Boolean(opts.single);
+  const dayIn = opts.today || isoDate; // the date n days from today
   const field = opts.field || $('.dp-field', form);
   const btn = $('.dp-btn', field);
   const startIn = single ? form.elements[opts.name] : form.elements.start;
@@ -563,8 +566,8 @@ function createDatePicker(form, label, opts = {}) {
   dlg.setAttribute('aria-label', `選擇${label}`);
   document.body.append(dlg);
   const uid = `dp-${form.id}${single ? `-${opts.name}` : ''}`;
-  const lo = () => (opts.min && opts.min() > isoDate(0) ? opts.min() : isoDate(0));
-  const hi = () => isoDate(opts.maxDays || MAX_AHEAD_DAYS);
+  const lo = () => (opts.min && opts.min() > dayIn(0) ? opts.min() : dayIn(0));
+  const hi = () => dayIn(opts.maxDays || MAX_AHEAD_DAYS);
   const months = () => (matchMedia('(max-width: 640px)').matches ? 1 : 2);
 
   function flexRange(center = st.center) {
@@ -618,7 +621,7 @@ function createDatePicker(form, label, opts = {}) {
     const first = new Date(`${ym}-01T00:00:00Z`);
     const cells = DOW.map((d) => `<span class="dp-dow">${d}</span>`);
     for (let i = 0; i < first.getUTCDay(); i++) cells.push('<span></span>');
-    const [l, h, t] = [lo(), hi(), isoDate(0)];
+    const [l, h, t] = [lo(), hi(), dayIn(0)];
     for (const d = new Date(first); d.toISOString().slice(0, 7) === ym; d.setUTCDate(d.getUTCDate() + 1)) {
       const iso = d.toISOString().slice(0, 10);
       const off = iso < l || iso > h;
@@ -657,7 +660,7 @@ function createDatePicker(form, label, opts = {}) {
           <label><input type="radio" name="${uid}-mode" value="flex" ${st.mode === 'flex' ? 'checked' : ''}><span>指定日期 ± 天數</span></label>
           <label><input type="radio" name="${uid}-mode" value="range" ${st.mode === 'range' ? 'checked' : ''}><span>選擇日期範圍</span></label>
         </fieldset>`}
-        <span class="dp-acts"><button type="button" class="dp-chip dp-today" ${lo() > isoDate(0) ? 'disabled title="這裡不能選今天"' : ''}>今天</button><button type="button" class="dp-x" aria-label="關閉">✕</button></span>
+        <span class="dp-acts"><button type="button" class="dp-chip dp-today" ${lo() > dayIn(0) ? 'disabled title="這裡不能選今天"' : ''}>今天</button><button type="button" class="dp-x" aria-label="關閉">✕</button></span>
       </div>
       ${extra}
       <div class="dp-cal">
@@ -733,7 +736,7 @@ function createDatePicker(form, label, opts = {}) {
     }
     if (t.dataset.preset) {
       st.mode = 'range';
-      write(lo(), isoDate(Number(t.dataset.preset)));
+      write(lo(), dayIn(Number(t.dataset.preset)));
       return close();
     }
     if (t.dataset.flex) {
@@ -2091,8 +2094,8 @@ const cashForm = $('#cash-form');
 const cashPickers = { origin: createAirportPicker(cashForm, 'origin'), destination: createAirportPicker(cashForm, 'destination') };
 const CASH_MAX_DAYS = 335; // the fare sources only quote about 11 months ahead
 const cashDates = {
-  depart: createDatePicker(cashForm, '出發日期', { single: true, name: 'depart', field: $('#cash-depart'), maxDays: CASH_MAX_DAYS }),
-  ret: createDatePicker(cashForm, '回程日期', { single: true, name: 'return', field: $('#cash-return'), maxDays: CASH_MAX_DAYS, min: () => cashForm.depart.value }),
+  depart: createDatePicker(cashForm, '出發日期', { single: true, name: 'depart', field: $('#cash-depart'), maxDays: CASH_MAX_DAYS, today: twDate }),
+  ret: createDatePicker(cashForm, '回程日期', { single: true, name: 'return', field: $('#cash-return'), maxDays: CASH_MAX_DAYS, min: () => cashForm.depart.value, today: twDate }),
 };
 // RapidAPI takes one airport per side; several (a city group) go to SerpApi, the smaller monthly pool, so say so up front.
 function updateMultiHint() {
@@ -2342,9 +2345,9 @@ function bindFareToggles(box) {
 const cashMonthOk = (r) => cashCfg.calendar && /^[A-Z]{3}$/.test(r.origin) && /^[A-Z]{3}$/.test(r.destination);
 // About three weeks before the trip to five after, never past the last day the fare sources quote.
 function cashMonthRange(r) {
-  const tomorrow = isoDate(1);
+  const tomorrow = twDate(1);
   const start = [isoDateFrom(r.depart, -21), tomorrow].sort().at(-1);
-  return { start, end: [isoDateFrom(start, 59), isoDate(CASH_MAX_DAYS)].sort()[0] };
+  return { start, end: [isoDateFrom(start, 59), twDate(CASH_MAX_DAYS)].sort()[0] };
 }
 // Fits a price into a small calendar cell: 9,200 → 9.2千, 12,400 → 1.24萬.
 const shortTwd = (p) => (p >= 1e5 ? `${Math.round(p / 1e4)}萬` : p >= 9950 && p < 1e4 ? '1萬' : p >= 1e4 ? `${+(p / 1e4).toFixed(2)}萬` : p >= 1e3 ? `${+(p / 1e3).toFixed(1)}千` : String(p));
@@ -2379,7 +2382,7 @@ function cashMonthHtml() {
   const uniq = [...new Set(m.days.map((d) => d.price))].sort((a, b) => a - b);
   const level = (p) => (uniq.length === 1 ? 4 : 4 - Math.min(3, Math.floor((uniq.indexOf(p) / (uniq.length - 1)) * 4)));
   const low = uniq[0];
-  const last = isoDate(CASH_MAX_DAYS);
+  const last = twDate(CASH_MAX_DAYS);
   const cell = (iso) => {
     const p = price.get(iso);
     const hol = holidayMark(HOL.cash, iso);
@@ -2611,10 +2614,10 @@ cashForm.addEventListener('submit', async (e) => {
   const r = { origin: f.get('origin'), destination: f.get('destination'), depart: f.get('depart'), ret: rt ? f.get('return') : '', cabin: f.get('cabin') || 'Y', adults: Number(f.get('adults')) || 1, stops: f.get('stops') || '0', alliance: f.get('alliance') || '' };
   // No date: fill in a month from now (like 航線查詢) but let the visitor confirm first, since each search uses paid quota.
   if (!r.depart) {
-    cashDates.depart.set(isoDate(30));
-    if (rt && !r.ret) cashDates.ret.set(isoDate(37));
+    cashDates.depart.set(twDate(30));
+    if (rt && !r.ret) cashDates.ret.set(twDate(37));
     $('#cash-depart .dp-btn').focus();
-    return formError(status, `沒有選日期，先幫你填了 ${dayLabel(isoDate(30))} 出發${rt && !r.ret ? `、${dayLabel(isoDate(37))} 回程` : ''}；確認後再按一次「搜尋票價」。`);
+    return formError(status, `沒有選日期，先幫你填了 ${dayLabel(twDate(30))} 出發${rt && !r.ret ? `、${dayLabel(twDate(37))} 回程` : ''}；確認後再按一次「搜尋票價」。`);
   }
   if (rt && !r.ret) {
     cashDates.ret.set(isoDateFrom(r.depart, 7));

@@ -261,9 +261,11 @@ test('B11: "today" is Taiwan time; a trip leaving today is no longer checked', a
   assert.equal(r.report[0].expired, true);
 });
 
-test('B13: a calendar that rejects round trips is asked one-way from then on', async () => {
+test('B13: a calendar that rejects round trips twice in a day is asked one-way for a day', async () => {
   const { createRapidFlights } = require('../lib/rapidflights');
-  const kv = memoryKv();
+  let t = Date.parse('2026-10-16T02:00:00Z');
+  const now = () => t;
+  const kv = memoryKv({ now });
   const seen = [];
   const fetchImpl = async (url) => {
     seen.push(String(url));
@@ -271,13 +273,50 @@ test('B13: a calendar that rejects round trips is asked one-way from then on', a
     return new Response(JSON.stringify({ status: true, data: [{ departure: '2026-11-01', price: 9000 }] }));
   };
   const p = { departure_id: 'TPE', arrival_id: 'NRT', start_date: '2026-11-01', end_date: '2026-11-30', trip_days: 5, travel_class: 1, adults: 1 };
-  await createRapidFlights({ apiKey: 'k', fetchImpl, kv }).calendar(p);
+  assert.equal((await createRapidFlights({ apiKey: 'k', fetchImpl, kv, now }).calendar(p)).round, false);
   assert.equal(seen.length, 2);
-  // Another instance learns it from the shared store.
-  const other = await createRapidFlights({ apiKey: 'k', fetchImpl, kv }).calendar(p);
-  assert.equal(seen.length, 3);
-  assert.doesNotMatch(seen[2], /ROUND/);
+  // One failure is not enough: another instance still asks for the round trip, and that second failure counts.
+  t += 3 * 3600e3;
+  await createRapidFlights({ apiKey: 'k', fetchImpl, kv, now }).calendar(p);
+  assert.equal(seen.length, 4);
+  assert.match(seen[2], /trip_type=ROUND/);
+  // A third instance learns it from the shared store: one-way only, one request.
+  t += 3600e3;
+  const other = await createRapidFlights({ apiKey: 'k', fetchImpl, kv, now }).calendar(p);
+  assert.equal(seen.length, 5);
+  assert.doesNotMatch(seen[4], /ROUND/);
   assert.equal(other.round, false);
+  // Remembered for a day only.
+  t += 864e5;
+  await createRapidFlights({ apiKey: 'k', fetchImpl, kv, now }).calendar(p);
+  assert.match(seen[5], /trip_type=ROUND/);
+});
+
+test('B13: one transient round-trip failure changes nothing; a round trip that works clears the count', async () => {
+  const { createRapidFlights } = require('../lib/rapidflights');
+  const kv = memoryKv();
+  const seen = [];
+  let failNext = 1;
+  const fetchImpl = async (url) => {
+    seen.push(String(url));
+    if (/trip_type=ROUND/.test(String(url)) && failNext-- > 0) return new Response(JSON.stringify({ status: false, message: 'Something went wrong' }));
+    return new Response(JSON.stringify({ status: true, data: [{ departure: '2026-11-01', price: 9000 }] }));
+  };
+  const p = { departure_id: 'TPE', arrival_id: 'NRT', start_date: '2026-11-01', end_date: '2026-11-30', trip_days: 5, travel_class: 1, adults: 1 };
+  const q = createRapidFlights({ apiKey: 'k', fetchImpl, kv });
+  assert.equal((await q.calendar(p)).round, false, 'the failed click shows one-way prices');
+  const later = await createRapidFlights({ apiKey: 'k', fetchImpl, kv }).calendar(p);
+  assert.equal(later.round, true);
+  assert.match(seen[2], /trip_type=ROUND/);
+  assert.equal(await kv.get('rapid:calendar-round-fails'), null, 'the success cleared the count');
+  assert.equal(await kv.get('rapid:calendar-round-unsupported'), null);
+  // So another single failure (same instance, same day) still does not switch round trips off.
+  failNext = 1;
+  await q.calendar(p);
+  assert.equal((await q.calendar(p)).round, true);
+  // A flag the old code left (`true`, for a week) is ignored.
+  await kv.set('rapid:calendar-round-unsupported', true, { ex: 7 * 86400 });
+  assert.equal((await createRapidFlights({ apiKey: 'k', fetchImpl, kv }).calendar(p)).round, true);
 });
 
 test('B15/B18: Booking.com never shows another hotel\'s price, and remembers hotel ids', async () => {

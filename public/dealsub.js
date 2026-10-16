@@ -1,6 +1,7 @@
 // 今日好康每日信: the 「📬 每天寄給我」 link next to the 今日好康 heading opens a small dialog to get the deals by mail
 // once a day (signed-in accounts, verified email), plus, for the owner, the linked Telegram / LINE. The same switch sits
-// in 帳號設定. The unsubscribe link in each mail (/#unsub=<token>) is handled here, without signing in.
+// in 帳號設定. The unsubscribe link in each mail (/#unsub=<token>) is handled here, without signing in: the page asks
+// first and posts only on a click, so mail scanners that open links (and run the page) unsubscribe nobody.
 // Classic script loaded after account.js; uses the globals of app.js (api, store, esc, toast, busy, $) and account.js
 // (acct, openAuth, signedIn).
 
@@ -109,24 +110,43 @@ async function dsubRender(host) {
   try { dsubMailBox(host, await dsubApi('/api/dealsub')); } catch (e) { host.innerHTML = `<p class="acct-err">${esc(e.message)}</p>`; }
 }
 
-// The unsubscribe link from a mail: /#unsub=<token>. One click, no sign-in; the page says which address stopped.
-async function dsubUnsubLink(hash) {
+// The address inside an unsubscribe token (base64url before the dot), masked like the server's answer; '' if unreadable.
+function dsubTokenEmail(t) {
+  try {
+    const b = atob(t.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'));
+    const [u, d] = new TextDecoder().decode(Uint8Array.from(b, (c) => c.charCodeAt(0))).split('@');
+    return u && d ? `${u.slice(0, 1)}***@${d}` : '';
+  } catch { return ''; }
+}
+
+// The unsubscribe link from a mail: /#unsub=<token>. No sign-in; the page shows the address and posts on the button.
+function dsubUnsubLink(hash) {
   const m = /^#unsub=([\w.%-]{10,600})$/.exec(hash || '');
   if (!m) return;
   if (location.hash === hash) history.replaceState(null, '', `${location.pathname}${location.search}#${tabHash(currentTab)}`);
+  const t = decodeURIComponent(m[1]);
+  const who = dsubTokenEmail(t);
   const dlg = dsubDialog();
   const body = $('#dsub-body');
-  let html;
-  try {
-    const r = await api('/api/dealsub/unsubscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ t: decodeURIComponent(m[1]) }) });
-    html = `<p class="ok-big" aria-hidden="true">📭</p><h2 id="dsub-title" class="center">已取消訂閱</h2>
-      <p class="hint center"><b>${esc(r.email)}</b> 不會再收到今日好康每日信。<br>想再收的話，登入後在「今日好康」旁按「📬 每天寄給我」。</p>`;
-  } catch (e) {
-    html = `<p class="ok-big" aria-hidden="true">⚠️</p><h2 id="dsub-title" class="center">取消訂閱沒有完成</h2><p class="hint center">${esc(e.message)}</p>`;
-  }
-  body.innerHTML = `${html}<button type="button" class="primary full" data-dsub="ok">知道了</button>`;
-  $('[data-dsub=ok]', body).addEventListener('click', () => dlg.close());
+  body.innerHTML = `<p class="ok-big" aria-hidden="true">📬</p><h2 id="dsub-title" class="center">取消訂閱今日好康每日信？</h2>
+    <p class="hint center">按下「取消訂閱」後，${who ? `<b>${esc(who)}</b>` : '這個信箱'}就不會再收到今日好康每日信。</p>
+    <button type="button" class="primary full" data-dsub="unsub">取消訂閱</button>`;
+  const go = $('[data-dsub=unsub]', body);
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    let html;
+    try {
+      const r = await api('/api/dealsub/unsubscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ t }) });
+      html = `<p class="ok-big" aria-hidden="true">📭</p><h2 id="dsub-title" class="center">已取消訂閱</h2>
+        <p class="hint center"><b>${esc(r.email)}</b> 不會再收到今日好康每日信。<br>想再收的話，登入後在「今日好康」旁按「📬 每天寄給我」。</p>`;
+    } catch (e) {
+      html = `<p class="ok-big" aria-hidden="true">⚠️</p><h2 id="dsub-title" class="center">取消訂閱沒有完成</h2><p class="hint center">${esc(e.message)}</p>`;
+    }
+    body.innerHTML = `${html}<button type="button" class="primary full" data-dsub="ok">知道了</button>`;
+    $('[data-dsub=ok]', body).addEventListener('click', () => dlg.close());
+  });
   if (!dlg.open) dlg.showModal();
+  go.focus();
 }
 addEventListener('hashchange', () => { if (location.hash.startsWith('#unsub=')) dsubUnsubLink(location.hash); });
 dsubUnsubLink(typeof BOOT_HASH === 'string' ? BOOT_HASH : location.hash);

@@ -15,7 +15,7 @@ const { createTravelInfo } = require('./lib/travelinfo');
 const { createDirects, DirectsError } = require('./lib/aerodatabox');
 const hotelCash = require('./lib/hotelcash');
 const { redisKv, memoryKv, takeLock, waitLock, sharedCache, getMany, hashKey, KvError } = require('./lib/kv');
-const { todayTW, monthTW, validDate } = require('./lib/day');
+const { todayTW, monthTW, validDate, addDays } = require('./lib/day');
 const tg = require('./lib/telegram');
 const accor = require('./lib/accor');
 const { createAccounts, AccountError } = require('./lib/accounts');
@@ -176,6 +176,9 @@ function cached(key, fn, ttlMs = CACHE_TTL_MS) {
 // Paid lookups: the per-instance cache in front of one shared through Redis (see lib/kv.js sharedCache), so a refresh
 // on another instance or a double click costs no quota. `key` describes the query only, never the passcode.
 const shared = (key, ttlSec, fn, opts) => cached(key, () => sharedCache(kv, key, ttlSec, fn, opts), Math.min(ttlSec * 1000, CACHE_TTL_MS));
+// Cash and hotel-cash lookups can take RapidAPI's 25 s and then SerpApi's 25 s: the lock outlives both, so a second
+// instance asking the same thing waits for the answer instead of paying for it again.
+const SLOW = { waitMs: 55000, lockSec: 70 };
 const lockFor = (name, seconds) => () => takeLock(kv, name, seconds);
 // seats.aero / rooms.aero searches: the per-instance cache in front of one shared through Upstash (lib/searchcache.js),
 // so every instance and visitor reuses an answer for 30 minutes. Off without Redis and in the demo.
@@ -251,9 +254,9 @@ const alerts = alertStore && createAlerts({
   perCallMs: 2000, // per seats.aero call, when deciding whether a watch can still start in a run (live calls take 0.1–0.5 s)
   search: (params, { until } = {}) => cached('alert:' + JSON.stringify(params), async () => {
     const p = { ...params, order_by: 'lowest_mileage', take: 1000 };
-    const { items } = MOCK ? { items: mock.mockSearch(p) } : await client.search(p, { maxPages: pagesFor(p, 1, 120), until });
+    const { items, hasMore } = MOCK ? { items: mock.mockSearch(p), hasMore: false } : await client.search(p, { maxPages: pagesFor(p, 1, 120), until });
     const rows = items.map(normalizeAvailability);
-    defer(history.note(p, rows));
+    defer(history.note(p, rows, { hasMore }));
     return rows;
   }),
 });
@@ -266,14 +269,16 @@ const deals = createDeals({
   lock: (name, seconds) => takeLock(kv, name, seconds),
   defer,
   // `fresh` (the owner's 立即更新): ask seats.aero now instead of reusing this instance's last 30 minutes.
+  // One page of the cheapest rows: `hasMore` says it was cut, which the history must know (lib/history.js note).
   search: (params, { fresh = false } = {}) => {
     const key = 'deals:' + JSON.stringify(params);
     if (fresh) uncache(key);
     return cached(key, async () => {
-      const { items } = MOCK ? { items: mock.mockSearch(params) } : await client.search(params, { maxPages: 1 });
+      const { items, hasMore } = MOCK ? { items: mock.mockSearch(params), hasMore: false } : await client.search(params, { maxPages: 1 });
       const rows = items.map(normalizeAvailability);
       rows.fetchedAt = Date.now();
-      defer(history.note(params, rows));
+      rows.hasMore = hasMore;
+      defer(history.note(params, rows, { hasMore }));
       return rows;
     });
   },
@@ -288,6 +293,8 @@ const priceWatch = watchStore && createPriceWatch({
   siteUrl: SITE_URL,
   // Checks run on RapidAPI; the SerpApi reserve only matters when there is no RapidAPI key.
   quota: async () => (CASH_MODE !== 'live' || RAPIDAPI_KEY ? null : serpLeft()),
+  // A reading in US dollars is converted only at a live rate (the fallback table could fake a small drop).
+  twdPerUsd: async () => { const fx = await handleFx(); return fx.live ? fx.rates.USD : null; },
   search: async (w, { until = Infinity } = {}) => {
     const params = { departure_id: w.origin, arrival_id: w.destination, outbound_date: w.depart, return_date: w.ret || undefined, type: w.ret ? 1 : 2, travel_class: CABIN_CLASS[w.cabin], adults: w.adults, stops: w.stops || undefined };
     if (CASH_MODE === 'mock') return normalizeCash(mock.mockCash(params));
@@ -372,21 +379,23 @@ function readJson(req, limit = 10_000) {
 }
 
 // The daily run (Vercel cron, 00:10 UTC = 08:10 Taiwan, just after seats.aero's quota resets, and again at 13:10 UTC =
-// 21:10 Taiwan, which refreshes 今日好康 a second time and retries what the morning missed): deals, then price watches, then seat alerts, in one 60-second function. Each part saves item by item and
+// 21:10 Taiwan, which refreshes 今日好康 a second time and retries what the morning missed): deals, then price watches,
+// then seat alerts, then the deals digest, in one 60-second function. Each part saves item by item and
 // stops starting new items near the time limit, so a cut-off run loses nothing and the catch-up run (or tomorrow's)
 // finishes the rest; work already done today is skipped. `?part=expiry,deals,watches,alerts` runs only those parts
 // (expiry: the miles expiry reminders, which spend no quota, go first). The budgets say when each part stops starting
 // new items; `end` is when every seats.aero or cash lookup must have answered, short of Vercel's 60-second limit, so
 // a slow upstream ends in a timeout the run records instead of the function being killed mid-way.
-// digest: 今日好康每日信 (lib/dealsub.js), right after the deals, one Resend batch call; what is left goes in the evening run.
-const RUN_BUDGET = { expiry: 6e3, deals: 20e3, digest: 26e3, watches: 28e3, alerts: 48e3, end: 54e3 };
+// digest: 今日好康每日信 (lib/dealsub.js), one Resend batch call, last: the owner's own price-drop and seat-alert mails
+// go out first, since all share Resend's 100 mails a day; what is left goes in the evening run.
+const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, alerts: 48e3, digest: 50e3, end: 54e3 };
 // Whether CRON_SECRET is set (never its value), when Vercel's run last got in or was turned away, and when the last
 // one finished, how long it took and how many items failed or were left for later.
 async function cronStatus() {
   const [last, denied, done] = await Promise.all(['cron:last', 'cron:denied', 'cron:done'].map((k) => kv.get(k).catch(() => null)));
   return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null, lastDone: done?.at || null, lastDoneMs: done?.ms ?? null, lastProblems: done?.problems ?? null };
 }
-const runProblems = (out) => [out.expiry?.error, out.dealsError, out.digest?.error, out.digest?.errors ? 'digest' : '', out.watches?.error, out.alertsError].filter(Boolean).length
+const runProblems = (out) => [out.expiry?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.alertsError].filter(Boolean).length
   + [...(out.report || []), ...(out.watches?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
 async function runDaily(req, q) {
   const who = await runCaller(req);
@@ -409,13 +418,13 @@ async function runDaily(req, q) {
       if (errs.length) out.dealsError = `${errs.length} 組更新失敗：${errs[0].error}`;
     } catch (e) { out.dealsError = e.message; }
   }
-  if (parts.has('digest') && dealSub) out.digest = await dealSub.run({ deadline: t0 + RUN_BUDGET.digest, base: SITE_URL || siteBase(req) }).catch((e) => ({ error: e.message }));
   if (parts.has('watches') && priceWatch) {
     out.watches = await priceWatch.run({ deadline: t0 + RUN_BUDGET.watches, until: t0 + RUN_BUDGET.end, lock: lockFor('price-watch:run', 120) }).catch((e) => ({ error: e.message }));
   }
   if (parts.has('alerts') && alerts) {
     Object.assign(out, await alerts.run({ deadline: t0 + RUN_BUDGET.alerts, until: t0 + RUN_BUDGET.end, force: who !== 'cron', lock: lockFor('alerts:run', 120) }).catch((e) => ({ alertsError: e.message })));
   }
+  if (parts.has('digest') && dealSub) out.digest = await dealSub.run({ deadline: t0 + RUN_BUDGET.digest, base: SITE_URL || siteBase(req) }).catch((e) => ({ error: e.message }));
   if (who === 'cron') {
     // Also kept per slot with how each part went, for the owner's status line (GET /api/cron/status).
     const done = { at: new Date().toISOString(), ms: Date.now() - t0, problems: runProblems(out), parts: cronParts(out) };
@@ -921,6 +930,7 @@ async function handleExplore(q, req) {
 const ALLIANCE_PARAM = { star: 'STAR_ALLIANCE', skyteam: 'SKYTEAM', oneworld: 'ONEWORLD' };
 const ALLIANCE_KEY = Object.fromEntries(Object.entries(ALLIANCE_PARAM).map(([k, v]) => [v, k]));
 const CABIN_CLASS = { Y: 1, W: 2, J: 3, F: 4 };
+const CASH_MAX_DAYS = 335; // the fare sources only quote about 11 months ahead (the page's limit too)
 
 async function handleCash(q, req) {
   if (CASH_MODE === 'off') return { configured: false, options: [] };
@@ -929,7 +939,7 @@ async function handleCash(q, req) {
   const ret = param(q, 'return', DATE);
   const today = todayTW();
   if (depart < today) throw new BadRequest('出發日期不可早於今天');
-  if ((new Date(depart) - new Date(today)) / 864e5 > 335) throw new BadRequest('出發日期最多只能查到約 11 個月後');
+  if ((new Date(depart) - new Date(today)) / 864e5 > CASH_MAX_DAYS) throw new BadRequest('出發日期最多只能查到約 11 個月後');
   if (ret && ret < depart) throw new BadRequest('回程日期不可早於出發日期');
   const alliance = q.get('alliance');
   if (alliance && !ALLIANCE_PARAM[alliance]) throw new BadRequest('聯盟參數錯誤');
@@ -953,10 +963,10 @@ async function handleCash(q, req) {
   if (params.departure_token && !ret) throw new BadRequest('只有來回票才能查回程');
   if (params.departure_token && params.booking_token) throw new BadRequest('回程查詢和預訂選項不能同時查');
   let spent = false;
-  const raw = await shared('cash2:' + JSON.stringify(params), 1800, async () => { spent = true; return CASH_MODE === 'mock' ? mock.mockCash(params) : liveCash(params); });
+  const raw = await shared('cash2:' + JSON.stringify(params), 1800, async () => { spent = true; return CASH_MODE === 'mock' ? mock.mockCash(params) : liveCash(params); }, SLOW);
   const out = normalizeCash(raw);
   // RapidAPI sellers can answer in US dollars; `ref` is the fare picked, in NT$, to tell.
-  if (params.booking_token && raw.provider === 'rapid' && out.bookingOptions.length) Object.assign(out, rapid.sellersTwd(out.bookingOptions, (await handleFx()).rates.USD, refPrice(q)));
+  if (params.booking_token && raw.provider === 'rapid' && out.bookingOptions.length) Object.assign(out, rapid.sellersTwd(out.bookingOptions, (await handleFx()).rates.USD, refPrice(q), params.travel_class));
   return { configured: true, mock: CASH_MODE === 'mock', cached: !spent, returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), provider: raw.provider || 'mock', fallback: raw.fallback || '', ...out };
 }
 
@@ -1005,6 +1015,8 @@ async function handleCashCalendar(q, req) {
   if (!(await cashOk(req))) throw passError(req, '需要通關密碼才能查即時票價');
   const { start_date: start, end_date: end } = dateRange(q);
   if (start < todayTW()) throw new BadRequest('開始日期不可早於今天');
+  // Past the fares' horizon the grid comes back empty, yet the request is paid.
+  if (end > addDays(todayTW(), CASH_MAX_DAYS)) throw new BadRequest('結束日期最多只能查到約 11 個月後');
   if ((Date.parse(end) - Date.parse(start)) / 864e5 > 61) throw new BadRequest('一次最多查 2 個月');
   const tripDays = Number(q.get('trip_days') || 0);
   if (!Number.isInteger(tripDays) || tripDays < 0 || tripDays > 60) throw new BadRequest('天數參數錯誤');
@@ -1019,8 +1031,8 @@ async function handleCashCalendar(q, req) {
   if (CASH_MODE === 'mock') return { configured: true, mock: true, ...mock.mockCashCalendar(params) };
   if (!rapidQuery) throw new CashError('整月價格要用 RapidAPI 的 Google Flights API，網站還沒設定 RAPIDAPI_KEY', 503);
   let spent = false;
-  const body = await shared('cashcal4:' + JSON.stringify(params), 3600, () => { spent = true; return rapidQuery.calendar(params); });
-  return { configured: true, provider: 'rapid', cached: !spent, ...rapid.calendarTwd(body, (await handleFx()).rates.USD, refPrice(q)) };
+  const body = await shared('cashcal4:' + JSON.stringify(params), 3600, () => { spent = true; return rapidQuery.calendar(params); }, SLOW);
+  return { configured: true, provider: 'rapid', cached: !spent, ...rapid.calendarTwd(body, (await handleFx()).rates.USD, refPrice(q), params.travel_class) };
 }
 
 // A fare the page already shows in NT$ (`ref`), to tell whether a RapidAPI answer came back in US dollars.
@@ -1123,7 +1135,7 @@ async function handleHotelCash(q, req) {
   let spent = false;
   if (src === 'serpapi' && serpHotelLookup) {
     try {
-      const body = await shared('hcash:serpapi:' + JSON.stringify(want), 1800, () => { spent = true; return serpHotelLookup(want); });
+      const body = await shared('hcash:serpapi:' + JSON.stringify(want), 1800, () => { spent = true; return serpHotelLookup(want); }, SLOW);
       return { ...body, cached: !spent, serpLeft: await serpLeft() };
     } catch (e) {
       if (!(e instanceof hotelCash.HotelCashError) || !bookingLookup) throw e;
@@ -1132,7 +1144,7 @@ async function handleHotelCash(q, req) {
   } else if (src === 'serpapi') fallback = '沒有設定 SerpApi';
   if (!bookingLookup) throw new hotelCash.HotelCashError('沒有設定飯店現金價的資料來源', 503);
   spent = false;
-  const body = await shared('hcash:booking:' + JSON.stringify(want), 1800, () => { spent = true; return bookingLookup(want); });
+  const body = await shared('hcash:booking:' + JSON.stringify(want), 1800, () => { spent = true; return bookingLookup(want); }, SLOW);
   // Booking.com may answer in another currency; convert with the same daily rates as the award taxes.
   let total = body.total;
   if (total && body.currency && body.currency !== 'TWD') {

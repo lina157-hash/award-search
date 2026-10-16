@@ -47,7 +47,7 @@ test('search includes lowest taxes per cabin for short ranges only', async () =>
 test('cash lookups require the passcode when one is set', async () => {
   process.env.CASH_PASSCODE = 'sunny';
   try {
-    const q = 'origin=TPE&destination=NRT&depart=2026-11-20';
+    const q = `origin=TPE&destination=NRT&depart=${isoIn(35)}`;
     const locked = await fetch(`${base}/api/cash?${q}`);
     assert.equal(locked.status, 401);
     assert.equal((await locked.json()).code, 'passcode');
@@ -70,51 +70,57 @@ test('fx endpoint returns TWD rates', async () => {
 
 test('alerts: add takes a baseline, run reports and mails only new seats', async () => {
   const { createAlerts, memoryStore } = require('../lib/alerts');
+  const [D1, D10] = [isoIn(46), isoIn(55)];
   const row = (id, date, seats = 2) => ({ id, date, origin: 'TPE', destination: 'YVR', source: 'aeroplan', cabins: { J: { available: true, miles: 75000, seats, airlines: 'AC', direct: true } } });
-  let rows = [row('a', '2026-12-01')];
+  let rows = [row('a', D1)];
   const mails = [];
   const al = createAlerts({ store: memoryStore(), search: async () => rows, sendEmail: async (m) => mails.push(m), siteUrl: 'https://x.test', programNames: { aeroplan: '加航 Aeroplan' } });
-  const added = await al.add({ origin: 'tpe', destination: 'YVR', start: '2026-12-01', end: '2026-12-10', cabin: 'J', pax: 2, email: 'me@example.com' });
+  const added = await al.add({ origin: 'tpe', destination: 'YVR', start: D1, end: D10, cabin: 'J', pax: 2, email: 'me@example.com' });
   assert.equal(added.found, 1);
   assert.equal((await al.list())[0].seenCount, 1);
   let r = await al.run();
   assert.deepEqual(r.report[0], { id: added.alert.id, found: 1, fresh: 0, mailed: false });
-  rows = [row('a', '2026-12-01'), row('b', '2026-12-03'), row('c', '2026-12-04', 1)];
+  rows = [row('a', D1), row('b', isoIn(48)), row('c', isoIn(49), 1)];
   r = await al.run();
   assert.deepEqual(r.report[0], { id: added.alert.id, found: 2, fresh: 1, mailed: true });
   assert.equal(mails.length, 1);
   assert.match(mails[0].subject, /新增 1 筆/);
   assert.match(mails[0].html, /加航 Aeroplan/);
   await assert.rejects(al.add({ origin: 'TPE', destination: 'YVR', start: '2020-01-01', cabin: 'J' }), /日期已經過了/);
+  // The Taiwan date (`today`, injectable) decides what has passed.
+  const later = createAlerts({ store: memoryStore([{ id: 'p', origin: 'TPE', destination: 'YVR', start: D1, end: D10, cabin: 'J', seen: {} }]), search: async () => rows, today: () => isoIn(56) });
+  assert.deepEqual((await later.run()).report, [{ id: 'p', expired: true }]);
+  await assert.rejects(later.add({ origin: 'TPE', destination: 'YVR', start: D1, end: D10, cabin: 'J' }), /日期已經過了/);
   await al.remove(added.alert.id);
   assert.equal((await al.list()).length, 0);
 });
 
 test('alerts: only the chosen programs, and only flights flown entirely by the chosen airlines', async () => {
   const { createAlerts, memoryStore } = require('../lib/alerts');
-  const row = (id, source, airlines) => ({ id, date: '2026-12-01', origin: 'TPE', destination: 'PVG', source, cabins: { J: { available: true, miles: 30000, seats: 2, airlines, direct: !airlines.includes(',') } } });
+  const [D1, D10] = [isoIn(46), isoIn(55)];
+  const row = (id, source, airlines) => ({ id, date: D1, origin: 'TPE', destination: 'PVG', source, cabins: { J: { available: true, miles: 30000, seats: 2, airlines, direct: !airlines.includes(',') } } });
   let rows = [row('a', 'flyingblue', 'CI'), row('b', 'jetblue', 'CI'), row('c', 'flyingblue', 'MU'), row('d', 'flyingblue', 'CI, MU')];
   const mails = [];
   const al = createAlerts({ store: memoryStore(), search: async () => rows, sendEmail: async (m) => mails.push(m), programNames: { flyingblue: '法航 Flying Blue' } });
-  const added = await al.add({ origin: 'TPE', destination: 'PVG', start: '2026-12-01', end: '2026-12-10', cabin: 'J', email: 'me@example.com', sources: ['flyingblue'], airlines: 'ci' });
+  const added = await al.add({ origin: 'TPE', destination: 'PVG', start: D1, end: D10, cabin: 'J', email: 'me@example.com', sources: ['flyingblue'], airlines: 'ci' });
   assert.deepEqual([added.alert.sources, added.alert.airlines, added.found], [['flyingblue'], ['CI'], 1]);
   rows = [...rows, row('e', 'flyingblue', 'CI'), row('f', 'delta', 'CI'), row('g', 'flyingblue', 'BR')];
   const r = await al.run();
   assert.deepEqual(r.report[0], { id: added.alert.id, found: 2, fresh: 1, mailed: true });
   assert.match(mails[0].html, /只看 法航 Flying Blue，航空公司 CI/);
-  await assert.rejects(al.add({ origin: 'TPE', destination: 'PVG', start: '2026-12-01', cabin: 'J', airlines: ['China'] }), /兩碼/);
+  await assert.rejects(al.add({ origin: 'TPE', destination: 'PVG', start: D1, cabin: 'J', airlines: ['China'] }), /兩碼/);
   // Connections welcome: one leg on a chosen airline is enough.
   const any = createAlerts({ store: memoryStore(), search: async () => rows, sendEmail: async () => {} });
-  assert.equal((await any.add({ origin: 'TPE', destination: 'PVG', start: '2026-12-01', end: '2026-12-10', cabin: 'J', sources: 'flyingblue', airlines: 'CI', anyLeg: true })).found, 3);
+  assert.equal((await any.add({ origin: 'TPE', destination: 'PVG', start: D1, end: D10, cabin: 'J', sources: 'flyingblue', airlines: 'CI', anyLeg: true })).found, 3);
   // Watches saved before these filters existed still report everything.
-  const old = createAlerts({ store: memoryStore([{ id: 'x', origin: 'TPE', destination: 'PVG', start: '2026-12-01', end: '2026-12-10', cabin: 'J', pax: 0, email: '', seen: {}, lastRun: null }]), search: async () => rows, sendEmail: async () => {} });
+  const old = createAlerts({ store: memoryStore([{ id: 'x', origin: 'TPE', destination: 'PVG', start: D1, end: D10, cabin: 'J', pax: 0, email: '', seen: {}, lastRun: null }]), search: async () => rows, sendEmail: async () => {} });
   assert.equal((await old.run()).report[0].found, rows.length);
 });
 
 test('alerts endpoints work in demo mode and honour the passcode', async () => {
   const cfg = await (await fetch(`${base}/api/config`)).json();
   assert.equal(cfg.alerts.store, true);
-  const res = await fetch(`${base}/api/alerts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ origin: 'TPE', destination: 'YVR', start: '2026-12-01', end: '2026-12-05', cabin: 'J' }) });
+  const res = await fetch(`${base}/api/alerts`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ origin: 'TPE', destination: 'YVR', start: isoIn(46), end: isoIn(50), cabin: 'J' }) });
   assert.equal(res.status, 200);
   const { alert, found } = await res.json();
   assert.ok(found > 0);
