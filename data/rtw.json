@@ -16,6 +16,7 @@
       "walletKey": "jal",
       "price": { "kind": "distance", "chartRef": "jal_partner", "basis": "flown", "max": 50000 },
       "cabins": ["Y", "J", "F"],
+      "mixedCabin": { "pricing": "highest", "extraLegCabins": ["W"], "extraWith": ["J", "F"], "text": "艙等不同時依較高艙等計價；豪華經濟艙航段可以放在商務或頭等獎勵裡，經濟艙獎勵不行", "quote": "When different classes of service are involved in a journey, the required mileage for the higher class will apply. Premium Economy Class is not eligible with an Economy Class award, but is eligible with a First Class award or Business Class award.", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/conditions.html" },
       "example": { "stops": ["TPE", "NRT", "JFK", "LHR", "HKG", "TPE"], "airlines": ["JL", "JL", "BA", "CX", "CX"] },
       "rules": {
         "carriers": { "list": ["JL", "AS", "AA", "BA", "CX", "FJ", "AY", "IB", "MH", "WY", "QF", "QR", "AT", "RJ", "UL"], "min": 2 },
@@ -74,6 +75,7 @@
         "unit": "點"
       },
       "cabins": ["Y", "W", "J", "F"],
+      "mixedCabin": { "pricing": "highest", "text": "寰宇一家獎勵混艙時，整趟依最高艙等的點數計價（條款 14.4.6）", "quote": "Where mixed-class travel is booked in a oneworld Classic Flight Reward, the whole Itinerary will be calculated using the Qantas Points level for the highest class booked.", "url": "https://www.qantas.com/au/en/frequent-flyer/discover-and-join/terms-and-conditions.html#classic-flight-rewards" },
       "example": { "stops": ["TPE", "HKG", "SYD", "MEL", "KUL", "TPE"], "airlines": ["CX", "CX", "QF", "MH", "MH"] },
       "rules": {
         "carriers": { "alliance": "oneworld", "min": 2, "notCounting": ["QF"] },
@@ -125,6 +127,7 @@
         ]
       },
       "cabins": ["Y", "J", "F"],
+      "mixedCabin": { "pricing": "highest", "text": "多段獎勵依行程中最高艙等計價（「寰宇一家」聯盟成員獎勵第 5 條），不像國泰標準獎勵依距離分攤", "cxMixLink": true, "quote": "For multiple-sector Flight Awards, the Asia Miles required to redeem such Flight Award are those of the highest class booked in any single itinerary.", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf" },
       "example": { "stops": ["TPE", "HKG", "LHR", "JFK", "LAX", "HKG", "TPE"], "airlines": ["CX", "CX", "BA", "AA", "CX", "CX"], "stays": [null, null, null, null, null, "transfer", null] },
       "rules": {
         "carriers": { "alliance": "oneworld", "min": 2, "withCX": 3 },
@@ -142,15 +145,27 @@
         "不搭國泰時要 2 家寰宇一家航空；有搭國泰時要 3 家以上（只有國泰加 1 家夥伴屬於一般標準獎勵）",
         "最多 5 次停留，另外可以轉機 2 次、開口 2 次；同一城市只能停留或開口 1 次，而且不能是出發地或目的地",
         "條款沒寫要不要回到出發國家，但哩數表是給來回（環狀）行程用的，規劃時最好回到出發國家",
-        "整趟依最高艙等計價；機票效期自開票起 12 個月"
+        "整趟依最高艙等計價（第 5 條）；機票效期自開票起 12 個月（飛行獎勵一般條件第 15 條）",
+        "共用班號的航班不能兌換，要搭實際營運的航空公司（飛行獎勵一般條件第 11 條）",
+        "條款列出可以在官網兌換的獎勵種類，沒有「寰宇一家」聯盟成員獎勵，所以要透過國泰客戶服務團隊兌換（兌換飛行獎勵第 1、2 條）"
       ],
-      "howToBook": "國泰官網（會員登入後兌換）或國泰客服。",
+      "howToBook": "國泰客戶服務團隊（條款列出的官網可兌換獎勵不包括這種獎勵）。",
       "sources": [
-        { "label": "國泰會員計劃條款 2026（寰宇一家多航空公司獎勵第 1–6 條）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "official": true, "checked": "2026-10-16" },
+        { "label": "國泰會員計劃條款 2026（寰宇一家多航空公司獎勵第 1–6 條；飛行獎勵一般條件第 11、15 條；兌換飛行獎勵第 1、2 條）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "official": true, "checked": "2026-10-16" },
         { "label": "國泰會員計劃條款 2026 中文版（「寰宇一家」聯盟成員獎勵、缺口行程）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-zhTW.pdf", "official": true, "checked": "2026-10-16" },
         { "label": "國泰官網：飛行獎勵換算表 › 「寰宇一家」聯盟成員獎勵換算表（哩數）",
           "url": "https://flights.cathaypacific.com/en_HK/redeem-flights/flight-award-chart.html#tab-ow-multi-carrier-award", "official": true, "checked": "2026-10-16" }
-      ]
+      ],
+      "tips": {
+        "label": "顏究生旅行趣：Asia Miles 環球票教學（2026-05-26 更新）",
+        "url": "https://www.scottt.org/cathay-pacific-asia-miles-round-the-world/",
+        "items": [
+          "口訣「5 停 2 轉 2 缺」：最多 5 次停留、2 次轉機、2 次開口（這條和官方條款第 3 條一致）",
+          "文章寫「不能走回頭路」：官方條款沒有這條，但規劃時盡量朝同一個方向前進比較保險",
+          "文章示範兩種玩法：一張票在亞洲飛很多段短程商務艙（10 萬哩），或排幾段長程商務艙（21 萬哩）；接不上的段落自己另外買票",
+          "文章介紹的第三方小工具 cxplanner.jayliu.net：輸入航點、設定轉機或停留，就會算出要多少哩"
+        ]
+      }
     },
     {
       "id": "mm_world",
@@ -160,6 +175,7 @@
       "walletKey": "lufthansa",
       "price": { "kind": "fixed", "Y": 195000, "J": 400000, "F": 540000 },
       "cabins": ["Y", "J", "F"],
+      "mixedCabin": { "pricing": "unstated", "text": "官方頁面和獎勵機票條款都沒寫環球獎勵能不能混艙、怎麼計價" },
       "example": { "stops": ["TPE", "MUC", "JFK", "SFO", "TPE"], "airlines": ["BR", "LH", "UA", "BR"] },
       "rules": {
         "carriers": { "alliance": "star" },
@@ -192,6 +208,7 @@
       "walletKey": "tap",
       "price": { "kind": "fixed", "Y": 450000, "J": 550000 },
       "cabins": ["Y", "J"],
+      "mixedCabin": { "pricing": "highest", "text": "不同艙等時依最高艙等計價", "quote": "In flights booked in different Classes, the number of miles charged corresponds to trips booked in the highest Class", "url": "https://www.flytap.com/en-us/miles-and-go/use-miles/trip-around-the-world" },
       "example": { "stops": ["TPE", "IST", "LIS", "EWR", "SFO", "TPE"], "airlines": ["TK", "TP", "TP", "UA", "BR"] },
       "rules": {
         "carriers": { "alliance": "star" },
@@ -230,10 +247,20 @@
     "notes": [
       "只適用標準獎勵；同行者獎勵、升級獎勵不能混艙。",
       "寰宇一家多航空公司獎勵不分攤，整趟依最高艙等計價。",
+      "標準獎勵最多可以混搭 2 家航空公司，其中一家必須是國泰（標準獎勵第 4 條）；去程、回程是不同夥伴時，各方向用該夥伴的哩數表再相加（第 5 條）。",
       "條款沒有寫同一方向同時搭國泰和夥伴航空時用哪一張表，所以這裡只算全程國泰或全程同一家夥伴。",
       "各區間的哩數是本站「亞洲萬里通哩數表」的估算值（國泰不公開哩數表），算出來也是估算；規則本身來自官方條款。"
     ],
     "source": { "label": "國泰會員計劃條款 2026：Flight Awards – Standard Awards 第 3 條", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "quote": "Standard Award allows mixed cabin redemption. The mileage requirement calculation is based on the haul of each inbound and outbound direction and the prorated ratio derived from Great Circle Distance for each sector. The mileage sum is rounded down to the nearest hundred.", "effective": "2026-01-01", "checked": "2026-10-16" },
-    "example": { "kind": "cx", "stops": ["TPE", "HKG", "LHR"], "cabins": ["J", "F"] }
+    "example": { "kind": "cx", "stops": ["TPE", "HKG", "LHR"], "cabins": ["J", "F"] },
+    "tips": {
+      "label": "顏究生旅行趣：Asia Miles 混艙教學（2026-05-26 更新）",
+      "url": "https://www.scottt.org/cathay-pacific-asia-miles-mixed-cabin/",
+      "items": [
+        "文章說混艙的標準獎勵官網訂不到，只能請國泰客服開票（官方條款沒寫混艙要怎麼訂）",
+        "省哩數的思路：同一方向各段距離相加決定區間，短段坐頭等或商務、接一段短的經濟艙，讓總距離留在較低的區間（例如短程上限 2,750 哩），整段就用較低區間的價格分攤",
+        "文章的例子：羽田→香港頭等＋香港→台北經濟，兩段共約 2,306 哩、屬短程第二類，算出來比全程頭等少將近 8,000 哩"
+      ]
+    }
   }
 }

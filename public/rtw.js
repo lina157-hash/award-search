@@ -4,6 +4,7 @@
 
 // ---------- pure logic ----------
 const RTW_CABINS = ['Y', 'W', 'J', 'F'];
+const CABIN_RANK = { Y: 0, W: 1, J: 2, F: 3 };
 const RTW_STATUS_ICON = { ok: '✓', bad: '✗', warn: '⚠', na: '・' };
 
 // IATA area of an airport: 1 Americas, 2 Europe/Africa/Middle East, 3 Asia/Pacific (Russia split at the Urals).
@@ -26,7 +27,7 @@ function rtwTrip(plan, apOf, areas) {
     const geo = a && b && a.lat != null && b.lat != null;
     legs.push({
       i: i - 1, from: pts[i - 1].code, to: pts[i].code, dist: geo ? haversineMiles(a, b) : 0, surface: Boolean(L.surface),
-      date: L.date || '', airline: String(L.airline || '').trim().toUpperCase(),
+      date: L.date || '', airline: String(L.airline || '').trim().toUpperCase(), cabin: L.cabin || '',
       area: [rtwArea(areas, a), rtwArea(areas, b)], cc: [a?.country || '', b?.country || ''],
       dlon: geo ? ((b.lon - a.lon + 540) % 360) - 180 : 0, // eastward change in longitude, -180…180
     });
@@ -112,7 +113,16 @@ function rtwChecks(prog, plan, trip, ctx) {
   const n = (k) => stays.filter((x) => x === k).length;
 
   if (trip.unknown.length) add('warn', `找不到 ${trip.unknown.join('、')} 的位置，距離與區域沒算進去`);
-  if (!prog.cabins.includes(ctx.cabin)) add('bad', `這個計畫沒有${CABIN_LABEL[ctx.cabin]}`);
+  // 混艙: ctx.cabin is the highest cabin of the legs (what every program here prices); ctx.legCabins the cabin of each leg.
+  const MC = prog.mixedCabin || {};
+  const used = [...new Set((ctx.legCabins || []).filter(Boolean))];
+  if (!prog.cabins.includes(ctx.cabin)) {
+    if (MC.extraLegCabins?.includes(ctx.cabin)) add('bad', `${CABIN_LABEL[ctx.cabin]}航段只能放在${MC.extraWith.map((c) => CABIN_LABEL[c]).join('或')}獎勵裡，不能單獨兌換`);
+    else add('bad', `這個計畫沒有${CABIN_LABEL[ctx.cabin]}`);
+  } else if (used.length > 1) {
+    if (MC.pricing === 'highest') add('ok', `混艙：整趟依最高艙等（${CABIN_LABEL[ctx.cabin]}）計價`);
+    else add('warn', `混艙：官方規則沒寫能不能混艙、怎麼計價，這裡先用最高艙等（${CABIN_LABEL[ctx.cabin]}）的價格（我推測）`);
+  }
   const max = prog.price.max;
   if (max) {
     const { d, back } = rtwDistance(prog, trip);
@@ -213,6 +223,21 @@ function rtwChecks(prog, plan, trip, ctx) {
       else if (!outside.length) add('ok', '每段都是可搭的航空公司');
     }
   }
+  // Route data (rtw-routes.json): legs no allowed airline flies nonstop, and airlines picked for a leg they don't fly.
+  if (ctx.routes && flights.length) {
+    const allowed = rtwCarriers(prog, ctx.members);
+    const none = [];
+    const off = [];
+    for (const l of flights) {
+      if (!pts[l.i].ap || !pts[l.i + 1].ap) continue;
+      const x = rtwLegAir(ctx.routes, l.from, l.to, allowed);
+      if (!x.flying.length) none.push(`${l.from}→${l.to}`);
+      else if (allowed.includes(l.airline) && !x.flying.includes(l.airline)) off.push(`${l.from}→${l.to}（${l.airline}）`);
+    }
+    if (none.length) add('warn', `${none.join('、')}：航線資料裡沒有可搭的航空公司直飛這段（資料可能不完整；也可以中途轉機或改成開口）`);
+    if (off.length) add('warn', `${off.join('、')}：航線資料裡這家航空公司沒有直飛這段`);
+    if (!none.length && !off.length) add('ok', '每段都有可搭的航空公司直飛紀錄');
+  }
   const dated = flights.filter((l) => /^\d{4}-\d{2}-\d{2}$/.test(l.date));
   if (R.validity || R.minDays) {
     if (!dated.length) add('na', '填上每段日期，就能檢查效期');
@@ -250,6 +275,56 @@ function rtwChecks(prog, plan, trip, ctx) {
 function rtwCarriers(prog, members) {
   const c = prog.rules?.carriers || {};
   return c.list || members[c.alliance || prog.alliance] || [];
+}
+
+// ---- 航線資料 (data/rtw-routes.json, fetched when the page opens): which airlines fly each airport pair nonstop ----
+// raw.routes holds each pair once, under the code that sorts first: { HKG: 'NRT:CXJLNH TPE:BRCX' } (two-letter codes).
+// → { pairs: Map('HKG NRT' → ['CX', 'JL', 'NH']), from: Map('HKG' → Map('NRT' → [...])), source }
+const rtwPairKey = (a, b) => (a < b ? `${a} ${b}` : `${b} ${a}`);
+function rtwRouteIndex(raw) {
+  const pairs = new Map();
+  const from = new Map();
+  const link = (a, b, list) => { if (!from.has(a)) from.set(a, new Map()); from.get(a).set(b, list); };
+  for (const [a, s] of Object.entries(raw?.routes || {})) {
+    for (const e of String(s).split(' ')) {
+      const [b, codes] = e.split(':');
+      const list = codes?.match(/[A-Z0-9]{2}/g);
+      if (!/^[A-Z]{3}$/.test(b || '') || !list) continue;
+      pairs.set(rtwPairKey(a, b), list);
+      link(a, b, list);
+      link(b, a, list);
+    }
+  }
+  return { pairs, from, source: raw?.source || null };
+}
+
+// One leg: the allowed airlines that fly it nonstop (in the program's order) and the other alliance airlines that do.
+function rtwLegAir(index, from, to, allowed) {
+  if (!index) return null;
+  const list = index.pairs.get(rtwPairKey(from, to)) || [];
+  return { flying: allowed.filter((c) => list.includes(c)), others: list.filter((c) => !allowed.includes(c)), known: list.length > 0 };
+}
+
+// Where the program's airlines fly nonstop from an airport → [{ code, carriers }], most airlines first.
+function rtwNextStops(index, from, allowed) {
+  const m = index?.from.get(from);
+  if (!m) return [];
+  return [...m].map(([code, list]) => ({ code, carriers: allowed.filter((c) => list.includes(c)) }))
+    .filter((x) => x.carriers.length).sort((a, b) => b.carriers.length - a.carriers.length || a.code.localeCompare(b.code));
+}
+
+// 混艙: the cabins a leg may take in this program (JAL also takes a premium economy leg inside a business or first award).
+function rtwLegCabins(prog) {
+  const extra = prog.mixedCabin?.extraLegCabins || [];
+  return RTW_CABINS.filter((c) => prog.cabins.includes(c) || extra.includes(c));
+}
+// Each flight leg's cabin (its own when 混艙 is on, otherwise the trip's) and the highest one, which these programs price.
+function rtwCabinsOf(prog, trip, cabin, mixed) {
+  const opts = rtwLegCabins(prog);
+  const legs = trip.legs.map((l) => (l.surface ? null : mixed && opts.includes(l.cabin) ? l.cabin : cabin));
+  const used = [...new Set(legs.filter(Boolean))];
+  const top = used.reduce((t, c) => (CABIN_RANK[c] > CABIN_RANK[t] ? c : t), used[0] || cabin);
+  return { legs, top, mixed: used.length > 1 };
 }
 
 // Whether the program takes a surface sector (開口), and how it counts it.
@@ -316,7 +391,6 @@ function rtwArc(a, b, lon0 = a.lon, n = 32) {
 // Official rule (Cathay membership T&C 2026, Standard Awards cl. 3): the zone comes from the direction's summed sector
 // distances; each sector's cabin price in that zone is prorated by its share of the great-circle distance; the sum is
 // rounded down to the hundred. legs: [{ from, to, dist, cabin }]; o/d decide the short-haul type 2 (Japan, India…).
-const CABIN_RANK = { Y: 0, W: 1, J: 2, F: 3 };
 function cxMixQuote(am, kind, legs, o, d) {
   const total = legs.reduce((n, l) => n + (l.dist || 0), 0);
   if (!am || !total || legs.some((l) => !l.dist)) return null;
@@ -330,10 +404,20 @@ function cxMixQuote(am, kind, legs, o, d) {
   return { total, band, rows, raw, miles: Math.floor(raw / 100) * 100, top, topMiles: chart[top] };
 }
 
+// Where a direction's summed distance sits in the distance zones: the zone's range and how many more miles reach the
+// next one (the zone prices every leg, so staying under its top keeps the whole direction in the cheaper zone).
+function cxBandRoom(am, total) {
+  const i = am.bands.findIndex((b) => b.max == null || total <= b.max);
+  if (i < 0) return null;
+  const b = am.bands[i];
+  const next = am.bands[i + 1];
+  return { lo: i ? am.bands[i - 1].max + 1 : 1, hi: b.max, left: b.max == null ? null : b.max + 1 - total, next: next?.name || '' };
+}
+
 // ---------- page (browser only) ----------
 if (typeof document !== 'undefined') {
   const RTW_KEY = 'rtw:v1';
-  const rtw = { program: '', cabin: 'J', stops: [], legs: [] };
+  const rtw = { program: '', cabin: 'J', mixed: false, stops: [], legs: [] };
   try { Object.assign(rtw, JSON.parse(localStorage.getItem(RTW_KEY)) || {}); } catch { /* private window: start blank */ }
   const rtwSave = () => { try { localStorage.setItem(RTW_KEY, JSON.stringify(rtw)); } catch { /* not kept */ } };
   const rtwData = () => data.rtw;
@@ -371,6 +455,19 @@ if (typeof document !== 'undefined') {
   let rtwMap = null;
   let rtwLayer = null;
   let rtwAirOpen = -1; // the leg whose airline list is open
+  let rtwAirAll = false; // that list also shows the allowed airlines with no nonstop record
+  let rtwNextOpen = false; // the 「直飛的機場」 list under the stop picker is open
+  // data/rtw-routes.json (which airlines fly each airport pair), fetched when the page opens; until then every allowed
+  // airline is offered.
+  let rtwRoutes = null;
+  let rtwRoutesP = null;
+  let rtwRoutesFailed = false;
+  const rtwRoutesLoad = () => (rtwRoutesP ||= api('/api/data/rtwroutes').then((raw) => {
+    rtwRoutes = rtwRouteIndex(raw);
+    rtwRoutes.meta = { note: raw.note, source: raw.source };
+    rtwRoutesFailed = false;
+    rtwDraw();
+  }, () => { rtwRoutesP = null; rtwRoutesFailed = true; rtwDraw(); }));
 
   function rtwMount() {
     const host = $('#rtw-page');
@@ -396,6 +493,7 @@ if (typeof document !== 'undefined') {
       $('.rtw-progs', host).addEventListener('change', (e) => { rtw.program = e.target.value; rtwSave(); rtwPlan(); });
       rtwPlan();
       rtwMapInit();
+      rtwRoutesLoad();
     }, () => { host.dataset.ready = ''; host.innerHTML = '<p class="hint">資料載入失敗，請檢查網路後再打開一次。</p>'; });
   }
 
@@ -406,25 +504,48 @@ if (typeof document !== 'undefined') {
     if (!prog) { box.innerHTML = '<p class="hint rtw-pick-first">先選一個計畫：每個計畫的規則不同，下面的選項會跟著計畫改變。</p>'; rtwMapDraw(null); return; }
     if (!prog.cabins.includes(rtw.cabin)) rtw.cabin = prog.cabins.includes('J') ? 'J' : prog.cabins[0];
     box.innerHTML = `<h2 class="rtw-step">2. 艙等和城市</h2>
-      <fieldset class="seg" id="rtw-cabin" aria-label="艙等">${prog.cabins.map((c) => `<label><input type="radio" name="rtw-cabin" value="${c}" ${c === rtw.cabin ? 'checked' : ''}><span>${CABIN_LABEL[c].replace('艙', '')}</span></label>`).join('')}</fieldset>
+      <div class="rtw-cabin-row"><fieldset class="seg" id="rtw-cabin" aria-label="艙等">${prog.cabins.map((c) => `<label><input type="radio" name="rtw-cabin" value="${c}" ${c === rtw.cabin ? 'checked' : ''}><span>${CABIN_LABEL[c].replace('艙', '')}</span></label>`).join('')}</fieldset>
+        <label class="rtw-mixed"><input type="checkbox" id="rtw-mixed" ${rtw.mixed ? 'checked' : ''}> 混艙（每段選艙等）</label></div>
       <div id="rtw-add"></div>
+      <div id="rtw-hops"></div>
       <div id="rtw-out" aria-live="polite"></div>`;
     $('#rtw-cabin').addEventListener('change', (e) => { rtw.cabin = e.target.value; rtwSave(); rtwDraw(); });
-    rtwStopPicker($('#rtw-add'), 'rtw-next', (codes) => {
-      for (const c of codes) {
-        if (rtw.stops.length >= 20) { toast('最多 20 站'); break; }
-        if (rtw.stops.length) rtw.legs.push({ date: '', airline: '', surface: false });
-        rtw.stops.push({ code: c, stay: 'stop' });
-      }
-      rtwSave();
-      rtwDraw();
-    });
+    $('#rtw-mixed').addEventListener('change', (e) => { rtw.mixed = e.target.checked; rtwSave(); rtwDraw(); });
+    rtwStopPicker($('#rtw-add'), 'rtw-next', rtwAddStops);
+    const next = $('#rtw-hops');
+    next.addEventListener('click', (e) => { const b = e.target.closest('[data-addstop]'); if (b) rtwAddStops([b.dataset.addstop]); });
+    next.addEventListener('toggle', (e) => { rtwNextOpen = e.target.open; }, true);
     const out = $('#rtw-out');
     out.addEventListener('click', rtwClick);
     out.addEventListener('change', rtwChange);
     out.addEventListener('input', (e) => { if (e.target.matches('.rtw-air-q')) rtwAirFilter(e.target); });
     out.addEventListener('keydown', rtwAirKeys);
     rtwDraw();
+  }
+
+  function rtwAddStops(codes) {
+    for (const c of codes) {
+      if (rtw.stops.length >= 20) { toast('最多 20 站'); break; }
+      if (rtw.stops.length) rtw.legs.push({ date: '', airline: '', surface: false });
+      rtw.stops.push({ code: c, stay: 'stop' });
+    }
+    rtwSave();
+    rtwDraw();
+  }
+
+  // Under the stop picker: the airports the program's airlines fly to nonstop from the last stop, by IATA area,
+  // each a button that adds it (collapsed: it can be a hundred airports from a hub).
+  const RTW_AREA_NAME = [[3, '亞洲・大洋洲'], [2, '歐洲・非洲・中東'], [1, '美洲'], [0, '其他']];
+  function rtwNextHtml(allowed) {
+    const last = rtw.stops.at(-1)?.code;
+    if (!last || !rtwRoutes) return '';
+    const list = rtwNextStops(rtwRoutes, last, allowed);
+    if (!list.length) return `<p class="hint rtw-next-none">航線資料裡沒有這個計畫可搭的航空公司從 ${esc(last)} 直飛的紀錄。</p>`;
+    const areaOf = (c) => rtwArea(rtwData().areas, AP.byCode.get(c));
+    const groups = RTW_AREA_NAME.map(([a, name]) => [name, list.filter((x) => areaOf(x.code) === a)]).filter(([, xs]) => xs.length);
+    return `<details class="rtw-next"${rtwNextOpen ? ' open' : ''}><summary>從 ${esc(last)} 有可搭的航空公司直飛的機場（${list.length} 個）</summary>
+      ${groups.map(([name, xs]) => `<div class="rtw-next-g"><h3>${name}</h3><div class="rtw-next-list">${xs.map((x) => `<button type="button" class="rtw-next-opt" data-addstop="${x.code}" aria-label="加入 ${x.code} ${esc(rtwPlace(x.code))}（${x.carriers.join('、')}）"><b>${x.code}</b><span>${esc(rtwPlace(x.code))}</span><small>${x.carriers.join(' ')}</small></button>`).join('')}</div></div>`).join('')}
+      <p class="hint">點一下就加入下一站。依飛機愛好者整理的航班呼號紀錄，可能還列著已停飛的航線，也可能漏掉新航線。</p></details>`;
   }
 
   // The airline button of a leg: the logo and code, or 選航空公司.
@@ -434,15 +555,35 @@ if (typeof document !== 'undefined') {
     return `<button type="button" class="rtw-air${off ? ' off' : ''}" data-airbtn="${l.i}" aria-haspopup="listbox" aria-expanded="${rtwAirOpen === l.i}"
       aria-label="第 ${l.i + 1} 段航空公司：${c ? esc(`${c} ${rtwAirName(c)}`) : '還沒選'}">${c ? `${airlineLogo(c, 'xs')}<span>${esc(c)}</span>` : '<span>選航空公司</span>'}<span class="rtw-caret" aria-hidden="true">▾</span></button>`;
   }
-  function rtwAirPop(i, allowed, cur) {
+  // The airline list of a leg. With the route data: the allowed airlines that fly the leg nonstop, and the rest of the
+  // allowed airlines behind 「顯示全部可搭的航空公司」 (the data may miss a route); without it, every allowed airline.
+  function rtwAirPop(l, allowed, info) {
+    const i = l.i;
+    const cur = l.airline;
+    const opts = (codes) => `<div class="rtw-air-list" role="listbox">${codes.map((c) => `<button type="button" role="option" class="rtw-air-opt" data-air="${i}" data-code="${c}" aria-selected="${c === cur}" data-q="${esc(`${c} ${rtwAirName(c)}`.toLowerCase())}">${airlineLogo(c, 'xs')}<b>${c}</b><span>${esc(rtwAirName(c))}</span></button>`).join('')}</div>`;
+    const leg = `${esc(l.from)}→${esc(l.to)}`;
+    let body;
+    let shown = allowed.length;
+    if (!info) body = (rtwRoutesFailed ? '<p class="rtw-air-note">直飛資料沒有載入，先列出全部可搭的航空公司。</p>' : rtwRoutesP && !rtwRoutes ? '<p class="rtw-air-note">直飛資料載入中…</p>' : '') + opts(allowed);
+    else {
+      const rest = allowed.filter((c) => !info.flying.includes(c));
+      const all = rtwAirAll || (cur && rest.includes(cur));
+      const others = info.others.map((c) => `${c}${rtwAirName(c) ? ` ${rtwAirName(c)}` : ''}`).join('、');
+      const head = info.flying.length ? `<p class="rtw-air-note">${leg} 有直飛紀錄、這個計畫可搭的航空公司</p>`
+        : `<p class="rtw-air-note warn">航線資料裡沒有這個計畫可搭的航空公司直飛 ${leg}${others ? `（有直飛紀錄的是 ${esc(others)}，這個計畫不能搭）` : ''}。資料可能不完整。</p>`;
+      shown = info.flying.length + (all ? rest.length : 0);
+      body = head + (info.flying.length ? opts(info.flying) : '')
+        + (!rest.length ? '' : all ? `<p class="rtw-air-note">${info.flying.length ? '其他' : ''}可搭的航空公司（沒有直飛紀錄）</p>${opts(rest)}`
+          : `<button type="button" class="linklike rtw-air-all" data-airall>顯示全部可搭的航空公司（${allowed.length} 家）</button>`);
+    }
     return `<div class="rtw-air-pop" role="dialog" aria-label="選第 ${i + 1} 段的航空公司">
-      ${allowed.length > 8 ? '<input class="rtw-air-q" type="search" placeholder="搜尋代碼或名稱" aria-label="搜尋航空公司" autocomplete="off" spellcheck="false">' : ''}
-      <div class="rtw-air-list" role="listbox">${allowed.map((c) => `<button type="button" role="option" class="rtw-air-opt" data-air="${i}" data-code="${c}" aria-selected="${c === cur}" data-q="${esc(`${c} ${rtwAirName(c)}`.toLowerCase())}">${airlineLogo(c, 'xs')}<b>${c}</b><span>${esc(rtwAirName(c))}</span></button>`).join('')}</div>
+      ${shown > 8 ? '<input class="rtw-air-q" type="search" placeholder="搜尋代碼或名稱" aria-label="搜尋航空公司" autocomplete="off" spellcheck="false">' : ''}
+      ${body}
       ${cur ? `<button type="button" class="linklike rtw-air-clear" data-air="${i}" data-code="">不指定</button>` : ''}</div>`;
   }
   function rtwAirFilter(q) {
     const v = q.value.trim().toLowerCase();
-    $$('.rtw-air-opt', q.parentElement).forEach((b) => { b.hidden = Boolean(v) && !b.dataset.q.includes(v); });
+    $$('.rtw-air-opt', q.closest('.rtw-air-pop')).forEach((b) => { b.hidden = Boolean(v) && !b.dataset.q.includes(v); });
   }
   function rtwAirKeys(e) {
     if (rtwAirOpen < 0) return;
@@ -467,6 +608,10 @@ if (typeof document !== 'undefined') {
     const oj = rtwOpenJaw(prog);
     const n = rtw.stops.length;
     const last = n - 1;
+    const cab = rtwCabinsOf(prog, trip, rtw.cabin, rtw.mixed);
+    const legCabs = rtwLegCabins(prog);
+    const nextBox = $('#rtw-hops');
+    if (nextBox) nextBox.innerHTML = rtwNextHtml(allowed);
     // A program without surface sectors: any 開口 kept from another program goes back to a flight.
     if (!oj) trip.legs.forEach((l) => { if (l.surface) { rtw.legs[l.i].surface = false; l.surface = false; } });
     const openLabel = !oj ? '' : oj.unstated ? '開口（自行前往；官方沒寫，可能不行）' : `開口（自行前往下一站${oj.stopover ? '，算 1 次停留' : ''}）`;
@@ -482,18 +627,26 @@ if (typeof document !== 'undefined') {
       return `<li class="rtw-stop"><span class="rtw-no">${i + 1}</span><b>${esc(s.code)}</b> <span>${esc(rtwPlace(s.code))}</span>${what}
         <button type="button" class="ghost rtw-rm" data-rm="${i}" aria-label="移除 ${esc(s.code)}">✕</button></li>`;
     };
-    const legRow = (l) => `<li class="rtw-leg${l.surface ? ' surface' : ''}"><span class="rtw-dist">${l.surface ? '開口・自行前往' : '✈'} ${fmt(l.dist)} 哩</span>
-        ${l.surface ? '' : `<span class="rtw-in rtw-air-host">航空${rtwAirBtn(l, allowed)}${rtwAirOpen === l.i ? rtwAirPop(l.i, allowed, l.airline) : ''}</span>`}
+    const known = (l) => trip.pts[l.i].ap && trip.pts[l.i + 1].ap;
+    const legRow = (l) => {
+      if (l.surface) return `<li class="rtw-leg surface"><span class="rtw-dist">開口・自行前往 ${fmt(l.dist)} 哩</span>
         <label class="rtw-in">日期<input type="date" data-date="${l.i}" value="${esc(l.date)}"></label></li>`;
+      const info = known(l) ? rtwLegAir(rtwRoutes, l.from, l.to, allowed) : null;
+      const none = info && !info.flying.length ? '<span class="rtw-noair">沒有直飛紀錄</span>' : '';
+      const cabSel = rtw.mixed ? `<label class="rtw-in">艙等<select data-cab="${l.i}">${legCabs.map((c) => `<option value="${c}" ${cab.legs[l.i] === c ? 'selected' : ''}>${CABIN_LABEL[c].replace('艙', '')}</option>`).join('')}</select></label>` : '';
+      return `<li class="rtw-leg"><span class="rtw-dist">✈ ${fmt(l.dist)} 哩</span>
+        <span class="rtw-in rtw-air-host">航空${rtwAirBtn(l, allowed)}${rtwAirOpen === l.i ? rtwAirPop(l, allowed, info) : ''}</span>${none}${cabSel}
+        <label class="rtw-in">日期<input type="date" data-date="${l.i}" value="${esc(l.date)}"></label></li>`;
+    };
     const ex = prog.example ? `<button type="button" class="linklike" data-example>看範例：${esc(prog.example.stops.map((c) => rtwPlace(c) || c).join(' → '))}</button>` : '';
     const list = n ? `<ol class="rtw-list">${rtw.stops.map((s, i) => stopRow(s, i) + (i < last ? legRow(trip.legs[i]) : '')).join('')}</ol>
       <div class="rtw-tools">${n > 1 && rtw.stops[0].code !== rtw.stops[last].code ? `<button type="button" class="outline" data-close>↩ 回到起點 ${esc(rtw.stops[0].code)}</button>` : ''}<button type="button" class="linklike" data-clear>清除全部</button></div>`
       : `<p class="hint rtw-empty">還沒有城市，從上面依序加入。${ex}</p>`;
     rtwMapDraw(trip);
     if (n < 2) { out.innerHTML = list + rtwOtherHtml(d); return; }
-    const ctx = { cabin: rtw.cabin, members: rtwMembers(), cityOf: rtwCityOf, today: isoDate(0) };
+    const ctx = { cabin: cab.top, legCabins: cab.legs, members: rtwMembers(), cityOf: rtwCityOf, today: isoDate(0), routes: rtwRoutes };
     const ck = rtwChecks(prog, plan, trip, ctx);
-    const price = rtwPrice(prog, trip, rtw.cabin, data.charts);
+    const price = rtwPrice(prog, trip, cab.top, data.charts);
     const flights = trip.legs.filter((l) => !l.surface).length;
     const dirText = prog.rules.crossings ? `・${shape.dir === 'east' ? '往東' : shape.dir === 'west' ? '往西' : shape.dir === 'mixed' ? '方向有改變' : '還沒跨區'}` : '';
     const sum = `<p class="rtw-sum">總飛行距離 <b>${fmt(trip.flown)} 哩</b>${trip.surface ? `（另有開口 ${fmt(trip.surface)} 哩${oj?.inDistance ? '，這個計畫也算進總距離' : '，不算進總距離'}）` : ''}・${flights} 段航班${dirText}</p>`;
@@ -512,7 +665,7 @@ if (typeof document !== 'undefined') {
       ];
       shapeHtml = `<ol class="rtw-shape" aria-label="環球條件">${steps.map(([ok, t]) => `<li class="${ok ? 'ok' : ''}"><span aria-hidden="true">${ok ? '✓' : '○'}</span>${esc(t)}</li>`).join('')}</ol>`;
     } else {
-      const m = rtwMeter(prog, trip, rtw.cabin, data.charts);
+      const m = rtwMeter(prog, trip, cab.top, data.charts);
       if (m) {
         const pct = (x) => `${Math.min(100, (x / m.max) * 100).toFixed(1)}%`;
         const ticks = m.bands.slice(0, -1).map((b) => `<i style="left:${pct(b.upTo)}"></i>`).join('');
@@ -523,12 +676,16 @@ if (typeof document !== 'undefined') {
       }
     }
     let head;
-    if (price?.miles) head = `<b class="rtw-miles">${prog.price.secondary ? '約 ' : ''}${fmt(price.miles)} ${rtwUnit(prog)}</b><small>${CABIN_LABEL[rtw.cabin]}・${price.fixed ? '固定價' : `總距離 ${fmt(price.dist)} 哩${price.back ? `（含從終點回到出發地 ${fmt(price.back)} 哩）` : ''}，落在 ${fmt(price.band.lo)}–${fmt(price.band.hi)} 哩這一級`}・每人</small>`;
+    if (price?.miles) head = `<b class="rtw-miles">${prog.price.secondary ? '約 ' : ''}${fmt(price.miles)} ${rtwUnit(prog)}</b><small>${CABIN_LABEL[cab.top]}${cab.mixed ? '（混艙，依最高艙等）' : ''}・${price.fixed ? '固定價' : `總距離 ${fmt(price.dist)} 哩${price.back ? `（含從終點回到出發地 ${fmt(price.back)} 哩）` : ''}，落在 ${fmt(price.band.lo)}–${fmt(price.band.hi)} 哩這一級`}・每人</small>`;
     else if (price?.pending) head = `<b class="rtw-miles">價格待確認</b><small>${esc(prog.price.why)} <a href="${esc(prog.price.chartUrl)}" target="_blank" rel="noopener">國泰哩數表 ↗</a>（總距離 ${fmt(price.dist)} 哩）</small>`;
-    else head = `<b class="rtw-miles">${esc(rtwPriceText(prog, price))}</b>`;
+    else head = `<b class="rtw-miles">${esc(rtwPriceText(prog, price, cab.top))}</b>`;
     const sec = prog.price.secondary;
     if (price?.miles && sec) head += `<small class="rtw-price-note">${esc(sec.note)} ${sec.sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}・<a href="${esc(prog.price.chartUrl)}" target="_blank" rel="noopener">國泰官網哩數表 ↗</a></small>`;
     else if (price?.miles && prog.price.chartUrl) head += `<small class="rtw-price-note">哩數依官網哩數表（${esc(prog.sources.find((s) => s.url === prog.price.chartUrl)?.checked || rtwData().lastReviewed)} 核對）・<a href="${esc(prog.price.chartUrl)}" target="_blank" rel="noopener">官網哩數表 ↗</a></small>`;
+    const MC = prog.mixedCabin;
+    if (cab.mixed && MC) {
+      head += `<small class="rtw-price-note">混艙：${esc(MC.text)}${MC.url ? `（<a href="${esc(MC.url)}" target="_blank" rel="noopener">官方規則 ↗</a>）` : ''}${MC.cxMixLink ? `。只搭國泰（或國泰加 1 家夥伴）的一般獎勵機票，混艙改依距離比例分攤，比較省：<a href="#rules" data-cxmix-link>國泰混艙計算</a>` : ''}</small>`;
+    }
     const key = prog.walletKey;
     const earn = !price?.miles ? '' : transferRates(key).length ? earnHtml(key, price.miles) : '<p class="hint">台灣的信用卡點數目前沒有直接轉入這個計畫。</p>';
     const res = `<div class="rtw-price">${head}</div>${shapeHtml}${earn}
@@ -536,7 +693,10 @@ if (typeof document !== 'undefined') {
       <p class="hint">這裡只做規劃，不查座位、不用額度。訂位方式：${esc(prog.howToBook)}</p>
       <details class="rtw-rules"><summary>${esc(prog.name)}：規則重點與官方來源</summary>
         <ul>${prog.summary.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
-        <p class="hint">來源：${prog.sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>（${esc(s.checked)} 查核）`).join('、')}</p></details>`;
+        ${MC ? `<p class="hint">混艙：${esc(MC.text)}${MC.pricing === 'unstated' ? '；本站先用最高艙等的價格估（我推測）' : ''}。</p>` : ''}
+        <p class="hint">來源：${prog.sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>（${esc(s.checked)} 查核）`).join('、')}</p>
+        ${rtwTipsHtml(prog.tips)}
+        ${rtwRoutes?.meta ? `<p class="hint">航空公司選單的直飛紀錄：<a href="${esc(rtwRoutes.meta.source.url)}" target="_blank" rel="noopener">${esc(rtwRoutes.meta.source.label)}</a>（${esc(rtwRoutes.meta.source.licence)}，${esc(rtwRoutes.meta.source.fetched)} 取得）。${esc(rtwRoutes.meta.note)}</p>` : ''}</details>`;
     out.innerHTML = list + sum + res + rtwOtherHtml(d);
     if (rtwAirOpen >= 0) {
       // Bring the whole menu into view (it opens below the button), then focus its search box.
@@ -545,9 +705,16 @@ if (typeof document !== 'undefined') {
     }
   }
 
-  function rtwPriceText(p, price) {
+  // Practical tips from a third-party article, kept apart from the official rules and labelled as such.
+  function rtwTipsHtml(tips) {
+    if (!tips?.items?.length) return '';
+    return `<div class="rtw-tips"><b>第三方整理（不是官方規則，僅供參考）</b><ul>${tips.items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+      <p class="hint">出處：<a href="${esc(tips.url)}" target="_blank" rel="noopener">${esc(tips.label)}</a></p></div>`;
+  }
+
+  function rtwPriceText(p, price, cabin) {
     if (!price) return '—';
-    if (price.noCabin) return `沒有${CABIN_LABEL[rtw.cabin]}`;
+    if (price.noCabin) return `沒有${CABIN_LABEL[cabin]}`;
     if (price.pending || price.over) return price.over ? `超過 ${fmt(p.price.max)} 哩上限` : '待確認';
     return `${fmt(price.miles)} ${rtwUnit(p)}`;
   }
@@ -565,7 +732,15 @@ if (typeof document !== 'undefined') {
     if (t.dataset.airbtn != null) {
       const i = Number(t.dataset.airbtn);
       rtwAirOpen = rtwAirOpen === i ? -1 : i;
+      rtwAirAll = false;
       rtwDraw();
+      return;
+    }
+    if (t.hasAttribute('data-airall')) {
+      rtwAirAll = true;
+      const n = $$('.rtw-air-pop .rtw-air-opt').length;
+      rtwDraw();
+      $$('.rtw-air-pop .rtw-air-opt')[n]?.focus();
       return;
     }
     if (t.dataset.air != null && t.dataset.code != null) {
@@ -608,6 +783,7 @@ if (typeof document !== 'undefined') {
       // Two surface sectors in a row are one: the stop in between can't open again.
       if (t.value === 'open' && rtw.legs[i + 1]?.surface) rtw.legs[i + 1].surface = false;
     } else if (ds.date != null) rtw.legs[Number(ds.date)].date = t.value;
+    else if (ds.cab != null) rtw.legs[Number(ds.cab)].cabin = t.value;
     else return;
     rtwSave();
     rtwDraw();
@@ -684,6 +860,7 @@ if (typeof document !== 'undefined') {
         <div id="cxmix-out" aria-live="polite"></div>
         <details class="cxmix-ex"><summary>算法範例</summary>${cxMixExampleHtml(m)}</details>
         <ul class="hint cxmix-notes">${m.notes.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+        ${rtwTipsHtml(m.tips)}
       </div></details>`;
   };
 
@@ -725,8 +902,13 @@ if (typeof document !== 'undefined') {
       const q = cxMixQuote(data.asiamiles, cxMix.kind, legs, cxMix.stops[0], cxMix.stops.at(-1));
       if (!q) res = '<p class="hint">有機場找不到位置，算不出距離。</p>';
       else if (q.missing) res = `<p class="hint">${esc(cxBandLabel(q.band))}的${cxMix.kind === 'cx' ? '國泰' : '夥伴'}哩數表沒有${q.missing.map((c) => CABIN_LABEL[c]).join('、')}，算不出來。</p>`;
-      else res = `<p class="hint">各段相加 ${fmt(q.total)} 哩，屬於「${esc(cxBandLabel(q.band))}」（${cxMix.kind === 'cx' ? '國泰航班' : '夥伴航班'}表）。</p>${cxMixTable(q)}
-        <p class="hint">估算：區間哩數取自本站亞洲萬里通哩數表（媒體整理），距離是本站算的大圓距離，和國泰系統可能差幾十哩。來回時去程、回程各算一次再相加。</p>`;
+      else {
+        const room = cxBandRoom(data.asiamiles, q.total);
+        const range = room && (room.hi ? `${fmt(room.lo)}–${fmt(room.hi)} 哩` : `${fmt(room.lo)} 哩以上`);
+        const roomTxt = room ? `（${range}${room.left != null && room.next ? `；再多 ${fmt(room.left)} 哩就會跳到${room.next}` : ''}）` : '';
+        res = `<p class="hint">各段相加 ${fmt(q.total)} 哩，屬於「${esc(cxBandLabel(q.band))}」${roomTxt}，用${cxMix.kind === 'cx' ? '國泰航班' : '夥伴航班'}表。</p>${cxMixTable(q)}`
+          + `<p class="hint">估算：區間哩數取自本站亞洲萬里通哩數表（媒體整理），距離是本站算的大圓距離，和國泰系統可能差幾十哩。來回時去程、回程各算一次再相加。</p>`;
+      }
     }
     out.innerHTML = list + res;
   }
@@ -766,6 +948,19 @@ if (typeof document !== 'undefined') {
   document.addEventListener('toggle', (e) => {
     if (e.target.open && e.target.id === 'cxmix') cxMixMount(e.target);
   }, true);
+  // 「國泰混艙計算」 from the planner's price note: 規則庫 with the calculator open.
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest?.('[data-cxmix-link]')) return;
+    e.preventDefault();
+    showTab('rules');
+    setTimeout(() => {
+      const m = $('#cxmix');
+      if (!m) return;
+      m.closest('details:not(#cxmix)')?.setAttribute('open', '');
+      m.open = true;
+      m.scrollIntoView({ block: 'start' });
+    }, 80);
+  });
   // 「中停／開口組合」 in the page's lead: back to 航線查詢 with that panel open.
   document.addEventListener('click', (e) => {
     if (!e.target.closest?.('[data-open-combo]')) return;
