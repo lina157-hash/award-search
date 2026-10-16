@@ -22,7 +22,8 @@ function transferRates(program) {
   if (!m || !data.points?.calc) return [];
   const out = [];
   for (const s of data.points.calc.sources) {
-    const rates = s.rates.filter((r) => (m.to ? r.to === m.to : r.to === 'other' && r.name === m.name));
+    // A rate past its validUntil is no longer guaranteed (points6.js): left out until the data is refreshed.
+    const rates = s.rates.filter((r) => (m.to ? r.to === m.to : r.to === 'other' && r.name === m.name) && !(typeof calcRateExpired === 'function' && calcRateExpired(s, r)));
     if (!rates.length) continue;
     const best = rates.reduce((a, b) => (b.miles / b.points > a.miles / a.points ? b : a));
     out.push({ source: s, rate: best });
@@ -66,13 +67,13 @@ function promosHtml() {
   const updated = data.promos.updated ? `資料更新於 ${data.promos.updated}` : '';
   if (!list.length) return `<p class="hint promos-none">🎁 目前沒有整理到進行中的轉點加贈或買哩優惠。${updated}</p>`;
   const row = (p) => `<li><b>${esc(p.title)}</b>${p.bonusPct ? ` <span class="pill">+${p.bonusPct}%</span>` : promoCap(p) ? ` <span class="pill">${capText(promoCap(p))}</span>` : ''}${p.price ? ` <span class="pill">${esc(p.price)}</span>` : ''}
-    <small>${mmdd(p.start)} – ${p.end.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${p.end.slice(0, 4)}/` : ''}${mmdd(p.end)}${p.conditions ? `・${esc(p.conditions)}` : ''}　${CONFIDENCE_TAG[p.confidence] || ''}${(p.sources || []).slice(0, 1).map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('')}</small></li>`;
+    <small>${mmdd(p.start)} – ${p.end.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${p.end.slice(0, 4)}/` : ''}${mmdd(p.end)}${p.conditions ? `・${esc(p.conditions)}` : ''}　${CONFIDENCE_TAG[p.confidence] || ''}${(p.sources || []).slice(0, 1).map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('')}</small>${typeof promoRowExtraHtml === 'function' ? promoRowExtraHtml(p) : ''}</li>`;
   const transfer = list.filter((p) => p.type === 'transfer');
   const buy = list.filter((p) => p.type === 'buy');
   return `<details class="promos"><summary>🎁 進行中的優惠 ${list.length} 項 <small>${updated}</small></summary>
     ${transfer.length ? `<h3 class="sub">轉點加贈</h3><ul>${transfer.map(row).join('')}</ul>` : ''}
     ${buy.length ? `<h3 class="sub">買哩促銷</h3><ul>${buy.map(row).join('')}</ul>` : ''}
-    <p class="hint">送哩程的加贈已算進下方表格（標示「含加贈」）；有上限的加贈（例如每月最多 500 哩）不算進表格，只在格子裡提醒；回饋銀行點數的只列在這裡。活動多半要先登錄、有名額限制，條件以銀行或航空公司公告為準。</p></details>`;
+    <p class="hint">送哩程的加贈已算進下方表格（標示「含加贈」）；有上限的加贈（例如每月最多 500 哩）不算進表格，只在格子裡提醒；回饋銀行點數的只列在這裡。活動多半要先登錄、有名額限制，條件以銀行或航空公司公告為準。</p>${typeof promoWatchHtml === 'function' ? promoWatchHtml() : ''}</details>`;
 }
 
 // ---------- my points wallet (this browser only) ----------
@@ -101,7 +102,7 @@ function reachHotel(key) {
   const own = wallet.hotels[key] || 0;
   const banks = [];
   for (const r of data.points?.calc?.hotels?.rates || []) {
-    const pts = r.to === key && wallet.banks[r.source];
+    const pts = r.to === key && wallet.banks[r.source] && !(typeof calcRateExpired === 'function' && calcRateExpired(null, r));
     const source = pts && walletSources().find((x) => x.id === r.source);
     if (!source) continue;
     const got = calcConvert(hotelRate(r), pts, 'p2m').value || 0;

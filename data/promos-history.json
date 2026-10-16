@@ -1,0 +1,26 @@
+{
+  "note": "已結束的轉點加贈與買哩促銷（欄位同 promos.json），給點數換算的「過去 12 個月加贈 N 次、最高 +X%」與參考用。每週更新 promos.json 時，把 end 已過的活動整筆移到這裡（保留 sources），不要刪掉；endedNote 可補充結束原因。只收有官方來源的活動。",
+  "updated": "2026-10-16",
+  "promos": [
+    {
+      "id": "turkish-buy-miles-202609",
+      "type": "buy",
+      "bank": null,
+      "program": "turkish",
+      "title": "土航Miles&Smiles買哩最高加贈100%",
+      "bonusPct": 100,
+      "price": null,
+      "start": "2026-09-29",
+      "end": "2026-10-15",
+      "conditions": "單筆買5萬哩起送25%、逾10萬送50%、逾25萬送100%；不可合併計算，年購上限50萬哩",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Turkish Airlines 買哩加贈活動（繁中）",
+          "url": "https://www.turkishairlines.com/zh-tw/miles-and-smiles/campaigns/buy-miles-earn-extra-miles/",
+          "official": true
+        }
+      ]
+    }
+  ]
+}

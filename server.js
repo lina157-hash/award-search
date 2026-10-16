@@ -25,6 +25,8 @@ const lineLib = require('./lib/line');
 const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
 const { createExpiry } = require('./lib/expiry');
+const { createPromoWatch } = require('./lib/promowatch');
+const P6 = require('./public/points6.js');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 const { cronParts, cronSlot } = require('./lib/cronreport');
 const { createDealSub, DealSubError } = require('./lib/dealsub');
@@ -48,12 +50,12 @@ const kv = HAS_REDIS ? redisKv({ url: REDIS_URL, token: REDIS_TOKEN }) : memoryK
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'];
 // The page loads the bundle in two parts: `core` is what the first screen needs (form menus, airline and airport names);
 // `more` (points, charts, rules, booking notes…) is fetched when a search, a flight's details or a tab that uses it opens.
 const DATA_PARTS = {
   core: ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'],
-  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw'],
+  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'],
 };
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
@@ -481,7 +483,7 @@ function readJson(req, limit = 10_000) {
 // then seat alerts, then hotel watches, then the deals digest, in one 60-second function. Each part saves item by item and
 // stops starting new items near the time limit, so a cut-off run loses nothing and the catch-up run (or tomorrow's)
 // finishes the rest; work already done today is skipped. `?part=expiry,deals,watches,alerts` runs only those parts
-// (expiry: the miles expiry reminders, which spend no quota, go first). The budgets say when each part stops starting
+// (expiry: the miles expiry reminders, and promos: new transfer bonuses for the owner, spend no quota and go first). The budgets say when each part stops starting
 // new items; `end` is when every seats.aero or cash lookup must have answered, short of Vercel's 60-second limit, so
 // a slow upstream ends in a timeout the run records instead of the function being killed mid-way.
 // digest: 今日好康每日信 (lib/dealsub.js), one Resend batch call, last: the owner's own price-drop and seat-alert mails
@@ -496,7 +498,7 @@ async function cronStatus() {
   const [last, denied, done] = await Promise.all(['cron:last', 'cron:denied', 'cron:done'].map((k) => kv.get(k).catch(() => null)));
   return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null, lastDone: done?.at || null, lastDoneMs: done?.ms ?? null, lastProblems: done?.problems ?? null };
 }
-const runProblems = (out) => [out.expiry?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.booked?.error, out.alertsError, out.hotels?.error].filter(Boolean).length
+const runProblems = (out) => [out.expiry?.error, out.promos?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.booked?.error, out.alertsError, out.hotels?.error].filter(Boolean).length
   + [...(out.report || []), ...(out.watches?.report || []), ...(out.booked?.report || []), ...(out.hotels?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
 async function runDaily(req, q) {
   const who = await runCaller(req);
@@ -508,9 +510,11 @@ async function runDaily(req, q) {
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
-  const parts = new Set((q.get('part') || 'expiry,deals,digest,watches,booked,alerts,hotels').split(','));
+  const parts = new Set((q.get('part') || 'expiry,promos,deals,digest,watches,booked,alerts,hotels').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
   if (parts.has('expiry')) out.expiry = await expiry.run({ deadline: t0 + RUN_BUDGET.expiry, lock: lockFor('expiry:run', 60) }).catch((e) => ({ error: e.message }));
+  // New transfer bonuses for the owner: one Redis read most days, no quota.
+  if (parts.has('promos')) out.promos = await promoWatch.run({ lock: lockFor('promo-watch:run', 60) }).catch((e) => ({ error: e.message }));
   if (parts.has('deals')) {
     try {
       const d = await deals.refresh({ deadline: t0 + RUN_BUDGET.deals, skipFresh: true });
@@ -722,12 +726,25 @@ function sessionOf(req) {
   req.sessionPromise ||= accounts.session(sidOf(req)).catch(() => null);
   return req.sessionPromise;
 }
-// Miles expiry reminders (lib/expiry.js): accounts with dates in their synced wallet, plus the owner's own list.
+// Miles expiry reminders (lib/expiry.js): accounts with dates in their synced wallet, plus the owner's own list. The
+// same mail carries vouchers, what expiring miles can still buy, and 登記 reminders for transfer bonuses (points6.js).
+const POINTS6 = { promos: require('./data/promos.json').promos, sources: [...require('./data/points.json').calc.sources, ...(require('./data/points.json').calc.hotels?.extraSources || [])], holds: require('./data/holds.json') };
+const reminderWallet = (d) => (d ? { ...(d['wallet:v1'] || {}), vouchers: d['walletVouchers:v1'], reg: d['promoReg:v1'], tips: d['expiryTips:v1'] } : null);
+// Wallet keys → the official ways to keep miles alive (programs.json expiryWays; eva and ci have their own card ids).
+const EXPIRY_WAYS = Object.fromEntries(require('./data/programs.json').programs.filter((x) => x.expiryWays?.length).map((x) => [{ evainfinity: 'eva', dynastyflyer: 'ci' }[x.id] || x.id, x.expiryWays]));
 const expiry = createExpiry({
   kv, rules: require('./data/expiry.json').programs, steps: require('./data/expiry.json').reminderDays,
-  loadWallet: async (email) => (accounts ? (await accounts.getData({ email })).data['wallet:v1'] : null),
+  loadWallet: async (email) => (accounts ? reminderWallet((await accounts.getData({ email })).data) : null),
   sendEmail: alertMailer, notify: (html) => telegram.notify(html), siteUrl: SITE_URL, log: MOCK && !alertMailer ? (m) => console.log(m) : null,
+  ways: EXPIRY_WAYS, regItems: (w, today) => P6.regReminders(w, today, POINTS6),
 });
+// New transfer bonuses / buy-miles sales that touch the owner's wallet (lib/promowatch.js), checked by the daily run.
+const promoWatch = createPromoWatch({ kv, ...POINTS6, notify: (html) => telegram.notify(html), sendEmail: alertMailer, siteUrl: SITE_URL, log: MOCK && !alertMailer ? (m) => console.log(m) : null });
+async function handlePromoWatch(req) {
+  if (!(await alertsAllowed(req))) throw Object.assign(new CashError('需要通關密碼才能設定新加贈通知', 401), { code: 'passcode' });
+  if (req.method !== 'POST') return promoWatch.status();
+  try { return await promoWatch.save(await readJson(req, 10_000)); } catch (e) { throw new BadRequest(e.message); }
+}
 async function handleExpiry(req) {
   if (!(await alertsAllowed(req))) throw Object.assign(new CashError('需要通關密碼才能設定到期提醒', 401), { code: 'passcode' });
   if (req.method !== 'POST') return expiry.getOwner();
@@ -783,7 +800,7 @@ async function handleAccount(req, res, sub) {
   if (sub === 'data' && m === 'GET') return sendJson(res, 200, await accounts.getData(need()));
   if (sub === 'data' && m === 'PUT') {
     const saved = await accounts.putData(need(), body);
-    await expiry.track(sess.email, body.data?.['wallet:v1']).catch((e) => console.error('expiry track', e.message));
+    await expiry.track(sess.email, reminderWallet(body.data)).catch((e) => console.error('expiry track', e.message));
     return sendJson(res, 200, saved);
   }
   if (m !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
@@ -1443,7 +1460,7 @@ function sendBody(req, res, { body, type, etag, cache, modified }) {
 
 // The data files, read once: one by one at /api/data/<name>, or all together at /api/data/all (one request at start-up
 // instead of twelve). /api/data/all?v=<current version> never changes, so the browser may keep it for good.
-const DATA_FILE_NAMES = { sourcenames: 'source-names', airlinenames: 'airline-names', airportnames: 'airport-names-zh' };
+const DATA_FILE_NAMES = { sourcenames: 'source-names', airlinenames: 'airline-names', airportnames: 'airport-names-zh', promohistory: 'promos-history' };
 const dataFile = (name) => path.join(DATA_DIR, (DATA_FILE_NAMES[name] || name) + '.json');
 const DATA = Object.fromEntries(DATA_FILES.map((n) => {
   const body = fs.readFileSync(dataFile(n));
@@ -1536,6 +1553,10 @@ async function route(req, res) {
     if (p === '/api/expiry') {
       if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleExpiry(req));
+    }
+    if (p === '/api/promo-watch') {
+      if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handlePromoWatch(req));
     }
     if (p === '/api/cxcal') {
       if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });

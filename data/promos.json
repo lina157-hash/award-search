@@ -1,5 +1,5 @@
 {
-  "note": "Active Taiwan bank transfer bonuses and airline buy-miles sales; refreshed weekly. type transfer|buy. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only). bonusPct 0 = fixed or capped bonus that the calculator cannot apply; listed only.",
+  "note": "Active Taiwan bank transfer bonuses and airline buy-miles sales; refreshed weekly. type transfer|buy. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only). bonusPct 0 = fixed or capped bonus that the calculator cannot apply; listed only. registration true = the official page says you must register first (registerBy = last day to register), null = the official page does not say. creditBy = the transferred miles must reach the airline account by this day (only when the official page says so); the site subtracts each bank's slowest transfer time (holds.json) to show 最晚轉點日; without creditBy the transfer only has to be made by end. termsChecked = the day those fields were read from the official page. Ended promos move to promos-history.json (keep the whole entry).",
   "updated": "2026-10-15",
   "promos": [
     {
@@ -12,6 +12,11 @@
       "price": null,
       "start": "2026-10-01",
       "end": "2026-10-31",
+      "registration": true,
+      "registerBy": "2026-10-31",
+      "creditBy": "2026-11-30",
+      "bonusBy": "2026-12-31",
+      "termsChecked": "2026-10-16",
       "conditions": "須線上登記，限台灣地址會員前10萬名；適用中信、富邦、台新、玉山、凱基、AE等13家；聯名卡及小樹點除外；轉入的基本里數交易日須在10/1–10/31，且11/30前入帳才算（渣打、華南等作業較慢的銀行要提早轉）",
       "confidence": "official",
       "sources": [
@@ -39,6 +44,9 @@
       "price": null,
       "start": "2026-10-01",
       "end": "2026-10-31",
+      "registration": true,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
       "conditions": "須登錄，限2,000名正卡戶；換滿1萬哩送800、2萬哩送1,600；滿3萬哩起每萬哩再送800無上限",
       "confidence": "official",
       "sources": [
@@ -63,6 +71,9 @@
       "price": null,
       "start": "2026-09-01",
       "end": "2026-10-31",
+      "registration": null,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
       "conditions": "回饋為台新Point非哩程；每兌100點送8點，每人每月上限160點、每月限1,000名；需Richart Life會員；今年1-8月未換過任何航空哩程者，首次累積兌換滿100點另送20點（可跨航空累積，限一次）",
       "confidence": "official",
       "sources": [
@@ -89,6 +100,9 @@
       "price": null,
       "start": "2026-09-01",
       "end": "2026-10-31",
+      "registration": null,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
       "conditions": "回饋為台新Point；每兌100點送5點，每人每月上限100點、限1,000名；今年1-8月未換過任何航空哩程者，首次累積兌換滿100點另送20點（可跨航空累積，限一次）",
       "confidence": "official",
       "sources": [
@@ -115,6 +129,9 @@
       "price": null,
       "start": "2026-09-01",
       "end": "2026-10-31",
+      "registration": null,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
       "conditions": "回饋為台新Point；每兌100點送5點，每人每月上限100點、限1,000名；需Richart Life會員，先到先得；今年1-8月未換過任何航空哩程者，首次累積兌換滿100點另送20點（可跨航空累積，限一次）",
       "confidence": "official",
       "sources": [
@@ -136,6 +153,9 @@
       "price": null,
       "start": "2026-10-01",
       "end": "2026-12-31",
+      "registration": null,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
       "conditions": "限每月5日把哩程點1,000點換成1,000哩；每月前100名正卡人、每戶每月一次，每月加贈上限500哩",
       "cap": { "miles": 500, "per": "月" },
       "confidence": "official",
@@ -157,6 +177,8 @@
       "price": null,
       "start": "2026-10-08",
       "end": "2026-10-22",
+      "registration": null,
+      "termsChecked": "2026-10-16",
       "conditions": "購買或贈送哩程皆適用，最低5,000哩；買越多加贈比例越高，分級細節見官方條款",
       "confidence": "official",
       "sources": [

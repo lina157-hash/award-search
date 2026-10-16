@@ -2974,14 +2974,16 @@ function calcHtml(pts) {
   if (!sources.length) return '';
   const view = calcView(pts);
   const banks = [...new Set(view.sources.map((s) => s.bank))];
-  if (calcState.bank && !banks.includes(calcState.bank)) calcState.bank = '';
+  if (typeof calcBankDefault === 'function') calcBankDefault(calcState);
+  if (calcState.bank && calcState.bank !== '__mine' && !banks.includes(calcState.bank)) calcState.bank = '';
+  const mineOpt = Object.keys(wallet.banks).length ? `<option value="__mine" ${calcState.bank === '__mine' ? 'selected' : ''}>我的點數裡的銀行</option>` : '';
   const hotel = view.kind === 'hotel';
   return `<div class="calc" id="calc">
     <div class="calc-bar">
       ${pts.calc.hotels?.rates?.length ? `<label class="field">換成<select id="calc-kind">${[['air', '✈ 航空哩程'], ['hotel', '🏨 飯店點數']].map(([k, l]) => `<option value="${k}" ${calcState.kind === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
       <label class="field">我想算<select id="calc-mode">${[['p2m', hotel ? '手上的點數能換多少飯店點數' : '手上的點數能換多少哩'], ['m2p', hotel ? '想要的飯店點數需要多少點' : '想要的哩程需要多少點'], ['mine', '用「我的點數」各自計算']].map(([v, l]) => `<option value="${v}" ${calcState.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
       <label class="field"><span id="calc-amount-label">點數（假設每家都有這麼多）</span><input type="number" id="calc-amount" min="0" step="100" value="${calcState.amount}" inputmode="numeric"></label>
-      <label class="field">銀行<select id="calc-bank"><option value="">全部銀行</option>${banks.map((b) => `<option value="${esc(b)}" ${calcState.bank === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select></label>
+      <label class="field">銀行<select id="calc-bank"><option value="">全部銀行</option>${mineOpt}${banks.map((b) => `<option value="${esc(b)}" ${calcState.bank === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select></label>
     </div>
     <div class="calc-options">
       <div class="presets calc-presets"><span class="presets-label">快速填入</span>${CALC_PRESETS.map((n) => `<button type="button" data-n="${n}">${fmt(n)}</button>`).join('')}</div>
@@ -3032,7 +3034,9 @@ function renderCalc() {
   const unit = mode === 'p2m' ? view.unit : '點';
   const ratioText = (r) => `${fmt(r.points)} 點 = ${fmt(r.miles)} ${view.unit}`;
   // In "my points" mode each bank row converts its own balance from the wallet.
-  const sources = view.sources.filter((s) => (!bank || s.bank === bank) && (!mine || wallet.banks[s.id]));
+  const sources = view.sources.filter((s) => (!bank || (bank === '__mine' ? wallet.banks[s.id] : s.bank === bank)) && (!mine || wallet.banks[s.id]));
+  // U10: a rate past its validUntil is greyed, marked 待確認 and never the best (points6.js).
+  const expired = (s, r) => typeof calcRateExpired === 'function' && calcRateExpired(s, r);
   const amountOf = (s) => (mine ? wallet.banks[s.id] || 0 : typed);
   const amount = mine ? (sources.length ? 1 : 0) : typed;
   if (mine && !sources.length) {
@@ -3053,7 +3057,7 @@ function renderCalc() {
     return extra ? { ...out, value: out.value + extra, extra } : out;
   };
   for (const s of sources) for (const r of s.rates) {
-    if (r.to === 'other') continue;
+    if (r.to === 'other' || expired(s, r)) continue;
     const v = convert(s, r).value;
     if (!v) continue;
     if (best[r.to] == null || (mode === 'p2m' ? v > best[r.to] : v < best[r.to])) best[r.to] = v;
@@ -3068,23 +3072,41 @@ function renderCalc() {
       const tags = detail && r.secondary ? '<small class="warn">第三方比率</small>' : '';
       const extra = detail ? `<small>${ratioText(r)}</small>${out.note ? `<small>${esc(out.note)}</small>` : ''}${r.note ? `<small>${esc(r.note)}</small>` : ''}${tags}` : '';
       const capped = view.kind === 'air' && cappedPromo(s, col);
-      return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${out.extra ? `<small class="bonus">🎁 含加贈 ${fmt(out.extra)} 哩</small>` : ''}${capped ? `<small class="bonus" title="${esc(capped.title)}">🎁 ${capText(promoCap(capped))}（未算進）</small>` : ''}${extra}</td>`;
+      if (expired(s, r)) return `<td class="expired"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b><span class="tag verify" title="比率保證期限已過，不算進最划算的結果">待確認</span>${extra}</td>`;
+      const hist = view.kind === 'air' && !out.extra && typeof promoHistoryLine === 'function' ? promoHistoryLine(s, col) : '';
+      return `<td class="${out.value === best[col] && sources.length > 1 ? 'best' : ''}"><b>${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}</b>${out.extra ? `<small class="bonus">🎁 含加贈 ${fmt(out.extra)} 哩</small>` : ''}${capped ? `<small class="bonus" title="${esc(capped.title)}">🎁 ${capText(promoCap(capped))}（未算進）</small>` : ''}${hist}${extra}</td>`;
     }
     // Other programs: group identical rates so 12 airlines at 1:1 take one line.
     const groups = new Map();
     for (const r of rates) {
-      const k = [r.points, r.miles, r.minPoints, r.stepPoints, r.minMiles, r.stepMiles].join('/');
+      const k = [r.points, r.miles, r.minPoints, r.stepPoints, r.minMiles, r.stepMiles, expired(s, r)].join('/');
       if (!groups.has(k)) groups.set(k, { rate: r, names: [] });
       groups.get(k).names.push(r.name);
     }
     const lines = [...groups.values()].map(({ rate, names }) => {
       const out = calcConvert(rate, amountOf(s), mode);
       const label = names.length > 3 && !detail ? `${names.slice(0, 3).join('、')}等 ${names.length} 家` : names.join('、');
-      return `<div><b>${out.value ? `${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}` : esc(out.short)}</b><small title="${esc(names.join('、'))}">${esc(label)}${detail ? `，${ratioText(rate)}` : ''}</small></div>`;
+      return `<div${expired(s, rate) ? ' class="expired"' : ''}><b>${out.value ? `${mode === 'm2p' ? '需 ' : ''}${fmt(out.value)} ${unit}` : esc(out.short)}</b>${expired(s, rate) ? '<span class="tag verify">待確認</span>' : ''}<small title="${esc(names.join('、'))}">${esc(label)}${detail ? `，${ratioText(rate)}` : ''}</small></div>`;
     });
     return `<td class="others">${lines.join('')}</td>`;
   };
-  const rows = sources.map((s) => `<tr><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${verifyTag(s)}${untilTag(s)}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}</th>${CALC_COLS.map(([col, label]) => cell(s, col).replace('<td', `<td data-l="${esc(label)}"`)).join('')}</tr>`);
+  // U11: each row's best program in one line; phones show just that until the row is tapped (points6.js). The table's
+  // own columns come first: other programs' points are worth too differently per unit to compare by count.
+  const rowBest = (s) => {
+    const pick = (rates) => {
+      let top = null;
+      for (const r of rates) {
+        if (expired(s, r)) continue;
+        const v = (r.to === 'other' ? calcConvert(r, amountOf(s), mode) : convert(s, r)).value;
+        if (v && (!top || (mode === 'p2m' ? v > top.value : v < top.value))) top = { value: v, label: r.to === 'other' ? r.name : CALC_COLS.find(([c]) => c === r.to)?.[1] || r.to, unit, m2p: mode === 'm2p' };
+      }
+      return top;
+    };
+    return pick(s.rates.filter((r) => r.to !== 'other')) || pick(s.rates.filter((r) => r.to === 'other'));
+  };
+  const sum6 = (s) => (typeof calcRowSummaryHtml === 'function' ? calcRowSummaryHtml(rowBest(s), s.id) : '');
+  const open6 = (s) => (typeof calcRowOpen === 'function' && calcRowOpen(s.id) ? ' class="open"' : '');
+  const rows = sources.map((s) => `<tr${open6(s)}><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${verifyTag(s)}${untilTag(s)}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}${sum6(s)}</th>${CALC_COLS.map(([col, label]) => cell(s, col).replace('<td', `<td data-l="${esc(label)}"`)).join('')}</tr>`);
   table.innerHTML = `<thead><tr><th>${mine ? '我的點數可換' : mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} ${view.unit}需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`;
 }
 
@@ -3105,7 +3127,7 @@ function bindCalc() {
   };
   modeEl.addEventListener('change', sync);
   amountEl.addEventListener('input', sync);
-  $('#calc-bank').addEventListener('change', sync);
+  $('#calc-bank').addEventListener('change', () => { calcState.bankPicked = true; sync(); });
   $('#calc-detail').addEventListener('change', sync);
   $('#calc-kind')?.addEventListener('change', (e) => { calcState.kind = e.target.value; renderPoints(); });
   $$('.calc-presets button').forEach((b) => b.addEventListener('click', () => { if (calcState.mode === 'mine') modeEl.value = 'p2m'; amountEl.value = b.dataset.n; sync(); }));
@@ -3194,11 +3216,11 @@ function renderVersion(config) {
 // The data comes in two bundles, each cached per release (?v=): `core` for the first screen (index.html preloads it)
 // and `more` (points, charts, rules, booking notes) once a search, a flight's details or a tab that needs it opens.
 const DATA_CORE = ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'];
-const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw'];
-const DATA_KEY = { sourcenames: 'sourceNames', airlinenames: 'airlineNames', airportnames: 'airportNames' };
+const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'];
+const DATA_KEY = { sourcenames: 'sourceNames', airlinenames: 'airlineNames', airportnames: 'airportNames', promohistory: 'promoHistory' };
 // Niceties the page works without: Chinese airline and airport names (codes show as they are), expiry rules,
 // buy-miles prices, dated rule changes, and the fee, hold, cost-per-mile and upgrade notes.
-const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw'];
+const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'];
 async function loadPart(part, names) {
   try {
     const all = await api(`/api/data/${part}${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);

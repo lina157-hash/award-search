@@ -33,7 +33,7 @@ function mountTheme() {
 }
 
 // ---------- the owner's status line (daily run, seats.aero calls) ----------
-const CRON_PART = { expiry: '哩程到期', deals: '好康', digest: '好康信', watches: '降價', booked: '已開票', alerts: '提醒', hotels: '飯店提醒' };
+const CRON_PART = { expiry: '哩程到期', promos: '加贈通知', deals: '好康', digest: '好康信', watches: '降價', booked: '已開票', alerts: '提醒', hotels: '飯店提醒' };
 const CRON_MARK = { ok: '✓', some: '△', fail: '✗' };
 // Taiwan date and time of an ISO stamp: ['2026-10-15', '08:12'].
 const twParts = (iso) => { const s = new Date(Date.parse(iso) + 8 * 3600e3).toISOString(); return [s.slice(0, 10), s.slice(11, 16)]; };
@@ -52,7 +52,7 @@ function cronLine(st, now = Date.now()) {
   else {
     const day = twParts(last.at)[0];
     const times = runs.filter((r) => twParts(r.at)[0] === day).map((r) => twParts(r.at)[1]);
-    const parts = Object.entries(last.parts || {}).filter(([k, v]) => CRON_PART[k] && (k !== 'expiry' || v !== 'ok'));
+    const parts = Object.entries(last.parts || {}).filter(([k, v]) => CRON_PART[k] && (!['expiry', 'promos'].includes(k) || v !== 'ok'));
     run = `排程：${dayWord(day)} ${times.join('、')} 跑完${parts.length ? `（${parts.map(([k, v]) => `${CRON_PART[k]} ${CRON_MARK[v] || v}`).join(' ')}）` : ''}`;
     // Started after the last finish and not done a few minutes later: cut off (Vercel's 60-second limit).
     if (st.lastRun && st.lastRun > last.at) run += now - Date.parse(st.lastRun) > 3 * 60e3 ? `，${twParts(st.lastRun)[1]} 那次沒跑完` : '，正在跑';

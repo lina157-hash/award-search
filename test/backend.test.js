@@ -413,7 +413,7 @@ test('P01/P09: the in-instance cache shares in-flight calls; the shared cache sp
 });
 
 test('P02: /api/data/all bundles exactly the data files, cacheable for good per version', async () => {
-  const names = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw'];
+  const names = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'];
   const res = await fetch(`${base}/api/data/all`);
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('cache-control'), 'public, max-age=300, s-maxage=3600');
