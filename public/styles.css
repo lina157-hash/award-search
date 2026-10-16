@@ -1406,6 +1406,10 @@ dialog.cost-pop .hint { margin: 4px 0 10px; font-size: .8rem; }
 .cost-rows input::placeholder { color: var(--muted); opacity: .75; }
 .cost-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; color: var(--muted); }
 .upg-card { margin: 10px 0 12px; }
+.upg-air { position: relative; display: block; }
+.upg-air > .alogo { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.upg-air:has(> .alogo) select { padding-left: 40px; }
+.upg-head .alogo { margin-right: 6px; vertical-align: -4px; }
 .upg-zone { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-bottom: 6px; }
 .upg-zone b { font-size: .92rem; }
 .upg-zone small { color: var(--muted); font-size: .8rem; }
