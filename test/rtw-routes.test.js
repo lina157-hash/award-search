@@ -84,6 +84,7 @@ test('generator: mainline charter/ferry numbers and VRS positioning patterns dro
 test('generator: freighter and charter number ranges drop; stale routes listed by hand drop', () => {
   const out = build([
     row('CPA2025', 'CPA', 'RCTP-VHHH'), row('CPA2026', 'CPA', 'VHHH-RCTP'), // CX 2xxx: freighters
+    row('CPA80', 'CPA', 'VHHH-KIAD'), row('CPA81D', 'CPA', 'KIAD-VHHH'), // CX 1–99, a letter after the number too
     row('EVA632', 'EVA', 'RCTP-EGLL'), row('EVA631', 'EVA', 'EGLL-RCTP'), // BR 6xx: freighters
     row('EVA1361', 'EVA', 'RCTP-RJAA'), row('EVA1362', 'EVA', 'RJAA-RCTP'), // BR 1xxx: charters
     row('EVA195', 'EVA', 'RJAA-RCTP'), row('EVA196', 'EVA', 'RCTP-RJAA'), // a scheduled number: kept

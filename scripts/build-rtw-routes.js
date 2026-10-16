@@ -49,10 +49,10 @@ const OPERATORS = {
 const REGIONAL = new Set(['ENY', 'PDT', 'JIA', 'QXE', 'CFE', 'EFW', 'IBS', 'JLJ', 'QLK', 'QJE', 'EAQ', 'NWK', 'FJA', 'JZA', 'ROU', 'CCD', 'CNM', 'RLK', 'NZM', 'AKX', 'DLA', 'LHX']);
 // A mainline callsign numbered from this up is mostly a charter, ferry, cargo or extra section (e.g. AA 9xxx, TK 6xxx).
 const MAX_FLIGHT_NO = 5000;
-// Lower number ranges some airlines use for freighters or charters (seen in the VRS files: CX 2xxx–3xxx fly to cargo
-// hubs such as Dubai World Central and Anchorage, ET 2xxx–3xxx to Liège, BR 6xx via Anchorage, BR 1xxx–2xxx are
-// charters to small Japanese airports).
-const NON_PASSENGER = { CPA: [[2000, 4999]], ETH: [[2000, 4999]], EVA: [[600, 699], [1000, 4999]] };
+// Lower number ranges some airlines use for freighters or charters (seen in the VRS files: CX 1–99 and 2xxx–3xxx fly
+// multi-stop cargo routes via Anchorage and Dubai World Central, ET 2xxx–3xxx to Liège, BR 6xx via Anchorage, BR
+// 1xxx–2xxx are charters to small Japanese airports). A letter after the number (CX 71D) counts as the same flight.
+const NON_PASSENGER = { CPA: [[0, 99], [2000, 4999]], ETH: [[2000, 4999]], EVA: [[600, 699], [1000, 4999]] };
 // Routes that stopped flying but are still in the VRS files, checked by hand: [airline, airport, airport, why].
 const STALE = [
   ['MH', 'LAX', 'TPE', '馬航吉隆坡–台北–洛杉磯 2014 年停飛'],
@@ -64,7 +64,7 @@ const METHOD = [
   `主線航空公司只用 ${MAX_FLIGHT_NO} 號以下的航班呼號，並排除 VRS 標示的調機、包機號碼`,
   '同一家航空公司兩個方向都有紀錄才算（單向紀錄多半是改降或臨時航班）',
   '同城市的兩個機場之間（例如 NRT–HND）不算',
-  '排除貨機和包機常用的航班號碼（國泰、衣索比亞 2000–4999 號，長榮 600–699 和 1000–4999 號）',
+  '排除貨機和包機常用的航班號碼（國泰 1–99 和 2000–4999 號、衣索比亞 2000–4999 號，長榮 600–699 和 1000–4999 號）',
   `手動刪掉已知停飛的航線（${STALE.map(([c, a, b]) => `${c} ${a}–${b}`).join('、')}）`,
 ];
 
@@ -103,7 +103,8 @@ function buildRoutes(rows, { icaoToIata, keep, cityOf = (c) => c, patterns = {},
     const no = String(r.Callsign || '').slice(op.length);
     if ((patterns[op] || []).some((re) => re.test(no))) continue;
     if (!regional.has(op) && /^\d+$/.test(no) && Number(no) >= MAX_FLIGHT_NO) continue;
-    if (/^\d+$/.test(no) && (nonPassenger[op] || []).some(([lo, hi]) => Number(no) >= lo && Number(no) <= hi)) continue;
+    const num = /^\d+/.exec(no)?.[0];
+    if (num && (nonPassenger[op] || []).some(([lo, hi]) => Number(num) >= lo && Number(num) <= hi)) continue;
     // A flight with stops (HKG-TPE-NRT) is one nonstop leg per pair of neighbours.
     const codes = String(r.AirportCodes || '').split('-').map((c) => icaoToIata.get(c));
     for (let i = 1; i < codes.length; i++) {
