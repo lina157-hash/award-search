@@ -1726,3 +1726,19 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .nl-row button { padding: 10px 16px; }
   .nl-go { font-size: .86rem; }
 }
+/* ---- round 6: 截圖讀入官網結果 (N6, public/cxshot.js) ---- */
+.cxs { display: grid; gap: 6px; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 10px; background: var(--surface-2); }
+.cxs-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cxs-row .hint { flex: 1 1 220px; font-size: .8rem; }
+.cxs [data-cxs-pick] { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-height: 36px; }
+.cxs [data-cxs-pick] small { color: var(--muted); font-size: .76rem; }
+.cxs button:disabled { opacity: .6; cursor: default; }
+.cxs-stage { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.cxs-stage img { max-width: min(220px, 100%); max-height: 140px; border: 1px solid var(--border); border-radius: 8px; object-fit: contain; background: var(--surface); }
+.cxs-stage > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cxs-msg { margin: 0; font-size: .82rem; color: var(--muted); }
+.cxs-msg:empty { display: none; }
+.cxs-msg.ok { color: var(--accent); }
+.cxs-msg.err { color: var(--danger); }
+#cx-muse .cxm-paste { scroll-margin-top: 80px; } /* under the sticky top bar when 貼上截圖 scrolls to it */
+@media (max-width: 640px) { #cx-muse .cxm-paste { scroll-margin-top: 124px; } }

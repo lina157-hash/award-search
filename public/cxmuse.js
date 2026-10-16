@@ -1,10 +1,11 @@
 // 「🤖 請 AI 助理查官網」: the owner's own AI assistant (Muse, ChatGPT or Gemini agents) opens an airline's own award
 // page (國泰, 華航, 長榮, 星宇 via Alaska, 日航, ANA: data/muse-templates.json, served at /api/data/musetemplates), logs in
 // with the owner's account where needed, and reads award space day by day, which seats.aero data does not show.
-// This site never sees a password and calls no AI: it only writes the instruction (copied to the clipboard) and reads
-// back the assistant's text answer (「貼上 AI 助理的結果」), drawn with cxcal.js's calendar (CXCAL.cxView) and saved, on
-// request and with the passcode, to /api/cxcal as source 'ai' with the airline (cxlive.js's 「<航空>官網實查」 card).
-// No quota is spent. An action of the 國泰／亞洲萬里通 card (cxcard.js), shown only where the passcode is (owner).
+// This site never sees a password and calls no AI (except 貼上截圖, cxshot.js, on the owner's click): it only writes
+// the instruction (copied to the clipboard) and reads back the assistant's text answer (「貼上 AI 助理的結果」), drawn
+// with cxcal.js's calendar (CXCAL.cxView) and saved, on request and with the passcode, to /api/cxcal as source 'ai'
+// with the airline (cxlive.js's 「<航空>官網實查」 card). No quota is spent.
+// An action of the 國泰／亞洲萬里通 card (cxcard.js), shown only where the passcode is (owner).
 // Loaded after cxauto.js; uses aihelper.js's aiCopy and app.js's globals.
 
 // ---------- pure logic (test/cxmuse.test.js) ----------
@@ -410,7 +411,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
         <label>人數<input type="number" min="1" max="9" data-cxm-f="pax" value="${esc(field('pax'))}"></label>
         ${(t.extras || []).map((x) => `<label class="cxm-x"><input type="checkbox" data-cxm-x="${esc(x.id)}"${st.extras.has(x.id) ? ' checked' : ''}>${esc(x.label)}</label>`).join('')}
       </div>
-      <div class="cxm-acts"><button type="button" class="outline" data-cxm-copy="web"${text ? '' : ' disabled'}>複製查${esc(t.name)}官網的指示</button>${t.phone ? `<button type="button" class="linklike" data-cxm-copy="phone"${text ? '' : ' disabled'}>選用：請 AI 助理打電話問${esc(t.name)}客服</button>` : ''}<span class="ai-ok" role="status"></span></div>
+      <div class="cxm-acts"><button type="button" class="outline" data-cxm-copy="web"${text ? '' : ' disabled'}>複製查${esc(t.name)}官網的指示</button>${t.phone ? `<button type="button" class="linklike" data-cxm-copy="phone"${text ? '' : ' disabled'}>選用：請 AI 助理打電話問${esc(t.name)}客服</button>` : ''}<span class="ai-ok" role="status"></span></div>${window.cxShotPart?.html(t) || ''}
       <p class="hint cxm-cap"${note ? '' : ' hidden'}>${esc(note)}</p>
       <pre class="ai-text"${text ? '' : ' hidden'}>${esc(text)}</pre>`;
   }
@@ -449,6 +450,17 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     available: () => Boolean(ends().os.length && ends().ds.length),
     html: panelHtml,
     after: (el) => { if (st.parsed && el) drawCals(el); },
+    // For cxshot.js (貼上截圖): the airline and fields on show, and lines read from a screenshot, added after what is
+    // already pasted (華航 shows a week per page, so several screenshots make one calendar) and read at once.
+    fields: () => ({ air: st.air, from: field('from'), to: field('to'), start: field('start'), end: field('end'), cabin: field('cabin') }),
+    addText(lines) {
+      const box = document.querySelector('#cx-muse .cxm-paste');
+      const ta = box?.querySelector('.cxm-in');
+      if (!ta) return;
+      st.paste = box.open = true;
+      ta.value = ta.value.trim() ? `${ta.value.trimEnd()}\n${lines}` : lines;
+      parseNow(ta);
+    },
   };
 
   document.addEventListener('search:start', () => { Object.assign(st, { paste: false, text: '', parsed: null, prompt: '', mode: 'web', f: {} }); st.view.clear(); });
