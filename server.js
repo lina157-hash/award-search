@@ -23,11 +23,12 @@ const { createAdmin, AdminError } = require('./lib/admin');
 const lineLib = require('./lib/line');
 const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
-const { createExpiry } = require('./lib/expiry');
+const { createExpiry, notesFromData } = require('./lib/expiry');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 const { cronParts, cronSlot } = require('./lib/cronreport');
 const { createDealSub, DealSubError } = require('./lib/dealsub');
 const { createNlSearch, pickProvider, NlError } = require('./lib/nlsearch');
+const { createTicketParse } = require('./lib/ticketparse');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = (process.env.SEATS_AERO_API_KEY || '').trim(); // a key pasted into Vercel with a space or line break still works
@@ -44,12 +45,12 @@ const kv = HAS_REDIS ? redisKv({ url: REDIS_URL, token: REDIS_TOKEN }) : memoryK
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'trips'];
 // The page loads the bundle in two parts: `core` is what the first screen needs (form menus, airline and airport names);
 // `more` (points, charts, rules, booking notes…) is fetched when a search, a flight's details or a tab that uses it opens.
 const DATA_PARTS = {
   core: ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'],
-  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters'],
+  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'trips'],
 };
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
@@ -619,6 +620,11 @@ function sessionOf(req) {
 const expiry = createExpiry({
   kv, rules: require('./data/expiry.json').programs, steps: require('./data/expiry.json').reminderDays,
   loadWallet: async (email) => (accounts ? (await accounts.getData({ email })).data['wallet:v1'] : null),
+  // 我的行程's key dates and the passport renewal ride along with the miles (one read of the account per run).
+  loadAccount: async (email) => {
+    const d = accounts ? (await accounts.getData({ email })).data : {};
+    return { wallet: d['wallet:v1'] || null, notes: notesFromData(d) };
+  },
   sendEmail: alertMailer, notify: (html) => telegram.notify(html), siteUrl: SITE_URL, log: MOCK && !alertMailer ? (m) => console.log(m) : null,
 });
 async function handleExpiry(req) {
@@ -676,7 +682,7 @@ async function handleAccount(req, res, sub) {
   if (sub === 'data' && m === 'GET') return sendJson(res, 200, await accounts.getData(need()));
   if (sub === 'data' && m === 'PUT') {
     const saved = await accounts.putData(need(), body);
-    await expiry.track(sess.email, body.data?.['wallet:v1']).catch((e) => console.error('expiry track', e.message));
+    await expiry.track(sess.email, body.data?.['wallet:v1'], notesFromData(body.data)).catch((e) => console.error('expiry track', e.message));
     return sendJson(res, 200, saved);
   }
   if (m !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
@@ -1267,6 +1273,22 @@ const nlSearch = createNlSearch({
   limit: Number(process.env.NL_DAILY_LIMIT) || 100,
   timeoutMs: 15000,
 });
+// 貼上確認信 (我的行程, public/trips.js): an e-ticket or booking e-mail → legs, with the same model and the same owner gate
+// as 一句話搜尋; its own daily cap (TICKET_DAILY_LIMIT, 20). Nothing pasted is stored or logged.
+const ticketParse = createTicketParse({
+  mode: NL.mode, provider: NL.provider || undefined, apiKey: NL.apiKey, kv, today: () => todayTW(), airportCodes: new Set(AIRPORTS.keys()),
+  programs: [...[['eva', '長榮 無限萬哩遊'], ['ci', '華航 華夏哩程'], ['starlux', '星宇 COSMILE'], ['jal', '日航 JMB'], ['ana', '全日空 ANA']].map(([id, name]) => ({ id, name })),
+    ...Object.entries(SOURCE_NAMES).filter(([id, name], i, all) => !id.endsWith('_est') && all.findIndex(([, n]) => n === name) === i && !['eva', 'ci', 'starlux', 'jal', 'ana'].includes(id)).map(([id, name]) => ({ id, name }))],
+  limit: Number(process.env.TICKET_DAILY_LIMIT) || 20,
+});
+async function handleTicket(req) {
+  if (!fromPage(req)) throw new NlError('請從網站頁面使用貼上確認信', 403);
+  if ((await runCaller(req)) !== 'owner') {
+    throw cashPasscode() ? passError(req, '需要通關密碼才能讀確認信') : Object.assign(new CashError('要先在 Vercel 設定 CASH_PASSCODE，才能讀確認信', 401), { code: 'setup' });
+  }
+  const body = await readJson(req, 30_000);
+  return ticketParse.parse(body.text);
+}
 async function handleNl(req) {
   if (!fromPage(req)) throw new NlError('請從網站頁面使用一句話搜尋', 403);
   if ((await runCaller(req)) !== 'owner') {
@@ -1416,6 +1438,11 @@ async function route(req, res) {
       return sendJson(res, 200, await handleCxcal(req, q), req.method === 'GET' ? CACHE.short : null);
     }
     if (p === '/api/deals' && req.method === 'POST') return sendJson(res, 200, await refreshDealsNow(req));
+    if (p === '/api/nl/ticket') {
+      if (!ticketParse.enabled) return sendJson(res, 404, { error: 'not found' });
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleTicket(req));
+    }
     if (p === '/api/nl') {
       if (!nlSearch.enabled) return sendJson(res, 404, { error: 'not found' });
       if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });

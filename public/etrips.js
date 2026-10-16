@@ -164,7 +164,8 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     while (legs.length < 2) legs.push({ from: '', to: '', date: '' });
     return { legs, program: typeof x?.program === 'string' ? x.program.slice(0, 30) : 'aeroplan', cabin: /^[YWJF]$/.test(x?.cabin) ? x.cabin : 'J' };
   };
-  const combo = comboClean(store.get(COMBO_KEY, null) || { legs: [{ from: 'TPE', to: 'NRT' }, { from: 'NRT', to: 'YVR' }], program: 'aeroplan', cabin: 'J' });
+  // Starts blank (two empty legs); the examples fill it in one tap.
+  const combo = comboClean(store.get(COMBO_KEY, null) || { legs: [], program: 'aeroplan', cabin: 'J' });
   const comboSave = () => store.set(COMBO_KEY, combo);
 
   $('#plan-panel').insertAdjacentHTML('afterend', `<details class="alerts-panel" id="combo-panel">
@@ -180,26 +181,57 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   const verdictText = { ok: ['✓ 可以開成一張票', 'ok'], check: ['△ 可能可以，請電話確認', 'check'], split: ['✕ 不能開成一張票，要拆票', 'bad'], no: ['✕ 這個計畫不適用', 'bad'] };
   const sourcesHtml = (rule) => (rule.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a>`).join('　');
 
-  function renderCombo() {
+  // Four leg rows are built once with the site's airport and date pickers (each date picker adds a dialog to the page,
+  // so they are never rebuilt); renderCombo shows the rows in use and copies the legs into them.
+  const comboUi = { built: false, legs: [] };
+  function buildCombo() {
     const body = $('#combo-body');
     const programs = etData.programs;
-    if (!programs.some((p) => p.id === combo.program)) combo.program = programs[0].id;
+    const apField = (i, k, label) => `<div class="field grow ac-host"><label for="cb-${k}-${i}">${label}</label>
+      <div class="chips-box" data-for="${k}"><span class="chips"></span><input id="cb-${k}-${i}" class="chips-q" placeholder="城市或代碼" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-cb-${k}-${i}"></div>
+      <input type="hidden" name="${k}" value=""><div class="ac-list" id="ac-cb-${k}-${i}" role="listbox" aria-label="${label}建議" hidden></div></div>`;
     body.innerHTML = `<p class="hint">把想停留的城市拆成 2–4 段，看一個計畫能不能開成一張票、依固定哩程表大約要幾哩。估價不查座位、不用額度；按某一段的「找座位」才會查詢一次。</p>
       <div class="combo-ex"><span class="hint">範例</span>${(etData.examples || []).map((x, i) => `<button type="button" class="linklike" data-cex="${i}">${esc(x.label)}</button>`).join('')}</div>
-      <ol class="combo-legs">${combo.legs.map((l, i) => `<li class="combo-leg">
-        <input class="combo-ap" data-leg="${i}" data-k="from" value="${esc(l.from)}" placeholder="出發" aria-label="第 ${i + 1} 段出發地" autocapitalize="characters" spellcheck="false" maxlength="20">
-        <span aria-hidden="true">→</span>
-        <input class="combo-ap" data-leg="${i}" data-k="to" value="${esc(l.to)}" placeholder="抵達" aria-label="第 ${i + 1} 段目的地" autocapitalize="characters" spellcheck="false" maxlength="20">
-        <input type="date" class="combo-date" data-leg="${i}" value="${esc(l.date)}" min="${isoDate(0)}" max="${isoDate(MAX_AHEAD_DAYS)}" aria-label="第 ${i + 1} 段日期（選填）">
-        <button type="button" class="outline" data-seek="${i}" title="用航線查詢找這一段的獎勵位（日期前後 3 天；沒填日期查未來 1 個月），和一般搜尋一樣用 1 次 seats.aero 查詢">找座位（用 1 次）</button>
-        ${combo.legs.length > 2 ? `<button type="button" class="linklike" data-crm="${i}" aria-label="移除第 ${i + 1} 段">✕</button>` : ''}
-      </li>`).join('')}</ol>
+      <ol class="combo-legs">${[0, 1, 2, 3].map((i) => `<li class="combo-leg-row" hidden><form class="combo-leg" id="combo-leg-${i}" data-leg="${i}" autocomplete="off">
+        ${apField(i, 'from', `第 ${i + 1} 段出發`)}${apField(i, 'to', `第 ${i + 1} 段抵達`)}
+        <div class="field dp-field single"><span>日期（選填）</span><button type="button" class="dp-btn" aria-haspopup="dialog"></button><input type="hidden" name="date"></div>
+        <div class="combo-leg-acts"><button type="button" class="outline" data-seek="${i}" title="用航線查詢找這一段的獎勵位（日期前後 3 天；沒填日期查未來 1 個月），和一般搜尋一樣用 1 次 seats.aero 查詢">找座位（用 1 次查詢）</button>
+        <button type="button" class="linklike" data-crm="${i}" aria-label="移除第 ${i + 1} 段">✕</button></div>
+      </form></li>`).join('')}</ol>
       <div class="combo-opts">
-        ${combo.legs.length < 4 ? '<button type="button" class="outline" id="combo-add">＋ 加一段</button>' : ''}
-        <label class="field compact">哩程計畫<select id="combo-prog">${programs.map((p) => `<option value="${esc(p.id)}" ${p.id === combo.program ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
-        <fieldset class="seg" aria-label="艙等">${Object.entries(CABIN_SHORT).map(([k, l]) => `<label><input type="radio" name="combo-cabin" value="${k}" ${combo.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
+        <button type="button" class="outline" id="combo-add">＋ 加一段</button>
+        <button type="button" class="outline" id="combo-clear">清空</button>
+        <label class="field compact">哩程計畫<select id="combo-prog">${programs.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')}</select></label>
+        <fieldset class="seg" aria-label="艙等">${Object.entries(CABIN_SHORT).map(([k, l]) => `<label><input type="radio" name="combo-cabin" value="${k}"><span>${l}</span></label>`).join('')}</fieldset>
       </div>
       <div id="combo-out" aria-live="polite"></div>`;
+    comboUi.legs = [0, 1, 2, 3].map((i) => {
+      const form = $(`#combo-leg-${i}`);
+      return { form, from: createAirportPicker(form, 'from'), to: createAirportPicker(form, 'to'), date: createDatePicker(form, `第 ${i + 1} 段日期`, { single: true, name: 'date', field: $('.dp-field', form) }) };
+    });
+    comboUi.built = true;
+  }
+  // Copy the legs into the rows without firing their change events back into the legs.
+  let comboSyncing = false;
+  function renderCombo() {
+    const programs = etData.programs;
+    if (!programs.some((p) => p.id === combo.program)) combo.program = programs[0].id;
+    if (!comboUi.built) buildCombo();
+    comboSyncing = true;
+    comboUi.legs.forEach((u, i) => {
+      const l = combo.legs[i];
+      u.form.parentElement.hidden = !l;
+      if (!l) return;
+      if (u.from.codes().join() !== l.from) u.from.set(l.from ? [l.from] : []);
+      if (u.to.codes().join() !== l.to) u.to.set(l.to ? [l.to] : []);
+      if (u.date.value() !== l.date) u.date.set(l.date);
+      $('[data-crm]', u.form).hidden = combo.legs.length <= 2;
+    });
+    comboSyncing = false;
+    $('#combo-add').hidden = combo.legs.length >= 4;
+    $('#combo-prog').value = combo.program;
+    $$('input[name=combo-cabin]', $('#combo-body')).forEach((r) => { r.checked = r.value === combo.cabin; });
     renderComboOut();
   }
 
@@ -207,7 +239,8 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     const out = $('#combo-out');
     if (!out) return;
     const legs = combo.legs;
-    if (legs.some((l) => !l.from || !l.to)) { out.innerHTML = '<p class="hint">每一段都填好出發地和目的地（機場代碼或城市名）就會算出結果。</p>'; return; }
+    // Nothing to judge until every leg has both ends: the result stays hidden (one quiet line once something is typed).
+    if (legs.some((l) => !l.from || !l.to)) { out.innerHTML = legs.some((l) => l.from || l.to) ? '<p class="hint">每一段都填好出發地和目的地，就會算出結果。</p>' : ''; return; }
     const rule = etRule(combo.program);
     const c = combo.cabin;
     const ev = etEvaluate(rule, legs, c, comboAp);
@@ -234,26 +267,27 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   }
 
   const comboBody = $('#combo-body');
-  comboBody.addEventListener('change', async (e) => {
+  comboBody.addEventListener('submit', (e) => e.preventDefault()); // Enter in an airport box picks, never reloads
+  comboBody.addEventListener('change', (e) => {
     const t = e.target;
-    if (t.classList.contains('combo-ap')) {
-      await loadAirports();
-      const v = t.value.trim();
-      let code = /^[A-Za-z]{3}$/.test(v) ? v.toUpperCase() : '';
-      if (!code && v) {
-        const r = resolveAirports(v);
-        code = r.codes[0] || '';
-        if (!code) toast(`找不到「${v}」`);
-      }
-      const leg = combo.legs[Number(t.dataset.leg)];
-      leg[t.dataset.k] = code;
+    const legForm = t.closest('.combo-leg');
+    if (legForm && ['from', 'to'].includes(t.name)) {
+      if (comboSyncing) return;
+      const i = Number(legForm.dataset.leg);
+      const u = comboUi.legs[i];
+      const codes = u[t.name].codes();
+      // One airport per end: a second pick replaces the first.
+      if (codes.length > 1) { u[t.name].set([codes.at(-1)]); return; }
+      const code = codes[0] || '';
+      combo.legs[i][t.name] = code;
       // The next leg usually starts where this one ends.
-      const next = combo.legs[Number(t.dataset.leg) + 1];
-      if (t.dataset.k === 'to' && code && next && !next.from) next.from = code;
+      const next = combo.legs[i + 1];
+      if (t.name === 'to' && code && next && !next.from) { next.from = code; comboSyncing = true; comboUi.legs[i + 1].from.set([code]); comboSyncing = false; }
       comboSave();
-      renderCombo();
-    } else if (t.classList.contains('combo-date')) {
-      combo.legs[Number(t.dataset.leg)].date = /^\d{4}-\d{2}-\d{2}$/.test(t.value) ? t.value : '';
+      renderComboOut();
+    } else if (legForm && t.name === 'date') {
+      if (comboSyncing) return;
+      combo.legs[Number(legForm.dataset.leg)].date = /^\d{4}-\d{2}-\d{2}$/.test(t.value) ? t.value : '';
       comboSave();
     } else if (t.id === 'combo-prog') {
       combo.program = t.value;
@@ -278,6 +312,12 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     if (t.closest('#combo-add')) {
       const last = combo.legs.at(-1);
       combo.legs.push({ from: last.to || '', to: '', date: '' });
+      comboSave();
+      renderCombo();
+      return;
+    }
+    if (t.closest('#combo-clear')) {
+      Object.assign(combo, comboClean({ legs: [], program: combo.program, cabin: combo.cabin }));
       comboSave();
       renderCombo();
       return;

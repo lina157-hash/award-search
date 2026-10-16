@@ -108,6 +108,7 @@ function tripInfoHtml(info, q) {
     <ul class="ti-list">
       ${q.from ? `<li class="ti-directs" data-from="${esc(q.from)}" data-to="${esc(q.to)}"><span class="ti-k">✈️ 誰飛直航</span><span class="hint">查詢中…</span></li>` : ''}
       ${visaHtml(info.visa, cc)}
+      ${typeof passportLiHtml === 'function' ? passportLiHtml(cc, q) : ''}
       ${warningHtml(info.warning)}
       ${weatherHtml(info.weather, info.errors?.weather)}
       ${holidaysHtml(info)}
