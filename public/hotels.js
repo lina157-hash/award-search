@@ -167,7 +167,7 @@ function initHotels() {
   if (!host) return;
   Object.assign(hotelState, store.get(HOTEL_KEY, {}), { results: null, params: null });
   if (hotelState.date && hotelState.date < isoDate(0)) hotelState.date = '';
-  host.innerHTML = hotelsHtml();
+  host.innerHTML = hotelsHtml() + (typeof hwPanelHtml === 'function' ? hwPanelHtml() : ''); // 飯店點數房提醒 (hotelwatch.js)
   const form = $('#hotel-form');
   hotelDate = createDatePicker(form, '入住日期', { single: true, name: 'date', field: $('.h-date', form) });
   if (hotelState.date) hotelDate.set(hotelState.date);
@@ -195,9 +195,12 @@ async function searchHotels() {
   const out = $('#hotels-results');
   const fresh = latest('hotels');
   hotelState.results = null;
+  // With 雅高 too, a line on top says how many of each came back and jumps down to 雅高 (below all the points cards).
+  hotelState.counts = rooms.length && programs.includes('accor') && cashCfg.accor ? { rooms: null, accor: null } : null;
   status.className = 'status';
   status.textContent = rooms.length ? '搜尋中…' : '';
-  out.innerHTML = `<div id="h-rooms-out">${rooms.length ? skeleton(4) : ''}</div><div id="h-accor-out"></div><div id="h-sl-out"></div>`;
+  out.innerHTML = `<div id="h-summary" class="h-summary" hidden></div><div id="h-rooms-out">${rooms.length ? skeleton(4) : ''}</div><div id="h-accor-out"></div><div id="h-sl-out"></div>`;
+  hotelSummary();
   if (programs.includes('shangrila')) $('#h-sl-out').innerHTML = shangrilaHtml();
   const done = busy($('button[type=submit]', f), '搜尋中…');
   reveal(status);
@@ -218,12 +221,16 @@ async function searchHotels() {
     Object.assign(hotelState, { brands: new Set(), minTier: 0 });
     hotelState.params = { ...params, date, flex };
     status.textContent = '';
+    if (hotelState.counts) hotelState.counts.rooms = body.hotels.filter((h) => h.standard || h.suite).length;
+    hotelSummary();
     renderHotels();
     reveal($('#hotels-results'));
   } catch (e) {
     if (!fresh()) return;
     done();
     $('#h-rooms-out').innerHTML = '';
+    if (hotelState.counts) hotelState.counts.rooms = 'error';
+    hotelSummary();
     showError(status, e, searchHotels);
   }
 }
@@ -240,16 +247,32 @@ async function searchAccor(fresh, brands = []) {
     const [body] = await Promise.all([cashApi(`/api/hotels/accor?${q}`), loadFx()]);
     if (!fresh()) return;
     accorFilter = { ...accorFilter, brands: new Set(body.brandsOnly || []), minStars: 0 };
+    if (hotelState.counts) hotelState.counts.accor = body.found ? (body.hotels || []).length : 0;
+    hotelSummary();
     box.innerHTML = head + accorHtml(body, nights);
     bindAccorFilters(box, body, nights, fresh);
     loadCashQuota();
   } catch (e) {
     if (!fresh()) return;
+    if (hotelState.counts) hotelState.counts.accor = 'error';
+    hotelSummary();
     const msg = e.code === 'passcode' || /通關密碼/.test(e.message) ? '需要通關密碼才能查雅高飯店（會用 Booking.com 查價額度）。' : e.message;
     box.innerHTML = `${head}<p class="status error"><span>${esc(msg)}</span><button type="button" class="outline" data-accor-retry>重試</button></p>`;
     $('[data-accor-retry]', box).addEventListener('click', () => searchAccor(fresh, brands));
   }
 }
+// 「點數房 14 家・雅高 6 家（跳到雅高 ↓）」 above the results while both are part of the search; each side says so
+// while it is still loading or when it failed.
+function hotelSummary() {
+  const el = $('#h-summary');
+  const c = hotelState.counts;
+  if (!el) return;
+  el.hidden = !c;
+  if (!c) return;
+  const part = (n, name) => (n == null ? `${name}查詢中…` : n === 'error' ? `${name}沒查成` : `${name} ${fmt(n)} 家`);
+  el.innerHTML = `<span>${part(c.rooms, '點數房')}・${part(c.accor, '雅高')}</span><button type="button" class="linklike" data-h-jump>（跳到雅高 ↓）</button>`;
+}
+
 // The filters on the 雅高 list: brands (several) and lowest star rating. They only narrow what is on screen; when the
 // list was cut at 100 hotels, 「只查這些品牌」 asks Booking.com again for the chosen brands alone.
 let accorFilter = { brands: new Set(), minStars: 0, sort: 'price' };
@@ -379,6 +402,23 @@ function hotelValueHtml(source, cash, points) {
   const good = typ && v >= typ * HOTEL_GOOD;
   return `<span class="value-tag${good ? ' good' : ''}" title="${typ ? `一般估值每點約 NT$${typ.toFixed(2)}` : ''}">${good ? '☀ 好價 ' : ''}每點約 NT$${v.toFixed(2)}</span>`;
 }
+// The card's cash and 每點約: rooms.aero's cash rate for that stay, or, once 現金價比一比 has looked it up, the newer
+// price (`h.cashNow`), labelled with where it came from, so the card and the comparison below show the same 每點約.
+function cardCashHtml(h) {
+  const s = h.standard || h.suite;
+  const old = toTwd(s.cash);
+  const now = h.cashNow;
+  if (!now) return `${old ? `<small>同一晚現金約 NT$${fmt(old)}</small>` : ''}${hotelValueHtml(h.source, s.cash, s.points)}`;
+  return `<small${old ? ` title="rooms.aero 記錄的同一晚現金約 NT$${fmt(old)}"` : ''}>${now.lowest ? '現金最低' : '現金'} NT$${fmt(now.total)}（剛查・${esc(now.label)}）</small>${hotelValueHtml(h.source, { amount: now.total, currency: 'TWD' }, s.points)}`;
+}
+// The price 現金價比一比 found for this very hotel, or null (nothing found, sold out, or perhaps another property).
+function cashNowOf(h, body) {
+  if (!body.found || otherHotelNote(h, body)) return null;
+  if (body.provider === 'booking') return body.total && !body.soldOut ? { total: body.total, label: 'Booking.com', lowest: false } : null;
+  const low = body.prices?.[0];
+  return low?.total ? { total: low.total, label: `${low.source}${low.official ? '（官網）' : ''}`, lowest: true } : null;
+}
+
 // Banks plus own hotel points, through the same totals as 我的點數 (only the programs Taiwanese banks transfer into).
 function hotelAffordHtml(source, points) {
   if (walletEmpty() || !points || !hotelPrograms()[source]) return '';
@@ -430,11 +470,12 @@ function renderHotels() {
   const head = `<div class="h-bar">
     <span>${body.mock ? '<b>示範資料</b>・' : ''}${list.length < all.length ? `${fmt(all.length)} 家裡符合篩選的有 ${fmt(list.length)} 家` : `找到 ${fmt(list.length)} 家有點數房的飯店`}${body.hasMore ? '（只列前 100 家）' : ''}${p.flex ? `，每家列出 ${dayLabel(p.date)} 前後 ${p.flex} 天最便宜的一晚` : ''}</span>
     ${walletEmpty() ? '' : `<label class="switch"><input type="checkbox" id="h-afford" ${hotelState.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>`}
+    ${typeof hwBarButton === 'function' ? hwBarButton() : ''}
   </div>
+  <div id="hw-slot"></div>
   ${hotelFilterBar(all)}`;
   const card = (h) => {
     const s = h.standard || h.suite;
-    const cash = toTwd(s.cash);
     const where = [cityZh(h.city), countryName(h.country)].filter(Boolean).join('，');
     return `<article class="hotel" data-hotel="${esc(h.id)}">
       <div class="hotel-main">
@@ -444,16 +485,17 @@ function renderHotels() {
       </div>
       <div class="hotel-price">
         <b>${fmt(s.points)} 點</b><small>${h.standard ? '標準房' : '套房'}・${n} 晚・${p.flex && s.date !== p.date ? '最便宜 ' : ''}${dayLabel(s.date)} 入住</small>
-        ${cash ? `<small>同一晚現金約 NT$${fmt(cash)}</small>` : ''}
-        ${hotelValueHtml(h.source, s.cash, s.points)}
+        <div class="h-cashval">${cardCashHtml(h)}</div>
         ${h.suite && h.standard ? `<small>套房 ${fmt(h.suite.points)} 點（${dayLabel(h.suite.date)}）</small>` : ''}
         ${hotelAffordHtml(h.source, s.points)}
       </div>
       <div class="hotel-actions">
         <button type="button" class="outline" data-h-cal="${esc(h.id)}" aria-expanded="false">看每天點數</button>
         ${cashCfg.enabled ? `<button type="button" class="outline" data-h-cash="${esc(h.id)}" title="${dayLabel(s.date)} 入住 ${n} 晚，查各訂房網站和飯店官網的現金價">💵 現金價比一比（用 1–2 次查價）</button>` : ''}
+        ${typeof hwCardButton === 'function' ? hwCardButton(h) : ''}
         ${h.lastChecked ? `<small class="${isStale(h.lastChecked) ? 'stale' : 'muted'}">${ago(h.lastChecked)}更新</small>` : ''}
       </div>
+      <div class="hotel-watch" hidden></div>
       <div class="hotel-cash" hidden></div>
       <div class="hotel-cal" hidden></div>
     </article>`;
@@ -591,6 +633,13 @@ async function openHotelCash(id, card, src = 'serpapi', force = false) {
   try {
     const body = await cashApi(`/api/hotels/cash?${p}`);
     box.innerHTML = hotelCashHtml(h, body);
+    // The card's 現金/每點約 line follows the newer price (kept on the hotel, so a re-sort keeps it too).
+    const now = cashNowOf(h, body);
+    if (now) {
+      h.cashNow = now;
+      const line = $('.h-cashval', card);
+      if (line) line.innerHTML = cardCashHtml(h);
+    }
     $$('[data-h-cash-src]', box).forEach((b) => b.addEventListener('click', () => openHotelCash(id, card, b.dataset.hCashSrc, true)));
     loadCashQuota();
   } catch (e) {
@@ -599,6 +648,11 @@ async function openHotelCash(id, card, src = 'serpapi', force = false) {
 }
 
 document.addEventListener('click', (e) => {
+  if (e.target.closest?.('[data-h-jump]')) {
+    const to = $('#h-accor-out');
+    to?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    return;
+  }
   const hc = e.target.closest?.('[data-h-cash]');
   if (hc) { openHotelCash(hc.dataset.hCash, hc.closest('.hotel')); return; }
   const cal = e.target.closest?.('[data-h-cal]');

@@ -8,6 +8,7 @@ const mock = require('./lib/mock');
 const { createCashClient, normalizeCash, CashError } = require('./lib/cash');
 const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = require('./lib/alerts');
 const { createPriceWatch, RESERVE } = require('./lib/pricewatch');
+const { createHotelWatch } = require('./lib/hotelwatch');
 const { createDeals } = require('./lib/deals');
 const rooms = require('./lib/rooms');
 const rapid = require('./lib/rapidflights');
@@ -312,6 +313,37 @@ async function handleWatch(req, q) {
   return { configured: true, email: Boolean(alertMailer), max: priceWatch.max, ...(await priceWatch.list()) };
 }
 
+// 飯店點數房提醒 (lib/hotelwatch.js): same Redis, mailer and chat as the seat alerts, the demo in memory. One rooms.aero
+// call per watch a check (rooms.aero's own quota, not seats.aero's), through the same cache as 查飯店's searches, so a
+// watch saved right after a search, or a run soon after one, costs nothing. The calls count toward the visitors'
+// shared rooms.aero budget, like the jobs' seats.aero calls do.
+const hotelWatchStore = HAS_REDIS ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'hotel-watch:v1' }) : MOCK ? memoryStore(null) : null;
+const roomsJob = (fn) => { kv.incr(`budget:v1:rooms:all:${new Date().toISOString().slice(0, 10)}`, 1, 2 * 86400).catch(() => {}); return fn(); };
+const hotelWatch = hotelWatchStore && createHotelWatch({
+  store: hotelWatchStore,
+  sendEmail: alertMailer,
+  notify: notifyAll,
+  listLock: () => waitLock(kv, 'hotel-watch:v1:lock', 10),
+  siteUrl: SITE_URL,
+  search: async (w, { until } = {}) => {
+    const range = { start_date: w.start, end_date: w.end, nights: w.nights };
+    if (w.kind === 'hotel') {
+      const params = { hotel_id: w.hotelId, ...range, rate_type: 'any', take: 500 };
+      return sharedSearch('rooms:c:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeAvailability(MOCK ? mock.mockRoomsAvailability(params) : await roomsJob(() => roomsClient.availability(params, { until }))) }));
+    }
+    const params = { location: w.where, ...range, source: w.programs.join(',') || undefined, take: 100 };
+    return sharedSearch('rooms:s:' + JSON.stringify(params), async () => ({ mock: MOCK, ...rooms.normalizeSearch(MOCK ? mock.mockRoomsSearch(params) : await roomsJob(() => roomsClient.search(params, { until }))) }));
+  },
+});
+async function handleHotelWatch(req, q) {
+  if (!hotelWatch) return { configured: false, watches: [] };
+  if (!cashPasscode() && !manageOpen()) throw noPasscode('飯店點數房提醒');
+  if (!(await cashOk(req))) throw passError(req, '需要通關密碼才能管理飯店點數房提醒');
+  if (req.method === 'POST') return { configured: true, ...(await hotelWatch.add(await readJson(req))) };
+  if (req.method === 'DELETE') { await hotelWatch.remove(String(q.get('id') || '')); return { ok: true }; }
+  return { configured: true, email: Boolean(alertMailer), ...(await hotelWatch.list()) };
+}
+
 let dealsPending = null;
 // `at` (the page, after its own 立即更新): that copy or a newer one, past this instance's memory of an older one.
 const DEALS_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
@@ -380,7 +412,7 @@ function readJson(req, limit = 10_000) {
 
 // The daily run (Vercel cron, 00:10 UTC = 08:10 Taiwan, just after seats.aero's quota resets, and again at 13:10 UTC =
 // 21:10 Taiwan, which refreshes 今日好康 a second time and retries what the morning missed): deals, then price watches,
-// then seat alerts, then the deals digest, in one 60-second function. Each part saves item by item and
+// then seat alerts, then hotel watches, then the deals digest, in one 60-second function. Each part saves item by item and
 // stops starting new items near the time limit, so a cut-off run loses nothing and the catch-up run (or tomorrow's)
 // finishes the rest; work already done today is skipped. `?part=expiry,deals,watches,alerts` runs only those parts
 // (expiry: the miles expiry reminders, which spend no quota, go first). The budgets say when each part stops starting
@@ -388,15 +420,17 @@ function readJson(req, limit = 10_000) {
 // a slow upstream ends in a timeout the run records instead of the function being killed mid-way.
 // digest: 今日好康每日信 (lib/dealsub.js), one Resend batch call, last: the owner's own price-drop and seat-alert mails
 // go out first, since all share Resend's 100 mails a day; what is left goes in the evening run.
-const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, alerts: 48e3, digest: 50e3, end: 54e3 };
+// hotels (飯店點數房提醒, after the seat alerts): its rooms.aero calls must answer by the digest's turn, so the digest
+// still goes out on time.
+const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, alerts: 48e3, hotels: 49e3, digest: 50e3, end: 54e3 };
 // Whether CRON_SECRET is set (never its value), when Vercel's run last got in or was turned away, and when the last
 // one finished, how long it took and how many items failed or were left for later.
 async function cronStatus() {
   const [last, denied, done] = await Promise.all(['cron:last', 'cron:denied', 'cron:done'].map((k) => kv.get(k).catch(() => null)));
   return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null, lastDone: done?.at || null, lastDoneMs: done?.ms ?? null, lastProblems: done?.problems ?? null };
 }
-const runProblems = (out) => [out.expiry?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.alertsError].filter(Boolean).length
-  + [...(out.report || []), ...(out.watches?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
+const runProblems = (out) => [out.expiry?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.alertsError, out.hotels?.error].filter(Boolean).length
+  + [...(out.report || []), ...(out.watches?.report || []), ...(out.hotels?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
 async function runDaily(req, q) {
   const who = await runCaller(req);
   // Remembered for /api/config, so the owner can see whether Vercel's daily run gets in (CRON_SECRET set) or is turned away.
@@ -407,7 +441,7 @@ async function runDaily(req, q) {
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
-  const parts = new Set((q.get('part') || 'expiry,deals,digest,watches,alerts').split(','));
+  const parts = new Set((q.get('part') || 'expiry,deals,digest,watches,alerts,hotels').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
   if (parts.has('expiry')) out.expiry = await expiry.run({ deadline: t0 + RUN_BUDGET.expiry, lock: lockFor('expiry:run', 60) }).catch((e) => ({ error: e.message }));
   if (parts.has('deals')) {
@@ -424,6 +458,9 @@ async function runDaily(req, q) {
   if (parts.has('alerts') && alerts) {
     Object.assign(out, await alerts.run({ deadline: t0 + RUN_BUDGET.alerts, until: t0 + RUN_BUDGET.end, force: who !== 'cron', lock: lockFor('alerts:run', 120) }).catch((e) => ({ alertsError: e.message })));
   }
+  // Watches done today are skipped (one rooms.aero call a day each), except when the owner asks for this part by name
+  // (立即檢查 on 查飯店, which says what it spends); the seat alerts' 立即檢查全部 does not spend them again.
+  if (parts.has('hotels') && hotelWatch) out.hotels = await hotelWatch.run({ deadline: t0 + RUN_BUDGET.hotels, until: t0 + RUN_BUDGET.digest, force: who !== 'cron' && (q.get('part') || '').split(',').includes('hotels'), lock: lockFor('hotel-watch:run', 120) }).catch((e) => ({ error: e.message }));
   if (parts.has('digest') && dealSub) out.digest = await dealSub.run({ deadline: t0 + RUN_BUDGET.digest, base: SITE_URL || siteBase(req) }).catch((e) => ({ error: e.message }));
   if (who === 'cron') {
     // Also kept per slot with how each part went, for the owner's status line (GET /api/cron/status).
@@ -708,7 +745,7 @@ async function handleAccount(req, res, sub) {
 // Redis gets in, as its accounts live in this process's memory and are nobody's real data.
 const admin = accounts && createAdmin({
   kv, accounts, passcode: cashPasscode,
-  alertEmails: async () => [...(alerts ? (await alerts.list()).map((a) => a.email) : []), ...(priceWatch ? (await priceWatch.list()).watches.map((w) => w.email) : [])],
+  alertEmails: async () => [...(alerts ? (await alerts.list()).map((a) => a.email) : []), ...(priceWatch ? (await priceWatch.list()).watches.map((w) => w.email) : []), ...(hotelWatch ? (await hotelWatch.list()).watches.map((w) => w.email) : [])],
   digestEmails: async () => (dealSub ? dealSub.members() : []),
 });
 async function handleAdmin(req, res, sub) {
@@ -1425,6 +1462,10 @@ async function route(req, res) {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleWatch(req, q));
     }
+    if (p === '/api/hotel-watch') {
+      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleHotelWatch(req, q));
+    }
     // HEAD only where the answer is a fixed file: the data files and the static site.
     const headOk = p.startsWith('/api/data/') || !p.startsWith('/api/');
     if (req.method !== 'GET' && !(req.method === 'HEAD' && headOk)) return sendJson(res, 405, { error: 'method not allowed' });
@@ -1444,7 +1485,7 @@ async function route(req, res) {
         searchCache: await searchCache.stats(),
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true, tokenOk: telegram.configured ? (await telegram.bot()).tokenOk : null },
         cron: await cronStatus(),
-        hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK },
+        hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK, watch: Boolean(hotelWatch) },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
         repo: process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG ? `https://github.com/${process.env.VERCEL_GIT_REPO_OWNER}/${process.env.VERCEL_GIT_REPO_SLUG}` : '',

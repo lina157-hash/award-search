@@ -3233,6 +3233,7 @@ tabInit.cash = () => loadCashQuota();
   cashCfg.calendar = config.cash === 'mock' || Boolean(config.cashSources?.rapid);
   cashCfg.serp = config.cash === 'mock' || Boolean(config.cashSources?.serpapi);
   cashCfg.accor = Boolean(config.hotels?.accor);
+  cashCfg.hotelWatch = Boolean(config.hotels?.watch); // 飯店點數房提醒 (hotelwatch.js)
   watchCfg.on = Boolean(config.watch);
   loadWatches();
   Object.assign(alertCfg, config.alerts || {});
