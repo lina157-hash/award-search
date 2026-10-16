@@ -2715,3 +2715,55 @@ dialog.al-dlg[open] { display: flex; flex-direction: column; }
   .split-table td:nth-child(3) { order: 3; }
   .split-table td[data-l]::before { content: attr(data-l); display: block; color: var(--muted); font-size: .72rem; }
 }
+
+/* round 9: r9-prog */
+/* #7 Avios moves */
+.result-tools .avios-afford { flex-basis: 100%; margin: -4px 0 0; }
+.wallet-sum td small.avios-need { display: block; font-size: .74rem; }
+.earn-mine li small { display: block; color: var(--muted); font-size: .76rem; }
+.earn-avios { margin: 4px 0; }
+.earn-avios-rules { margin: 4px 0 8px; padding-left: 1.2em; }
+.earn-avios-rules li { margin: 2px 0; }
+.earn-avios-rules li small { display: block; color: var(--muted); font-size: .76rem; }
+.detour-table td small { display: block; }
+/* #9 award sales (哩程票特惠) */
+.tag.sale { background: var(--few); color: var(--few-text); white-space: nowrap; }
+.deal .tag.sale, .deal-mini .tag.sale { margin-top: 4px; align-self: flex-start; }
+.sale-note { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 10px; padding: 8px 12px; margin: 0 0 12px; background: var(--surface); }
+.sale-note p { margin: 2px 0; }
+.sale-note small, .sale-trip small { display: block; color: var(--muted); font-size: .78rem; }
+.sale-trip { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: var(--accent-soft); }
+/* #17 Great Circle Mapper link, external tools */
+.gcmap-line { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.gcmap-line a { display: inline-block; padding: 6px 0; }
+.gcmap-line small { color: var(--muted); overflow-wrap: anywhere; }
+.tag.tp { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.tool-card h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tool-card h3 a { padding: 4px 0; }
+/* #21 最近變動 */
+.recent-box ul { margin: 4px 0; }
+.recent-box li .tag { margin-right: 2px; }
+/* #27 會籍匹配 */
+.sm-card { min-width: 0; }
+.sm-card[open] .card-sum { display: none; }
+.sm-card dl { margin: 6px 0; }
+.sm-card dd ul { margin: 2px 0; padding-left: 1.2em; }
+.sm-card .sub-fold summary h4 { margin: 0; font-size: .9rem; }
+/* #28 航空公司官方特賣 */
+.cash-sales { margin: 0 0 12px; }
+.cash-sale { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--border); }
+.cash-sale:first-child { border-top: 0; }
+.cash-sale small { display: block; color: var(--muted); font-size: .8rem; }
+.sale-go { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.sale-go small { flex-basis: 100%; }
+.sale-pages li { display: flex; align-items: center; gap: 6px; }
+.sale-pages a { padding: 6px 0; }
+/* #29 看改版前 */
+.before-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 8px 0; }
+.before-toggle { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; min-height: 32px; }
+.before-bar small { color: var(--muted); }
+small.was { display: none; color: var(--muted); font-size: .76rem; white-space: nowrap; }
+.show-before small.was { display: block; }
+.show-before td:has(small.was) { background: var(--accent-soft); }
+.before-tables h4 { margin: 10px 0 4px; font-size: .92rem; }
+@media (max-width: 640px) { .before-toggle, .gcmap-line a { min-height: 44px; } }

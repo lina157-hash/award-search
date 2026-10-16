@@ -1341,7 +1341,8 @@ async function runSearch(share, pre, autoRange = false) {
   try {
     const [body] = await Promise.all([pre || api(`/api/search?${params}`), loadMore(), loadSearchScripts()]);
     // Cathay trips that connect in Hong Kong are priced by both sectors' distances, which needs the airport list.
-    if (!AP.loaded && body.results.some(amNeedsHub)) await loadAirports();
+    // So do 哩程票特惠 routed by country (features.js).
+    if (!AP.loaded && (body.results.some(amNeedsHub) || (typeof awardSaleNeedsAirports === 'function' && awardSaleNeedsAirports(body.results)))) await loadAirports();
     if (!fresh()) return;
     done();
     state.results = [...body.results, ...asiaMilesRows(body.results)];
@@ -1420,6 +1421,7 @@ function resultToolsHtml() {
     : `<span class="hint">ⓘ 產品資料為第三方整理${chosen.caveat ? `；${esc(chosen.caveat)}` : ''}</span>`;
   return `<div class="result-tools">
     <label class="switch"><input type="checkbox" id="afford-only" ${state.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>
+    ${state.affordOnly && typeof aviosAffordHtml === 'function' ? aviosAffordHtml() : ''}
     ${prods.length ? `<label class="field compact" title="${PROD_3P_TITLE}">艙位產品<select id="product-filter"><option value="">全部</option>${prods.map((p) => `<option value="${esc(p.id)}" ${state.product === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
     ${prodNote}
     ${typeof leaveToolsHtml === 'function' ? leaveToolsHtml('search') : ''}
@@ -1574,7 +1576,7 @@ function resultParts(rows) {
       ${typeof levelTagHtml === 'function' ? levelTagHtml(r, c) : ''}
       <div class="meta">${dayLabel(r.date)} · ${esc(r.origin)} → ${esc(r.destination)}</div>
       <div class="meta">${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}${typeof fleetTagHtml === 'function' ? fleetTagHtml(x.fleet, c) : ''}</div>
-      ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}
+      ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}${typeof awardSaleTag === 'function' ? awardSaleTag(r, c) : ''}
     </button>`;
   }).join('');
 
@@ -1605,7 +1607,7 @@ function renderSearch() {
     `<label><input type="radio" name="view-cabin" value="${k}" ${k === c ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
 
   const programs = [...new Set(state.results.map((r) => r.source))];
-  const release = releaseNoticeHtml(programs, state.start, state.end, state.route || '');
+  const release = releaseNoticeHtml(programs, state.start, state.end, state.route || '') + (typeof awardSaleNoticeHtml === 'function' ? awardSaleNoticeHtml(rows, c) : '');
   const matrixTitle = `<h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>`;
   if (!rows.length) {
     matrixObs?.disconnect();
@@ -1928,11 +1930,11 @@ function tripHtml(t, i) {
       <div><b>${esc(t.flightNumbers)}</b><span class="pill">${esc(CABIN_ZH[t.cabin] || t.cabin)}</span><span class="pill">${t.stops ? `轉機 ${t.stops} 次` : '直飛'}</span>${t.seats ? `<span class="pill">剩 ${t.seats} 位</span>` : ''}</div>
       <div><span class="miles">${fmt(t.miles)} 哩</span> ＋ ${taxes}${i != null ? `<button type="button" class="outline add-plan" data-plan="${i}">＋ 加入我的行程</button>` : ''}</div>
     </div>
-    ${phantomHtml(t.source, t.carriers)}${typeof mixedHtml === 'function' ? mixedHtml(t) : ''}
+    ${phantomHtml(t.source, t.carriers)}${typeof awardSaleTripHtml === 'function' ? awardSaleTripHtml(t) : ''}${typeof mixedHtml === 'function' ? mixedHtml(t) : ''}
     ${t.segments.map((s, k) => `${k ? fx?.conns[k - 1] || '' : ''}<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)}${plusDay(fx?.dep?.[k])} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${plusDay(fx?.plus[k])}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
       <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod" title="${PROD_3P_TITLE}">${esc(p.name)}<sup class="mk-3p" aria-hidden="true">*</sup></span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${typeof seatTagHtml === 'function' ? seatTagHtml(s, t.cabin) : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur || fx?.tz ? `<div class="hint" style="margin-top:6px">${dur ? `總飛行時間 ${dur}` : ''}${dur && fx?.tz ? '・' : ''}${fx?.tz || ''}</div>` : ''}
-    ${amTripLine(t)}${typeof alsoFoldHtml === 'function' ? alsoFoldHtml(t) : ''}
+    ${typeof gcmapLinkHtml === 'function' ? gcmapLinkHtml(t.segments) : ''}${amTripLine(t)}${typeof alsoFoldHtml === 'function' ? alsoFoldHtml(t) : ''}
   </div>`;
 }
 
@@ -3007,6 +3009,7 @@ function renderRulesBody() {
     rulesSection(releaseTableHtml(), '', '各計畫最早在出發前幾天開放訂位'),
     rulesSection(pointsHtml(), '', pts ? `${pts.transfers.length} 條銀行點數轉哩程管道、${pts.cobrand.length} 張聯名卡` : ''),
     typeof cardPerksHtml === 'function' ? rulesSection(cardPerksHtml(), '', '只刷稅金的哩程票，旅平險、不便險可能不保') : '', // trips.js
+    ...(typeof prog9Sections === 'function' ? prog9Sections().map(([html, sum]) => rulesSection(html, '', sum)) : []), // prog9.js
     rulesSection(`<h2 class="section" id="r-glossary">名詞解釋</h2>${glossary.sections.map((s) => `<details class="sub-fold" ${q ? 'open' : ''}><summary><h3 class="sub">${esc(s.title)}</h3><small>${s.items.length} 個</small></summary>
       <div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div></details>`).join('')}`,
     '', `${terms.length} 個常見名詞，例如${terms.slice(0, 3).map(esc).join('、')}`),
@@ -3331,11 +3334,14 @@ function amChartHtml() {
     const lo = i ? am.bands[i - 1].max + 1 : 1;
     const range = b.max ? `${fmt(lo)}–${fmt(b.max)} 哩` : `${fmt(lo)} 哩以上`;
     const keys = b.id === 'short' ? [['short', '第一類'], ['short2', '第二類']] : [[b.id, '']];
-    return keys.map(([k, sub]) => `<tr><td><b>${b.name}${sub ? `（${sub}）` : ''}</b><div class="r">${range}</div></td>${Object.keys(CABIN_LABEL).map((c) => `<td>${fmt(chart[k][c])}</td>`).join('')}</tr>`);
+    // 看改版前 (prog9.js): the old value next to a Cathay-flight cell that changed.
+    const was = (k, c) => (chart === am.charts.cx && typeof beforeCell === 'function' ? beforeCell(chart[k][c], am.before?.cx?.[k]?.[c]) : '');
+    return keys.map(([k, sub]) => `<tr><td><b>${b.name}${sub ? `（${sub}）` : ''}</b><div class="r">${range}</div></td>${Object.keys(CABIN_LABEL).map((c) => `<td>${fmt(chart[k][c])}${was(k, c)}</td>`).join('')}</tr>`);
   }).join('');
   const table = (chart) => `<div><h3 class="sub">${esc(chart.name)}</h3><div class="table-wrap"><table><thead>${head}</thead><tbody>${rows(chart)}</tbody></table></div></div>`;
   return `<h2 class="section" id="am-chart">亞洲萬里通哩數表（${esc(am.effective)} 起，單程標準獎勵）</h2>
     <p class="hint">${esc(am.note)} ${esc(am.shortType2Note)}</p>
+    ${am.before && typeof beforeToggleHtml === 'function' ? beforeToggleHtml(am.before) : ''}
     <div class="am-tables">${table(am.charts.cx)}${table(am.charts.partner)}</div>
     <p class="hint">尚待確認：${am.uncertain.map((u) => esc(u.replace(/。$/, ''))).join('；')}</p>
     ${typeof cxMixHtml === 'function' ? cxMixHtml() : ''}
@@ -3445,9 +3451,10 @@ function loadScripts(names) {
 // Booking-cost helpers (fee chips, cost sort, upgrades) and the 我的點數 extras: drawn by the route results, 航班明細,
 // 點數換算器 and 規則庫, which wait for these first (about 18 KB gzipped).
 // rtw.js (環球票規劃 and the 國泰混艙 calculator in 規則庫) goes first, so toolsIn() also means it has run.
-const TOOL_SCRIPTS = ['rtw', 'award-tools', 'ewallet', 'airline'];
+// prog9.js: the round 9 規則庫 cards, 看改版前 and the Great Circle Mapper link.
+const TOOL_SCRIPTS = ['rtw', 'award-tools', 'ewallet', 'airline', 'prog9'];
 const loadTools = () => loadScripts(TOOL_SCRIPTS);
-const toolsIn = () => typeof untilTag === 'function' && typeof upgradeHtml === 'function';
+const toolsIn = () => typeof untilTag === 'function' && typeof upgradeHtml === 'function' && typeof prog9Sections === 'function';
 // Drawn once the tools are in; until then a placeholder (or, if they would not load, a 重試).
 function withTools(host, draw) {
   if (toolsIn()) return true;
@@ -3496,6 +3503,7 @@ tabInit.hotels = () => {
 tabInit.cash = () => {
   loadCashQuota();
   loadScripts(['cashverdict']).then(([ok]) => { if (ok && $('#cash-results .insight') && !$('#cash-results .cash-verdict')) renderCash(); });
+  loadScripts(['prog9']).then(() => { if (typeof cashSalesMount === 'function') cashSalesMount(); }); // 航空公司官方特賣
 };
 
 (async function init() {

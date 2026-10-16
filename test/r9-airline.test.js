@@ -321,7 +321,7 @@ test('wiring: lazy scripts, typeof-guarded hooks, seats in the `more` bundle, on
   assert.deepEqual(own('airinfo.js').filter((n) => own('airline.js').includes(n)), []);
   const css = src('styles.css');
   assert.equal(css.split('/* round 9: r9-airline */').length, 2);
-  assert.ok(css.indexOf('/* round 9: r9-airline */') > css.length - 12000, 'at the end');
+  assert.ok(css.indexOf('/* round 9: r9-airline */') > css.length - 30000, 'at the end');
 });
 
 const { server } = require('../server');

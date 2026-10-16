@@ -29,6 +29,7 @@ const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
 const { createExpiry, notesFromData } = require('./lib/expiry');
 const { createPromoWatch } = require('./lib/promowatch');
+const { createWeekly } = require('./lib/weekly');
 const P6 = require('./public/points6.js');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 const { cronParts, cronSlot } = require('./lib/cronreport');
@@ -508,7 +509,7 @@ async function cronStatus() {
   const [last, denied, done] = await Promise.all(['cron:last', 'cron:denied', 'cron:done'].map((k) => kv.get(k).catch(() => null)));
   return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null, lastDone: done?.at || null, lastDoneMs: done?.ms ?? null, lastProblems: done?.problems ?? null };
 }
-const runProblems = (out) => [out.expiry?.error, out.promos?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.booked?.error, out.alertsError, out.hotels?.error].filter(Boolean).length
+const runProblems = (out) => [out.expiry?.error, out.promos?.error, out.weekly?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.booked?.error, out.alertsError, out.hotels?.error].filter(Boolean).length
   + [...(out.report || []), ...(out.watches?.report || []), ...(out.booked?.report || []), ...(out.hotels?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
 async function runDaily(req, q) {
   const who = await runCaller(req);
@@ -520,7 +521,7 @@ async function runDaily(req, q) {
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
-  const parts = new Set((q.get('part') || 'expiry,promos,deals,digest,watches,booked,alerts,hotels,timetable').split(','));
+  const parts = new Set((q.get('part') || 'expiry,promos,weekly,deals,digest,watches,booked,alerts,hotels,timetable').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
   // 官方航班資料: about once a week (flightData.due), or when asked for by name. It runs alongside the other parts (it
   // only waits on government servers) and must answer by the run's end.
@@ -530,6 +531,8 @@ async function runDaily(req, q) {
   if (parts.has('expiry')) out.expiry = await expiry.run({ deadline: t0 + RUN_BUDGET.expiry, lock: lockFor('expiry:run', 60) }).catch((e) => ({ error: e.message }));
   // New transfer bonuses for the owner: one Redis read most days, no quota.
   if (parts.has('promos')) out.promos = await promoWatch.run({ lock: lockFor('promo-watch:run', 60) }).catch((e) => ({ error: e.message }));
+  // 本週變動: the first run of each week; asking for this part by name sends it again.
+  if (parts.has('weekly')) out.weekly = await weekly.run({ lock: lockFor('weekly:run', 60), force: who !== 'cron' && (q.get('part') || '').split(',').includes('weekly') }).catch((e) => ({ error: e.message }));
   if (parts.has('deals')) {
     try {
       const d = await deals.refresh({ deadline: t0 + RUN_BUDGET.deals, skipFresh: true });
@@ -760,6 +763,15 @@ const expiry = createExpiry({
 });
 // New transfer bonuses / buy-miles sales that touch the owner's wallet (lib/promowatch.js), checked by the daily run.
 const promoWatch = createPromoWatch({ kv, ...POINTS6, notify: (html) => telegram.notify(html), sendEmail: alertMailer, siteUrl: SITE_URL, log: MOCK && !alertMailer ? (m) => console.log(m) : null });
+// 本週變動 (lib/weekly.js): once a week with the daily run, to the owner's Telegram and the promo notice's address.
+const weekly = createWeekly({
+  kv, notify: (html) => telegram.notify(html), sendEmail: alertMailer, emailOf: () => promoWatch.ownerEmail(), siteUrl: SITE_URL,
+  log: MOCK && !alertMailer ? (m) => console.log(m) : null, off: process.env.WEEKLY_DIGEST === 'off',
+  src: () => ({
+    promos: POINTS6.promos, history: require('./data/promos-history.json').promos, log: require('./data/changes.json').log,
+    changes: require('./data/changes.json').changes, alliances: require('./data/alliances.json').alliances, transfers: require('./data/points.json').transfers,
+  }),
+});
 async function handlePromoWatch(req) {
   if (!(await alertsAllowed(req))) throw Object.assign(new CashError('需要通關密碼才能設定新加贈通知', 401), { code: 'passcode' });
   if (req.method !== 'POST') return promoWatch.status();

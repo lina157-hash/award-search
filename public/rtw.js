@@ -676,7 +676,7 @@ if (typeof document !== 'undefined') {
     const price = rtwPrice(prog, trip, cab.top, data.charts);
     const flights = trip.legs.filter((l) => !l.surface).length;
     const dirText = prog.rules.crossings ? `・${shape.dir === 'east' ? '往東' : shape.dir === 'west' ? '往西' : shape.dir === 'mixed' ? '方向有改變' : '還沒跨區'}` : '';
-    const sum = `<p class="rtw-sum">總飛行距離 <b>${fmt(trip.flown)} 哩</b>${trip.surface ? `（另有開口 ${fmt(trip.surface)} 哩${oj?.inDistance ? '，這個計畫也算進總距離' : '，不算進總距離'}）` : ''}・${flights} 段航班${dirText}</p>`;
+    const sum = `<p class="rtw-sum">總飛行距離 <b>${fmt(trip.flown)} 哩</b>${trip.surface ? `（另有開口 ${fmt(trip.surface)} 哩${oj?.inDistance ? '，這個計畫也算進總距離' : '，不算進總距離'}）` : ''}・${flights} 段航班${dirText}</p>${typeof gcmapLinkHtml === 'function' ? gcmapLinkHtml(trip.legs) : ''}`;
     // Round-the-world programs: the shape comes first (two oceans, one direction, home again); distance programs: the meter.
     let shapeHtml = '';
     if (prog.rules.crossings) {
