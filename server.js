@@ -14,6 +14,8 @@ const rooms = require('./lib/rooms');
 const rapid = require('./lib/rapidflights');
 const { createTravelInfo } = require('./lib/travelinfo');
 const { createDirects, DirectsError } = require('./lib/aerodatabox');
+const { createFlightStatus } = require('./lib/flightstatus');
+const { createAnywhere, REGIONS: ANYWHERE_REGIONS } = require('./lib/anywhere');
 const hotelCash = require('./lib/hotelcash');
 const { redisKv, memoryKv, takeLock, waitLock, sharedCache, getMany, hashKey, KvError } = require('./lib/kv');
 const { todayTW, monthTW, validDate, addDays } = require('./lib/day');
@@ -1005,7 +1007,7 @@ function seatsCalls() {
 async function budgeted(req, kind, maxUnits, fn) {
   const refund = await spendBudget(req, kind, maxUnits);
   const calls = seatsCalls();
-  try { return await fn(calls.client); } finally { refund(maxUnits - (kind === 'seats' ? calls.used() : maxUnits)); }
+  try { return await fn(calls.client, calls.used); } finally { refund(maxUnits - (kind === 'seats' ? calls.used() : maxUnits)); }
 }
 
 async function handleSearch(q, req) {
@@ -1134,6 +1136,57 @@ async function handleDirects(q, req) {
   } catch (e) {
     // Not a list airport and not cached: the line is simply left out for visitors.
     if (e.locked) return { body: { configured: false, locked: true }, open: false };
+    throw e;
+  }
+}
+
+// 查航班動態 / 這班過去準點率 (我的行程, lib/flightstatus.js): the owner's, like the cash fares (the passcode), one click
+// one lookup, out of the same AeroDataBox units as 直飛資料 (a status 2, delay statistics 6). The demo makes them up.
+const flightStatus = RAPIDAPI_KEY ? createFlightStatus({ apiKey: RAPIDAPI_KEY, kv, spend: spendDirectsUnits, refund: (n) => kv.incr(directsKey(), -n).catch(() => {}), onQuota: (q) => Object.assign(directsQuota, q) })
+  : MOCK ? createFlightStatus({ mock: true }) : null;
+async function handleFlightStatus(q, req, kind) {
+  if (!flightStatus) return { configured: false };
+  if (!(await cashOk(req))) throw passError(req, '需要通關密碼才能查航班動態');
+  const flight = param(q, 'flight', /^[A-Z0-9]{2,3}\d{1,4}[A-Z]?$/, { required: true, upper: true });
+  const out = kind === 'delays' ? await flightStatus.delays(flight)
+    : await flightStatus.status(flight, param(q, 'date', DATE, { required: true }), { from: param(q, 'from', /^[A-Z]{3}$/, { upper: true }), to: param(q, 'to', /^[A-Z]{3}$/, { upper: true }), today: todayTW() });
+  const used = Number(await kv.get(directsKey()).catch(() => 0)) || 0;
+  return { configured: true, mock: flightStatus.mock, ...out, unitsLeft: directsQuota.left ?? Math.max(0, DIRECTS_UNITS - used), unitsLimit: DIRECTS_UNITS };
+}
+
+// 哪裡都好 (區域探索, lib/anywhere.js): the owner only, from the page. One seats.aero search per region (at most 2 calls
+// each, 10 a press), counted in the daily budget like any search and kept 30 minutes (lib/searchcache.js), so asking
+// again, or adding a region, spends only on what was not asked lately.
+async function handleAnywhere(q, req) {
+  if (!fromPage(req)) throw new BadRequest('請從網站頁面使用哪裡都好');
+  if ((await runCaller(req)) !== 'owner') throw cashPasscode() ? passError(req, '需要通關密碼才能用哪裡都好') : Object.assign(new CashError('要先在 Vercel 設定 CASH_PASSCODE，才能用哪裡都好', 401), { code: 'setup' });
+  const { start_date: start, end_date: end } = dateRange(q, { future: true });
+  const opts = {
+    origins: (param(q, 'origin', /^[A-Z]{3}(,[A-Z]{3}){0,2}$/, { upper: true }) || 'TPE').split(','), start, end,
+    cabin: param(q, 'cabin', /^[YWJF]$/, { upper: true }) || 'J',
+    regions: param(q, 'regions', /^[a-z]+(,[a-z]+){0,4}$/, { required: true }),
+  };
+  // `calls`: this region's seats.aero calls this time (0 when the answer was cached).
+  const anywhere = createAnywhere({
+    search: async (params, { maxPages }) => {
+      let calls = 0;
+      try {
+        const r = await sharedSearch('anywhere:' + JSON.stringify({ ...params, maxPages }), async () => {
+          const { items, hasMore } = MOCK ? { items: mock.mockSearch(params), hasMore: false } : await budgeted(req, 'seats', maxPages, async (c, used) => {
+            try { return await c.search(params, { maxPages }); } finally { calls = used(); }
+          });
+          const rows = items.map(normalizeAvailability);
+          defer(history.note(params, rows, { hasMore }));
+          return { rows, hasMore };
+        });
+        return { ...r, calls };
+      } catch (e) { throw Object.assign(e, { calls }); }
+    },
+  });
+  try {
+    return { mock: MOCK, ...(await anywhere.run(opts)) };
+  } catch (e) {
+    if (e.status === 400) throw new BadRequest(e.message);
     throw e;
   }
 }
@@ -1641,6 +1694,8 @@ async function route(req, res) {
         // the owner's (GET /api/cron/status, GET /api/line behind the passcode).
         line: await line.status().then((s) => ({ configured: s.configured, linked: s.linked, ...(s.configured ? { tokenOk: s.tokenOk } : {}) })).catch(() => ({ configured: line.configured })),
         searchCache: { enabled: searchCache.enabled },
+        // 地圖樣式: Stadia Maps' styles too, once the site's domain is registered with Stadia (MAP_STADIA=1).
+        mapStadia: (process.env.MAP_STADIA || '').trim() === '1',
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true, tokenOk: telegram.configured ? (await telegram.bot()).tokenOk : null },
         booked: Boolean(booked), dealRules: Boolean(dealRules),
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK, watch: Boolean(hotelWatch) },
@@ -1666,6 +1721,10 @@ async function route(req, res) {
       const { body, open } = await handleDirects(q, req);
       return sendJson(res, 200, body, open && body.configured ? CACHE.directs : null);
     }
+    // Behind the passcode: 我的行程's 查航班動態 / 這班過去準點率 and 區域探索's 哪裡都好 (its region list is not).
+    if (p === '/api/flight-status' || p === '/api/flight-delays') return sendJson(res, 200, await handleFlightStatus(q, req, p === '/api/flight-delays' ? 'delays' : 'status'));
+    if (p === '/api/anywhere') return sendJson(res, 200, await handleAnywhere(q, req));
+    if (p === '/api/anywhere/regions') return sendJson(res, 200, { regions: ANYWHERE_REGIONS }, CACHE.data);
     if (p === '/api/trip-info') {
       const info = await handleTripInfo(q);
       return sendJson(res, 200, info, info.errors && Object.keys(info.errors).length ? CACHE.short : CACHE.tripInfo);

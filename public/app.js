@@ -2377,7 +2377,7 @@ function renderCash() {
       ${level ? `<div><span>價格水準</span><b class="${level[1]}">${level[0]}</b></div>` : ''}
       ${ins.range ? `<div><span>一般價格區間</span><b>${money(ins.range[0])} – ${fmt(ins.range[1])}</b></div>` : ''}
       ${sparkline(ins.history)}
-    </div>` : ''}
+    </div>${typeof cashVerdictHtml === 'function' ? cashVerdictHtml(ins, { watch: watchCfg.on }) : ''}` : ''}
     ${!cash.returns ? '<div id="cash-month-host"></div>' : ''}
     ${cash.returns ? `<div class="picked"><span>已選去程</span>${fareHtml(cash.outbound, -1, 'picked')}<button type="button" class="outline" id="cash-back">← 重新選去程</button></div><h2 class="section">選擇回程（顯示的是來回總價）</h2>` : ''}
     <div class="cash-tools">

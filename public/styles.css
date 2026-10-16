@@ -2214,3 +2214,73 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 :root[data-theme="dark"] .tp-pill.s-waitlist { background: #4a2a12; color: #ffc89a; }
 :root[data-theme="dark"] .lv-chip.good { color: #f2c66d; }
 :root[data-theme="dark"] .lv-chip.free { color: #7be3a0; }
+/* ---- round 6: 加做項目 (查航班動態、買或等、哪裡都好) ---- */
+/* 我的行程: the two lookups under a leg's flights, and their panel in a row of its own. */
+.fst-acts { display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 2px; font-size: .82rem; }
+.fst-acts .linklike { padding: 0; }
+.plan-table tr.fst-row td { padding-top: 0; white-space: normal; position: static; }
+.fst-box { border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); padding: 8px 12px 10px; font-size: .88rem; max-width: min(640px, calc(100vw - 90px)); position: sticky; left: 12px; }
+.fst-err { color: var(--danger); }
+.fst-box p { margin: 6px 0 0; }
+.fst-top { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
+.fst-top .fst-x { margin-left: auto; font-size: 1rem; min-width: 36px; min-height: 36px; }
+.fst-pick { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.fst-pick button { font: inherit; font-size: .8rem; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 10px; min-height: 32px; cursor: pointer; }
+.fst-pick button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.fst-head { display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; margin: 8px 0 4px; }
+.fst-head small { display: inline; }
+.fst-chip { font-size: .78rem; padding: 2px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.fst-chip.late { background: var(--few); color: var(--few-text); }
+.fst-chip.bad { background: #fde2e6; color: var(--danger); }
+.fst-end { display: grid; grid-template-columns: 2.4em 1fr; gap: 8px; margin: 4px 0; }
+.fst-lab { color: var(--muted); font-size: .8rem; padding-top: 1px; }
+.plan-table .fst-box small, .fst-end small { display: block; color: var(--muted); font-size: .78rem; }
+.fst-punct { margin: 4px 0 0; padding-left: 1.2em; }
+.fst-punct li { margin: 2px 0; }
+.fst-src a { color: var(--accent); }
+.fst-note { margin-top: 6px; font-size: .78rem; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fst-chip.bad { background: #4a1f2a; color: #ffb3c0; } }
+:root[data-theme="dark"] .fst-chip.bad { background: #4a1f2a; color: #ffb3c0; }
+
+/* 查現金票: 買或等 under Google's price level. */
+.cash-verdict { margin: -6px 0 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--sun); border-radius: 0 12px 12px 0; box-shadow: var(--shadow); }
+.cash-verdict.good { border-left-color: var(--accent); }
+.cash-verdict.bad { border-left-color: var(--danger); }
+.cash-verdict p { margin: 0; }
+.cash-verdict .hint { font-size: .76rem; margin-top: 2px; }
+.cash-verdict .cv-trend { color: var(--muted); }
+
+/* 區域探索: 哪裡都好 (the owner's). */
+#aw-panel .alerts-body { max-width: 980px; }
+.aw-form { display: grid; gap: 10px; }
+.aw-regions { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.aw-regions legend { font-size: .8rem; color: var(--muted); font-weight: 500; padding: 0; margin-bottom: 6px; }
+.aw-regions label.chk { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 8px; border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; min-height: 44px; cursor: pointer; flex: 1 1 200px; max-width: 320px; background: var(--surface); }
+.aw-regions label.chk:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.aw-regions input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); grid-row: span 2; }
+.aw-regions small { color: var(--muted); font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aw-go { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.aw-sum { margin-top: 12px; }
+.aw-table td { vertical-align: top; }
+@media (max-width: 560px) { .aw-table td { white-space: normal; padding: 8px 10px; } .aw-table td:first-child { min-width: 5.5em; } }
+.aw-table td small { display: block; color: var(--muted); font-size: .78rem; }
+
+/* 兌換地圖: 地圖樣式 (mapstyle.js). 灰階 and 復古 are the standard tiles under a filter; in the dark theme 標準 and 灰階
+   keep the inverted look, the others are only dimmed so their own colours stay readable. */
+.ms-ctl.leaflet-bar { background: var(--surface); color: var(--text); padding: 3px 6px 3px 10px; font-size: .78rem; border: 1px solid var(--border); }
+.ms-ctl label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ms-ctl select { font: inherit; font-size: .8rem; min-height: 32px; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.map-gray .leaflet-tile-pane { filter: grayscale(1) contrast(1.05) brightness(1.02); }
+.map-retro .leaflet-tile-pane { filter: sepia(0.6) saturate(0.85) hue-rotate(-10deg) contrast(0.95) brightness(1.03); }
+.map-hot .leaflet-tile-pane, .map-topo .leaflet-tile-pane { filter: saturate(0.85); }
+.map-st-dark .leaflet-tile-pane { filter: none; } /* Stadia's own dark style, as it is in either theme */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .map-gray .leaflet-tile-pane { filter: invert(1) grayscale(1) brightness(0.85) contrast(0.9); }
+  :root:not([data-theme="light"]) .map-retro .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) sepia(0.45) brightness(0.8) contrast(0.9); }
+  :root:not([data-theme="light"]) .map-hot .leaflet-tile-pane, :root:not([data-theme="light"]) .map-topo .leaflet-tile-pane, :root:not([data-theme="light"]) .map-st-light .leaflet-tile-pane { filter: brightness(0.72) contrast(1.08) saturate(0.75); }
+  :root:not([data-theme="light"]) .map-st-toner .leaflet-tile-pane { filter: invert(1) brightness(0.85); }
+}
+:root[data-theme="dark"] .map-gray .leaflet-tile-pane { filter: invert(1) grayscale(1) brightness(0.85) contrast(0.9); }
+:root[data-theme="dark"] .map-retro .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) sepia(0.45) brightness(0.8) contrast(0.9); }
+:root[data-theme="dark"] .map-hot .leaflet-tile-pane, :root[data-theme="dark"] .map-topo .leaflet-tile-pane, :root[data-theme="dark"] .map-st-light .leaflet-tile-pane { filter: brightness(0.72) contrast(1.08) saturate(0.75); }
+:root[data-theme="dark"] .map-st-toner .leaflet-tile-pane { filter: invert(1) brightness(0.85); }
