@@ -30,10 +30,10 @@ const { createDealSub, DealSubError } = require('./lib/dealsub');
 const { createNlSearch, pickProvider, NlError } = require('./lib/nlsearch');
 
 const PORT = Number(process.env.PORT) || 3000;
-const API_KEY = process.env.SEATS_AERO_API_KEY || '';
+const API_KEY = (process.env.SEATS_AERO_API_KEY || '').trim(); // a key pasted into Vercel with a space or line break still works
 const MOCK = !API_KEY || process.env.MOCK === '1';
-const SERPAPI_KEY = process.env.SERPAPI_KEY || '';
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '';
+const SERPAPI_KEY = (process.env.SERPAPI_KEY || '').trim();
+const RAPIDAPI_KEY = (process.env.RAPIDAPI_KEY || '').trim();
 // Cash fares: RapidAPI's Google Flights first (150 free a month), SerpApi as the fallback; demo data in demo mode, otherwise off.
 const CASH_MODE = SERPAPI_KEY || RAPIDAPI_KEY ? 'live' : MOCK ? 'mock' : 'off';
 // Upstash Redis (Vercel Storage tab) keeps alerts, watches, deals and the shared caches; without it they live in memory.
