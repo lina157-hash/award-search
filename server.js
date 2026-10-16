@@ -350,10 +350,23 @@ let dealsPending = null;
 const DEALS_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 async function handleDeals(q) {
   const at = q.get('at');
-  if (at && DEALS_AT.test(at) && Date.parse(at) <= Date.now() + 60e3) return { mock: MOCK, ...(await deals.get({ atLeast: at })) };
+  if (at && DEALS_AT.test(at) && Date.parse(at) <= Date.now() + 60e3) return { mock: MOCK, ...(await withUsual(await deals.get({ atLeast: at }))) };
   // Concurrent first visitors share one read (or the very first build) instead of each spending API calls.
   dealsPending ||= deals.get().finally(() => { dealsPending = null; });
-  return { mock: MOCK, ...(await dealsPending) };
+  return { mock: MOCK, ...(await withUsual(await dealsPending)) };
+}
+// 「平常約 X 哩」 on each deal, from the route history (lib/history.js usual): one store read per saved copy of the
+// deals on this instance (kept by its generatedAt), never a seats.aero call. A failed read just leaves it out.
+let dealsUsual = { at: null, map: new Map() };
+const usualKey = (cabin, x) => `${cabin}|${x.origin}|${x.destination}|${x.source}`;
+async function withUsual(d) {
+  if (!d?.generatedAt || !Array.isArray(d.groups)) return d;
+  if (dealsUsual.at !== d.generatedAt) {
+    const items = d.groups.flatMap((g) => (g.items || []).map((x) => ({ ...x, cabin: g.cabin })));
+    const u = await history.usual(items).catch(() => []);
+    dealsUsual = { at: d.generatedAt, map: new Map(items.map((x, i) => [usualKey(x.cabin, x), u[i] || null])) };
+  }
+  return { ...d, groups: d.groups.map((g) => ({ ...g, items: (g.items || []).map((x) => { const n = dealsUsual.map.get(usualKey(g.cabin, x)); return n ? { ...x, usual: n } : x; }) })) };
 }
 
 // 「立即更新」 on 今日好康: the owner (passcode) refreshes every group now, about 8 seats.aero calls, at most once an hour.
@@ -367,7 +380,7 @@ async function refreshDealsNow(req) {
     d = await deals.refresh({ deadline: Date.now() + 45_000, fresh: true });
   } catch (e) { await release(); throw e; }
   if (!d.refreshed) await release();
-  return { mock: MOCK, ...d };
+  return { mock: MOCK, ...(await withUsual(d)) };
 }
 
 const safeEqual = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -1243,14 +1256,16 @@ async function handleAccor(q, req) {
 // seats.aero availability ids are short letters-and-digits strings. An id seats.aero does not know is remembered for
 // a day, so made-up ids cost one call each at most.
 const TRIP_ID = MOCK ? /^[\w-]{1,80}$/ : /^[A-Za-z0-9_-]{8,64}$/;
-async function handleTrips(id, req) {
+// `mixed` (the page's 「也看混艙行程」, one more call): also the itineraries that fly part of the way in a lower cabin
+// (seats.aero leaves them out unless min_cabin_pct is given; at least half the distance in the reported cabin here).
+async function handleTrips(id, req, { mixed = false } = {}) {
   if (!TRIP_ID.test(id)) throw new BadRequest('ID 格式錯誤');
-  return sharedSearch('trips:' + id, async () => {
-    if (MOCK) return { mock: true, ...normalizeTrips(mock.mockTrips(id)) };
+  return sharedSearch('trips:' + id + (mixed ? ':mixed' : ''), async () => {
+    if (MOCK) return { mock: true, ...normalizeTrips(mock.mockTrips(id, { mixed })) };
     const missKey = 'trips:miss:v1:' + hashKey(id);
     if (await kv.get(missKey).catch(() => null)) throw new SeatsAeroError('找不到這筆行程，可能已經過期', 404);
     try {
-      return { mock: false, ...normalizeTrips(await budgeted(req, 'seats', 1, (c) => c.trips(id))) };
+      return { mock: false, ...normalizeTrips(await budgeted(req, 'seats', 1, (c) => c.trips(id, mixed ? { min_cabin_pct: 50 } : {}))) };
     } catch (e) {
       if ([400, 404, 422].includes(e.upstream)) {
         await kv.set(missKey, 1, { ex: 86400 }).catch(() => {});
@@ -1275,7 +1290,7 @@ const KNOWN_PARAMS = {
   '/api/cxcal': ['origin', 'destination', 'v'],
 };
 function canonicalUrl(p, q) {
-  const known = p.startsWith('/api/trips/') ? [] : KNOWN_PARAMS[p];
+  const known = p.startsWith('/api/trips/') ? ['mixed'] : KNOWN_PARAMS[p];
   if (!known) return null;
   const keys = [...q.keys()];
   if (keys.every((k) => known.includes(k)) && new Set(keys).size === keys.length) return null;
@@ -1559,7 +1574,7 @@ async function route(req, res) {
     if (p.startsWith('/api/trips/')) {
       let id;
       try { id = decodeURIComponent(p.slice(11)); } catch { throw new BadRequest('網址編碼錯誤'); }
-      return sendJson(res, 200, await handleTrips(id, req), CACHE.search);
+      return sendJson(res, 200, await handleTrips(id, req, { mixed: q.get('mixed') === '1' }), CACHE.search);
     }
     const dm = p.match(/^\/api\/data\/(all|core|more)$/);
     if (dm) {

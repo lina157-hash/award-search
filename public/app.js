@@ -1395,7 +1395,7 @@ function resultParts(rows) {
   const ph = phantomByProgram(rows, c);
   const hiddenAll = allSources.every((s) => state.hidden.has(s));
   const chips = allSources.map((s) => `<button type="button" class="chip ${state.hidden.has(s) ? '' : 'on'}" data-src="${s}" aria-pressed="${!state.hidden.has(s)}">
-    ${esc(srcName(s))}${bestBySource[s] ? ` <b>${kfmt(bestBySource[s])}</b>` : ''}${ph.has(s) ? ' <span class="ph" title="可能有幻影機位">⚠</span>' : ''}</button>`).join('')
+    ${esc(srcName(s))}${bestBySource[s] ? ` <b>${kfmt(bestBySource[s])}</b>` : ''}${typeof levelChipHtml === 'function' ? levelChipHtml(s) : ''}${ph.has(s) ? ' <span class="ph" title="可能有幻影機位">⚠</span>' : ''}</button>`).join('')
     + (allSources.length > 1 ? `${state.hidden.size ? '<button type="button" class="chip chip-all" data-chips="all">全部勾選</button>' : ''}${hiddenAll ? '' : '<button type="button" class="chip chip-all" data-chips="none">全部取消</button>'}` : '');
   const parts = { allSources, chips, hiddenAll, am: '', deals: '', legend: '' };
   if (!rows.length) return parts;
@@ -1413,6 +1413,7 @@ function resultParts(rows) {
       ${(byCost ? r === picks[0] : !allSame && x.miles === lowMiles) ? '<span class="rank">★ 最低</span>' : folded ? `<span class="rank same">${picks.length} 個計畫同價</span>` : ''}
       <div class="route">${esc(srcName(r.source))}</div>
       <div class="miles">${fmt(x.miles)} <small>哩起</small>${x.taxes ? `<small class="tax">＋ 稅 ${esc(taxText(x.taxes))}</small>` : ''}</div>
+      ${typeof levelTagHtml === 'function' ? levelTagHtml(r, c) : ''}
       <div class="meta">${dayLabel(r.date)} · ${esc(r.origin)} → ${esc(r.destination)}</div>
       <div class="meta">${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}</div>
       ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}
@@ -1452,9 +1453,11 @@ function renderSearch() {
     const filtered = state.affordOnly || state.product;
     // Nothing left because programs were unticked: keep the chips so they can be ticked again.
     const byChips = state.hidden.size && state.results.some((r) => state.hidden.has(r.source) && cab(r, c)?.available);
+    const gap = !filtered && !byChips && typeof gapHtml === 'function' ? gapHtml(true) : ''; // 差一點 (flightplus.js)
     root.innerHTML = `<div class="section-title">${cabinSeg}</div>${resultToolsHtml()}${release}
       ${byChips ? `${matrixTitle}<div class="filters">${p.chips}</div>` : ''}
-      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && p.hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」或改選全部艙位產品。' : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>`;
+      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && p.hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」或改選全部艙位產品。' : gap ? `沒有一班有 ${state.pax} 位以上；下面「差一點」是只差幾位的班次。` : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>
+      ${gap}`;
     return;
   }
 
@@ -1466,6 +1469,8 @@ function renderSearch() {
     <div class="res-part" id="am-host">${p.am}</div>
     ${typeof cxBadgeHtml === 'function' ? cxBadgeHtml(c) : ''}
     <div class="res-part" id="deals-host">${p.deals}</div>
+    ${typeof gapHtml === 'function' ? gapHtml() : ''}
+    <div class="res-part" id="pair-host"></div>
     <details class="cal-fold" id="cal-fold"${calOpen ? ' open' : ''}>
       <summary><h2 class="section-title">日曆 <small id="cal-sum"></small></h2></summary>
       <p class="hint cal-how">每天最低哩數（顏色對照下方的便宜／較貴）；點日期篩選下表</p>
@@ -1480,6 +1485,7 @@ function renderSearch() {
   renderMatrix(rows, p.allSources);
   $('#cal-fold').addEventListener('toggle', (e) => { calOpen = e.target.open; });
   if (typeof wkRender === 'function') wkRender();
+  if (typeof pairRender === 'function') pairRender(); // 來回配對 (public/pairing.js)
 }
 
 // A program chip or 全部勾選／全部取消: redraw only what follows the ticked programs (chips, cards, calendar, legend,
@@ -1496,6 +1502,7 @@ function refreshPrograms(focusSel) {
     $('#legend-host').innerHTML = p.legend;
     renderCalendar(rows);
     renderMatrix(rows, p.allSources);
+    if (typeof pairRender === 'function') pairRender();
   } else renderSearch();
   if (hadFocus) $(`#search-results ${focusSel}`)?.focus({ preventScroll: true });
 }
@@ -1750,11 +1757,11 @@ function tripHtml(t, i) {
       <div><b>${esc(t.flightNumbers)}</b><span class="pill">${esc(CABIN_ZH[t.cabin] || t.cabin)}</span><span class="pill">${t.stops ? `轉機 ${t.stops} 次` : '直飛'}</span>${t.seats ? `<span class="pill">剩 ${t.seats} 位</span>` : ''}</div>
       <div><span class="miles">${fmt(t.miles)} 哩</span> ＋ ${taxes}${i != null ? `<button type="button" class="outline add-plan" data-plan="${i}">＋ 加入我的行程</button>` : ''}</div>
     </div>
-    ${phantomHtml(t.source, t.carriers)}
+    ${phantomHtml(t.source, t.carriers)}${typeof mixedHtml === 'function' ? mixedHtml(t) : ''}
     ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
       <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod">${esc(p.name)}</span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
-    ${amTripLine(t)}
+    ${amTripLine(t)}${typeof alsoFoldHtml === 'function' ? alsoFoldHtml(t) : ''}
   </div>`;
 }
 
@@ -1798,6 +1805,7 @@ async function openTrips(id, title, cabin) {
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
     $$('[data-plan]', $('#trip-body')).forEach((b) => b.addEventListener('click', () => addLegs([awardLeg(all[Number(b.dataset.plan)], pax)])));
     if (main[0] && typeof aiHelperMount === 'function') aiHelperMount(main[0], pax, main.length); // public/aihelper.js
+    if (typeof mixedMount === 'function') mixedMount(id, cabin); // 也看混艙行程 (public/flightplus.js)
   } catch (err) {
     if (!fresh()) return;
     $('#trip-body').innerHTML = `<p class="status error">${esc(err.message)}</p>`;
