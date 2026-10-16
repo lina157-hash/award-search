@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>機票搜索雷達｜哩程票與現金票查詢</title>
-  <meta name="description" content="一次查詢多個哩程計畫的獎勵機位與現金票價：國泰、長榮、華航、法航、加航等，附航空聯盟與開票規則整理。">
+  <meta name="description" content="一次查詢多個哩程計畫的獎勵位與現金票價：國泰、長榮、華航、法航、加航等，附航空聯盟與開票規則整理。">
   <meta name="theme-color" content="#0a6a96">
   <!-- 外觀 (siteopts.js): a saved 淺色／深色 applies before the first paint, so the page doesn't flash. -->
   <script>try { var t = JSON.parse(localStorage.getItem('theme')); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
@@ -48,7 +48,7 @@
       <div class="hero">
         <div class="wrap">
           <h1>找出用哩程換得到的機位</h1>
-          <p class="lead">一次比較 Aeroplan、Flying Blue、阿拉斯加、聯合等計畫的獎勵座位，涵蓋國泰、長榮、華航、法航、加航等航空公司。</p>
+          <p class="lead">一次比較加航、法荷航、阿拉斯加、聯合等計畫的獎勵位，涵蓋國泰、長榮、華航、法航、加航等航空公司。</p>
 
           <form id="search-form" class="search-card" autocomplete="off">
             <div class="route-row">
@@ -117,6 +117,10 @@
           <details class="alerts-panel" id="plan-panel" hidden>
             <summary>🧳 我的行程 <span id="plan-count"></span></summary>
             <div id="plan-body" class="alerts-body"></div>
+          </details>
+          <!-- etrips.js fills this in (it loads with the search scripts). -->
+          <details class="alerts-panel" id="combo-panel">
+            <summary>🧭 中停／開口組合</summary><div id="combo-body" class="alerts-body"><p class="hint">載入中…</p></div>
           </details>
         </div>
       </div>
@@ -249,7 +253,7 @@
       <div class="hero slim">
         <div class="wrap">
           <h1>兌換地圖</h1>
-          <p class="lead">哩程可以飛去哪？依各計畫公布的固定哩程表，標出從出發地到世界各大城市最少要多少哩。點城市可以直接到航線查詢找實際座位。</p>
+          <p class="lead">哩程可以飛去哪？依各計畫公布的固定哩程表，標出從出發地到世界各大城市最少要多少哩<span class="nobr">（固定表估價）</span>。點城市可以直接到航線查詢找實際座位。</p>
           <div id="map-page"></div>
         </div>
       </div>
@@ -290,7 +294,11 @@
           <p class="lead">航空聯盟、各哩程計畫的單程、中停、開口、燃油費與改退票規則，每條都附上資料來源。</p>
         </div>
       </div>
-      <div class="wrap"><div id="rules"></div></div>
+      <div class="wrap"><div id="rules"></div>
+        <!-- 書籤小工具: etrips.js (Google 航班快捷) and cxcal.js (國泰哩程日曆) add their cards here. -->
+        <section class="bm-tools" id="bm-tools" aria-labelledby="bm-title" hidden><h2 class="section" id="bm-title">書籤小工具</h2>
+          <p class="hint">把按鈕拖到瀏覽器的書籤列，在 Google 航班或國泰官網的頁面點一下，就能把畫面上的航線或哩程帶回這裡。</p><div id="bm-list"></div></section>
+      </div>
     </section>
   </main>
 
@@ -331,17 +339,15 @@
     </div>
   </footer>
   <script src="/tripinfo.js?v=1.32.7"></script>
+  <script src="/backnav.js?v=1.32.7"></script>
   <script src="/app.js?v=1.32.7"></script>
   <script src="/features.js?v=1.32.7"></script>
   <script src="/nlsearch.js?v=1.32.7"></script>
   <script src="/logos.js?v=1.32.7"></script>
-  <script src="/award-tools.js?v=1.32.7"></script>
-  <script src="/ewallet.js?v=1.32.7"></script>
-  <script src="/etrips.js?v=1.32.7"></script>
+  <!-- Loaded when first needed (app.js loadScripts): award-tools.js and ewallet.js with the results, 航班明細, 點數換算器
+       and 規則庫; etrips.js with the search scripts; hotels.js on 查飯店; admin.js on the owner's device (account.js). -->
   <script src="/aihelper.js?v=1.32.7"></script>
-  <script src="/hotels.js?v=1.32.7"></script>
   <script src="/account.js?v=1.32.7"></script>
-  <script src="/admin.js?v=1.32.7"></script>
   <script src="/dealsub.js?v=1.32.7"></script>
   <script src="/line.js?v=1.32.7"></script>
   <script src="/siteopts.js?v=1.32.7"></script>

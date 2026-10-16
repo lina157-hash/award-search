@@ -167,18 +167,24 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   const combo = comboClean(store.get(COMBO_KEY, null) || { legs: [{ from: 'TPE', to: 'NRT' }, { from: 'NRT', to: 'YVR' }], program: 'aeroplan', cabin: 'J' });
   const comboSave = () => store.set(COMBO_KEY, combo);
 
-  $('#plan-panel').insertAdjacentHTML('afterend', `<details class="alerts-panel" id="combo-panel">
+  // index.html has the panel already (this script loads after the page, with the search scripts).
+  if (!$('#combo-panel')) $('#plan-panel').insertAdjacentHTML('afterend', `<details class="alerts-panel" id="combo-panel">
       <summary>🧭 中停／開口組合</summary><div id="combo-body" class="alerts-body"><p class="hint">載入中…</p></div></details>`);
   const comboPanel = $('#combo-panel');
-  comboPanel.addEventListener('toggle', () => {
+  const comboOpen = () => {
     if (!comboPanel.open) return;
     Promise.all([etLoad(), loadAirports(), loadMore()]).then(renderCombo).catch((e) => { $('#combo-body').innerHTML = `<p class="status error">${esc(e.message)}</p>`; });
-  });
+  };
+  comboPanel.addEventListener('toggle', comboOpen);
+  if (comboPanel.open) setTimeout(comboOpen); // opened before this script arrived
 
   const comboAp = (code) => AP.byCode.get(code) || null;
   const verdictShort = { ok: '✓ 可以', check: '△ 要確認', split: '✕ 要拆票', no: '✕ 不適用' };
   const verdictText = { ok: ['✓ 可以開成一張票', 'ok'], check: ['△ 可能可以，請電話確認', 'check'], split: ['✕ 不能開成一張票，要拆票', 'bad'], no: ['✕ 這個計畫不適用', 'bad'] };
   const sourcesHtml = (rule) => (rule.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a>`).join('　');
+  // The site's one name for each program (features.js chartProgram); 「星盟夥伴 Saver」 and the like go beside it, small.
+  const etName = (r) => chartProgram(r.id, r.name, r.chart);
+  const etVariant = (r, wrap) => (etName(r).variant ? wrap(esc(etName(r).variant)) : '');
 
   function renderCombo() {
     const body = $('#combo-body');
@@ -191,12 +197,12 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
         <span aria-hidden="true">→</span>
         <input class="combo-ap" data-leg="${i}" data-k="to" value="${esc(l.to)}" placeholder="抵達" aria-label="第 ${i + 1} 段目的地" autocapitalize="characters" spellcheck="false" maxlength="20">
         <input type="date" class="combo-date" data-leg="${i}" value="${esc(l.date)}" min="${isoDate(0)}" max="${isoDate(MAX_AHEAD_DAYS)}" aria-label="第 ${i + 1} 段日期（選填）">
-        <button type="button" class="outline" data-seek="${i}" title="用航線查詢找這一段的獎勵位（日期前後 3 天；沒填日期查未來 1 個月），和一般搜尋一樣用 1 次 seats.aero 查詢">找座位（用 1 次）</button>
+        <button type="button" class="outline" data-seek="${i}" title="用航線查詢找這一段的獎勵位（日期前後 3 天；沒填日期查未來 1 個月），和一般搜尋一樣用 1 次 seats.aero 查詢">找座位（用 1 次查詢）</button>
         ${combo.legs.length > 2 ? `<button type="button" class="linklike" data-crm="${i}" aria-label="移除第 ${i + 1} 段">✕</button>` : ''}
       </li>`).join('')}</ol>
       <div class="combo-opts">
         ${combo.legs.length < 4 ? '<button type="button" class="outline" id="combo-add">＋ 加一段</button>' : ''}
-        <label class="field compact">哩程計畫<select id="combo-prog">${programs.map((p) => `<option value="${esc(p.id)}" ${p.id === combo.program ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="field compact">哩程計畫<select id="combo-prog">${programs.map((p) => `<option value="${esc(p.id)}" ${p.id === combo.program ? 'selected' : ''}>${esc(etName(p).name)}${etVariant(p, (v) => `（${v}）`)}</option>`).join('')}</select></label>
         <fieldset class="seg" aria-label="艙等">${Object.entries(CABIN_SHORT).map(([k, l]) => `<label><input type="radio" name="combo-cabin" value="${k}" ${combo.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
       </div>
       <div id="combo-out" aria-live="polite"></div>`;
@@ -219,7 +225,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     const all = etData.programs.map((r) => ({ r, e: etEvaluate(r, legs, c, comboAp) })).filter((x) => !x.e.error);
     const rank = { ok: 0, check: 1, split: 2, no: 3 };
     all.sort((a, b) => rank[a.e.verdict] - rank[b.e.verdict] || (a.e.price?.miles ?? a.e.splitPrice?.miles ?? 9e9) - (b.e.price?.miles ?? b.e.splitPrice?.miles ?? 9e9));
-    out.innerHTML = `<div class="combo-verdict ${vc}"><b>${vt}</b><span>${esc(rule.name)}・${shape}・直線距離合計 ${fmt(ev.trip.total)} 哩</span></div>
+    out.innerHTML = `<div class="combo-verdict ${vc}"><b>${vt}</b><span>${esc(etName(rule).name)}${etVariant(rule, (v) => `（${v}）`)}・${shape}・直線距離合計 ${fmt(ev.trip.total)} 哩</span></div>
       <ul class="combo-checks">${ev.lines.map((l) => `<li class="${l.ok === false ? 'bad' : l.ok ? 'ok' : ''}">${l.ok === false ? '✕' : l.ok ? '✓' : 'ⓘ'} ${esc(l.text)}</li>`).join('')}</ul>
       ${rule.pricing === 'none' ? '<p class="combo-price">浮動定價，沒有固定表可估；請按各段「找座位」看實際哩數。</p>' : ''}
       ${priceHtml(ev.price, '固定表估價')}${priceHtml(ev.splitPrice, '拆成單程票估價')}
@@ -227,7 +233,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
       ${rule.conditions?.length ? `<p class="hint">其他條件：${esc(rule.conditions.join('；'))}</p>` : ''}
       <p class="hint combo-src">${CONFIDENCE_TAG[rule.confidence] || ''}來源：${sourcesHtml(rule)}</p>
       <details class="combo-all"><summary>其他計畫比較</summary><div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>一張票？</th><th>估價（每人）</th></tr></thead><tbody>
-        ${all.map(({ r, e }) => `<tr class="${r.id === combo.program ? 'best-row' : ''}"><td><button type="button" class="linklike" data-cprog="${esc(r.id)}">${esc(r.name)}</button></td><td>${verdictShort[e.verdict]}</td>
+        ${all.map(({ r, e }) => `<tr class="${r.id === combo.program ? 'best-row' : ''}"><td><button type="button" class="linklike" data-cprog="${esc(r.id)}">${esc(etName(r).name)}</button>${etVariant(r, (v) => `<small>${v}</small>`)}</td><td>${verdictShort[e.verdict]}</td>
           <td>${e.price?.miles != null ? `<b>${fmt(e.price.miles)} 哩</b>` : e.splitPrice?.miles != null ? `${fmt(e.splitPrice.miles)} 哩<small>拆票</small>` : '<small>浮動或查不到</small>'}</td></tr>`).join('')}
       </tbody></table></div></details>
       <p class="hint">依直線距離與公布的最低（Saver）價估算，實際價格以航空公司為準；稅金與燃油費另計。每一段請另外確認有位子。</p>`;
@@ -334,7 +340,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     const longRange = dayCount(pos.share.get('s'), pos.share.get('e') || pos.share.get('s')) > 150;
     if (!pos.byHub) {
       box.innerHTML = `<div class="pos-box">
-        <button type="button" class="outline" id="pos-run" ${pos.busy ? 'disabled' : ''}>${pos.busy ? '查詢中…' : `✈ 看看從外站出發：查 ${n} 個外站（用 ${n} 次）`}</button>
+        <button type="button" class="outline" id="pos-run" ${pos.busy ? 'disabled' : ''}>${pos.busy ? '查詢中…' : `✈ 看看從外站出發：查 ${n} 個外站（用 ${n} 次查詢）`}</button>
         <span class="hint">同樣的目的地和日期，改從${esc(names)}出發${longRange ? '；日期範圍很長時每站可能多用 1 次' : ''}</span></div>`;
       $('#pos-run').addEventListener('click', runPos);
       return;
@@ -358,7 +364,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
             : `${fmt(x.miles)} 哩${x.taxes ? ` ＋ 稅 ${tax != null ? `NT$${fmt(tax)}` : esc(taxText(x.taxes))}` : ''}<small>＋ ${esc(cfg.cashFromName)}→${esc(hub.name)}機票（未查）</small>`;
           const cashCell = cash?.price ? `<b>NT$${fmt(cash.price)}</b><small>${esc(cash.note)}</small>`
             : cash?.error ? `<small class="warn">${esc(cash.error)}</small>`
-            : cashCfg.enabled ? `<button type="button" class="outline small-btn" data-pcash="${esc(cashKey)}" ${cash?.busy ? 'disabled' : ''}>${cash?.busy ? '查詢中…' : '查現金票（用 1 次）'}</button>` : '<small>現金票查詢未開放</small>';
+            : cashCfg.enabled ? `<button type="button" class="outline small-btn" data-pcash="${esc(cashKey)}" ${cash?.busy ? 'disabled' : ''}>${cash?.busy ? '查詢中…' : '查現金票（用 1 次查價）'}</button>` : '<small>現金票查詢未開放</small>';
           return `<tr><td><b>${esc(hub.name)}</b><small>${esc(r.origin)} → ${esc(r.destination)}・${dayLabel(r.date)}</small></td>
             <td><b>${fmt(x.miles)} 哩</b><small>${esc(srcName(r.source))}・${carriersHtml(x.airlines)}${x.direct ? '・直飛' : ''}${x.seats ? `・剩 ${x.seats} 位` : ''}</small></td>
             <td>${cashCell}</td><td>${total}</td>
@@ -423,7 +429,10 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   });
 
   // ---------- E14: Google 航班快捷 (help card at the end of 規則庫, and the landing from gf.html) ----------
-  $('#rules').insertAdjacentHTML('afterend', `<details class="card gf-card" id="gf-card">
+  // Under the 書籤小工具 heading (index.html #bm-tools), or after the rules on a page without it.
+  const bm = $('#bm-list');
+  if (bm) $('#bm-tools').hidden = false;
+  (bm || $('#rules')).insertAdjacentHTML(bm ? 'beforeend' : 'afterend', `<details class="card gf-card" id="gf-card">
     <summary><b>🔖 Google 航班快捷</b><small>在 Google 航班看到想飛的航線，一鍵帶到這裡查哩程票</small></summary>
     <div id="gf-body"><p class="hint">載入中…</p></div></details>`);
   $('#gf-card').addEventListener('toggle', () => {
@@ -462,7 +471,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
       const onFirst = () => {
         document.removeEventListener('search:done', onFirst);
         if (!back) return;
-        toast(`已從 Google 航班帶入去程；回程 ${mmdd(back)} 要查嗎？（用 1 次）`, { label: '查回程', run: () => {
+        toast(`已從 Google 航班帶入去程；回程 ${mmdd(back)} 要查嗎？（用 1 次查詢）`, { label: '查回程', run: () => {
           const s = tabParams('search');
           applyShare(new URLSearchParams({ o: s.get('d'), d: s.get('o'), s: back, e: back, c: s.get('c') || 'J', ...(s.get('n') ? { n: s.get('n') } : {}) }));
         } });

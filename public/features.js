@@ -311,7 +311,7 @@ function downloadIcs(program, opens, flightDate, route) {
   const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//award-search//release//ZH', 'BEGIN:VEVENT',
     `UID:${program}-${d}-${flightDate}@award-search`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${next}`,
     `SUMMARY:${text(`${programName(program)} 開放 ${flightDate} ${route} 獎勵位`)}`,
-    `DESCRIPTION:${text(`${programName(program)} 約今天開放 ${flightDate} 的獎勵機位，可以到機票搜索雷達查詢。`)}`,
+    `DESCRIPTION:${text(`${programName(program)} 約今天開放 ${flightDate} 的獎勵位，可以到機票搜索雷達查詢。`)}`,
     'BEGIN:VALARM', 'TRIGGER:PT9H', 'ACTION:DISPLAY', 'DESCRIPTION:獎勵位今天開放', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
@@ -805,10 +805,10 @@ function renderNeed() {
     rows.push({ key: p.id, name: p.name, label: x.label, miles: x.miles, note: `${x.note}${top > x.miles ? `；其他航空最高 ${fmt(top)} 哩` : ''}`, confidence: p.confidence, perSegment: p.perSegment, src: p.sources?.[0], pnote: p.note });
   }
   rows.sort((x, y) => x.miles - y.miles);
-  const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic' || (p.kind === 'routeSpecific' && !p.routes?.length)).map((p) => p.name || programName(p.id));
+  const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic' || (p.kind === 'routeSpecific' && !p.routes?.length)).map((p) => rmapProgramName(p.id));
   host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${rt ? '來回・' : ''}${CABIN_LABEL[c]}・直線距離 ${fmt(dist)} 哩</h3>
     ${rows.length ? `<div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>${rt ? '來回' : '單程'}哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
-      ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(r.name || programName(r.key))}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b>${shortfallHtml(r.key, r.miles)}</td>
+      ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(chartProgram(r.key, r.name).name)}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b>${shortfallHtml(r.key, r.miles)}</td>
         <td><small>${esc(r.note)}${r.perSegment ? '；每段航班分開計價，轉機會更貴' : ''}</small></td>
         <td>${CONFIDENCE_TAG[r.confidence] || ''}${r.src ? `<small><a href="${esc(r.src.url)}" target="_blank" rel="noopener">${esc(r.src.label)} ↗</a></small>` : ''}</td></tr>`).join('')}
     </tbody></table></div>` : '<p class="hint">這條航線找不到適用的固定哩程表。</p>'}
@@ -829,7 +829,20 @@ const rmap = { origins: ['TPE'], cabin: 'J', trip: 'ow', program: '', budget: 0,
 let rmapMap = null;
 // Every program with a fixed chart, one-way prices; 日航寰宇一家 only prices round trips.
 const rmapPrograms = () => ['asiamiles', ...(data.charts?.programs || []).filter((p) => ['distance', 'zone', 'regionMatrix', 'routeSpecific'].includes(p.kind) && (p.routes?.length || p.tables?.length)).map((p) => p.id)];
-const rmapProgramName = (id) => (id === 'asiamiles' ? programName('asiamiles') : data.charts?.programs?.find((p) => p.id === id)?.name || programName(id));
+// One name per program across the site: data/source-names.json (or the site's own short names) first. A chart's own
+// wording such as 「星盟夥伴」 or 「（星盟夥伴 Saver）」 is the variant, shown small beside the name.
+const CHART_VARIANT = /\s*(?:（([^（）]+)）|\s(星盟夥伴|天合聯盟夥伴))$/;
+function chartProgram(id, full = '', alt = '') {
+  full = String(full || '');
+  const m = full.match(CHART_VARIANT);
+  const named = (k) => SOURCE_NAMES[k] || EXTRA_PROGRAM_NAMES[k];
+  const known = [id, alt].map(named).find(Boolean);
+  // A chart paid with another program's miles (日航寰宇一家 → 日航 JMB): that program's name, the chart's wording small.
+  const parent = !known && [id, alt].map(programKeyOf).map(named).find(Boolean);
+  if (parent) return { name: parent, variant: m ? m[1] || m[2] : full.replace(/^\S+\s+/, '') };
+  return { name: known || (m ? full.slice(0, m.index) : full) || id, variant: m ? m[1] || m[2] : '' };
+}
+const rmapProgramName = (id) => chartProgram(id, data.charts?.programs?.find((p) => p.id === id)?.name).name;
 // Prices for one destination: [{ id, label, miles }], cheapest first. Round trip = two one-ways, except charts that are
 // round-trip only, which are used as they are.
 function rmapPrices(a, b, cabin, trip, only) {
@@ -948,17 +961,28 @@ async function renderRmap() {
   rmap.drawnWallet = JSON.stringify(wallet);
   const multi = froms.length > 1;
   const dests = rmapDestinations();
-  const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic').map((p) => p.name);
+  const dyn = (data.charts?.programs || []).filter((p) => p.kind === 'dynamic').map((p) => rmapProgramName(p.id));
   const label = `${froms.map((f) => `${f.code} ${airportCity(f.code)}`).join('、')} 出發・${rmap.trip === 'rt' ? '來回' : '單程'}・${CABIN_LABEL[rmap.cabin]}${rmap.program ? `・${rmapProgramName(rmap.program)}` : ''}`;
   out.innerHTML = `<h3 class="sub">${esc(label)}　${dests.length ? `${fmt(dests.length)} 個城市` : ''}</h3>
     ${dests.length ? '<div id="rmap" class="ex-map rmap"><p class="hint">地圖載入中…</p></div>' : `<p class="hint">${rmap.budget || rmap.mine ? '這個哩數換不到任何城市，放寬條件看看。' : '這個出發地和艙等找不到適用的固定哩程表。'}</p>`}
     <p class="hint">${multi ? '有多個出發地時，每個計畫取最便宜的出發地。' : ''}標的是最低價（Saver），以兩地直線距離或區域估算；實際轉機路線、旺季與燃油附加費可能讓價格不同。長榮、華航、全日空等依區域計價的表只適用台灣出發。${dyn.length ? `${esc(dyn.join('、'))} 是動態定價，不列入。` : ''}</p>`;
   if (!dests.length) return;
-  try { await loadLeaflet(); } catch (err) { $('#rmap').innerHTML = `<p class="status error">${esc(err.message)}</p>`; return; }
+  // No map (Leaflet would not load, or would not draw): say so with a 重試, and list the same cities instead.
+  const noMap = (err) => {
+    if (rmapMap) { rmapMap.remove(); rmapMap = null; }
+    const box = $('#rmap');
+    if (!box) return;
+    box.outerHTML = `${mapFailHtml(err)}${rmapListHtml(dests)}`;
+    $('#rmap-out [data-map-retry]')?.addEventListener('click', renderRmap);
+  };
+  try { await loadLeaflet(); } catch (err) { noMap(err); return; }
   const el = $('#rmap');
   if (!el) return;
   el.innerHTML = '';
   if (rmapMap) { rmapMap.remove(); rmapMap = null; }
+  try { drawRmap(el, froms, dests, multi); } catch (err) { console.error(err); noMap(new Error('地圖畫不出來，請再試一次')); }
+}
+function drawRmap(el, froms, dests, multi) {
   const L = window.L;
   rmapMap = L.map(el, { worldCopyJump: true, scrollWheelZoom: false });
   addBaseMap(rmapMap);
@@ -1043,7 +1067,7 @@ function dealsRefreshHtml() {
     dealsState.timer = setTimeout(renderDeals, until - Date.now() + 1000);
     return ` <span>已手動更新，${hhmmLocal(until)} 後可再更新</span>`;
   }
-  return ' <button type="button" class="linkish" id="deals-refresh">立即更新（用約 8 次查詢，每小時一次）</button>';
+  return ' <button type="button" class="linkish" id="deals-refresh" title="每小時可以更新一次">立即更新（用約 8 次查詢）</button>';
 }
 async function loadDeals() {
   const host = $('#deals');
@@ -1108,6 +1132,9 @@ function renderDeals() {
 }
 
 // ---------- explore map (Leaflet, loaded on first use) ----------
+// Leaflet 1.9.4 is served from this site (public/leaflet/: the unchanged upstream files and their BSD licence), so an
+// ad blocker or a network that blocks cdnjs no longer leaves an empty map box.
+const LEAFLET_URL = '/leaflet/leaflet';
 let leafletReady = null;
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
@@ -1115,20 +1142,36 @@ function loadLeaflet() {
     // Both the script and its stylesheet: a map drawn before the CSS arrives has its tiles out of place.
     let left = 2;
     const done = () => { if (!--left) resolve(); };
-    const fail = () => { leafletReady = null; reject(new Error('地圖元件載入失敗，請檢查網路後再試')); };
-    const css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css';
-    css.onload = done;
-    css.onerror = done; // markers still work without it
-    document.head.append(css);
     const js = document.createElement('script');
-    js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+    const fail = () => { leafletReady = null; js.remove(); reject(new Error('地圖元件載入失敗，請檢查網路後再試')); };
+    if ($('link[data-leaflet]')) left = 1; // a 重試: the stylesheet is already in
+    else {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = `${LEAFLET_URL}.css?v=1.9.4`;
+      css.dataset.leaflet = '';
+      css.onload = done;
+      css.onerror = done; // markers still work without it
+      document.head.append(css);
+    }
+    js.src = `${LEAFLET_URL}.js?v=1.9.4`;
     js.onload = done;
     js.onerror = fail;
     document.head.append(js);
   });
   return leafletReady;
+}
+// A map that cannot draw: the reason and a 重試 button.
+const mapFailHtml = (err) => `<div class="status error map-fail"><span>${esc(err.message || err)}</span><button type="button" class="outline retry" data-map-retry>重試</button></div>`;
+// 兌換地圖 without a map: every city, cheapest first, with its lowest price and a way into 航線查詢.
+function rmapListHtml(dests) {
+  const rows = [...dests].sort((a, b) => a.min - b.min || a.city.localeCompare(b.city, 'zh-Hant'));
+  return `<p class="hint rmap-list-cap" id="rmap-list-cap">先用清單看：${fmt(rows.length)} 個城市，最低哩數由少到多</p>
+    <div class="table-wrap rmap-list"><table class="need-table" aria-labelledby="rmap-list-cap">
+    <thead><tr><th>城市</th><th>最低哩數</th><th>計畫</th><th><span class="sr-only">查座位</span></th></tr></thead><tbody>
+    ${rows.map((d) => `<tr><td><b>${esc(d.city)}</b><small>${esc(d.ap.code)}</small></td><td><b>${fmt(d.min)}</b> 哩</td><td><small>${esc(rmapProgramName(d.prices[0].id))}</small></td>
+      <td><button type="button" class="linklike" data-rm-search="${esc(d.codes.join(','))}">到航線查詢</button></td></tr>`).join('')}
+    </tbody></table></div>`;
 }
 // Map background: CARTO tiles; if they will not load (blocked network, an ad blocker, CARTO down), OpenStreetMap's own
 // tiles; if those fail too, a plain outline of the continents shipped with the site (Natural Earth, public domain).
@@ -1183,7 +1226,8 @@ async function renderExploreMap(rows) {
   try {
     await loadLeaflet();
   } catch (err) {
-    box.innerHTML = `<p class="status error">${esc(err.message)}</p>`;
+    box.innerHTML = `${mapFailHtml(err)}<p class="hint">也可以改按上面的「表格」看同樣的結果。</p>`;
+    $('[data-map-retry]', box).addEventListener('click', () => renderExploreMap(rows));
     return;
   }
   if (!$('#ex-map')) return;
@@ -1272,7 +1316,8 @@ function addLegs(legs) {
   plan.legs.push(...clean);
   plan.legs.sort((a, b) => a.date.localeCompare(b.date));
   savePlan();
-  toast('已加入「我的行程」（在航線查詢頁下方）');
+  // 查看 opens the plan, which lives under the 航線查詢 form (from 查現金票 it is on another tab).
+  toast('已加入「我的行程」', { label: '查看', run: () => { showTab('search'); const el = $('#plan-panel'); el.hidden = false; el.open = true; requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' })); } });
 }
 function awardLeg(t, pax) {
   const cabin = { economy: 'Y', premium: 'W', business: 'J', first: 'F' }[t.cabin] || 'J';
@@ -1413,7 +1458,7 @@ const watchCfg = { on: false };
 const watchSummary = (w) => `${w.origin} → ${w.destination}　${mmdd(w.depart)}${w.ret ? ` – ${mmdd(w.ret)} 來回` : ' 單程'}　${CABIN_LABEL[w.cabin]}${w.adults > 1 ? `　${w.adults} 人` : ''}`;
 function watchFormHtml() {
   return `<form class="watch-form" id="watch-form">
-    <p class="hint">比現在便宜就寄信通知你。為了省查價額度，出發前 60 天以上每週查 1 次、15 到 60 天每 3 天、最後 14 天才每天查；所有追蹤每月合計最多用 30 次，而且用的是 RapidAPI 的額度，SerpApi 留給你自己查；RapidAPI 出錯時才借用 SerpApi，SerpApi 剩不到 150 次就不借。開始追蹤不會另外用額度。</p>
+    <div class="hint watch-note">價格比現在低就通知你；越接近出發查得越勤，每月最多 30 次，開始追蹤不另外花額度。<details class="info-i"><summary aria-label="怎麼查、用哪個額度">ⓘ</summary><p>出發前 60 天以上每週查 1 次、15 到 60 天每 3 天查 1 次、最後 14 天每天查。所有追蹤每月合計最多用 30 次查價，用的是 RapidAPI 的額度，SerpApi 留給你自己查；RapidAPI 出錯時才借用 SerpApi，SerpApi 剩不到 150 次就不借。</p></details></div>
     <div class="w-add"><input type="email" name="email" placeholder="通知信箱（可留空，只在網站顯示）" autocomplete="email" value="${esc(store.get(ALERT_EMAIL_KEY, ''))}">
     <button type="submit" class="primary">開始追蹤</button><button type="button" class="outline" id="watch-cancel">取消</button></div>
   </form>`;

@@ -7,6 +7,7 @@
 // toast, showTab, state, refreshPrograms, srcName, ymd, CABIN_SHORT, updateLockHint).
 
 const nl = { on: false, busy: false, result: null, programs: [], ret: null, leg: 'out', armed: false };
+const NL_OPEN_KEY = 'nlOpen'; // true after the first use, then whatever the owner last left it as
 const NL_PAX_MAX = 5; // the form's 人數 menu goes up to 「至少 5 位」
 const NL_ALLIANCE = { star: '星空聯盟', skyteam: '天合聯盟', oneworld: '寰宇一家' };
 
@@ -30,16 +31,21 @@ function nlRender() {
   const box = $('#nl-card');
   if (!nl.on || !nlOwnerHere()) { box?.remove(); return; }
   if (box) return;
-  $('#search-form').insertAdjacentHTML('beforebegin', `<section class="nl-card" id="nl-card" aria-labelledby="nl-title">
-    <p class="nl-head"><b id="nl-title">✨ 一句話找機票</b><span>用中文描述就好，會幫你填好下面的條件</span></p>
+  // One line until opened, so the form's 搜尋機位 stays on a phone's first screen; it opens by itself once it has been
+  // used (and stays the way the owner last left it).
+  $('#search-form').insertAdjacentHTML('beforebegin', `<details class="nl-card" id="nl-card" ${store.get(NL_OPEN_KEY, false) ? 'open' : ''}>
+    <summary class="nl-head"><b id="nl-title">✨ 一句話找機票</b><span>用中文描述就好，會幫你填好下面的條件</span></summary>
     <form class="nl-row" id="nl-form" autocomplete="off">
       <input id="nl-q" type="text" maxlength="100" enterkeyhint="go" aria-labelledby="nl-title"
         placeholder="用一句話說你想怎麼飛，例如：明年過年台北飛東京商務艙">
-      <button type="submit" class="primary">解析</button>
+      <button type="submit" class="primary">幫我填</button>
     </form>
     <div class="nl-chips" id="nl-chips" hidden></div>
     <p class="nl-msg" id="nl-msg" aria-live="polite"></p>
-  </section>`);
+  </details>`);
+  $('#nl-card').addEventListener('toggle', (e) => store.set(NL_OPEN_KEY, e.target.open));
+  // Opened by a tap: straight to the box (a click comes before the details opens).
+  $('#nl-card > summary').addEventListener('click', () => { if (!$('#nl-card').open) setTimeout(() => $('#nl-q')?.focus(), 0); });
   $('#nl-form').addEventListener('submit', nlParse);
   $('#nl-chips').addEventListener('click', nlChipClick);
   $('#nl-msg').addEventListener('click', (e) => { if (e.target.closest('[data-explore]')) nlToExplore(); });
@@ -72,7 +78,7 @@ async function nlParse(e) {
   } finally {
     nl.busy = false;
     btn.disabled = false;
-    btn.textContent = '解析';
+    btn.textContent = '幫我填';
   }
 }
 
@@ -86,6 +92,7 @@ function nlApply(r) {
     nlMsg(`${esc(r.message)}${missed}${r.region ? ' <button type="button" class="linkish" data-explore>到區域探索</button>' : ''} <small>${esc(nlLeft(r))}</small>`);
     return;
   }
+  store.set(NL_OPEN_KEY, true);
   const f = $('#search-form');
   // The sentence describes the whole search: what it leaves out goes back to the form's defaults (cabin excepted,
   // which stays as last used).

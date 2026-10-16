@@ -286,10 +286,13 @@ async function applyUnlock() {
   else if (!on && acct.lockFlipped) { cashCfg.locked = true; acct.lockFlipped = false; }
   updateLockHint();
 }
+// 帳號管理 (admin.js) is fetched only on the owner's device; siteopts.js then shows its footer link too.
+const loadAdmin = () => loadScripts(['admin']).then(([ok]) => { if (ok && typeof renderCronLine === 'function') renderCronLine(); });
 const baseLockHint = updateLockHint;
 updateLockHint = function () {
   baseLockHint();
   tgGate();
+  if (ownerHere()) loadAdmin();
   if (!acct.lockFlipped || cashCfg.locked) return;
   const el = $('#cash-lock');
   el.hidden = false;

@@ -55,8 +55,8 @@ function museBuildPrompt(o) {
   const statuses = t.statuses?.length ? t.statuses : ['有位', '無位'];
   const L = [];
   L.push(t.login
-    ? `請到${t.site}幫我查${t.full}的獎勵機票座位（${t.program}），只查不訂。需要登入時，用我自己的${t.program}帳號：`
-    : `請到${t.site}幫我查用${t.program}兌換${t.full}的獎勵機票座位，只查不訂；這個網站查票不用登入：`, t.url);
+    ? `請到${t.site}幫我查${t.full}的獎勵位（${t.program}），只查不訂。需要登入時，用我自己的${t.program}帳號：`
+    : `請到${t.site}幫我查用${t.program}兌換${t.full}的獎勵位，只查不訂；這個網站查票不用登入：`, t.url);
   if (t.path) L.push(`・查票路徑：${t.path}`);
   L.push('');
   if (pairs.length === 1) L.push(`・航線（單程）：${musePlace(pairs[0].from, pairs[0].fc)} → ${musePlace(pairs[0].to, pairs[0].tc)}`);
@@ -104,7 +104,7 @@ function musePhonePrompt(o) {
   const a = museAdd(o.start, -7);
   const b = museAdd(o.start, 7);
   return [
-    `請你幫我打${t.full}的訂位／會員客服電話，問${t.program}獎勵機票的座位，只問不訂：`,
+    `請你幫我打${t.full}的訂位／會員客服電話，問${t.program}獎勵位，只問不訂：`,
     `・電話：請用${t.site}公布的客服電話（台灣或我所在地區的）`,
     `・航線（單程）：${musePlace(p.from, p.fc)} → ${musePlace(p.to, p.tc)}`,
     `・日期：${museZh(o.start)} 的前後 7 天（${a} 到 ${b}）`,

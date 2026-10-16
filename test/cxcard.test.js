@@ -96,7 +96,7 @@ test('the card is the only hook; 請 AI 助理查官網 is one of its actions an
   assert.match(card, /if \(k === 'ai'\) return ownerHere\(\)/);
   assert.match(card, /const ownerHere = \(\) => Boolean\(store\.get\(PASS_KEY, ''\) \|\| \(typeof acct === 'object' && acct\.status\?\.unlocked\) \|\| !cashCfg\.locked\)/);
   // 經香港轉機 spends seats.aero calls only from the button inside its panel, which says so.
-  assert.match(src('cxfill.js'), /id="cx-run"[^`]*多用 2 次 seats\.aero 查詢/);
+  assert.match(src('cxfill.js'), /id="cx-run"[^`]*（用 2 次查詢）/);
   assert.doesNotMatch(src('cxfill.js'), /search:done[^}]*run\(\)/);
 });
 
