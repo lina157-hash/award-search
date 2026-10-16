@@ -1048,7 +1048,7 @@ $('#alert-form').addEventListener('submit', async (e) => {
     store.set(ALERT_EMAIL_KEY, f.email.value.trim());
     const body = await cashApi('/api/alerts', { pass: '機位提醒', method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), pax: f.pax.value, email: f.email.value.trim(), ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
     $('#alert-dialog').close();
-    toast(`已建立提醒，目前有 ${body.found} 筆有位`);
+    toast(body.duplicate ? '一樣的提醒已經有了，不用再建一次' : `已建立提醒，目前有 ${body.found} 筆有位`);
     $('#alerts-panel').open = true;
     loadAlerts();
   } catch (err) {
@@ -2673,6 +2673,7 @@ const cachedNote = (body) => (body?.cached ? '・剛查過，這次沒有用到�
 async function loadCashQuota() {
   const el = $('#cash-quota');
   if (!el || !cashCfg.enabled) return;
+  if (passNeeded()) { el.hidden = true; return; }
   try {
     const q = await api('/api/cash/quota');
     const srcs = [['RapidAPI', q.rapid], ['SerpApi', q.serpapi]].filter(([, x]) => x);

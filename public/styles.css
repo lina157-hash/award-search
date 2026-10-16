@@ -1354,8 +1354,8 @@ details.sub-fold[open] > summary::before { content: "▾"; }
 details.sub-fold > summary h3.sub { margin: 0; font-size: .95rem; }
 details.sub-fold > summary small { color: var(--muted); font-size: .8rem; }
 details.sub-fold > .cards { margin: 6px 0 12px; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .alogo:not(.alogo-code) { background: #eef1f4; box-shadow: none; } }
-:root[data-theme="dark"] .alogo:not(.alogo-code) { background: #eef1f4; box-shadow: none; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .alogo:not(.alogo-code) { background-color: #eef1f4; box-shadow: none; } }
+:root[data-theme="dark"] .alogo:not(.alogo-code) { background-color: #eef1f4; box-shadow: none; }
 @media (max-width: 640px) {
   .rules-nav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; padding: 6px 16px; }
   .rules-nav button { min-width: 0; min-height: 36px; padding: 4px 0; white-space: nowrap; }

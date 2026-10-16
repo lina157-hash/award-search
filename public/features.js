@@ -393,7 +393,7 @@ function walletHtml() {
   const sources = walletSources();
   const hotels = Object.entries(hotelPrograms());
   return `<div class="wallet">
-    <p class="hint">填入你手上的點數與哩程，只會存在這台裝置的瀏覽器，不會上傳。填好後，搜尋結果可以開「只看我換得起的」，航班明細也會告訴你夠不夠換。</p>
+    <p class="hint">填入你手上的點數與哩程，${typeof signedIn === 'function' && signedIn() ? '存在這台裝置，並同步到你的帳號' : '存在這台裝置；登入後會同步'}。填好後，搜尋結果可以開「只看我換得起的」，航班明細也會告訴你夠不夠換。</p>
     <div id="wallet-list"></div>
     <div class="w-add">
       <select id="w-pick" aria-label="選擇點數或哩程"><option value="">選擇信用卡點數、航空哩程或飯店點數</option>

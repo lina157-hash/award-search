@@ -110,3 +110,17 @@ test('PUT /api/alerts: demo route updates in place, behind the same passcode as 
     server.close();
   }
 });
+
+test('alert add: the same conditions twice give back the first watch, no second search', async () => {
+  const { al, asked } = setup();
+  const first = await al.add(watch());
+  const n = asked.length;
+  const again = await al.add(watch({ origin: 'tpe' }));
+  assert.equal(again.duplicate, true);
+  assert.equal(again.alert.id, first.alert.id);
+  assert.equal(asked.length, n, 'no search for the twin');
+  assert.equal((await al.list()).length, 1);
+  // Other conditions are a new watch.
+  assert.ok(!(await al.add(watch({ cabin: 'Y' }))).duplicate);
+  assert.equal((await al.list()).length, 2);
+});
