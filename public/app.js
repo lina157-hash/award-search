@@ -2507,7 +2507,7 @@ function renderBooking() {
   if (cash.booking) {
     const list = cash.booking;
     host.innerHTML = `<h3 class="sub">預訂選項</h3>
-      ${list.length ? list.map((b) => (b.separate ? `${bookingRowHtml(b.departing, '去程')}${bookingRowHtml(b.returning, '回程')}` : bookingRowHtml(b))).join('') : '<p class="hint">Google 航班沒有提供這組航班的預訂選項，請用下面的連結到 Google 航班或 Skyscanner 訂票。</p>'}
+      ${list.length ? list.map((b) => (b.separate ? `${bookingRowHtml(b.departing, '去程')}${bookingRowHtml(b.returning, '回程')}` : bookingRowHtml(b))).join('') : `<p class="hint">Google 航班沒有提供這組航班的預訂選項，請用下面的連結到 Google 航班或 Skyscanner 訂票。${cash.bookingShape ? `<br><small>技術資訊（截圖給 Claude 可以幫忙修）：${esc(cash.bookingShape)}</small>` : ''}</p>`}
       ${list.length ? `<p class="hint">價格與行李規定以賣家網站為準，按「前往訂票」會開新分頁。${list.some((b) => b.linkToken) ? '按下去才會取得訂票連結，每按一家用掉 1 次查價。' : ''}</p>` : ''}`;
     $$('[data-book-link]', host).forEach((b) => b.addEventListener('click', () => openBookingLink(b)));
     return;
@@ -2546,6 +2546,7 @@ async function loadBooking() {
     const body = await cashApi(`/api/cash?${cashParams(cash.req, null, final.bookingToken)}`);
     if (!fresh()) return;
     cash.booking = body.bookingOptions || [];
+    cash.bookingShape = body.bookingShape || '';
   } catch (err) {
     if (!fresh()) return;
     cash.bookingErr = err.message;

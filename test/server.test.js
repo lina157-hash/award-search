@@ -488,7 +488,7 @@ test('cash month calendar: demo grid, validation and RapidAPI round-trip fallbac
   assert.deepEqual(cal, { round: false, days: [{ date: '2026-11-01', price: 9000 }], currency: 'USD' });
   assert.equal(seen.length, 2);
   assert.match(seen[1], /getCalendarPicker\?.*start_date=2026-11-01/);
-  assert.match(seen[1], /currency=USD/);
+  assert.match(seen[1], /currency=TWD/);
   // The grid is in US dollars: NT$ at the day's rate, marked as converted; the demo grid (NT$) passes through.
   const { calendarTwd } = require('../lib/rapidflights');
   assert.deepEqual(calendarTwd({ round: false, days: [{ date: '2026-11-01', price: 129 }, { date: '2026-11-02', price: 191 }], currency: 'USD' }, 31.96),
@@ -648,4 +648,23 @@ test('A12: the Accor debug outline needs the passcode', async () => {
     assert.equal((await fetch(`${base}/api/hotels/accor/debug`)).status, 401);
     assert.equal((await fetch(`${base}/api/hotels/accor/debug`, { headers: { 'x-cash-pass': 'sunny' } })).status, 200);
   } finally { delete process.env.CASH_PASSCODE; }
+});
+
+test('RapidAPI booking options: documented and drifted seller shapes, and the shape when none is readable', async () => {
+  const { createRapidFlights } = require('../lib/rapidflights');
+  const answer = (data) => createRapidFlights({ apiKey: 'k', fetchImpl: async () => new Response(JSON.stringify({ status: true, data })) })({ booking_token: 'r:abc' });
+  const doc = await answer([{ partner: 'China Airlines', price: 7114, token: 't1', is_airline: true }]);
+  assert.deepEqual(doc.booking_options, [{ together: { book_with: 'China Airlines', price: 7114, link_token: 'r:t1', is_airline: true } }]);
+  const serpLike = await answer({ booking_options: [{ together: { book_with: 'Trip.com', price: 6900 } }] });
+  assert.deepEqual(serpLike.booking_options, [{ together: { book_with: 'Trip.com', price: 6900, link_token: null, is_airline: false } }]);
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    const odd = await answer([{ vendor: 'X', cost: 1 }]);
+    assert.deepEqual([odd.booking_options, odd.booking_shape], [[], 'data[1]: vendor,cost']);
+    assert.equal((await answer({ itinerary: {}, misc: 1 })).booking_shape, 'data{itinerary,misc}');
+    assert.equal((await answer([])).booking_shape, 'data[0]');
+  } finally { console.error = quiet; }
+  const { normalizeCash } = require('../lib/cash');
+  assert.equal(normalizeCash({ booking_options: [], booking_shape: 'data[0]' }).bookingShape, 'data[0]');
 });

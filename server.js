@@ -953,7 +953,7 @@ async function handleCash(q, req) {
   if (params.departure_token && !ret) throw new BadRequest('只有來回票才能查回程');
   if (params.departure_token && params.booking_token) throw new BadRequest('回程查詢和預訂選項不能同時查');
   let spent = false;
-  const raw = await shared('cash:' + JSON.stringify(params), 1800, async () => { spent = true; return CASH_MODE === 'mock' ? mock.mockCash(params) : liveCash(params); });
+  const raw = await shared('cash2:' + JSON.stringify(params), 1800, async () => { spent = true; return CASH_MODE === 'mock' ? mock.mockCash(params) : liveCash(params); });
   return { configured: true, mock: CASH_MODE === 'mock', cached: !spent, returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), provider: raw.provider || 'mock', fallback: raw.fallback || '', ...normalizeCash(raw) };
 }
 
@@ -1016,7 +1016,7 @@ async function handleCashCalendar(q, req) {
   if (CASH_MODE === 'mock') return { configured: true, mock: true, ...mock.mockCashCalendar(params) };
   if (!rapidQuery) throw new CashError('整月價格要用 RapidAPI 的 Google Flights API，網站還沒設定 RAPIDAPI_KEY', 503);
   let spent = false;
-  const body = await shared('cashcal2:' + JSON.stringify(params), 3600, () => { spent = true; return rapidQuery.calendar(params); });
+  const body = await shared('cashcal3:' + JSON.stringify(params), 3600, () => { spent = true; return rapidQuery.calendar(params); });
   return { configured: true, provider: 'rapid', cached: !spent, ...rapid.calendarTwd(body, (await handleFx()).rates.USD) };
 }
 
