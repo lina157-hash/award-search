@@ -2999,8 +2999,13 @@
    "oneWay": true,
    "note": "2026/9/16起改三段式（充足/有限/稀少），此列最低「充足」價；單程為來回一半",
    "effective": "2026-09",
-   "confidence": "secondary",
+   "confidence": "official",
    "sources": [
+    {
+     "label": "華航官網：獎勵機票（各區哩程）",
+     "url": "https://www.china-airlines.com/us/en/member/miles/redeem/reward-ticket.html",
+     "official": true
+    },
     {
      "label": "研究生 華航哩程手冊（新制表）",
      "url": "https://www.pointsjourney.com/blog/guide-china-airlines/",

@@ -196,7 +196,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
       </li>`).join('')}</ol>
       <div class="combo-opts">
         ${combo.legs.length < 4 ? '<button type="button" class="outline" id="combo-add">＋ 加一段</button>' : ''}
-        <label class="field compact">里程計畫<select id="combo-prog">${programs.map((p) => `<option value="${esc(p.id)}" ${p.id === combo.program ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
+        <label class="field compact">哩程計畫<select id="combo-prog">${programs.map((p) => `<option value="${esc(p.id)}" ${p.id === combo.program ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>
         <fieldset class="seg" aria-label="艙等">${Object.entries(CABIN_SHORT).map(([k, l]) => `<label><input type="radio" name="combo-cabin" value="${k}" ${combo.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>
       </div>
       <div id="combo-out" aria-live="polite"></div>`;
@@ -347,7 +347,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     const none = pos.hubs.filter((h) => !rows.some((r) => r.hub === h.id)).map((h) => h.name);
     box.innerHTML = `<section class="pos-out">
       <h2 class="section-title">從外站出發 <small>${esc(cfg.note)}${home ? `台灣出發最低 ${fmt(home)} 哩。` : '台灣出發這次沒有位子。'}</small></h2>
-      ${rows.length ? `<div class="table-wrap"><table class="need-table pos-table"><thead><tr><th>外站</th><th>里程票（每人）</th><th>${esc(cfg.cashFromName)}飛過去（每人）</th><th>估計合計（每人）</th><th></th></tr></thead><tbody>
+      ${rows.length ? `<div class="table-wrap"><table class="need-table pos-table"><thead><tr><th>外站</th><th>哩程票（每人）</th><th>${esc(cfg.cashFromName)}飛過去（每人）</th><th>估計合計（每人）</th><th></th></tr></thead><tbody>
         ${rows.map((r) => {
           const x = r.cabins[c];
           const hub = posHub(r.hub);
@@ -424,7 +424,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
 
   // ---------- E14: Google 航班快捷 (help card at the end of 規則庫, and the landing from gf.html) ----------
   $('#rules').insertAdjacentHTML('afterend', `<details class="card gf-card" id="gf-card">
-    <summary><b>🔖 Google 航班快捷</b><small>在 Google 航班看到想飛的航線，一鍵帶到這裡查里程票</small></summary>
+    <summary><b>🔖 Google 航班快捷</b><small>在 Google 航班看到想飛的航線，一鍵帶到這裡查哩程票</small></summary>
     <div id="gf-body"><p class="hint">載入中…</p></div></details>`);
   $('#gf-card').addEventListener('toggle', () => {
     if (!$('#gf-card').open || window.GF) return renderGf();
@@ -437,10 +437,10 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     if (!window.GF || $('#gf-link')) return;
     const code = GF.bookmarkletCode(location.origin);
     $('#gf-body').innerHTML = `<p class="hint">這是一個「書籤小工具」：在 Google 航班的搜尋結果頁點它，會讀出出發地、目的地、日期和艙等，開新分頁用航線查詢查一次獎勵位（和一般搜尋一樣，不會自動多查）。讀不到的部分會留給你補。</p>
-      <p class="gf-drag"><a class="outline btn primary-link" id="gf-link" href="${esc(code)}">✈ 查里程票</a><span class="hint">← 電腦上把這個按鈕拖到書籤列</span></p>
+      <p class="gf-drag"><a class="outline btn primary-link" id="gf-link" href="${esc(code)}">✈ 查哩程票</a><span class="hint">← 電腦上把這個按鈕拖到書籤列</span></p>
       <div class="gf-how">
-        <div><b>電腦版 Chrome／Edge</b><ol><li>按 Ctrl＋Shift＋B（Mac：⌘＋Shift＋B）打開書籤列。</li><li>把上面的「✈ 查里程票」拖到書籤列。</li><li>在 Google 航班搜尋結果頁，點書籤列的「✈ 查里程票」。</li></ol></div>
-        <div><b>手機（iPhone Safari／Android Chrome）</b><ol><li>按下面的按鈕複製書籤程式碼。</li><li>隨便把一個網頁加入書籤，再編輯這個書籤：名稱改成「查里程票」，網址整段換成剛複製的程式碼。</li><li>在 Google 航班頁面：iPhone 從書籤打開它；Android 在網址列輸入「查里程票」，點選書籤那一項。</li></ol>
+        <div><b>電腦版 Chrome／Edge</b><ol><li>按 Ctrl＋Shift＋B（Mac：⌘＋Shift＋B）打開書籤列。</li><li>把上面的「✈ 查哩程票」拖到書籤列。</li><li>在 Google 航班搜尋結果頁，點書籤列的「✈ 查哩程票」。</li></ol></div>
+        <div><b>手機（iPhone Safari／Android Chrome）</b><ol><li>按下面的按鈕複製書籤程式碼。</li><li>隨便把一個網頁加入書籤，再編輯這個書籤：名稱改成「查哩程票」，網址整段換成剛複製的程式碼。</li><li>在 Google 航班頁面：iPhone 從書籤打開它；Android 在網址列輸入「查哩程票」，點選書籤那一項。</li></ol>
           <button type="button" class="outline" id="gf-copy">複製書籤程式碼</button></div>
       </div>`;
     $('#gf-link').addEventListener('click', (ev) => { ev.preventDefault(); toast('請把它拖到書籤列，在 Google 航班的頁面再點'); });

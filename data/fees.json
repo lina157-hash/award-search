@@ -20,7 +20,7 @@
     "starlux": { "change": "航點 US$60（只改日期未見收費公告）", "cancel": "US$50 起（長程 US$200）", "note": "改票會再收訂位服務費；退票金額為第三方整理", "confidence": "secondary", "from": "programs.json" },
     "turkish": { "change": "US$70", "cancel": "US$70", "note": "No-show 後 US$170", "confidence": "official", "from": "programs.json" },
     "emirates": { "change": "US$25（Saver 改日期）", "cancel": "US$75（Saver）", "note": "Flex Plus 免費", "confidence": "secondary", "from": "programs.json" },
-    "british": { "change": "每次收費", "cancel": "£35（起飛 24 小時前）", "note": "24 小時內取消 Avios 不退", "confidence": "official", "from": "programs.json" },
+    "british": { "change": "每次 35 英鎊或 55 美元", "cancel": "35 英鎊或 55 美元（起飛 24 小時前）", "note": "24 小時內取消 Avios 不退；透過客服辦理另加 15 英鎊或 25 美元", "confidence": "official", "from": "programs.json" },
     "qatar": { "change": "US$25（24 小時前）", "cancel": "US$25（24 小時前）", "note": "3 至 24 小時前 US$100", "confidence": "official", "from": "programs.json" },
     "qantas": { "change": "5,000 點", "cancel": "6,000 點", "confidence": "secondary", "from": "programs.json" },
     "lifemiles": { "change": "US$150", "cancel": "US$50～200", "note": "取消費在訂位時顯示", "confidence": "secondary", "from": "Frequent Miler" },

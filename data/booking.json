@@ -426,7 +426,7 @@
       "booking": {
         "ownOnline": true,
         "partnerOnline": true,
-        "phoneFee": null,
+        "phoneFee": "電話訂位每人加收 15 英鎊或 25 美元（金卡以上免收）",
         "note": "可於 ba.com 線上或聯絡服務中心訂位；起飛前 24 小時內不可訂"
       },
       "confidence": "official",

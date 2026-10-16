@@ -23,11 +23,12 @@
     "alaska": {
       "en": "Alaska Airlines Atmos Rewards",
       "phones": [
+        { "number": "+886 2 2567 6998", "label": "台灣，週一至週五 9:00–12:30、14:00–17:30" },
         { "number": "+1 206-485-4390", "label": "美國・加拿大以外來電，24 小時，非免付費" }
       ],
       "contactUrl": "https://www.alaskaair.com/content/about-us/help-contact/contact-us",
       "source": "https://www.alaskaair.com/content/about-us/help-contact/contact-us",
-      "asOf": "2026-10-14"
+      "asOf": "2026-10-16"
     },
     "delta": {
       "en": "Delta SkyMiles",

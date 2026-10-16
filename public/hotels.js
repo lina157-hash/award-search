@@ -451,7 +451,7 @@ function renderHotels() {
       </div>
       <div class="hotel-actions">
         <button type="button" class="outline" data-h-cal="${esc(h.id)}" aria-expanded="false">看每天點數</button>
-        ${cashCfg.enabled ? `<button type="button" class="outline" data-h-cash="${esc(h.id)}" title="${dayLabel(s.date)} 入住 ${n} 晚，查各訂房網站和飯店官網的現金價">💵 現金價比一比</button>` : ''}
+        ${cashCfg.enabled ? `<button type="button" class="outline" data-h-cash="${esc(h.id)}" title="${dayLabel(s.date)} 入住 ${n} 晚，查各訂房網站和飯店官網的現金價">💵 現金價比一比（用 1–2 次查價）</button>` : ''}
         ${h.lastChecked ? `<small class="${isStale(h.lastChecked) ? 'stale' : 'muted'}">${ago(h.lastChecked)}更新</small>` : ''}
       </div>
       <div class="hotel-cash" hidden></div>
