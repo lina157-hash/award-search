@@ -73,10 +73,11 @@ function promoDeadlines(promo, sources, holds, today) {
   return out.sort((a, b) => String(a.date || '9').localeCompare(String(b.date || '9')));
 }
 // Does a promo touch this wallet? A transfer bonus when one of its banks can take part, a buy-miles sale when it
-// holds miles in that program.
+// holds miles in that program, an award sale (哩程票特惠) when it holds those miles or a bank that transfers in.
 function promoTouches(promo, sources, programs, today) {
-  if (promo.type === 'buy') return (programs || []).includes(P6_PROGRAM_KEY[promo.program] || promo.program);
-  return (sources || []).some((s) => p6BankIn(promo, s.bank) && p6RateInto(s, promo.program, today));
+  const holds = (programs || []).includes(P6_PROGRAM_KEY[promo.program] || promo.program);
+  if (promo.type === 'buy') return holds;
+  return (promo.type === 'award' && holds) || (sources || []).some((s) => p6BankIn(promo, s.bank) && p6RateInto(s, promo.program, today));
 }
 // N4a: running promos that touch the wallet and were not announced yet (seen: ids already announced or there before).
 function newPromos(promos, sources, programs, seen, today) {
@@ -387,9 +388,9 @@ function promoWatchHtml() {
   if (!alertCfg.store || walletEmpty()) return '';
   const saved = store.get(PW_KEY, null);
   if (saved?.on && saved.sig === JSON.stringify(p6WatchProfile())) {
-    return `<p class="hint p6-watch">🔔 已開啟新加贈通知：有新的轉點加贈或買哩促銷碰到你的銀行或哩程，會傳 Telegram${saved.email ? `、寄到 ${esc(saved.email)}` : ''}（每個活動一次）。<button type="button" class="linklike" data-p6-watch="off">關閉</button></p>`;
+    return `<p class="hint p6-watch">🔔 已開啟新加贈通知：有新的轉點加贈、買哩促銷或哩程票特惠碰到你的銀行或哩程，會傳 Telegram${saved.email ? `、寄到 ${esc(saved.email)}` : ''}（每個活動一次）。<button type="button" class="linklike" data-p6-watch="off">關閉</button></p>`;
   }
-  return `<p class="hint p6-watch">${saved?.on ? '點數有變更，' : ''}<button type="button" class="linklike" data-p6-watch="on">${saved?.on ? '更新新加贈通知' : '🔔 有新的轉點加贈或買哩促銷碰到我的銀行、哩程時通知我'}</button>（Telegram／Email，每天早上檢查，不用查詢次數）</p>
+  return `<p class="hint p6-watch">${saved?.on ? '點數有變更，' : ''}<button type="button" class="linklike" data-p6-watch="on">${saved?.on ? '更新新加贈通知' : '🔔 有新的轉點加贈、買哩促銷或哩程票特惠碰到我的銀行、哩程時通知我'}</button>（Telegram／Email，每天早上檢查，不用查詢次數）</p>
     <form class="p6-watch-form" hidden><input type="email" name="email" placeholder="Email（可留空，只傳 Telegram）" value="${esc(saved?.email ?? store.get(ALERT_EMAIL_KEY, ''))}" autocomplete="email" aria-label="通知寄到的 Email"><button type="submit" class="primary small">開啟通知</button></form>`;
 }
 async function p6SaveWatch(on, form) {

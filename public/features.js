@@ -70,10 +70,58 @@ function promosHtml() {
     <small>${mmdd(p.start)} – ${p.end.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${p.end.slice(0, 4)}/` : ''}${mmdd(p.end)}${p.conditions ? `・${esc(p.conditions)}` : ''}　${CONFIDENCE_TAG[p.confidence] || ''}${(p.sources || []).slice(0, 1).map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('')}</small>${typeof promoRowExtraHtml === 'function' ? promoRowExtraHtml(p) : ''}</li>`;
   const transfer = list.filter((p) => p.type === 'transfer');
   const buy = list.filter((p) => p.type === 'buy');
+  const award = list.filter((p) => p.type === 'award');
   return `<details class="promos"><summary>🎁 進行中的優惠 ${list.length} 項 <small>${updated}</small></summary>
     ${transfer.length ? `<h3 class="sub">轉點加贈</h3><ul>${transfer.map(row).join('')}</ul>` : ''}
     ${buy.length ? `<h3 class="sub">買哩促銷</h3><ul>${buy.map(row).join('')}</ul>` : ''}
+    ${award.length ? `<h3 class="sub">哩程票特惠</h3><ul>${award.map(awardSaleLi).join('')}</ul>` : ''}
     <p class="hint">送哩程的加贈已算進下方表格（標示「含加贈」）；有上限的加贈（例如每月最多 500 哩）不算進表格，只在格子裡提醒；回饋銀行點數的只列在這裡。活動多半要先登錄、有名額限制，條件以銀行或航空公司公告為準。</p>${typeof promoWatchHtml === 'function' ? promoWatchHtml() : ''}</details>`;
+}
+
+// ---------- award sales (promos.json type award, 哩程票特惠) ----------
+// A route end matches an airport code, or a 2-letter country code through the airport list.
+const saleEnd = (tok, code) => tok === code || (tok.length === 2 && typeof AP === 'object' && AP.byCode.get(code)?.country === tok);
+const saleAny = (v, code) => [].concat(v || []).some((t) => saleEnd(t, code));
+function saleRouteHit(rt, o, d, cabin) {
+  if (rt.cabins && cabin && !rt.cabins.includes(cabin)) return false;
+  if (rt.between) return (saleAny(rt.between, o) && saleAny(rt.and, d)) || (saleAny(rt.and, o) && saleAny(rt.between, d));
+  return saleAny(rt.from, o) && saleAny(rt.to, d);
+}
+// The award sale open for booking today that covers one award: program, route, cabin (Y/W/J/F), travel date and, when
+// known, the operating airlines (the sales exclude codeshares and partners).
+function awardSaleFor({ source, origin, destination, date, cabin, airlines }) {
+  const key = programKeyOf(source);
+  const codes = String(airlines || '').split(/[,\s]+/).filter(Boolean);
+  return activePromos().find((p) => p.type === 'award' && p.program === key && (!date || (p.travelFrom <= date && date <= p.travelTo))
+    && (!p.carriers?.length || !codes.length || codes.every((c) => p.carriers.includes(c)))
+    && (p.routes || []).some((rt) => saleRouteHit(rt, origin, destination, cabin))) || null;
+}
+const saleWindow = (p) => `${mmdd(p.travelFrom)}–${mmdd(p.travelTo)} 搭乘、${mmdd(p.end)} 前開票`;
+const saleSrc = (p) => (p.sources || []).slice(0, 1).map((x) => ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('');
+const saleTag = (p) => `<span class="tag sale" title="${esc(`${p.title}：${saleWindow(p)}`)}">🏷 哩程票特惠 −${p.discountPct}%</span>`;
+// 點數換算 › 🎁 進行中的優惠.
+const awardSaleLi = (p) => `<li><b>${esc(p.title)}</b> <span class="pill">−${p.discountPct}%</span>
+  <small>${saleWindow(p)}${p.routeNote ? `・${esc(p.routeNote)}` : ''}${p.conditions ? `・${esc(p.conditions)}` : ''}　${CONFIDENCE_TAG[p.confidence] || ''}${saleSrc(p)}</small></li>`;
+// A best-deal card in the results (app.js) and a 今日好康 card.
+const miniSaleTag = (d) => { const p = awardSaleFor({ source: d.source, origin: d.origin, destination: d.destination, date: d.date, cabin: dealsState.cabin }); return p ? saleTag(p) : ''; };
+const awardSaleTag = (r, c) => { const p = awardSaleFor({ source: r.source, origin: r.origin, destination: r.destination, date: r.date, cabin: c, airlines: r.cabins?.[c]?.airlines }); return p ? saleTag(p) : ''; };
+// Above the results: each sale the shown seats fall in, once.
+function awardSaleNoticeHtml(rows, c) {
+  const hits = new Map();
+  for (const r of rows) {
+    const p = r.cabins?.[c]?.available && awardSaleFor({ source: r.source, origin: r.origin, destination: r.destination, date: r.date, cabin: c, airlines: r.cabins[c].airlines });
+    if (p) hits.set(p.id, { p, n: (hits.get(p.id)?.n || 0) + 1 });
+  }
+  if (!hits.size) return '';
+  return `<div class="sale-note">${[...hits.values()].map(({ p, n }) => `<p>🏷 <b>${esc(p.title)}</b><small>結果裡有 ${n} 筆符合・${saleWindow(p)}${saleSrc(p)}</small></p>`).join('')}
+    <p class="hint">特價要在官網開票時才會套用。我推測 seats.aero 顯示的哩數還是原價，實際以官網為準。</p></div>`;
+}
+// 航班明細: the sale one flight falls in.
+function awardSaleTripHtml(t) {
+  const segs = t.segments || [];
+  const cabin = Object.keys(CABIN_API).find((k) => CABIN_API[k] === t.cabin);
+  const p = segs.length && awardSaleFor({ source: t.source, origin: segs[0].from, destination: segs.at(-1).to, date: String(segs[0].departsAt || '').slice(0, 10), cabin, airlines: t.carriers });
+  return p ? `<p class="sale-trip">🏷 <b>${esc(p.title)}</b>：這班符合，官網開票約少 ${p.discountPct}%<small>${saleWindow(p)}${p.conditions ? `・${esc(p.conditions)}` : ''}${saleSrc(p)}</small></p>` : '';
 }
 
 // ---------- my points wallet (this browser only) ----------
@@ -249,7 +297,8 @@ const COBRAND_MATCH = { eva: '長榮', ci: '華航', asiamiles: '亞洲萬里通
 // Cards that stopped earning (`ended`) stay in the 規則庫 table but are not suggested.
 const cobrandFor = (key) => (COBRAND_MATCH[key] ? (data.points?.cobrand || []).filter((c) => !c.ended && c.program.includes(COBRAND_MATCH[key])) : []);
 // Running offers for one program: transfer bonuses (by calculator column) and buy-miles sales.
-const promosFor = (key) => { const col = PROGRAM_TRANSFER[key]?.to || key; return activePromos().filter((p) => p.program === key || promoCol(p) === col); };
+// Award sales are left out: they cover set routes, so 航班明細 matches them by route instead (awardSaleTripHtml).
+const promosFor = (key) => { const col = PROGRAM_TRANSFER[key]?.to || key; return activePromos().filter((p) => p.type !== 'award' && (p.program === key || promoCol(p) === col)); };
 // Hotels whose points move on to this airline program (the 繞路兌換 tool).
 const detourHotels = (key) => Object.keys(toAir()?.hotels || {}).filter((h) => hotelPartner(h, key));
 const verifyTag = (s) => (s.confidence === 'verify' ? '<span class="tag verify" title="比率還沒有在銀行官方資料核實">待確認</span>' : '');
@@ -257,7 +306,7 @@ const verifyTag = (s) => (s.confidence === 'verify' ? '<span class="tag verify" 
 // One line per offer: the bonus (or its cap when the calculator can't apply it), the end date and the source.
 function promoLine(p) {
   const cap = promoCap(p);
-  const pill = p.bonusPct && !p.rebate ? `+${p.bonusPct}%` : p.rebate ? `回饋 ${p.bonusPct}% 點數` : cap ? capText(cap) : '';
+  const pill = p.type === 'award' ? `−${p.discountPct}%` : p.bonusPct && !p.rebate ? `+${p.bonusPct}%` : p.rebate ? `回饋 ${p.bonusPct}% 點數` : cap ? capText(cap) : '';
   const src = (p.sources || [])[0];
   return `<li>${pill ? `<span class="pill">${esc(pill)}</span> ` : ''}${esc(p.title)}<small>到 ${mmdd(p.end)}${p.conditions ? `・${esc(p.conditions)}` : ''}${src ? ` <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label)} ↗</a>` : ''}</small></li>`;
 }
@@ -1248,7 +1297,7 @@ function renderDeals() {
       <button type="button" class="deal-mini" data-deal="${esc(d.origin)}|${esc(d.destination)}|${esc(d.date)}">
         <span class="dm-route">${esc(d.origin)} → ${esc(d.destination)} <small>${esc(airportCity(d.destination))}</small></span>
         <span class="dm-miles">${fmt(d.miles)} <small>哩</small>${d.direct ? '<small class="dm-direct">直飛</small>' : ''}</span>
-        <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>${typeof leaveChip === 'function' ? leaveChip(d.date) : ''}
+        <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>${typeof leaveChip === 'function' ? leaveChip(d.date) : ''}${data.promos ? miniSaleTag(d) : ''}
         ${d.usual ? `<span class="dm-usual${d.miles < d.usual ? ' low' : ''}" title="這條航線這個計畫過去有位的日子，每天最低價的中位數（每日排程記下的，少於 7 天不顯示）">平常約 ${fmt(d.usual)} 哩${d.miles < d.usual ? `・少 ${kfmt(d.usual - d.miles)}` : ''}</span>` : ''}
       </button>`).join('')}</div></div>`).join('') || `<p class="hint">${typeof leaveFiltering === 'function' && leaveFiltering() ? '符合請假天數的好康今天沒有，可以放寬「只看」。' : '這個艙等今天沒有整理到好康。'}</p>`}
     <p class="hint">每 12 小時整理一次（早上 8 點多、晚上 9 點多），座位可能已被訂走；點卡片會查那一天前後三天。${dealsRefreshHtml()}</p>`;

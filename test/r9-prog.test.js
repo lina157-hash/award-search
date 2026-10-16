@@ -13,7 +13,7 @@ const src = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
 // The top of features.js (programs, transfer rates, promos, wallet, Avios, reach) with app.js's calcConvert.
 function featSandbox({ today = '2026-10-16', promos = read('promos.json') } = {}) {
   const feat = src('features.js');
-  const head = feat.slice(0, feat.indexOf('// ---------- booking channels'));
+  const head = `${feat.slice(0, feat.indexOf('// ---------- booking channels'))}\n${feat.match(/const promosFor = .*;/)[0]}`;
   const calcConvert = src('app.js').match(/function calcConvert\(rate, amount, mode\) \{[\s\S]*?\n\}/)[0];
   const ctx = {
     data: { points: read('points.json'), promos },
@@ -26,7 +26,8 @@ function featSandbox({ today = '2026-10-16', promos = read('promos.json') } = {}
     CONFIDENCE_TAG: {},
   };
   vm.createContext(ctx);
-  vm.runInContext(`${calcConvert}\n${head}\nthis.api = { reach, reachFor, aviosPath, ratesInto, aviosMoves, aviosNeedHtml, aviosEarnHtml, setWallet: (w) => { wallet = w; } };`, ctx);
+  vm.runInContext(`${calcConvert}\nconst CABIN_API = { Y: 'economy', W: 'premium', J: 'business', F: 'first' };\nconst AP = { byCode: new Map([['IST', { country: 'TR' }], ['ESB', { country: 'TR' }], ['TPE', { country: 'TW' }]]) };\n${head}
+this.api = { reach, reachFor, aviosPath, ratesInto, aviosMoves, aviosNeedHtml, aviosEarnHtml, setWallet: (w) => { wallet = w; }, awardSaleFor, awardSaleNoticeHtml, awardSaleTripHtml, promosFor, promosHtml };`, ctx);
   return ctx.api;
 }
 
@@ -106,4 +107,72 @@ test('detour: Avios-aware hotel partners and direct routes', () => {
   assert.match(feat, /class="avios-need"/);
   assert.match(src('app.js'), /state\.affordOnly && typeof aviosAffordHtml === 'function' \? aviosAffordHtml\(\) : ''/);
   assert.match(src('points6.js'), /const p6PersonReach = \(m, key\) => reachFor\(m, key\)\.total;/);
+});
+
+// ---------- #9 award sales ----------
+const P6 = require('../public/points6.js');
+const { createPromoWatch } = require('../lib/promowatch');
+const { memoryKv } = require('../lib/kv');
+
+test('award sales: official sources, booking and travel windows, routes in the documented shape', () => {
+  const award = read('promos.json').promos.filter((p) => p.type === 'award');
+  assert.ok(award.length >= 1);
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  for (const p of award) {
+    assert.equal(p.confidence, 'official', p.id);
+    assert.ok(p.sources.length && p.sources.every((x) => x.official), p.id);
+    assert.ok(p.discountPct > 0 && p.discountPct < 100, p.id);
+    for (const k of ['start', 'end', 'travelFrom', 'travelTo']) assert.match(p[k], iso, `${p.id} ${k}`);
+    assert.ok(p.start <= p.end && p.travelFrom <= p.travelTo, p.id);
+    assert.ok(read('source-names.json').names[p.program], `${p.id} program is a seats.aero source`);
+    for (const rt of p.routes) {
+      assert.match(rt.cabins, /^[YWJF]+$/, p.id);
+      const ends = rt.between ? [rt.between, rt.and] : [rt.from, rt.to];
+      for (const t of ends.flat()) assert.match(t, /^[A-Z]{2,3}$/, `${p.id} ${t}`);
+    }
+  }
+});
+
+test('awardSaleFor: program, route (both ways for between), cabin, travel date and operating airline', () => {
+  const promos = { promos: [
+    { id: 't', type: 'award', program: 'turkish', title: '土航測試', discountPct: 30, start: '2026-10-16', end: '2026-10-30', travelFrom: '2026-11-01', travelTo: '2026-11-30', carriers: ['TK'], routes: [{ between: 'TR', and: ['TPE'], cabins: 'Y' }], sources: [{ label: '官網', url: 'https://example.test', official: true }] },
+    { id: 's', type: 'award', program: 'singapore', title: '新航測試', discountPct: 30, start: '2026-10-15', end: '2026-10-31', travelFrom: '2026-11-01', travelTo: '2026-11-30', carriers: ['SQ'], routes: [{ from: 'SIN', to: 'BKK', cabins: 'YJ' }] },
+  ] };
+  const f = featSandbox({ promos });
+  const tk = { source: 'turkish', origin: 'TPE', destination: 'IST', date: '2026-11-10', cabin: 'Y', airlines: 'TK' };
+  assert.equal(f.awardSaleFor(tk)?.id, 't');
+  assert.equal(f.awardSaleFor({ ...tk, origin: 'ESB', destination: 'TPE' })?.id, 't', 'other way, any Turkish airport');
+  assert.equal(f.awardSaleFor({ ...tk, cabin: 'J' }), null, 'economy only');
+  assert.equal(f.awardSaleFor({ ...tk, date: '2026-12-01' }), null, 'outside the travel window');
+  assert.equal(f.awardSaleFor({ ...tk, airlines: 'TK, OZ' }), null, 'partner carrier');
+  assert.equal(f.awardSaleFor({ ...tk, source: 'united' }), null, 'other program');
+  const sq = { source: 'singapore', origin: 'SIN', destination: 'BKK', date: '2026-11-03', cabin: 'J', airlines: 'SQ' };
+  assert.equal(f.awardSaleFor(sq)?.id, 's');
+  assert.equal(f.awardSaleFor({ ...sq, origin: 'BKK', destination: 'SIN' }), null, 'from/to is one way');
+  assert.equal(featSandbox({ promos, today: '2026-11-01' }).awardSaleFor(sq), null, 'booking window closed');
+  // 航班明細 and the results notice; 怎麼湊到這些哩 no longer lists route sales for the whole program.
+  const trip = { source: 'turkish', cabin: 'economy', carriers: 'TK', segments: [{ from: 'TPE', to: 'IST', departsAt: '2026-11-10T23:30:00' }] };
+  assert.match(f.awardSaleTripHtml(trip), /土航測試.*官網開票約少 30%/);
+  assert.equal(f.awardSaleTripHtml({ ...trip, cabin: 'business' }), '');
+  const rows = [{ source: 'turkish', origin: 'TPE', destination: 'IST', date: '2026-11-10', cabins: { Y: { available: true, airlines: 'TK' } } }];
+  assert.match(f.awardSaleNoticeHtml(rows, 'Y'), /結果裡有 1 筆符合・11\/1–11\/30 搭乘、10\/30 前開票/);
+  assert.equal(f.promosFor('turkish').length, 0);
+  assert.match(f.promosHtml(), /<h3 class="sub">哩程票特惠<\/h3>/);
+});
+
+test('promo watch: a new award sale touching the wallet goes out as 「新的哩程票特惠碰到你的計畫」', async () => {
+  const sources = read('points.json').calc.sources;
+  const sale = { id: 'sq-sale-test', type: 'award', bank: null, program: 'singapore', title: '新航測試特惠', discountPct: 30, start: '2026-10-15', end: '2026-10-31', travelFrom: '2026-11-01', travelTo: '2026-11-30', routes: [] };
+  assert.ok(P6.promoTouches(sale, [], ['singapore'], '2026-10-16'), 'holds KrisFlyer miles');
+  assert.ok(P6.promoTouches(sale, [sources.find((s) => s.id === 'ctbc-bonus')], [], '2026-10-16'), 'a bank that transfers in');
+  assert.ok(!P6.promoTouches(sale, [], ['eva'], '2026-10-16'));
+  const promos = [];
+  const sent = [];
+  const w = createPromoWatch({ kv: memoryKv(), promos, sources, holds: read('holds.json'), notify: async (h) => { sent.push(h); return true; }, now: () => Date.parse('2026-10-16T02:00:00Z') });
+  await w.save({ on: true, banks: [], programs: ['singapore'] });
+  promos.push(sale);
+  const out = await w.run();
+  assert.equal(out.fresh, 1);
+  assert.match(sent[0], /✈️ <b>新的哩程票特惠碰到你的計畫<\/b>\n• 新航測試特惠（少 30%），11\/1–11\/30 搭乘、10\/31 前開票・你有這個計畫的哩程/);
+  assert.doesNotMatch(sent[0], /轉點加贈/);
 });

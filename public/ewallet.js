@@ -363,7 +363,7 @@ function upcomingChanges(today = isoDate(0), { promoDays = 14, rateDays = 60 } =
     if (date && ewDays(today, date) <= rateDays) add({ date, key: t.bank, kind: 'rate', title: `${bankProgram(t)} 轉點比率保證期限`, advice: '之後比率可能調整，要用目前的比率請在這天前轉點', source: t.source });
   }
   for (const p of data.promos?.promos || []) {
-    if (p.start <= today && ewDays(today, p.end) <= promoDays) add({ date: p.end, kind: 'promo', title: `${p.title} 結束`, advice: p.type === 'buy' ? '買哩促銷最後一天' : '要拿加贈請在這天前完成轉點', source: (p.sources || [])[0] });
+    if (p.start <= today && ewDays(today, p.end) <= promoDays) add({ date: p.end, kind: 'promo', title: `${p.title} 結束`, advice: p.type === 'buy' ? '買哩促銷最後一天' : p.type === 'award' ? '特價票要在這天前開票' : '要拿加贈請在這天前完成轉點', source: (p.sources || [])[0] });
   }
   for (const a of data.alliances?.alliances || []) {
     for (const n of a.memberNotes || []) {

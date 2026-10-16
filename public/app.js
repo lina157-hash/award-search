@@ -1519,7 +1519,7 @@ function resultParts(rows) {
       ${typeof levelTagHtml === 'function' ? levelTagHtml(r, c) : ''}
       <div class="meta">${dayLabel(r.date)} · ${esc(r.origin)} → ${esc(r.destination)}</div>
       <div class="meta">${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}</div>
-      ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}
+      ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}${typeof awardSaleTag === 'function' ? awardSaleTag(r, c) : ''}
     </button>`;
   }).join('');
 
@@ -1550,7 +1550,7 @@ function renderSearch() {
     `<label><input type="radio" name="view-cabin" value="${k}" ${k === c ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
 
   const programs = [...new Set(state.results.map((r) => r.source))];
-  const release = releaseNoticeHtml(programs, state.start, state.end, state.route || '');
+  const release = releaseNoticeHtml(programs, state.start, state.end, state.route || '') + (typeof awardSaleNoticeHtml === 'function' ? awardSaleNoticeHtml(rows, c) : '');
   const matrixTitle = `<h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>`;
   if (!rows.length) {
     matrixObs?.disconnect();
@@ -1862,7 +1862,7 @@ function tripHtml(t, i) {
       <div><b>${esc(t.flightNumbers)}</b><span class="pill">${esc(CABIN_ZH[t.cabin] || t.cabin)}</span><span class="pill">${t.stops ? `轉機 ${t.stops} 次` : '直飛'}</span>${t.seats ? `<span class="pill">剩 ${t.seats} 位</span>` : ''}</div>
       <div><span class="miles">${fmt(t.miles)} 哩</span> ＋ ${taxes}${i != null ? `<button type="button" class="outline add-plan" data-plan="${i}">＋ 加入我的行程</button>` : ''}</div>
     </div>
-    ${phantomHtml(t.source, t.carriers)}${typeof mixedHtml === 'function' ? mixedHtml(t) : ''}
+    ${phantomHtml(t.source, t.carriers)}${typeof awardSaleTripHtml === 'function' ? awardSaleTripHtml(t) : ''}${typeof mixedHtml === 'function' ? mixedHtml(t) : ''}
     ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
       <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod" title="${PROD_3P_TITLE}">${esc(p.name)}<sup class="mk-3p" aria-hidden="true">*</sup></span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
