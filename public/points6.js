@@ -564,7 +564,7 @@ function p6PlanLedger() {
   p6Record(plan.legs.filter((l) => l.k === 'a' && l.miles > 0 && p6LegTicketed(l)));
   const ledger = p6Load.ledger();
   const have = new Set(ledger.map((e) => e.id));
-  const legs = plan.legs.map((l, i) => ({ l, i })).filter(({ l }) => l.k === 'a' && l.miles > 0);
+  const legs = plan.legs.map((l, i) => ({ l, i })).filter(({ l }) => l.k === 'a' && l.miles > 0 && !['held', 'waitlist'].includes(l.status)); // not ticketed yet
   if (!legs.length && !ledger.length) return;
   const li = ({ l, i }) => `<li><span>${mmdd(l.date)} ${esc(l.from)} → ${esc(l.to)}<small>${esc(programName(l.program))} ${fmt(l.miles * l.pax)} 哩</small></span>${have.has(ledgerId(l))
     ? '<small class="ok-text">✓ 已記入兌換紀錄</small>' : `<button type="button" class="outline small" data-p6-tick="${i}">🎫 已開票，記下來</button>`}</li>`;

@@ -95,7 +95,8 @@ function alertExtraValues(f) {
 const bkState = { legs: [], max: 5, loaded: false, busy: false };
 const bkSame = (s, l) => s.date === l.date && s.from === l.from && s.to === l.to && s.program === l.program && s.cabin === l.cabin;
 const bkFind = (l) => bkState.legs.find((s) => bkSame(s, l));
-const bkOk = (l) => l.k === 'a' && l.program && l.miles && l.date >= isoDate(0);
+// A leg still 已保留 or 候補中 (trips.js status) has no ticket yet, so it gets no 已開票 switch.
+const bkOk = (l) => l.k === 'a' && l.program && l.miles && l.date >= isoDate(0) && !['held', 'waitlist'].includes(l.status);
 async function bookedLoad() {
   if (bkState.busy || !notifyCfg.booked || !ownerHere()) return;
   bkState.busy = true;
