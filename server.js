@@ -1165,6 +1165,7 @@ async function handleAnywhere(q, req) {
     origins: (param(q, 'origin', /^[A-Z]{3}(,[A-Z]{3}){0,2}$/, { upper: true }) || 'TPE').split(','), start, end,
     cabin: param(q, 'cabin', /^[YWJF]$/, { upper: true }) || 'J',
     regions: param(q, 'regions', /^[a-z]+(,[a-z]+){0,4}$/, { required: true }),
+    programs: param(q, 'programs', SOURCE_LIST)?.split(',') || null,
   };
   // `calls`: this region's seats.aero calls this time (0 when the answer was cached).
   const anywhere = createAnywhere({

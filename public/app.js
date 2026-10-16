@@ -123,7 +123,8 @@ function toast(msg, action) {
 const skeleton = (n = 4) => `<div class="skeleton">${'<div></div>'.repeat(n)}</div>`;
 
 // ---------- tabs ----------
-const TABS = ['search', 'explore', 'map', 'cash', 'hotels', 'points', 'rules'];
+// 'rtw' (環球票規劃) is a page without a tab button: 航線查詢 links to it (#rtw).
+const TABS = ['search', 'explore', 'map', 'cash', 'hotels', 'points', 'rules', 'rtw'];
 // Each tab keeps its own query string, so one tab's search parameters don't leak into another tab's URL.
 const tabQuery = {};
 const tabSub = {}; // sub-view in the hash, e.g. #points/wallet
@@ -135,7 +136,7 @@ const tabDone = new Set();
 const tabShown = {};
 let dataReady = false;
 // Tabs drawn from the second data part (points, charts, rules); they wait for it on first open.
-const NEEDS_MORE = { rules: '#rules', points: '#points-page', map: '#map-page', hotels: '#hotels-page' };
+const NEEDS_MORE = { rules: '#rules', points: '#points-page', map: '#map-page', hotels: '#hotels-page', rtw: '#rtw-page' };
 function ensureTab(tab) {
   if (!dataReady || tabDone.has(tab) || !tabInit[tab]) return;
   if (NEEDS_MORE[tab] && !moreReady) {
@@ -3349,6 +3350,8 @@ const loadSearchScripts = () => loadScripts([...TOOL_SCRIPTS, ...SEARCH_SCRIPTS]
 tabInit.rules = () => { renderRules(); loadSearchScripts(); };
 tabInit.points = () => renderPoints();
 tabInit.map = () => initRmap();
+// rtw.js draws the page (window.rtwMount); it runs it itself if it arrives after the page was opened.
+tabInit.rtw = () => loadTools().then(() => { if (typeof rtwMount === 'function') rtwMount(); });
 // 查飯店's own script comes with the tab's first visit.
 tabInit.hotels = () => {
   const host = $('#hotels-page');

@@ -1186,13 +1186,31 @@ const BASEMAPS = [
   () => ({ url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', cls: 'map-osm', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }),
 ];
 let landJson = null;
+// Natural Earth closes a few shapes along ±180° (Chukotka, Fiji, Wrangel Island), which Leaflet draws as bands across
+// the whole map: their bits just west of -160° move to the other side (+360°). Antarctica, round the pole, stays.
+function landAcross(g) {
+  for (const f of g.features || []) {
+    const geo = f.geometry;
+    const polys = geo?.type === 'Polygon' ? [geo.coordinates] : geo?.type === 'MultiPolygon' ? geo.coordinates : [];
+    for (const ring of polys.flat()) {
+      const xs = ring.map((p) => p[0]);
+      if (Math.max(...xs) - Math.min(...xs) < 300 || Math.max(...ring.map((p) => p[1])) < -60) continue;
+      for (const p of ring) if (p[0] < -160) p[0] += 360;
+    }
+  }
+  return g;
+}
 function addBaseMap(map, i = 0) {
   const L = window.L;
   if (i >= BASEMAPS.length) {
     map.getContainer().classList.add('map-plain');
-    (landJson ||= fetch('/land.json').then((r) => r.json())).then((g) => {
+    (landJson ||= fetch('/land.json').then((r) => r.json()).then(landAcross)).then((g) => {
       if (!map.getContainer().isConnected) return;
       L.geoJSON(g, { interactive: false, style: { className: 'map-land', weight: 0.8, fillOpacity: 1 } }).addTo(map).bringToBack();
+      // A map whose lines run past ±180° (環球票規劃) asks for the land again on those sides: map.options.landCopies.
+      for (const off of map.options.landCopies || []) {
+        L.geoJSON(g, { interactive: false, coordsToLatLng: (c) => L.latLng(c[1], c[0] + off), style: { className: 'map-land', weight: 0.8, fillOpacity: 1 } }).addTo(map).bringToBack();
+      }
       map.attributionControl.addAttribution('Natural Earth');
     }).catch(() => { landJson = null; });
     return;

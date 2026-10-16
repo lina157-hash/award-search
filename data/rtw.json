@@ -16,6 +16,7 @@
       "walletKey": "jal",
       "price": { "kind": "distance", "chartRef": "jal_partner", "basis": "flown", "max": 50000 },
       "cabins": ["Y", "J", "F"],
+      "example": { "stops": ["TPE", "NRT", "JFK", "LHR", "HKG", "TPE"], "airlines": ["JL", "JL", "BA", "CX", "CX"] },
       "rules": {
         "carriers": { "list": ["JL", "AS", "AA", "BA", "CX", "FJ", "AY", "IB", "MH", "WY", "QF", "QR", "AT", "RJ", "UL"], "min": 2 },
         "maxFlights": 8,
@@ -69,6 +70,7 @@
         "unit": "點"
       },
       "cabins": ["Y", "W", "J", "F"],
+      "example": { "stops": ["TPE", "HKG", "SYD", "MEL", "KUL", "TPE"], "airlines": ["CX", "CX", "QF", "MH", "MH"] },
       "rules": {
         "carriers": { "alliance": "oneworld", "min": 2, "notCounting": ["QF"] },
         "maxSegments": 16,
@@ -99,6 +101,7 @@
       "walletKey": "asiamiles",
       "price": { "kind": "pending", "basis": "flown", "max": 50000, "chartUrl": "https://flights.cathaypacific.com/en_HK/redeem-flights/flight-award-chart.html", "why": "國泰官網的哩數表要用瀏覽器執行 JavaScript 才會顯示，本站讀不到，價格待確認；請開官網表格對照總距離。" },
       "cabins": ["Y", "J", "F"],
+      "example": { "stops": ["TPE", "HKG", "LHR", "JFK", "LAX", "HKG", "TPE"], "airlines": ["CX", "CX", "BA", "AA", "CX", "CX"], "stays": [null, null, null, null, null, "transfer", null] },
       "rules": {
         "carriers": { "alliance": "oneworld", "min": 2, "withCX": 3 },
         "maxStopovers": 5,
@@ -128,6 +131,7 @@
       "walletKey": "lufthansa",
       "price": { "kind": "fixed", "Y": 195000, "J": 400000, "F": 540000 },
       "cabins": ["Y", "J", "F"],
+      "example": { "stops": ["TPE", "MUC", "JFK", "SFO", "TPE"], "airlines": ["BR", "LH", "UA", "BR"] },
       "rules": {
         "carriers": { "alliance": "star" },
         "crossings": { "pacific": 1, "atlantic": 1, "exact": true },
@@ -155,6 +159,7 @@
       "walletKey": "tap",
       "price": { "kind": "fixed", "Y": 450000, "J": 550000 },
       "cabins": ["Y", "J"],
+      "example": { "stops": ["TPE", "IST", "LIS", "EWR", "SFO", "TPE"], "airlines": ["TK", "TP", "TP", "UA", "BR"] },
       "rules": {
         "carriers": { "alliance": "star" },
         "crossings": { "pacific": 1, "atlantic": 1 },

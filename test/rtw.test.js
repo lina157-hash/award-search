@@ -26,7 +26,7 @@ vm.runInContext([
   grab('features.js', /function haversineMiles\(a, b\) \{[\s\S]*?\n\}/),
   grab('app.js', /function amBand\(dist, o, d\) \{[\s\S]*?\n\}/),
   fs.readFileSync(path.join(__dirname, '..', 'public', 'rtw.js'), 'utf8'),
-  'this.R = { rtwArea, rtwTrip, rtwShape, rtwStays, rtwPrice, rtwChecks, rtwAddMonths, cxMixQuote };',
+  'this.R = { rtwArea, rtwTrip, rtwShape, rtwStays, rtwPrice, rtwChecks, rtwAddMonths, cxMixQuote, rtwCarriers, rtwOpenJaw, rtwMeter, rtwKeyFacts, rtwArc };',
 ].join('\n'), ctx);
 const { R } = ctx;
 const plain = (x) => JSON.parse(JSON.stringify(x));
@@ -134,8 +134,8 @@ test('rule checks: crossings, direction, return country, segment and stopover li
   assert.equal(find(tr, /停留 2 次/).s, 'ok');
   // JAL: a surface leg counts as a stopover and only one is allowed.
   const j = checks('jal_ow', plan('TPE HKG LHR CDG JFK BOS LAX TPE', [{}, {}, { surface: true }, {}, { surface: true }]));
-  assert.equal(find(j, /陸路 2 段/).s, 'bad');
-  assert.match(find(j, /^停留/).t, /陸路算 1 次停留/);
+  assert.equal(find(j, /開口 2 次/).s, 'bad');
+  assert.match(find(j, /^停留/).t, /開口算 1 次停留/);
   // Going home in the middle and leaving again.
   assert.equal(find(checks('jal_ow', plan('TPE HKG TPE LAX TPE')), /出發了 2 次/).s, 'bad');
   assert.equal(find(checks('qantas_ow', plan(WEST)), /沒有中途回到出發國家/).s, 'ok');
@@ -207,4 +207,52 @@ test('mixed cabin: each leg\'s cabin price in the whole trip\'s zone, prorated b
   const noF = { ...asiamiles, charts: { ...asiamiles.charts, cx: { ...asiamiles.charts.cx, long: { ...long, F: null } } } };
   assert.deepEqual(plain(R.cxMixQuote(noF, 'cx', legs('TPE HKG LHR', ['J', 'F']), 'TPE', 'LHR')).missing, ['F']);
   assert.equal(R.cxMixQuote(asiamiles, 'cx', [{ from: 'TPE', to: 'XXX', dist: 0, cabin: 'J' }], 'TPE', 'XXX'), null);
+});
+
+test('each program\'s example itinerary passes all of its own rules', () => {
+  for (const p of rtwData.programs) {
+    const ex = p.example;
+    assert.ok(ex && ex.stops.length === ex.airlines.length + 1, p.id);
+    const pl = plan(ex.stops.join(' '), ex.airlines.map((airline, i) => ({ airline, surface: ex.stays?.[i] === 'open' })), Object.fromEntries((ex.stays || []).map((x, i) => [i, x]).filter(([, x]) => x === 'transfer')));
+    const bad = checks(p.id, pl, p.cabins.includes('J') ? 'J' : p.cabins[0]).filter((x) => x.s === 'bad');
+    assert.deepEqual(bad, [], p.id);
+    assert.ok(R.rtwPrice(p, trip(pl), 'J', charts) !== null, p.id);
+  }
+});
+
+test('the planner offers each program\'s own airlines, open-jaw rule and key facts', () => {
+  assert.deepEqual(plain(R.rtwCarriers(prog('jal_ow'), members)), prog('jal_ow').rules.carriers.list);
+  assert.deepEqual(plain(R.rtwCarriers(prog('tap_rtw'), members)), members.star);
+  assert.ok(R.rtwCarriers(prog('asiamiles_ow'), members).includes('CX'));
+  assert.deepEqual(plain(R.rtwOpenJaw(prog('jal_ow'))), { max: 1, stopover: true, inDistance: false });
+  assert.equal(R.rtwOpenJaw(prog('qantas_ow')).inDistance, true);
+  assert.equal(R.rtwOpenJaw({ rules: { maxSurface: 0 }, price: {} }), null);
+  assert.equal(R.rtwKeyFacts(prog('mm_world'))[0], '固定價');
+  assert.match(R.rtwKeyFacts(prog('jal_ow'))[0], /依總距離計價・50,000 哩內/);
+  assert.ok(R.rtwKeyFacts(prog('mm_world')).includes('要跨太平洋和大西洋'));
+});
+
+test('distance meter: the band the trip is in and how far the next one starts', () => {
+  const t = trip(plan('TPE HKG LHR'));
+  const m = plain(R.rtwMeter(prog('jal_ow'), t, 'J', charts));
+  assert.equal(m.max, 50000);
+  assert.equal(m.bands.at(-1).upTo, 50000);
+  if (m.idx > 0) assert.ok(m.d > m.bands[m.idx - 1].upTo);
+  assert.ok(m.d <= m.bands[m.idx].upTo);
+  assert.equal(m.left, m.bands[m.idx].upTo + 1 - m.d);
+  assert.equal(m.next.miles, m.bands[m.idx + 1].miles);
+  assert.equal(R.rtwMeter(prog('mm_world'), t, 'J', charts), null, 'fixed price: no meter');
+});
+
+test('map arcs: a great circle with longitudes carried across the date line', () => {
+  const tpe = apOf('TPE');
+  const lax = apOf('LAX');
+  const arc = plain(R.rtwArc(tpe, lax));
+  assert.equal(arc.length, 33);
+  assert.ok(Math.abs(arc[0][1] - tpe.lon) < 1e-6);
+  assert.ok(Math.abs(arc.at(-1)[1] - (lax.lon + 360)) < 1e-6, 'eastward over the Pacific: LAX at -118 + 360');
+  assert.ok(arc.every((p, i) => !i || Math.abs(p[1] - arc[i - 1][1]) < 30), 'no jump');
+  assert.ok(Math.max(...arc.map((p) => p[0])) > Math.max(tpe.lat, lax.lat), 'bends north');
+  const same = plain(R.rtwArc(tpe, tpe));
+  assert.equal(same.length, 2);
 });

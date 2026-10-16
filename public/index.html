@@ -118,10 +118,7 @@
             <summary>🧳 我的行程 <span id="plan-count"></span></summary>
             <div id="plan-body" class="alerts-body"></div>
           </details>
-          <details class="alerts-panel" id="rtw-panel">
-            <summary>🌏 環球票規劃</summary>
-            <div id="rtw-body" class="alerts-body"></div>
-          </details>
+          <a class="alerts-panel panel-link" id="rtw-link" href="#rtw">🌏 環球票規劃 <span>（另開頁面・有地圖）</span></a>
           <!-- etrips.js fills this in (it loads with the search scripts). -->
           <details class="alerts-panel" id="combo-panel">
             <summary>🧭 中停／開口組合</summary><div id="combo-body" class="alerts-body"><p class="hint">載入中…</p></div>
@@ -262,6 +259,18 @@
         </div>
       </div>
       <div class="wrap"><div id="rmap-out"></div></div>
+    </section>
+
+    <!-- ================= 環球票規劃 (no tab of its own: opened from 航線查詢, #rtw) ================= -->
+    <section id="tab-rtw" class="panel" role="tabpanel" aria-labelledby="rtw-title" hidden>
+      <div class="hero slim">
+        <div class="wrap">
+          <p class="rtw-back"><a href="#search">← 回航線查詢</a></p>
+          <h1 id="rtw-title">環球票規劃</h1>
+          <p class="lead">選一個哩程計畫，依序加入要去的城市：算總距離、要多少哩，並對照這個計畫的官方規則。只做規劃，不查座位、不用額度；有興趣的行程請到航空公司官網查詢。</p>
+        </div>
+      </div>
+      <div class="wrap"><div id="rtw-page"></div></div>
     </section>
 
     <!-- ================= 查飯店 ================= -->

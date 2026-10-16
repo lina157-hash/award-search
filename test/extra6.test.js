@@ -334,3 +334,31 @@ test('styles.css closes every block it opens (a merge that drops a brace hides a
   assert.match(css, /\.cash-verdict \{/);
   assert.match(css, /\.aw-regions \{/);
 });
+
+test('哪裡都好: only the ticked programs, asked of seats.aero itself, with the same calls as all programs', async () => {
+  const asked = [];
+  const any = createAnywhere({
+    search: async (p, { maxPages }) => {
+      asked.push(p);
+      return { rows: [avail('LAX', '2026-11-05', 55000), avail('SFO', '2026-11-03', 80000, { source: 'united' }), avail('SEA', '2026-11-04', 60000, { source: 'alaska' })], calls: maxPages };
+    },
+  });
+  const r = await any.run({ start: '2026-11-01', end: '2026-11-20', regions: ['na'], programs: ['united', 'alaska'] });
+  assert.equal(asked[0].sources, 'united,alaska');
+  assert.deepEqual(r.programs, ['united', 'alaska']);
+  assert.deepEqual(r.regions[0].items.map((x) => [x.destination, x.source]), [['SEA', 'alaska'], ['SFO', 'united']], 'a program not ticked is left out even if seats.aero sends it');
+  assert.equal(r.maxCalls, 2);
+  const all = await any.run({ start: '2026-11-01', end: '2026-11-20', regions: ['na'] });
+  assert.equal(asked[1].sources, undefined);
+  assert.equal(all.programs, null);
+  assert.equal(all.regions[0].items.length, 3);
+});
+
+test('哪裡都好: the programs list puts what 我的點數 reaches first, biggest first', () => {
+  const names = { united: '聯合 MileagePlus', aeroplan: '加航 Aeroplan', asiamiles: '亞洲萬里通', alaska: '阿拉斯加 Atmos' };
+  const miles = { asiamiles: 120000, alaska: 30000 };
+  const list = awp.awProgramList(names, (id) => miles[id] || 0);
+  assert.deepEqual(list.slice(0, 2).map((p) => [p.id, p.miles]), [['asiamiles', 120000], ['alaska', 30000]]);
+  assert.deepEqual(list.slice(2).map((p) => p.miles), [0, 0]);
+  assert.equal(list.length, 4);
+});
