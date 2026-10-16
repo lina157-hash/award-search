@@ -2568,6 +2568,7 @@ path.mk-arc { stroke: var(--sun-2); stroke-linecap: round; fill: none; }
   .combo-map-box { height: 260px; }
   .mk-air, .mk-air select { max-width: 100%; }
   .mk-compare thead th { min-width: 130px; }
+}
 
 /* round 9: r9-airline */
 /* 商務艙座椅 (airline.js): 平躺／斜躺 beside the aircraft in 航班明細, on the route cards and 今日好康 */
