@@ -1,0 +1,59 @@
+{
+  "lastReviewed": "2026-10-16",
+  "note": "航班明細、我的行程和航空公司小檔案的「行李與貴賓室」：每家航空公司官方的托運行李頁、貴賓室使用資格頁，加上幾條官方原文的規則；聯盟的貴賓室規定放在 alliances。只收官方頁面；沒查到官方頁的航空公司只顯示聯盟規定。",
+  "alliances": {
+    "oneworld": {
+      "lounge": { "label": "寰宇一家：貴賓室使用規定（官方）", "url": "https://www.oneworld.com/ffp/lounge-access" },
+      "rules": [
+        { "text": "坐頭等或商務艙，可以用寰宇一家航空公司同等級的貴賓室，航班要由寰宇一家航空公司營運並銷售", "quote": "have access to the equivalent class of lounge" },
+        { "text": "混艙：同一天（或隔天 06:00 前）轉機時，長程國際線（表定 5 小時以上）坐頭等或商務，貴賓室依長程段的艙等，不論短程或國內段坐什麼艙等", "quote": "Lounge access will be determined on the international long haul ticketed flight" }
+      ]
+    },
+    "star": {
+      "lounge": { "label": "星空聯盟：貴賓室使用規定（官方）", "url": "https://www.staralliance.com/en/lounge-access-policy" },
+      "rules": [
+        { "text": "國際線商務艙：出示星盟航空公司營運航班的國際線商務艙登機證，可用成員的商務艙貴賓室，不能帶同行者；國際線頭等艙可帶 1 位", "quote": "boarding pass in International Business Class on a Star Alliance member airline operated flight" }
+      ]
+    },
+    "skyteam": {
+      "lounge": { "label": "天合聯盟：貴賓室常見問題（官方）", "url": "https://www.skyteam.com/en/about/faq/lounge-access" },
+      "rules": [
+        { "text": "當天搭國際線的頭等、商務艙旅客可以用天合聯盟貴賓室；只搭國內線要有轉國際線的行程", "quote": "All international First and Business Class passengers traveling on a same-day international flight" }
+      ]
+    }
+  },
+  "general": [
+    { "text": "一張票上有幾家航空公司時，托運行李通常依 IATA 規則選出的「最主要航空公司」的規定（第一家跨越 IATA 區域的航空公司）；出發或目的地是美國、加拿大時，整趟依出發地選定的規定", "quote": "旅程兩地之間的最主要航空公司（根據國際航空運輸協會定義選出）將界定整個行程的行李政策。", "label": "國泰：多家航空公司行程的行李規定（官方）", "url": "https://www.cathaypacific.com/cx/zh_HK/baggage/check-in-baggage/carrier-rules.html" }
+  ],
+  "airlines": {
+    "BR": {
+      "baggage": { "label": "長榮：託運行李（官方）", "url": "https://www.evaair.com/zh-tw/fly-prepare/baggage/free-baggage/checked-baggage/" },
+      "lounge": { "label": "長榮：機場貴賓室（官方）", "url": "https://www.evaair.com/en-global/fly-prepare/at-the-airport/lounges/" }
+    },
+    "CI": {
+      "baggage": { "label": "華航：託運行李（官方）", "url": "https://www.china-airlines.com/tw/zh/prepare-for-the-fly/information/baggage/checked-baggage" }
+    },
+    "CX": {
+      "baggage": { "label": "國泰：免費托運行李限額（官方）", "url": "https://www.cathaypacific.com/cx/en_TW/faqs/baggage/check-in-baggage-allowance/what-is-my-free-checked-baggage-allowance.html" },
+      "lounge": { "label": "國泰：貴賓室使用資格（官方）", "url": "https://www.cathaypacific.com/cx/zh_TW/destinations/lounges/all-lounges-admittance.html" },
+      "rules": [
+        { "text": "國泰貴賓室開放給頭等、商務艙旅客，以及特定等級的國泰會員和寰宇一家會員", "quote": "頭等艙及商務艙乘客，以及特選國泰航空的國泰會員與「寰宇一家」夥伴計劃的會員可享用國泰航空貴賓室。" },
+        { "text": "免費升等到頭等艙的旅客不能進頭等貴賓室（會籍符合的除外）；原本訂商務艙的可以進商務貴賓室", "quote": "獲免費升級至頭等艙的乘客不合資格進入頭等貴賓室，按照符合要求的飛行常客計劃級別而進入則除外。" }
+      ]
+    },
+    "JL": {
+      "baggage": { "label": "日航：國際線托運行李（官方）", "url": "https://www.jal.co.jp/jp/en/inter/baggage/checked/" },
+      "lounge": { "label": "日航：國際線貴賓室使用資格（官方）", "url": "https://www.jal.co.jp/jp/en/inter/service/lounge/member/eligibility.html" },
+      "rules": [
+        { "text": "日航班號、由夥伴營運的航班：頭等、商務艙旅客用營運航空公司的貴賓室；豪華經濟艙看營運航空公司的規定", "quote": "Lounge access may not be available on Premium Economy Class depending on the Operating carrier's service policy." }
+      ]
+    },
+    "NH": {
+      "baggage": { "label": "全日空：國際線行李（官方）", "url": "https://www.ana.co.jp/en/gb/travel-information/baggage-information/display/" },
+      "lounge": { "label": "全日空：貴賓室使用資格（官方）", "url": "https://www.ana.co.jp/en/jp/guide/lounge/search/" },
+      "rules": [
+        { "text": "國際線轉國際線、兩段艙等不同時，依較高的艙等使用全日空貴賓室", "quote": "you are eligible to use ANA lounge according to the standards of the higher class.", "label": "全日空：轉機時的貴賓室（官方）", "url": "https://www.ana.co.jp/en/us/travel-information/lounges/connection/" }
+      ]
+    }
+  }
+}
