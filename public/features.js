@@ -1425,7 +1425,7 @@ function planHtml(p, editable) {
     ...Object.entries(taxBy).map(([c, v]) => `稅金 ${c === 'TWD' ? `<b>${planMoney(c, v)}</b>` : `${esc(c === '?' ? '' : c)} <b>${fmt(Math.round(v))}</b>`}`),
     cashTotal ? `現金票 <b>NT$${fmt(cashTotal)}</b>` : '',
   ].filter(Boolean).join('　');
-  return `<div class="table-wrap"><table class="plan-table"><tbody>${rows}</tbody></table></div><p class="plan-sum">合計：${sum}</p>${editable && typeof bookedFootHtml === 'function' ? bookedFootHtml() : ''}${editable && typeof tripPlanExtras === 'function' ? tripPlanExtras(p) : ''}`;
+  return `<div class="table-wrap"><table class="plan-table"><tbody>${rows}</tbody></table></div><p class="plan-sum">合計：${sum}</p>${editable ? `<div class="plan-extras">${typeof bookedFootHtml === 'function' ? bookedFootHtml() : ''}${typeof tripPlanExtras === 'function' ? tripPlanExtras(p) : ''}</div>` : ''}`;
 }
 function renderPlan() {
   const body = $('#plan-body');
@@ -1455,6 +1455,31 @@ function renderPlan() {
   $('#plan-import')?.addEventListener('click', () => { plan = sharedPlan; sharedPlan = null; savePlan(); toast('已存成我的行程'); });
   $('#plan-dismiss')?.addEventListener('click', () => { sharedPlan = null; renderPlan(); });
   if (typeof fstBind === 'function') fstBind(body); // 查航班動態／這班過去準點率 (flightstatus.js)
+  planFold(body);
+}
+// 我的行程's extras (航班動態的用量, 已開票追蹤, 護照, 提醒, and points6.js's 兌換紀錄) sit under one 「更多」 fold at the
+// end, so the legs, the total and the buttons read first. A passport that is not valid long enough stays in view.
+let planMoreOpen = false;
+const PLAN_MORE_PARTS = [['.bk-foot', '已開票追蹤'], ['.tp-pp', '護照'], ['[data-tp-remind], .tp-remind-form, .tp-tip', '提醒'], ['.p6-ledger-plan', '兌換紀錄']];
+function planMoreHost(body) {
+  let d = $('#plan-more', body);
+  if (!d) {
+    body.insertAdjacentHTML('beforeend', `<details class="plan-more" id="plan-more"${planMoreOpen ? ' open' : ''}><summary>更多</summary><div class="plan-more-body"></div></details>`);
+    d = $('#plan-more', body);
+    d.addEventListener('toggle', () => { planMoreOpen = d.open; });
+  }
+  // Named after what is inside once the caller has put its part in.
+  queueMicrotask(() => {
+    const parts = PLAN_MORE_PARTS.filter(([sel]) => $(sel, d)).map(([, name]) => name);
+    $('summary', d).textContent = parts.length ? `更多：${parts.join('、')}` : '更多';
+  });
+  return $('.plan-more-body', d);
+}
+function planFold(body) {
+  const extras = $('.plan-extras', body);
+  const items = [$('.fst-note', body), ...(extras ? [...extras.children] : [])].filter((e) => e && !e.matches('.tp-pp.bad'));
+  if (items.length) planMoreHost(body).append(...items);
+  if (extras && !extras.children.length) extras.remove();
 }
 function readSharedPlan() {
   const raw = new URLSearchParams(location.search).get('plan');

@@ -151,7 +151,9 @@ function fstBind(host) {
   // Under the plan's own total (a friend's shared plan may be drawn above it).
   const wrap = rows[0]?.closest('.table-wrap');
   const after = wrap?.nextElementSibling?.classList.contains('plan-sum') ? wrap.nextElementSibling : wrap;
-  if (any && after && !$('.fst-note', host)) after.insertAdjacentHTML('afterend', `<p class="hint fst-note">✈ 航班動態每次用 ${FST_UNITS.status} 單位、準點率每次 ${FST_UNITS.delays} 單位（AeroDataBox，每月免費 400 單位，和直飛資料共用）；按了才查${cashCfg.locked && passNeeded() ? '，要通關密碼' : ''}。</p>`);
+  // In 我的行程's 「更多」 fold when features.js has it (renderPlan moves it there too).
+  const into = (html) => (typeof planMoreHost === 'function' && host.id === 'plan-body' ? planMoreHost(host).insertAdjacentHTML('afterbegin', html) : after.insertAdjacentHTML('afterend', html));
+  if (any && after && !$('.fst-note', host)) into(`<p class="hint fst-note">✈ 航班動態每次用 ${FST_UNITS.status} 單位、準點率每次 ${FST_UNITS.delays} 單位（AeroDataBox，每月免費 400 單位，和直飛資料共用）；按了才查${cashCfg.locked && passNeeded() ? '，要通關密碼' : ''}。</p>`);
 }
 function fstClick(e) {
   const t = e.target.closest?.('[data-fst], [data-fst-flight], [data-fst-close], [data-fst-next]');

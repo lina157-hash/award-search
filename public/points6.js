@@ -569,7 +569,8 @@ function p6PlanLedger() {
   const li = ({ l, i }) => `<li><span>${mmdd(l.date)} ${esc(l.from)} → ${esc(l.to)}<small>${esc(programName(l.program))} ${fmt(l.miles * l.pax)} 哩</small></span>${have.has(ledgerId(l))
     ? '<small class="ok-text">✓ 已記入兌換紀錄</small>' : `<button type="button" class="outline small" data-p6-tick="${i}">🎫 已開票，記下來</button>`}</li>`;
   const y = ledgerSummary(ledger, p6SumOpts())[0];
-  body.insertAdjacentHTML('beforeend', `<div class="p6-ledger-plan">${legs.length ? `<ul class="p6-ticks">${legs.map(li).join('')}</ul>` : ''}
+  // Into 我的行程's 「更多」 fold (features.js planMoreHost).
+  (typeof planMoreHost === 'function' ? planMoreHost(body) : body).insertAdjacentHTML('beforeend', `<div class="p6-ledger-plan">${legs.length ? `<ul class="p6-ticks">${legs.map(li).join('')}</ul>` : ''}
     <p class="hint">📒 ${ledger.length ? `兌換紀錄 ${ledger.length} 筆${y?.perMile != null ? `・${y.year} 年實際每哩約 NT$${y.perMile.toFixed(2)}` : ''}　<button type="button" class="linklike" data-p6-ledger-open>看年度回顧</button>` : '開票後按「已開票」，會記下用掉的哩程、稅金和你查過的當天現金票價，年底看每哩實際換到多少錢。'}</p></div>`);
 }
 function p6LedgerHtml() {

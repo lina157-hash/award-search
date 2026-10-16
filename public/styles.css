@@ -493,7 +493,7 @@ dialog.pass { width: min(380px, calc(100vw - 32px)); border-radius: 16px; }
 /* The panels sit side by side as pills; an open one takes the full width. On 航線查詢 they share one row (.pill-row). */
 .alerts-panel:not([open]) { display: inline-block; vertical-align: top; margin-right: 6px; }
 .pill-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; margin-top: 16px; }
-.pill-row > .alerts-panel { margin: 0; }
+.pill-row > .alerts-panel { margin: 0; min-width: 0; } /* an open panel's table may not widen the row */
 .pill-row > .alerts-panel[open] { flex-basis: 100%; }
 .alerts-panel > summary { vertical-align: top; } /* no line-box gap under a pill */
 @media (max-width: 640px) { #rtw-link > span { display: none; } } /* two pills to a row on phones */
@@ -2246,7 +2246,19 @@ form.need, .detour { display: grid; gap: 12px; }
   .promos > summary, .trip-info > summary, .howto > summary { min-height: 44px; }
   .card .src a, .ti-src a, .promos li small a { padding-top: 12px; padding-bottom: 12px; margin-top: -5px; margin-bottom: -5px; }
   .leaflet-touch .leaflet-control-zoom.leaflet-bar a { width: 44px; height: 44px; line-height: 44px; }
+  /* 查航班動態 / 這班過去準點率 wrap onto two lines in a narrow leg cell; without the -12px margins they stop overlapping. */
+  .fst-acts .linklike { margin-top: 0; margin-bottom: 0; min-height: 40px; }
 }
+/* C8: 我的行程's extras (已開票追蹤, 護照, 提醒, 兌換紀錄) under one 「更多」 fold at the end of the panel. */
+.plan-more { margin-top: 12px; border-top: 1px dashed var(--border); }
+.plan-more > summary { list-style: none; display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 4px 0; color: var(--accent); font-size: .88rem; }
+.plan-more > summary::-webkit-details-marker { display: none; }
+.plan-more > summary::before { content: "▸"; color: var(--muted); }
+.plan-more[open] > summary::before { content: "▾"; }
+.plan-more-body { display: grid; gap: 10px; padding: 2px 0 4px; }
+#plan-body .plan-more-body > * { margin: 0; }
+#plan-body .plan-more-body > .bk-foot { border: 0; padding: 0; }
+.plan-extras:empty { display: none; }
 /* A1: the map's attribution line is readable over any tile (it measured 3.37:1). */
 :root { --map-attr-bg: rgb(255 255 255 / .9); --map-attr-text: #2b2b2b; --map-attr-link: #005a7d; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --map-attr-bg: rgb(14 22 32 / .88); --map-attr-text: #e3e9ee; --map-attr-link: #8fd6ea; } }
