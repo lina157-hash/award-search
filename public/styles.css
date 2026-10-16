@@ -357,7 +357,8 @@ button.primary.small { padding: 7px 14px; font-size: .85rem; }
 .fare { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; box-shadow: var(--shadow); overflow: hidden; }
 .fare.fare-best { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
 .fare > button.primary.small { margin: 0 16px 14px auto; display: block; }
-.fare-main { display: grid; grid-template-columns: 40px minmax(150px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; cursor: pointer; }
+/* A fixed price column, so the columns line up from one card to the next (an auto one moved them 3–5px). */
+.fare-main { display: grid; grid-template-columns: 40px minmax(150px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr) 8.5em; align-items: center; gap: 14px; padding: 14px 16px; cursor: pointer; }
 .fare-main:hover { background: var(--surface-2); }
 .fare-logo { width: 36px; height: 36px; display: grid; place-items: center; font-size: 1.2rem; color: var(--accent); }
 .fare-logo img { width: 32px; height: 32px; object-fit: contain; }
@@ -581,7 +582,7 @@ td.cell i.gv { font-style: normal; font-size: .66rem; font-weight: 700; color: v
 .watch-form { margin: 10px 0; }
 .watch-form .w-add input { flex: 1 1 240px; text-align: left; }
 #watch-panel { margin-top: 14px; }
-.add-plan { margin-left: 10px; font-size: .85rem; min-height: 32px; }
+.add-plan { font-size: .85rem; min-height: 32px; } /* spaced by its row's gap (round 8), so it does not indent when it wraps */
 .trip .pill.prod { background: var(--accent-soft); color: var(--accent); margin: 0 6px 0 0; }
 details.release { margin: 0 0 12px; font-size: .9rem; }
 details.release summary { cursor: pointer; color: var(--few-text); background: var(--few); display: inline-block; padding: 4px 12px; border-radius: 999px; }
@@ -628,11 +629,15 @@ details.release li { margin: 3px 0; }
 
 /* ---------- daily deals ---------- */
 .deals { margin: 10px 0 0; }
-.deals-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; }
-.deals-head .section-title { margin-bottom: 6px; }
+/* The title, the 商務／頭等 switch and 請假效率 share one centre line; the switches sit together on the right. */
+.deals-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-top: 26px; }
+.deals-head .section-title { margin: 0 auto 0 0; }
 .deal-group h3.sub { margin: 14px 0 8px; font-size: .9rem; color: var(--muted); }
 .deal-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(200px, calc((100% - 30px) / 4)), 1fr)); gap: 10px; }
-.deal-mini { display: grid; gap: 2px; text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; cursor: pointer; box-shadow: var(--shadow); }
+/* Tablets: two columns, so a region's four cards make two full rows instead of three and an orphan. */
+@media (max-width: 899px) { .deal-row { grid-template-columns: repeat(auto-fill, minmax(max(200px, calc((100% - 10px) / 2)), 1fr)); } }
+/* align-content: a card without the 平常約 line keeps its lines at the top, level with its neighbours. */
+.deal-mini { display: grid; align-content: start; gap: 2px; text-align: left; font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; cursor: pointer; box-shadow: var(--shadow); }
 .deal-mini:hover { border-color: var(--accent); }
 .dm-route { font-weight: 700; font-size: .92rem; }
 .dm-route small { color: var(--muted); font-weight: 400; }
@@ -2183,6 +2188,71 @@ input:focus, select:focus, .chips-box:focus-within { box-shadow: 0 0 0 3px color
 .bm-tools > h2.section { margin-bottom: 4px; }
 .bm-tools .gf-card:first-child { margin-top: 12px; }
 .bm-go button { display: inline; }
+
+/* ---- round 8: 版面整理 (L3–L15, L17, A1) ---- */
+/* L4: text boxes, menus and the date button share one height in the forms, so the labels in a row line up. */
+:root { --control-h: 46px; }
+:is(.search-card, form.need, .calc-bar) .field:not(.compact) > :is(select, input:not([type=checkbox]):not([type=radio]), .dp-btn),
+.upg-air > select { height: var(--control-h); }
+/* L3: 查飯店's 搜尋點數房 sits on the centre line of the chain chips beside it. */
+#hotel-form .opts-row:has(> .h-progs) { align-items: center; }
+/* L5: 哩程試算, 升等試算 and 繞路兌換 space their rows like the other forms. */
+form.need, .detour { display: grid; gap: 12px; }
+.detour .presets { margin: 0; }
+/* L6: a route row without the ⇄ button (升等試算, 加入下一站) takes the full width on phones. */
+@media (max-width: 640px) { .route-row:not(:has(> .swap)) { grid-template-columns: minmax(0, 1fr); } }
+/* L7: 航班明細's 哩數＋稅金 and 加入我的行程: a gap, not a margin, so the button does not indent when it wraps. */
+.trip-top > div:has(> .add-plan) { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 8px; }
+/* L8: tablets: the account button is an icon beside the logo; the tabs get their own row only below 900px. */
+@media (min-width: 641px) and (max-width: 999px) {
+  .top-inner { gap: 8px 10px; }
+  .tabs button { padding-left: 11px; padding-right: 11px; }
+  .acct-btn:not(:has(.av)) { width: 36px; padding: 0; justify-content: center; }
+  .acct-btn .acct-txt { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .acct-btn .nm { display: none; }
+}
+@media (min-width: 641px) and (max-width: 899px) {
+  .top-inner > .acct { order: 1; margin-left: auto; }
+  .top-inner > .tabs { order: 2; flex: 1 1 100%; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .tabs button { padding-left: 4px; padding-right: 4px; }
+}
+@media (min-width: 641px) and (max-width: 759px) {
+  .tabs .tl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tabs .ts { display: inline; }
+}
+/* L9: the lead line stops short of the ✈ and the sun drawn at the hero's right. */
+@media (min-width: 641px) { .hero .lead { max-width: min(720px, calc(100% - 280px)); } }
+/* L10: on wide screens 規則庫's sticky chapter bar is as wide as the content under it. */
+@media (min-width: 1232px) { .rules-nav { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; } }
+/* L12: 兌換地圖's 出發地 box keeps 「＋加入機場」 on the chip's line, at the height of the menu beside it. */
+@media (min-width: 641px) { .rmap-row > .field.grow { flex: 1 1 320px; } }
+.rmap-row input.chips-q, .rmap-row input.chips-q:focus { flex: 1 1 90px; width: 0; min-width: 72px; border: 0; background: transparent; box-shadow: none; padding: 4px 2px; }
+/* L13: phones: 最近查過's 清除 stays beside its label instead of wrapping onto a line of its own. */
+@media (max-width: 640px) { #mine .presets-label { order: -2; } #mine .rm-all { order: -1; } }
+/* L14: 查飯店 results: the buttons in the right column share one width. */
+@media (min-width: 641px) { .hotel-actions > :is(button, a.btn) { align-self: stretch; justify-content: center; text-align: center; } }
+/* L15: 查現金票 results: 選這班 sits beside the price instead of on a band of its own. */
+@media (min-width: 900px) {
+  .fare:has(> button.primary.small) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .fare:has(> button.primary.small) > .fare-main { grid-column: 1; grid-row: 1; }
+  .fare:has(> button.primary.small) > .fare-detail { grid-column: 1 / -1; grid-row: 2; }
+  .fare > button.primary.small { grid-column: 2; grid-row: 1; margin: 0 16px 0 0; }
+  .fare:has(> button.primary.small):has(> .fare-main:hover) { background: var(--surface-2); }
+}
+@media (min-width: 641px) { .fare-final .fare-main { grid-template-columns: 40px minmax(150px, 1.2fr) minmax(120px, 1fr) minmax(120px, 1fr); } }
+/* L17: phones and tablets: 44px targets for the 規則庫 chips and 全部展開, card folds, source links, map zoom. */
+@media (pointer: coarse) {
+  .rules-nav button, .rules-all, .add-plan { min-height: 44px; }
+  .promos > summary, .trip-info > summary, .howto > summary { min-height: 44px; }
+  .card .src a, .ti-src a, .promos li small a { padding-top: 12px; padding-bottom: 12px; margin-top: -5px; margin-bottom: -5px; }
+  .leaflet-touch .leaflet-control-zoom.leaflet-bar a { width: 44px; height: 44px; line-height: 44px; }
+}
+/* A1: the map's attribution line is readable over any tile (it measured 3.37:1). */
+:root { --map-attr-bg: rgb(255 255 255 / .9); --map-attr-text: #2b2b2b; --map-attr-link: #005a7d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --map-attr-bg: rgb(14 22 32 / .88); --map-attr-text: #e3e9ee; --map-attr-link: #8fd6ea; } }
+:root[data-theme="dark"] { --map-attr-bg: rgb(14 22 32 / .88); --map-attr-text: #e3e9ee; --map-attr-link: #8fd6ea; }
+.leaflet-container .leaflet-control-attribution.leaflet-control { background: var(--map-attr-bg); color: var(--map-attr-text); }
+.leaflet-control-attribution.leaflet-control a { color: var(--map-attr-link); }
 
 /* ---- round 6: 我的行程與出發前 ---- */
 /* 我的行程: status pill, key dates, connection check, editor, paste, passport, reminders (trips.js) */
