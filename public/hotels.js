@@ -144,7 +144,7 @@ const countryName = (c) => (/^[A-Z]{2}$/.test(c || '') ? regionName(c).zh : c ||
 function hotelsHtml() {
   const s = hotelState;
   // Multi-select, so each chain is a toggle chip with a tick rather than a one-of-many segment.
-  const chk = (k, title = '') => `<label class="h-chip"${title ? ` title="${esc(title)}"` : ''}><input type="checkbox" name="h-prog" value="${k}" ${s.programs.includes(k) ? 'checked' : ''}><span>${HOTEL_SHORT[k]}${k === 'accor' ? '<small>用額度</small>' : ''}</span></label>`;
+  const chk = (k, title = '') => `<label class="h-chip"${title ? ` title="${esc(title)}"` : ''}><input type="checkbox" name="h-prog" value="${k}" ${s.programs.includes(k) ? 'checked' : ''}><span>${HOTEL_SHORT[k]}${k === 'accor' ? '<small>用 2–10 次查價</small>' : ''}</span></label>`;
   const extra = [cashCfg.accor ? chk('accor', '用 Booking.com 的房價換算 ALL 點數，每次搜尋約用 2 到 10 次 Booking.com 查價額度（雅高飯店多的城市要翻好幾頁，每頁再多 1 次查中文名稱）（6 小時內同城市同日期不再花）') : '', chk('shangrila', '香格里拉的點數價不公開，會給你官網的連結')].join('');
   return `<form id="hotel-form" class="search-card" autocomplete="off" novalidate>
     <div class="opts-row h-row">
@@ -339,8 +339,8 @@ function bindAccorFilters(box, body, nights, fresh) {
     const searchable = picked.length && picked.every((b) => (body.brandsSearchable || []).includes(b));
     // A cut list may be missing hotels of the chosen brands: offer to ask Booking.com for those brands alone.
     refetch.innerHTML = body.more && searchable
-      ? `<button type="button" class="outline small" data-accor-only>只查這些品牌（用額度）</button>`
-      : body.brandsOnly?.length ? '<button type="button" class="linklike" data-accor-all>改查全部品牌（用額度）</button>' : '';
+      ? `<button type="button" class="outline small" data-accor-only>只查這些品牌（用 2–10 次查價）</button>`
+      : body.brandsOnly?.length ? '<button type="button" class="linklike" data-accor-all>改查全部品牌（用 2–10 次查價）</button>' : '';
     $('[data-accor-only]', refetch)?.addEventListener('click', () => searchAccor(fresh, picked));
     $('[data-accor-all]', refetch)?.addEventListener('click', () => searchAccor(fresh, []));
   };
@@ -365,7 +365,7 @@ function accorHtml(body, nights) {
         ? `${only}Booking.com 在「${esc(body.city || hotelState.where)}」這幾晚沒有這些品牌的飯店。`
         : body.scanned
           ? `Booking.com 的「${esc(body.city || hotelState.where)}」最熱門的 ${body.scanned} 家飯店裡，沒有雅高旗下的飯店。`
-          : `Booking.com 這次沒有回傳「${esc(body.city || hotelState.where)}」的飯店，可能這幾晚沒有空房或資料來源暫時有問題。`}${body.cityUrl ? ` <a href="${esc(body.cityUrl)}" target="_blank" rel="noopener">在 Booking.com 看這個城市 ↗</a>` : ''}</p>${only ? '<p><button type="button" class="linklike" data-accor-all-empty>改查全部品牌（用額度）</button></p>' : ''}`
+          : `Booking.com 這次沒有回傳「${esc(body.city || hotelState.where)}」的飯店，可能這幾晚沒有空房或資料來源暫時有問題。`}${body.cityUrl ? ` <a href="${esc(body.cityUrl)}" target="_blank" rel="noopener">在 Booking.com 看這個城市 ↗</a>` : ''}</p>${only ? '<p><button type="button" class="linklike" data-accor-all-empty>改查全部品牌（用 2–10 次查價）</button></p>' : ''}`
     : `<p class="hint">${only}Booking.com 上的雅高飯店${body.more ? `太多了，只列最便宜的 ${list.length} 家` : `共 ${list.length} 家`}，可以用下面的品牌、星級篩選和排序。雅高沒有點數房，點數是用房價換算的${body.pointValueTwd ? `，每點約 NT$${body.pointValueTwd}` : ''}。</p>
       ${accorFilterBar(body)}
       <div id="h-accor-list"></div>`)

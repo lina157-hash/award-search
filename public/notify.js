@@ -81,7 +81,7 @@ function alertExtraHtml(a) {
     <label class="field">最多幾哩（每人單程，不填＝不限）<input name="maxMiles" inputmode="numeric" placeholder="例如 80000" value="${esc(a?.maxMiles || '')}" autocomplete="off"></label>
     <label class="switch"><input type="checkbox" name="drops" ${a?.drops ? 'checked' : ''}><span class="knob"></span>降哩也通知（看過的位子便宜 5% 以上時，寫出原本和現在幾哩）</label>
     <label class="field">只要這些航班（不填＝全部）<input name="flights" value="${esc((a?.flights || []).join(', '))}" placeholder="BR16, JX12" autocomplete="off" autocapitalize="characters"></label>
-    <p class="hint">指定航班：45 天內的日期直接比對；更遠的日期，每天最多再查 5 筆航班明細（用最多 5 次查詢）。同一個價格只通知一次。</p>
+    <p class="hint">指定航班：45 天內的日期直接比對；更遠的日期，每天最多再查 5 筆航班明細（用 0–5 次查詢）。同一個價格只通知一次。</p>
   </details>`;
 }
 // 「8萬」 or 「80,000」 → 80000; anything else goes as typed, for the server to refuse with a reason.

@@ -286,8 +286,11 @@ test('mixed cabin: the share flown below the cabin is kept; the details can ask 
 });
 
 test('round 6 results scripts load after the scripts they use', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const at = (f) => html.indexOf(`/${f}?v=`);
-  for (const f of ['flightplus.js', 'pairing.js']) assert.ok(at(f) > at('features.js') && at(f) > at('award-tools.js'), f);
-  assert.ok(at('pairing.js') > at('flightplus.js'));
+  // They come with the search scripts (app.js loadSearchScripts), which load after the tools (award-tools.js) and,
+  // like every lazy script, after the page's own scripts (features.js); the route results wait for them.
+  const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const search = JSON.parse(app.match(/const SEARCH_SCRIPTS = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
+  assert.match(app, /const loadSearchScripts = \(\) => loadScripts\(\[\.\.\.TOOL_SCRIPTS, \.\.\.SEARCH_SCRIPTS\]\);/);
+  for (const f of ['flightplus', 'pairing']) assert.ok(search.includes(f) && search.indexOf(f) < search.indexOf('seathistory'), f);
+  assert.ok(search.indexOf('pairing') > search.indexOf('flightplus'));
 });

@@ -2035,3 +2035,73 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .p6-fam-table td[data-l]::before { content: attr(data-l); grid-row: 1 / span 4; color: var(--muted); font-size: .76rem; }
   .p6-fam-table td[data-l] > * { grid-column: 2; }
 }
+/* ---- round 6: 介面與速度 (U1 U3 U4 U14 U16 U17) ---- */
+/* U1: on a phone the 搜尋 button of 航線查詢 and 查現金票 sits on the first screen: no lead line above those forms, and
+   一句話找機票 is one line until opened (it opens by itself after the first use). */
+@media (max-width: 640px) {
+  #tab-search .hero .lead, #tab-cash .hero .lead { display: none; }
+  #tab-search .hero h1, #tab-cash .hero h1 { margin-bottom: 12px; }
+}
+.nl-card { display: block; }
+.nl-card > * + * { margin-top: 10px; }
+.nl-card > summary { list-style: none; cursor: pointer; min-height: 32px; align-items: center; }
+.nl-card > summary::-webkit-details-marker { display: none; }
+.nl-card > summary::after { content: "▸"; color: var(--muted); margin-left: auto; }
+.nl-card[open] > summary::after { content: "▾"; }
+.nl-card:not([open]) { padding-top: 8px; padding-bottom: 8px; }
+.nl-card > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+
+/* U3: phones and tablets: every control the finger aims at is at least 44px; most look the same, only the hit area grows. */
+@media (pointer: coarse) {
+  .tabs button, .acct-btn, button.outline, a.outline.btn, .presets button, .filters .chip, .chip.on, .mine-chip, .dp-chip, .h-chip span, summary { min-height: 44px; }
+  .acct-btn:not(:has(.av)) { min-width: 44px; }
+  .brand { min-height: 44px; }
+  .swap { width: 44px; }
+  .alerts-panel > summary, .ex-filters > summary { min-height: 44px; }
+  .info-i > summary, .dialog-head button.ghost, .dp-x { min-width: 44px; min-height: 44px; }
+  .chip button { width: 40px; height: 40px; margin: -9px -4px -9px 0; }
+  .nl-x, .nl-go { min-height: 44px; }
+  .seg span { min-height: 44px; display: flex; align-items: center; justify-content: center; }
+  label.switch, .nl-card > summary { min-height: 44px; }
+  /* Text-sized link buttons keep their look; padding (taken back by the margin) makes the hit area 44px tall. */
+  .linkish, .linklike { padding-top: 12px; padding-bottom: 12px; margin-top: -12px; margin-bottom: -12px; }
+  .seatmap a { min-height: 44px; }
+  .dp-day { min-height: 44px; }
+}
+
+@media (pointer: coarse) and (max-width: 640px) { .route-row { grid-template-columns: minmax(0, 1fr) 44px; } }
+
+/* U4: 追蹤降價 says it in one line; how often and which quota sit behind the ⓘ. */
+.watch-note { position: relative; }
+.watch-note .info-i > p { font-size: .85rem; }
+
+/* U14: 兌換地圖 when the map cannot draw: 重試 and the same cities as a list. */
+.map-fail { margin: 12px 0; }
+.rmap-list-cap { margin: 8px 0 6px; }
+.rmap-list td small { display: block; color: var(--muted); }
+
+/* U16: keyboard focus that shows on every control: the selected segment (same colour as its ring) gets an offset ring,
+   inputs a stronger ring, the date picker's chosen days a ring in the text colour. */
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+input:focus, select:focus, .chips-box:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); }
+.route-row input.chips-q:focus { box-shadow: none; }
+.dp-day.start:focus-visible, .dp-day.end:focus-visible, .dp-day.center:focus-visible { outline: 2px solid var(--text); outline-offset: -3px; }
+
+/* U17: an inline error under 出發地 no longer moves the route row (wide screens; on phones the row is a grid). */
+@media (min-width: 641px) {
+  .route-row:has(.field-err) { padding-bottom: 22px; }
+  .route-row .field-err { position: absolute; left: 2px; top: calc(100% + 2px); white-space: nowrap; }
+}
+/* U17: 兌換地圖 lead: 「（固定表估價）」 never breaks in the middle. */
+.nobr { white-space: nowrap; }
+/* U17: 區域探索 on a phone: 距離 and 資料更新 make room for 直飛 and 剩餘座位. */
+@media (max-width: 640px) {
+  #ex-table th:nth-child(n+7), #ex-table td:nth-child(n+7) { display: none; }
+}
+/* U17: the cheapest seller in 預訂選項. */
+.pill.low { display: inline-block; font-size: .72rem; padding: 1px 8px; border-radius: 999px; margin-left: 6px; background: var(--sun); color: var(--sun-text); font-weight: 700; }
+/* U17: 書籤小工具 under 規則庫. */
+.bm-tools { margin-top: 28px; }
+.bm-tools > h2.section { margin-bottom: 4px; }
+.bm-tools .gf-card:first-child { margin-top: 12px; }
+.bm-go button { display: inline; }

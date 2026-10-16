@@ -152,9 +152,12 @@ function ensureTab(tab) {
   tabInit[tab]();
 }
 const tabHash = (tab) => (tabSub[tab] ? `${tab}/${tabSub[tab]}` : tab);
-function showTab(name) {
+const tabUrl = (tab) => `${location.pathname}${tabQuery[tab] || ''}#${tabHash(tab)}`;
+// push: false when the URL already says where to go (opening the page, Back/Forward, a hash typed or linked).
+function showTab(name, { push = true } = {}) {
   const [tab, sub] = name.split('/');
   if (sub) tabSub[tab] = sub;
+  const moved = tab !== currentTab;
   currentTab = tab;
   // One tab stop for the strip; the arrow keys move between tabs (below).
   $$('.tabs button').forEach((b) => { b.setAttribute('aria-selected', String(b.dataset.tab === tab)); b.tabIndex = b.dataset.tab === tab ? 0 : -1; });
@@ -163,14 +166,16 @@ function showTab(name) {
   const strip = tb?.parentElement;
   if (strip && strip.scrollWidth > strip.clientWidth) strip.scrollLeft = Math.max(0, tb.offsetLeft - strip.offsetLeft - 40);
   $$('.panel').forEach((p) => (p.hidden = p.id !== `tab-${tab}`));
-  history.replaceState(null, '', `${location.pathname}${tabQuery[tab] || ''}#${tabHash(tab)}`);
+  // Another tab is a history entry, so Back returns here (backnav.js); the rest replaces the current one.
+  if (moved && push && typeof backNav === 'object') backNav.tab(tabUrl(tab));
+  else history.replaceState(history.state, '', tabUrl(tab));
   ensureTab(tab);
   tabShown[tab]?.();
 }
 // Record a tab's query string, and show it in the address bar when that tab is open.
 function setTabUrl(tab, query) {
   tabQuery[tab] = query && String(query) ? `?${query}` : '';
-  if (currentTab === tab) history.replaceState(null, '', `${location.pathname}${tabQuery[tab]}#${tabHash(tab)}`);
+  if (currentTab === tab) history.replaceState(history.state, '', tabUrl(tab));
 }
 const tabParams = (tab) => new URLSearchParams(tabQuery[tab] || '');
 $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -192,24 +197,27 @@ const BOOT_HASH = location.hash;
   if (q.get('x')) tabQuery.explore = location.search;
   else if (q.get('o')) tabQuery.search = location.search;
   const h = location.hash.slice(1);
-  showTab(TABS.includes(h.split('/')[0]) ? h : 'search');
+  showTab(TABS.includes(h.split('/')[0]) ? h : 'search', { push: false });
 }
-// showTab writes the hash with replaceState, which fires no hashchange; this is for the hash edited by hand, a bookmark
-// opened in the same tab, or an in-page #link.
-addEventListener('hashchange', () => {
+// The tab the URL names: a hash edited by hand, a bookmark opened in the same tab, an in-page #link (hashchange), and
+// Back/Forward between tabs (backnav.js). showTab's own replaceState fires neither.
+function navFromUrl() {
   const h = location.hash.slice(1);
   const [tab, sub] = h.split('/');
-  if (!TABS.includes(tab)) return;
+  if (!TABS.includes(tab) || (tab === currentTab && h === tabHash(currentTab))) return; // Back fires both events
   if (tab === 'points') {
     const v = POINTS_VIEWS.includes(sub) ? sub : 'calc';
     const redraw = v !== pointsView.view && tabDone.has('points');
     setPointsView(v);
-    showTab('points');
+    showTab('points', { push: false });
     if (redraw) renderPoints();
     return;
   }
-  showTab(h);
-});
+  showTab(h, { push: false });
+}
+addEventListener('hashchange', navFromUrl);
+// After a dialog's history entry is gone: the address bar shows the open tab as it is now.
+const navResync = () => history.replaceState(history.state, '', tabUrl(currentTab));
 // The sticky header's height (it differs by width and when the 登入 button appears), for bars that stick below it.
 {
   const setHdr = () => document.documentElement.style.setProperty('--hdr-h', `${$('.top').offsetHeight}px`);
@@ -549,6 +557,21 @@ const clampIso = (iso, lo, hi) => (iso < lo ? lo : iso > hi ? hi : iso);
 const monthAdd = (ym, n) => { const d = new Date(`${ym}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 7); };
 const ymd = (iso) => `${iso.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${iso.slice(0, 4)}/` : ''}${mmdd(iso)}`;
 const dayLabel = (iso) => `${ymd(iso)}（${dowOf(iso)}）`;
+// Date picker keys: ←/→ a day, ↑/↓ a week, PageUp/PageDown a month (same day, or that month's last), Home/End the
+// week's first/last day (weeks start on Sunday, like the grid). Kept inside lo–hi; null for any other key.
+function dpKeyDate(iso, key, lo, hi) {
+  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[key];
+  const dow = new Date(`${iso}T00:00:00Z`).getUTCDay();
+  let to;
+  if (step) to = isoDateFrom(iso, step);
+  else if (key === 'Home' || key === 'End') to = isoDateFrom(iso, key === 'Home' ? -dow : 6 - dow);
+  else if (key === 'PageUp' || key === 'PageDown') {
+    const ym = monthAdd(iso.slice(0, 7), key === 'PageUp' ? -1 : 1);
+    const last = new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).getUTCDate();
+    to = `${ym}-${String(Math.min(Number(iso.slice(8, 10)), last)).padStart(2, '0')}`;
+  } else return null;
+  return clampIso(to, lo, hi);
+}
 
 // opts.single: one date only (cash fares, hotels), written to the hidden input named opts.name inside opts.field;
 // opts.min / opts.maxDays narrow the selectable days; opts.today (twDate for the cash fares) is the day they count from.
@@ -560,7 +583,8 @@ function createDatePicker(form, label, opts = {}) {
   const startIn = single ? form.elements[opts.name] : form.elements.start;
   const endIn = single ? startIn : form.elements.end;
   // 「指定日期 ± 天數」 first (owner's choice); 「選擇日期範圍」 is for when that does not fit.
-  const st = { mode: single ? 'single' : 'flex', flex: 3, center: null, anchor: null, hover: null, month: null };
+  // focus: the one day in the tab order (roving tabindex); the arrow keys move it (dpKeyDate).
+  const st = { mode: single ? 'single' : 'flex', flex: 3, center: null, anchor: null, hover: null, month: null, focus: null };
   const dlg = document.createElement('dialog');
   dlg.className = 'dp';
   dlg.setAttribute('aria-label', `選擇${label}`);
@@ -641,6 +665,9 @@ function createDatePicker(form, label, opts = {}) {
       b.classList.toggle('center', st.mode === 'flex' && d === st.center);
       b.setAttribute('aria-pressed', String(Boolean(inR)));
     }
+    const days = $$('.dp-day:not([disabled])', dlg);
+    const tab = days.find((b) => b.dataset.date === st.focus) || days.find((b) => b.classList.contains('start')) || days[0];
+    for (const b of $$('.dp-day', dlg)) b.tabIndex = b === tab ? 0 : -1;
     $('.dp-sum', dlg).textContent = summary();
   }
   function render() {
@@ -687,6 +714,7 @@ function createDatePicker(form, label, opts = {}) {
   function open() {
     st.anchor = null;
     st.hover = null;
+    st.focus = null;
     st.month = (st.mode === 'flex' && st.center ? st.center : startIn.value || lo()).slice(0, 7);
     dlg.showModal();
     render();
@@ -772,6 +800,22 @@ function createDatePicker(form, label, opts = {}) {
   };
   dlg.addEventListener('mouseover', hoverDay);
   dlg.addEventListener('focusin', hoverDay);
+  dlg.addEventListener('focusin', (e) => { const d = e.target.closest?.('.dp-day')?.dataset.date; if (d) st.focus = d; });
+  // Arrow keys and PageUp/PageDown move between days (the next month draws when needed); Enter or Space picks one.
+  dlg.addEventListener('keydown', (e) => {
+    const day = e.target.closest?.('.dp-day');
+    if (!day || e.altKey || e.ctrlKey || e.metaKey) return;
+    const to = dpKeyDate(day.dataset.date, e.key, lo(), hi());
+    if (!to) return;
+    e.preventDefault();
+    st.focus = to;
+    const last = monthAdd(st.month, months() - 1);
+    if (to.slice(0, 7) < st.month || to.slice(0, 7) > last) {
+      st.month = to.slice(0, 7) < st.month ? to.slice(0, 7) : monthAdd(to.slice(0, 7), 1 - months());
+      render();
+    } else paint();
+    $(`.dp-day[data-date="${to}"]`, dlg)?.focus();
+  });
   addEventListener('resize', () => { if (dlg.open) render(); });
   updateButton();
 
@@ -1805,7 +1849,7 @@ async function openTrips(id, title, cabin) {
   $('#trip-body').innerHTML = skeleton(3);
   dlg.showModal();
   try {
-    const [body] = await Promise.all([api(`/api/trips/${encodeURIComponent(id)}`), loadMore()]);
+    const [body] = await Promise.all([api(`/api/trips/${encodeURIComponent(id)}`), loadMore(), loadTools()]);
     if (!fresh()) return;
     const want = CABIN_API[cabin];
     const byMiles = (a, b) => a.miles - b.miles || a.stops - b.stops;
@@ -2082,7 +2126,7 @@ function renderExplore() {
   status.className = 'status';
   status.innerHTML = `<span>共 <b>${all.length}</b> 筆${ex.mock ? '（示範資料）' : ''}${rows.length !== all.length ? `，篩選後 <b>${rows.length}</b> 筆` : ''}${ex.truncated ? '。結果超過 5,000 筆，請縮小日期或區域範圍以看到全部' : ''}</span>`;
 
-  $('#ex-view').innerHTML = `<fieldset class="seg" aria-label="顯示方式">${[['table', '表格'], ['map', '地圖']].map(([k, l]) => `<label><input type="radio" name="ex-view" value="${k}" ${ex.view === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
+  $('#ex-view').innerHTML = `<fieldset class="seg" aria-label="顯示方式">${[['table', '表格'], ['map', '有位地圖']].map(([k, l]) => `<label><input type="radio" name="ex-view" value="${k}" ${ex.view === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
   if (ex.view === 'map') { renderExploreMap(rows); return; }
   if (exMap) { exMap.remove(); exMap = null; }
 
@@ -2403,7 +2447,7 @@ function cashMonthHtml() {
   if (!r || !cashMonthOk(r)) return '';
   const m = cash.month;
   if (!m) {
-    return `<div class="cash-month"><button type="button" class="outline" id="cash-month-btn">📅 看前後幾週每天的最低價（會用掉 1 次查價）</button></div>`;
+    return `<div class="cash-month"><button type="button" class="outline" id="cash-month-btn">📅 看前後幾週每天的最低價（用 1 次查價）</button></div>`;
   }
   if (m.busy) return '<div class="cash-month"><p class="hint">正在查詢每天的最低價…</p></div>';
   if (m.err) return `<div class="cash-month"><p class="status error">${esc(m.err)}</p></div>`;
@@ -2435,7 +2479,7 @@ function cashMonthHtml() {
   }
   const cheapest = m.days.filter((d) => d.price === low).map((d) => dayLabel(d.date)).slice(0, 3).join('、');
   return `<div class="cash-month">
-    <h2 class="section">每天最低價 <small>${m.round ? `來回、玩 ${tripDays(r)} 天的總價` : '單程價格'}${r.adults > 1 ? `，${r.adults} 人總價` : ''}；點日期用那天重新搜尋（再用 1 次查價）</small></h2>
+    <h2 class="section">每天最低價 <small>${m.round ? `來回、玩 ${tripDays(r)} 天的總價` : '單程價格'}${r.adults > 1 ? `，${r.adults} 人總價` : ''}；點日期用那天重新搜尋（用 1 次查價）</small></h2>
     <p class="hint">最便宜：${cheapest} NT$${fmt(low)}${m.roundFailed ? '。來回的每日價格查不到，先顯示單程價格。' : ''}${m.fx ? '（Google 給的是美金，已用今天的匯率換成台幣，是約略價格）' : ''}${m.mock ? '（示範資料）' : ''}${m.cached ? '（剛查過，這次沒有用到額度）' : ''}</p>
     <div class="cal-months">${months.join('')}</div>
     <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴${holidayLegend(HOL.cash)}</div>
@@ -2513,7 +2557,7 @@ function renderChosen(box) {
   bindCashLinks();
 }
 
-function bookingRowHtml(b, label) {
+function bookingRowHtml(b, label, low = '') {
   if (!b) return '';
   const extras = [...b.baggage, ...b.extensions].map((x) => `<small>${esc(x)}</small>`).join('');
   let go = '';
@@ -2528,7 +2572,7 @@ function bookingRowHtml(b, label) {
     go = `<a class="outline btn small" href="tel:${esc(b.phone.replace(/\s/g, ''))}">電話訂票 ${esc(b.phone)}</a>`;
   }
   return `<div class="book-opt">
-    <div>${label ? `<small class="leg-tag">${label}</small>` : ''}<b>${esc(b.bookWith || '未知賣家')}</b>${b.isAirline ? ' <span class="pill">航空公司官網</span>' : ''}${b.title ? `<small>${esc(b.title)}</small>` : ''}${extras}</div>
+    <div>${label ? `<small class="leg-tag">${label}</small>` : ''}<b>${esc(b.bookWith || '未知賣家')}</b>${b.isAirline ? ' <span class="pill">航空公司官網</span>' : ''}${low ? ` <span class="pill low">${low}</span>` : ''}${b.title ? `<small>${esc(b.title)}</small>` : ''}${extras}</div>
     <div class="book-price"><b>${money(b.price)}</b>${go}</div>
   </div>`;
 }
@@ -2543,14 +2587,18 @@ function renderBooking() {
   }
   if (cash.booking) {
     const list = cash.booking;
+    // The cheapest seller gets a 「最低」 tag (a pair sold as two tickets counts as both added up); ties all get it.
+    const total = (b) => (b.separate ? (b.departing?.price ?? NaN) + (b.returning?.price ?? NaN) : b.price);
+    const low = list.length > 1 ? Math.min(...list.map(total).filter((n) => n > 0)) : NaN;
+    const lowTag = (b) => (total(b) === low ? (b.separate ? '最低（去回合計）' : '最低') : '');
     host.innerHTML = `<h3 class="sub">預訂選項</h3>
-      ${list.length ? list.map((b) => (b.separate ? `${bookingRowHtml(b.departing, '去程')}${bookingRowHtml(b.returning, '回程')}` : bookingRowHtml(b))).join('') : `<p class="hint">Google 航班沒有提供這組航班的預訂選項，請用下面的連結到 Google 航班或 Skyscanner 訂票。${cash.bookingShape ? `<br><small>技術資訊（截圖給 Claude 可以幫忙修）：${esc(cash.bookingShape)}</small>` : ''}</p>`}
-      ${list.length ? `<p class="hint">${cash.bookingFx ? 'Google 給的是美金，已用今天的匯率換成台幣，是約略價格。' : ''}價格與行李規定以賣家網站為準，按「前往訂票」會開新分頁。${list.some((b) => b.linkToken) ? '按下去才會取得訂票連結，每按一家用掉 1 次查價。' : ''}</p>` : ''}`;
+      ${list.length ? list.map((b) => (b.separate ? `${bookingRowHtml(b.departing, '去程', lowTag(b))}${bookingRowHtml(b.returning, '回程')}` : bookingRowHtml(b, '', lowTag(b)))).join('') : `<p class="hint">Google 航班沒有提供這組航班的預訂選項，請用下面的連結到 Google 航班或 Skyscanner 訂票。${cash.bookingShape ? `<br><small>技術資訊（截圖給 Claude 可以幫忙修）：${esc(cash.bookingShape)}</small>` : ''}</p>`}
+      ${list.length ? `<p class="hint">${cash.bookingFx ? 'Google 給的是美金，已用今天的匯率換成台幣，是約略價格。' : ''}價格與行李規定以賣家網站為準，按「前往訂票」會開新分頁。${list.some((b) => b.linkToken) ? '按下去才會取得訂票連結，每按一家用 1 次查價。' : ''}</p>` : ''}`;
     $$('[data-book-link]', host).forEach((b) => b.addEventListener('click', () => openBookingLink(b)));
     return;
   }
   host.innerHTML = `${cash.bookingErr ? `<p class="status error">${esc(cash.bookingErr)}</p>` : ''}
-    ${final.bookingToken ? `<button type="button" class="primary" id="cash-book">查預訂選項（航空公司官網、旅行社價格）</button><p class="hint">會用掉 1 次查價${cash.provider === 'rapid' ? '，之後每開一家賣家的訂票連結再用 1 次' : ''}。也可以直接用下面的連結到 Google 航班訂票。</p>` : ''}`;
+    ${final.bookingToken ? `<button type="button" class="primary" id="cash-book">查預訂選項（用 1 次查價）</button><p class="hint">列出航空公司官網和旅行社的價格${cash.provider === 'rapid' ? '；之後每開一家賣家的訂票連結再用 1 次查價' : ''}。也可以直接用下面的連結到 Google 航班訂票。</p>` : ''}`;
   $('#cash-book')?.addEventListener('click', loadBooking);
 }
 
@@ -2758,6 +2806,7 @@ function syncRulesAll() {
   if (b) b.textContent = $$('#rules-body details').some((d) => !d.open) ? '全部展開' : '全部收合';
 }
 function renderRules() {
+  if (!withTools($('#rules'), renderRules)) return;
   $('#rules').innerHTML = `<div class="rules-top">
       <label class="rules-search"><span>搜尋規則庫</span><input type="search" id="rules-q" placeholder="例如：中停、燃油、效期、稅金" value="${esc(rulesState.q)}"></label>
       <div class="rules-tools"><p class="hint" id="rules-count" aria-live="polite"></p><button type="button" class="rules-all" id="rules-all">全部展開</button></div>
@@ -2906,7 +2955,7 @@ function bindTabLinks(root) {
 // ---------- 點數換算器 tab ----------
 function renderPoints() {
   const host = $('#points-page');
-  if (!host) return;
+  if (!host || !withTools(host, renderPoints)) return;
   const pts = data.points;
   const calc = pts && calcHtml(pts);
   if (!calc) { host.innerHTML = '<p class="hint">點數資料載入失敗，請重新整理。</p>'; return; }
@@ -3187,12 +3236,26 @@ function renderProgramCards() {
       <small class="prog-sum">${esc(ALLIANCE_SHORT[p.alliance] || '非聯盟')}・${esc(String(p.pricing || '').split('。')[0])}</small></span></summary>
       ${fieldsOf(p).length ? `<dl>${fieldsOf(p).map(([k, label]) => `<dt>${mark(label)}</dt><dd>${mark(p[k])}</dd>`).join('')}</dl>` : ''}
       ${!q || String(p.notes || '').includes(q) ? `<p class="hint">${mark(p.notes)}</p>` : ''}
+      ${p.id === 'asiamiles' ? '<p class="hint bm-go">🗓 在國泰官網查到的獎勵位，可以用 <button type="button" class="linklike" data-bm-go="cx-card">書籤小工具「國泰哩程日曆」</button> 整理成月曆。</p>' : ''}
       <div class="src">${CONFIDENCE_TAG[p.confidence] || ''}${p.seatsAeroSource ? ' <span class="tag">可查座位</span>' : ''}
       來源（${esc(p.lastVerified || '')} 查核）：${(p.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join('、')}
       ・<a href="${esc(p.officialUrl)}" target="_blank" rel="noopener">官方網站 ↗</a></div>
     </details>`).join('') || '<p class="hint">沒有符合的計畫。</p>';
   syncRulesAll();
 }
+
+// The Cathay card's link down to 書籤小工具: open that card (cxcal.js adds it with the search scripts) and show it.
+document.addEventListener('click', (e) => {
+  const go = e.target.closest?.('[data-bm-go]');
+  if (!go) return;
+  loadSearchScripts().then(() => {
+    const card = document.getElementById(go.dataset.bmGo);
+    if (!card) return;
+    card.open = true;
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    card.querySelector('summary')?.focus({ preventScroll: true });
+  });
+});
 
 // ---------- footer version line ----------
 function renderVersion(config) {
@@ -3240,26 +3303,57 @@ function loadMore() {
 // Start on the first sign of a search (a tap or focus on the search page), so the results don't wait for it.
 const warmMore = () => { loadMore().catch(() => {}); loadSearchScripts(); };
 for (const ev of ['pointerdown', 'focusin']) $('#tab-search').addEventListener(ev, warmMore, { once: true });
-// Scripts only the route results use (the 國泰 card and calendars, 請 AI 助理查官網, seat history; about 55 KB gzipped):
-// fetched on the first sign of a search instead of with the page. In this order: each one builds on the one before.
-// The 規則庫 tab (cxcal.js's bookmarklet card) and a #cxcal= landing link load them too.
-const SEARCH_SCRIPTS = ['seathistory', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'cxmuse', 'cxshot', 'cxcard'];
-let searchScriptsP = null;
-function loadSearchScripts() {
-  searchScriptsP ||= Promise.all(SEARCH_SCRIPTS.map((name) => new Promise((resolve) => {
+// Scripts fetched when first needed instead of with the page; each runs once, in the order asked for (async = false).
+// Resolves to one true/false per script; one that fails to load is fetched again on the next ask.
+const lazyScripts = {};
+function loadScripts(names) {
+  return Promise.all(names.map((name) => (lazyScripts[name] ||= new Promise((resolve) => {
     const el = document.createElement('script');
     el.src = `/${name}.js${ASSET_V ? `?v=${ASSET_V}` : ''}`;
-    el.async = false; // run in list order
-    el.onload = el.onerror = resolve; // one that fails to load leaves its card out, not the results
+    el.async = false;
+    el.onload = () => resolve(true);
+    el.onerror = () => { delete lazyScripts[name]; el.remove(); resolve(false); };
     document.body.append(el);
-  })));
-  return searchScriptsP;
+  }))));
 }
+// Booking-cost helpers (fee chips, cost sort, upgrades) and the 我的點數 extras: drawn by the route results, 航班明細,
+// 點數換算器 and 規則庫, which wait for these first (about 18 KB gzipped).
+// rtw.js (環球票規劃 and the 國泰混艙 calculator in 規則庫) goes first, so toolsIn() also means it has run.
+const TOOL_SCRIPTS = ['rtw', 'award-tools', 'ewallet'];
+const loadTools = () => loadScripts(TOOL_SCRIPTS);
+const toolsIn = () => typeof untilTag === 'function' && typeof upgradeHtml === 'function';
+// Drawn once the tools are in; until then a placeholder (or, if they would not load, a 重試).
+function withTools(host, draw) {
+  if (toolsIn()) return true;
+  if (host && !host.querySelector('.skeleton')) host.innerHTML = skeleton(4);
+  loadTools().then(() => {
+    if (toolsIn()) return draw();
+    if (!host) return;
+    host.innerHTML = '<div class="status error"><span>載入失敗，請檢查網路後再試。</span><button type="button" class="outline retry">重試</button></div>';
+    $('.retry', host).addEventListener('click', draw);
+  });
+  return false;
+}
+// Scripts only the route search uses (中停／開口組合 and 外站出發, the 國泰 card and calendars, 請 AI 助理查官網, seat
+// history; about 65 KB gzipped): fetched on the first sign of a search instead of with the page. In this order: each one
+// builds on the one before. The 規則庫 tab (the 書籤小工具 cards), and #cxcal= and #gf? landing links load them too.
+const SEARCH_SCRIPTS = ['etrips', 'flightplus', 'pairing', 'seathistory', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'cxmuse', 'cxshot', 'cxcard'];
+const loadSearchScripts = () => loadScripts([...TOOL_SCRIPTS, ...SEARCH_SCRIPTS]);
 
 tabInit.rules = () => { renderRules(); loadSearchScripts(); };
 tabInit.points = () => renderPoints();
 tabInit.map = () => initRmap();
-tabInit.hotels = () => initHotels();
+// 查飯店's own script comes with the tab's first visit.
+tabInit.hotels = () => {
+  const host = $('#hotels-page');
+  if (host && !host.children.length) host.innerHTML = skeleton(4);
+  loadScripts(['hotels', 'hotelwatch']).then(([ok]) => {
+    if (ok) return initHotels();
+    tabDone.delete('hotels');
+    host.innerHTML = '<div class="status error"><span>查飯店載入失敗，請檢查網路後再試。</span><button type="button" class="outline retry">重試</button></div>';
+    $('.retry', host).addEventListener('click', () => ensureTab('hotels'));
+  });
+};
 tabInit.cash = () => loadCashQuota();
 
 (async function init() {
@@ -3274,7 +3368,7 @@ tabInit.cash = () => loadCashQuota();
   }
   // A link that opens results or a tab drawn from the second part fetches it alongside the first.
   if (isShare || NEEDS_MORE[currentTab]) warmMore();
-  if (BOOT_HASH.startsWith('#cxcal=')) loadSearchScripts();
+  if (BOOT_HASH.startsWith('#cxcal=') || BOOT_HASH.startsWith('#gf?') || new URLSearchParams(location.search).get('gfr')) loadSearchScripts();
   const [config, core] = await Promise.all([api('/api/config'), loadPart('core', DATA_CORE)]);
   putData(core, DATA_CORE);
   SOURCE_NAMES = data.sourceNames.names;

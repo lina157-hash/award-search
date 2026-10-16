@@ -129,7 +129,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     if (e.target.closest('[data-cxs-go]')) { readShot(cxs.file); return; }
     if (e.target.closest('[data-cxs-cancel]')) { unstage(); say(''); }
   });
-  // Picking a file is the click on 「貼上截圖（用 AI 讀圖…）」 carried through: read it at once.
+  // Picking a file is the click on 「📷 貼上截圖」 carried through: read it at once.
   results.addEventListener('change', (e) => {
     if (!e.target.matches?.('[data-cxs-file]')) return;
     const file = e.target.files?.[0];

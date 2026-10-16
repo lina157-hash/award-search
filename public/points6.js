@@ -13,7 +13,11 @@ const p6AddDays = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * P6_D
 const p6Min = (...dates) => dates.filter(p6Iso).sort()[0] || null;
 // The server and the tests get the hold/transfer-time helper from award-tools.js; the browser already has it.
 const p6Tools = typeof module === 'object' && module.exports ? require('./award-tools.js') : null;
-const p6TimeFor = (holds, source, rate) => (p6Tools ? p6Tools.transferTimeFor : transferTimeFor)(holds, source, rate);
+// award-tools.js loads after the page (app.js loadTools); before it is in, the time is unknown (待確認).
+const p6TimeFor = (holds, source, rate) => {
+  const fn = p6Tools ? p6Tools.transferTimeFor : typeof transferTimeFor === 'function' ? transferTimeFor : null;
+  return fn ? fn(holds, source, rate) : null;
+};
 
 // Program key → the calculator column ({ to }) or other-airline name ({ name }) its bank rates use. The same as
 // features.js PROGRAM_TRANSFER plus ANA (a test keeps them equal), here so the server can match banks too.
@@ -275,7 +279,9 @@ const P6_MERGE = {
 
 // ---------- browser: shared bits ----------
 const p6Today = () => isoDate(0);
-const p6Md = (iso) => ewYmd(iso, p6Today());
+// ewallet.js and award-tools.js load after the page (app.js loadTools): 我的行程 can draw before they are in.
+const p6Md = (iso) => (typeof ewYmd === 'function' ? ewYmd(iso, p6Today()) : mmdd(iso));
+const p6Left = (days) => (typeof ewLeft === 'function' ? ewLeft(days) : `還剩 ${days} 天`);
 const p6Load = {
   family: () => cleanFamily(store.get(P6_SYNC.family, null)),
   vouchers: () => cleanVouchers(store.get(P6_SYNC.vouchers, [])),
@@ -288,7 +294,7 @@ function p6Put(key, value, empty) {
 }
 const p6NewId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const p6WalletSources = () => walletSources().filter((s) => wallet.banks[s.id]);
-const p6PerMile = (k) => perMileOf(data.milecost, typeof costOverrides === 'function' ? costOverrides() : {}, k);
+const p6PerMile = (k) => (typeof perMileOf === 'function' ? perMileOf(data.milecost, typeof costOverrides === 'function' ? costOverrides() : {}, k) : null);
 // <details> the user opened stay open when the wallet redraws (it redraws on every number typed).
 const p6Opened = new Set();
 const p6OpenAttr = (k) => (p6Opened.has(k) ? ' open' : '');
@@ -334,12 +340,12 @@ function p6DeadlineLi(p, r) {
   const verify = t && t.confidence !== 'official' ? '・入帳天數待確認' : '';
   if (!r.known) return `<li><span><b>${bank}</b> 入帳時間不明，越早轉越好</span><small>${credit}</small></li>`;
   if (r.days < 0) return `<li class="late"><span><b>${bank}</b> 已來不及</span><small>${how}${credit ? `，${credit}` : ''}${verify}</small></li>`;
-  return `<li><span><b>${bank}</b> 最晚 ${p6Md(r.date)} 轉 <span class="tag until${r.days <= 7 ? ' soon' : ''}">${ewLeft(r.days)}</span></span><small>${r.byEnd ? '活動期間內轉出即可' : `${how}，${credit}${verify}`}</small></li>`;
+  return `<li><span><b>${bank}</b> 最晚 ${p6Md(r.date)} 轉 <span class="tag until${r.days <= 7 ? ' soon' : ''}">${p6Left(r.days)}</span></span><small>${r.byEnd ? '活動期間內轉出即可' : `${how}，${credit}${verify}`}</small></li>`;
 }
 // Where the 3-day reminder goes, or '' when this device has none set up.
 function p6RemindWho() {
   if (typeof signedIn === 'function' && signedIn()) return acct.emailEnabled ? '會寄 Email 提醒你' : '';
-  return store.get(EXP_REMIND_KEY, null) ? '會用 Email／Telegram 提醒你' : '';
+  return typeof EXP_REMIND_KEY !== 'undefined' && store.get(EXP_REMIND_KEY, null) ? '會用 Email／Telegram 提醒你' : '';
 }
 function p6RegHtml(p) {
   const on = Boolean(p6Load.reg()[p.id]);
@@ -361,7 +367,7 @@ const p6PromoList = () => activePromos().filter((p) => p.type === 'transfer').ma
 function p6PromosSummary(list) {
   const next = list.flatMap(({ p, rows }) => rows.filter((r) => r.date && r.days >= 0).map((r) => ({ p, r }))).sort((a, b) => a.r.date.localeCompare(b.r.date))[0];
   const todo = list.filter(({ p }) => p.registration === true && !p6Load.reg()[p.id]).length;
-  return `${next ? `最近：${esc(next.r.source.bank)} ${p6Md(next.r.date)}（${ewLeft(next.r.days)}）` : ''}${todo ? `・${todo} 個要登記` : ''}`;
+  return `${next ? `最近：${esc(next.r.source.bank)} ${p6Md(next.r.date)}（${p6Left(next.r.days)}）` : ''}${todo ? `・${todo} 個要登記` : ''}`;
 }
 function p6PromosBlock() {
   if (!data.holds) return '';
@@ -439,7 +445,7 @@ function p6VoucherHtml() {
   const li = (v) => {
     const [icon, kind] = P6_VOUCHER_KINDS[v.kind];
     const days = v.expires ? p6Days(today, v.expires) : null;
-    const when = v.expires ? `${p6Md(v.expires)} ${p6Uses(v) === '次' ? '到期／重置' : '到期'} <span class="tag until${days <= 30 ? ' soon' : ''}">${ewLeft(days)}</span>` : '<small>沒填日期</small>';
+    const when = v.expires ? `${p6Md(v.expires)} ${p6Uses(v) === '次' ? '到期／重置' : '到期'} <span class="tag until${days <= 30 ? ' soon' : ''}">${p6Left(days)}</span>` : '<small>沒填日期</small>';
     return `<li class="${days != null && days < 0 ? 'gone' : days != null && days <= 30 ? 'soon' : ''}"><span><b>${icon} ${esc(v.name || kind)}</b><small>${esc(kind)}${v.count ? `・剩 ${fmt(v.count)} ${p6Uses(v)}` : ''}</small></span>
       <span class="exp-when">${when}<button type="button" class="w-del" data-p6-vdel="${esc(v.id)}" aria-label="刪除 ${esc(v.name || kind)}">×</button></span></li>`;
   };
@@ -456,8 +462,8 @@ function p6VoucherHtml() {
 function p6VoucherRemind() {
   const steps = (data.expiry?.reminderDays || [90, 30, 7]).join('／');
   if (typeof signedIn === 'function' && signedIn()) return acct.emailEnabled ? `<p class="hint">📧 到期前 ${steps} 天會寄提醒到 ${esc(acct.status.email)}。</p>` : '';
-  if (walletExpiryList().length) return store.get(EXP_REMIND_KEY, null) ? `<p class="hint">🔔 到期前 ${steps} 天會跟哩程到期一起提醒你。</p>` : '<p class="hint">到期提醒跟上面的哩程到期一起設定。</p>';
-  return expiryRemindHtml([]);
+  if (typeof walletExpiryList === 'function' && walletExpiryList().length) return store.get(EXP_REMIND_KEY, null) ? `<p class="hint">🔔 到期前 ${steps} 天會跟哩程到期一起提醒你。</p>` : '<p class="hint">到期提醒跟上面的哩程到期一起設定。</p>';
+  return typeof expiryRemindHtml === 'function' ? expiryRemindHtml([]) : '';
 }
 
 // ---------- N17: family totals ----------
@@ -596,7 +602,7 @@ function cheapestAwards(key, balance) {
   const k = programKeyOf(key);
   if (!data.charts || !(balance > 0)) return [];
   if (!AP.list.length) {
-    if (!p6ApAsked) { p6ApAsked = true; loadAirports().then(() => renderWalletExpiry()).catch(() => {}); }
+    if (!p6ApAsked) { p6ApAsked = true; loadAirports().then(() => { if (typeof renderWalletExpiry === 'function') renderWalletExpiry(); }).catch(() => {}); }
     return null;
   }
   const id = `${k}|${balance}`;
@@ -640,6 +646,7 @@ function expiryHelpHtml(x) {
 }
 // The same suggestions saved with the account (or the owner's list), so the reminder mail can list them.
 function p6SyncTips() {
+  if (typeof walletExpiryList !== 'function') return;
   const tips = {};
   for (const x of walletExpiryList()) {
     if (x.days < 0) continue;
@@ -657,6 +664,7 @@ const P6_RESYNC_KEY = 'p6RemindSig';
 let p6ResyncT = 0;
 // The owner's list keeps its own copy on the server: send it again (quietly) when any of the extras change.
 function p6MaybeResync() {
+  if (typeof EXP_REMIND_KEY === 'undefined') return; // ewallet.js not in yet
   if ((typeof signedIn === 'function' && signedIn()) || !store.get(EXP_REMIND_KEY, null) || !alertCfg.store) return;
   if (cashCfg.locked && !store.get(PASS_KEY, '')) return;
   const sig = p6Stable(p6RemindExtras());
