@@ -25,10 +25,10 @@
       "date": "2026-09-16",
       "kind": "rule",
       "program": "dynastyflyer",
-      "title": "華航國際線獎勵票改為「充足／有限／稀少」三級浮動價",
+      "title": "華航國際線酬賓機票改為「充足／有限／稀少」三級浮動價",
       "advice": "以開票日決定適用新制",
       "confidence": "official",
-      "source": { "label": "華航獎勵機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket" }
+      "source": { "label": "華航酬賓機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket" }
     },
     {
       "date": "2026-06-01",

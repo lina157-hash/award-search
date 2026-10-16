@@ -194,7 +194,7 @@
       "type": "award",
       "bank": null,
       "program": "singapore",
-      "title": "新航 KrisFlyer Spontaneous Escapes：新加坡出發往返多條航線 Saver 獎勵票少 30%",
+      "title": "新航 KrisFlyer Spontaneous Escapes：新加坡出發往返多條航線 Saver 獎勵機票少 30%",
       "bonusPct": 0,
       "discountPct": 30,
       "price": null,
@@ -293,7 +293,7 @@
       "type": "award",
       "bank": null,
       "program": "turkish",
-      "title": "土航 Miles&Smiles 台北等 12 個城市往返土耳其 經濟艙獎勵票少 30%",
+      "title": "土航 Miles&Smiles 台北等 12 個城市往返土耳其 經濟艙獎勵機票少 30%",
       "bonusPct": 0,
       "discountPct": 30,
       "price": null,
@@ -329,7 +329,7 @@
       "confidence": "official",
       "sources": [
         {
-          "label": "土航 Miles&Smiles：土耳其與東亞、東南亞、澳洲經濟艙獎勵票 30% off",
+          "label": "土航 Miles&Smiles：土耳其與東亞、東南亞、澳洲經濟艙獎勵機票 30% off",
           "url": "https://www.turkishairlines.com/zh-tw/miles-and-smiles/campaigns/30-percent-off-miles-promotional-award-tickets-selected-routes-turkiye-far-east-oceania/",
           "official": true
         }
