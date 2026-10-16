@@ -291,3 +291,18 @@ test('status match: official program pages only, with conditions and an end date
   }
   assert.equal(sm.offers.find((o) => o.id === 'delta-challenge').ends, '2026-12-31');
 });
+
+// ---------- #28 official cash sales ----------
+test('cash sales: official pages for the four carriers; the fold fills the form and never submits it', () => {
+  const p = read('promos.json');
+  assert.ok(Array.isArray(p.cashSales));
+  assert.deepEqual(p.cashSalePages.map((x) => x.airline), ['BR', 'CI', 'JX', 'CX']);
+  for (const x of p.cashSalePages) assert.match(x.url, /^https:\/\/[\w.]*(evaair|china-airlines|starlux-airlines|cathaypacific)\.com\//);
+  for (const s of p.cashSales) assert.match(s.source.url, /^https:\/\//);
+  const js = src('prog9.js');
+  const fill = js.match(/function saleFill\(s, to\) \{[\s\S]*?\n {2}\}/)[0];
+  assert.doesNotMatch(fill, /submit|requestSubmit|api\(/);
+  assert.match(fill, /按「搜尋票價」才會查價/);
+  const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  assert.match(html, /<details class="promos cash-sales" id="cash-sales" hidden>/); // closed, and hidden until filled
+});

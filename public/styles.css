@@ -2494,3 +2494,12 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 .sm-card dl { margin: 6px 0; }
 .sm-card dd ul { margin: 2px 0; padding-left: 1.2em; }
 .sm-card .sub-fold summary h4 { margin: 0; font-size: .9rem; }
+/* #28 航空公司官方特賣 */
+.cash-sales { margin: 0 0 12px; }
+.cash-sale { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-top: 1px solid var(--border); }
+.cash-sale:first-child { border-top: 0; }
+.cash-sale small { display: block; color: var(--muted); font-size: .8rem; }
+.sale-go { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.sale-go small { flex-basis: 100%; }
+.sale-pages li { display: flex; align-items: center; gap: 6px; }
+.sale-pages a { padding: 6px 0; }

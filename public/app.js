@@ -3419,6 +3419,7 @@ tabInit.hotels = () => {
 tabInit.cash = () => {
   loadCashQuota();
   loadScripts(['cashverdict']).then(([ok]) => { if (ok && $('#cash-results .insight') && !$('#cash-results .cash-verdict')) renderCash(); });
+  loadScripts(['prog9']).then(() => { if (typeof cashSalesMount === 'function') cashSalesMount(); }); // 航空公司官方特賣
 };
 
 (async function init() {

@@ -190,4 +190,55 @@ if (typeof module === 'object' && module.exports) {
     [statusHtml(), `${(data.programs?.statusMatch?.offers || []).filter((o) => !o.ends || o.ends >= p9Today()).length} 個官方會籍匹配：條件與截止日`],
     [toolsHtml(), `${P9_TOOLS.length} 個第三方工具：距離、航點、累積、座位圖`],
   ].filter(([h]) => h);
+
+  // #28 查現金票: the carriers' own fare sales (promos.json cashSales). 「用這個日期查」 fills the form and stops;
+  // the search (and its quota) waits for the visitor's 「搜尋票價」.
+  let p9Sales = null;
+  async function cashSalesMount() {
+    const host = document.getElementById('cash-sales');
+    if (!host || host.dataset.ready) return;
+    host.dataset.ready = '1';
+    const promos = data.promos || await api('/api/data/promos').catch(() => null);
+    if (!promos) { delete host.dataset.ready; return; }
+    const today = p9Today();
+    p9Sales = (promos.cashSales || []).filter((s) => p9Iso(s.end) && s.end >= today && (!s.travelTo || s.travelTo > today));
+    const pages = promos.cashSalePages || [];
+    if (!p9Sales.length && !pages.length) return;
+    $('summary small', host).textContent = p9Sales.length ? `${p9Sales.length} 檔進行中` : '各家官網特賣頁';
+    $('.cash-sales-body', host).innerHTML = p9Sales.length ? p9Sales.map(saleCard).join('') + pagesHtml(pages, '其他航空的官方特賣頁') : `<p class="hint">目前沒有整理到進行中的官方特賣，可以到各家官網看：</p>${pagesHtml(pages)}`;
+    host.hidden = false;
+  }
+  const pagesHtml = (pages, head = '') => (pages.length ? `${head ? `<p class="hint">${head}：</p>` : ''}<ul class="sale-pages">${pages.map((p) => `<li>${airlineLogo(p.airline, 'sm')}<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.label)} ↗</a></li>`).join('')}</ul>` : '');
+  function saleCard(s, i) {
+    const dests = [].concat(s.to || []);
+    const trip = s.trip === 'ow' ? '單程' : '來回';
+    return `<div class="cash-sale">${airlineLogo(s.airline, 'sm')}<div><b>${esc(s.title)}</b>${s.demo ? ' <span class="tag">示範資料</span>' : ''}
+      <small>${p9Md(s.start)}–${p9Md(s.end)} 開賣・${s.travelFrom ? `${p9Md(s.travelFrom)}–${p9Md(s.travelTo)} 出發` : '出發日見官網'}・${trip}${s.price ? `・${esc(s.price)}` : ''}${p9Link(s.source)}</small>
+      <div class="sale-go">${dests.map((d) => `<button type="button" class="chip" data-sale="${i}" data-to="${esc(d)}">${esc([].concat(s.from || [])[0] || '')} → ${esc(d)} ${esc(typeof airportCity === 'function' ? airportCity(d) : '')}</button>`).join('')}
+      <small>點目的地會用這個日期填好表單，不會自動查價</small></div></div></div>`;
+  }
+  // The first travel day still ahead (tomorrow at the earliest); a return a week later, inside the travel window.
+  function saleFill(s, to) {
+    const today = p9Today();
+    const first = p9AddDays(today, 1);
+    const dep = s.travelFrom && s.travelFrom > first ? s.travelFrom : first;
+    const rt = s.trip !== 'ow';
+    const ret = rt ? [p9AddDays(dep, 7), s.travelTo].filter(Boolean).sort()[0] : '';
+    cashPickers.origin.set([].concat(s.from || []).slice(0, 1));
+    cashPickers.destination.set([to]);
+    const radio = $(`#cash-form input[name=trip][value="${rt ? 'rt' : 'ow'}"]`);
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change', { bubbles: true }));
+    if (s.cabin) { const c = $(`#cash-form input[name=cabin][value="${s.cabin}"]`); if (c) c.checked = true; }
+    cashDates.depart.set(dep);
+    if (rt) cashDates.ret.set(ret < dep ? dep : ret);
+    $('#cash-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast(`已填好 ${p9Md(dep)}${rt ? `–${p9Md(ret < dep ? dep : ret)}` : ''}，日期可以再改；按「搜尋票價」才會查價（會用到查價額度）`);
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest?.('#cash-sales [data-sale]');
+    const s = b && p9Sales?.[Number(b.dataset.sale)];
+    if (s) saleFill(s, b.dataset.to);
+  });
+  window.cashSalesMount = cashSalesMount;
 }
