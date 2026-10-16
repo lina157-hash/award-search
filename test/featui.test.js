@@ -51,3 +51,34 @@ test('co-brand cards are found for the programs the earn section names', () => {
   assert.ok(cob.some((c) => c.ended && c.program.includes(ctx.M.jal)));
   assert.ok(ctx.cobrandFor('eva').every((c) => !c.ended));
 });
+
+test('結果卡 🎁 轉點加贈: today\'s bank bonuses into the card\'s program, rebates left out, each bank in the title', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const promos = [
+    { type: 'transfer', program: 'asiamiles', bank: null, excludeBanks: ['台新'], bonusPct: 8, bonusPer: [10000, 800], start: '2000-01-01', end: '2999-10-31', title: 'A' },
+    { type: 'transfer', program: 'asiamiles', bank: '凱基', bonusPct: 0, start: '2000-01-01', end: '2999-12-31', title: '凱基每月5日換亞萬 加贈500哩' },
+    { type: 'transfer', program: 'asiamiles', bank: '台新', bonusPct: 8, rebate: true, start: '2000-01-01', end: '2999-10-31', title: 'R' },
+    { type: 'transfer', program: 'eva', bank: '國泰世華', bonusPct: 10, start: '2999-01-01', end: '2999-02-01', title: 'later' },
+  ];
+  const ctx = { data: { promos: { promos } }, fmt: (n) => Number(n).toLocaleString('en-US'), isoDate: () => today, mmdd: (d) => d.slice(5).replace('-', '/'),
+    esc: (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])), SOURCE_NAMES: { asiamiles: '亞洲萬里通' } };
+  vm.createContext(ctx);
+  vm.runInContext([/const EXTRA_PROGRAM_NAMES = .*;/, /const programName = .*;/, /const PROGRAM_TRANSFER = \{[\s\S]*?\n\};/, /const PROGRAM_KEY = .*;/, /const programKeyOf = .*;/,
+    /const PROMO_COL = .*;/, /const promoCol = .*;/, /const activePromos = \(\) => \{[\s\S]*?\n\};/, /function transferPromosFor\([\s\S]*?\n\}/, /const promoBonusText = .*;/,
+    /const promoBankText = .*;/, /function transferBonusTag\([\s\S]*?\n\}/].map((re) => grab('features.js', re)).join('\n') + '\nthis.tag = transferBonusTag;', ctx);
+  const tag = ctx.tag({ source: 'asiamiles' });
+  assert.match(tag, /🎁 轉點加贈 8%<\/span>$/);
+  assert.match(tag, /各銀行（台新除外）：每 10,000 哩加贈 800 哩（到 10\/31）/);
+  assert.match(tag, /凱基：凱基每月5日換亞萬 加贈500哩（到 12\/31）/);
+  assert.doesNotMatch(tag, /台新：/);
+  assert.equal(ctx.tag({ source: 'eva' }), '', 'not started yet');
+  assert.equal(ctx.tag({ source: 'aeroplan' }), '', 'no Taiwan bank column');
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8'), /typeof transferBonusTag === 'function' \? transferBonusTag\(r\) : ''/);
+});
+
+test('混艙行程: 「X 至少佔」 filter, remembered, 不限 by default', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'flightplus.js'), 'utf8');
+  assert.match(src, /const MIXED_MIN = \[0, 70, 80, 90\];/);
+  assert.match(src, /store\.get\('mixedMin:v1', 0\)/);
+  assert.match(src, /list\.filter\(\(t\) => 100 - t\.mixedPct >= min\)/);
+});

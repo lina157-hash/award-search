@@ -199,7 +199,7 @@ test('gcmap: the route as one path, a comma where it breaks (open jaw or surface
   assert.match(src('rtw.js'), /gcmapLinkHtml\(trip\.legs\)/);
   assert.match(src('app.js'), /const TOOL_SCRIPTS = \['rtw', 'award-tools', 'ewallet', 'airline', 'prog9'\];/);
   const tools = src('prog9.js').match(/const P9_TOOLS = \[([\s\S]*?)\n {2}\];/)[1];
-  for (const name of ['Great Circle Mapper', 'FlightConnections', 'wheretocredit', 'SeatMaps', 'AeroLOPA', 'CX Planner']) assert.ok(tools.includes(`'${name}'`), name);
+  for (const name of ['Great Circle Mapper', 'FlightConnections', 'wheretocredit', 'SeatMaps', 'AeroLOPA', 'CX Planner', 'Roame', 'point.me', 'PointsYeah', 'AwardTool', 'AwardFares', 'ExpertFlyer']) assert.ok(tools.includes(`'${name}'`), name);
   assert.match(src('prog9.js'), /<span class="tag tp">第三方<\/span>/);
 });
 

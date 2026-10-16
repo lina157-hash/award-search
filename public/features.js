@@ -108,6 +108,21 @@ const awardSaleLi = (p) => `<li><b>${esc(p.title)}</b> <span class="pill">−${p
 // A best-deal card in the results (app.js) and a 今日好康 card.
 const miniSaleTag = (d) => { const p = awardSaleFor({ source: d.source, origin: d.origin, destination: d.destination, date: d.date, cabin: dealsState.cabin }); return p ? saleTag(p) : ''; };
 const awardSaleTag = (r, c) => { const p = awardSaleFor({ source: r.source, origin: r.origin, destination: r.destination, date: r.date, cabin: c, airlines: r.cabins?.[c]?.airlines }); return p ? saleTag(p) : ''; };
+// 🎁 on a result card: a bank transfer bonus into the card's program running today (rebates paid in bank points are
+// not miles, so left out); each bank's terms in the title, the full list in 點數換算器 › 🎁.
+function transferPromosFor(source) {
+  const col = PROGRAM_TRANSFER[programKeyOf(source)]?.to;
+  return col ? activePromos().filter((p) => p.type === 'transfer' && !p.rebate && promoCol(p) === col) : [];
+}
+const promoBonusText = (p) => (p.bonusPer ? `每 ${fmt(p.bonusPer[0])} 哩加贈 ${fmt(p.bonusPer[1])} 哩` : p.bonusPct > 0 ? `加贈 ${p.bonusPct}%` : p.title);
+const promoBankText = (p) => p.bank || `各銀行${p.excludeBanks?.length ? `（${p.excludeBanks.join('、')}除外）` : ''}`;
+function transferBonusTag(r) {
+  const list = transferPromosFor(r.source);
+  if (!list.length) return '';
+  const best = Math.max(0, ...list.map((p) => p.bonusPct || 0));
+  const why = list.map((p) => `${promoBankText(p)}：${promoBonusText(p)}（到 ${mmdd(p.end)}）`).join('\n');
+  return `<span class="tag xfer-bonus" title="${esc(`轉點進${programName(programKeyOf(r.source))}有加贈\n${why}`)}">🎁 轉點加贈${best ? ` ${best}%` : ''}</span>`;
+}
 // Above the results: each sale the shown seats fall in, once.
 function awardSaleNoticeHtml(rows, c) {
   const hits = new Map();

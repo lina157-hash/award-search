@@ -1576,7 +1576,7 @@ function resultParts(rows) {
       ${typeof levelTagHtml === 'function' ? levelTagHtml(r, c) : ''}
       <div class="meta">${dayLabel(r.date)} · ${esc(r.origin)} → ${esc(r.destination)}</div>
       <div class="meta">${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}${typeof fleetTagHtml === 'function' ? fleetTagHtml(x.fleet, c) : ''}</div>
-      ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}${typeof awardSaleTag === 'function' ? awardSaleTag(r, c) : ''}
+      ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}${typeof awardSaleTag === 'function' ? awardSaleTag(r, c) : ''}${typeof transferBonusTag === 'function' ? transferBonusTag(r) : ''}
     </button>`;
   }).join('');
 

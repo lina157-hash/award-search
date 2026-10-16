@@ -221,6 +221,12 @@ if (typeof module === 'object' && module.exports) {
     ['AeroLOPA', 'https://www.aerolopa.com/', '依比例畫的座位圖，看得到窗戶和座位的相對位置。'],
     ['CX Planner', 'https://cxplanner.jayliu.net/', '在地圖上規劃國泰的寰宇一家環球票路線，查位要另裝 Unelevated 外掛。'],
     ['Unelevated', 'https://userscripts.jayliu.net/cx.html', '在國泰官網一次查 20 天獎勵位的瀏覽器腳本；作者 2026-06-20 表示國泰改版後暫時不能用，進階功能要付費。'],
+    ['Roame', 'https://roame.travel/', '依地區或整個國家查一段日期的獎勵位（SkyView），也查飯店點數；以美國的計畫為主，沒有亞洲萬里通、長榮、華航。免費版範圍有限。'],
+    ['point.me', 'https://www.point.me/', '即時查 30 多個計畫，附轉點和訂位步驟；免費版有限制，完整功能要付年費。'],
+    ['PointsYeah', 'https://www.pointsyeah.com/', '即時查獎勵位，免費版一次查四個出發日；也有探索、提醒和飯店點數。'],
+    ['AwardTool', 'https://www.awardtool.com/', '即時查單程和來回，一個欄位可以放同城市的多個機場；免費查詢次數有限。'],
+    ['AwardFares', 'https://awardfares.com/', '一次查最多六個機場或城市，有時間軸檢視和各計畫開放日指南；免費版只看得到部分結果。'],
+    ['ExpertFlyer', 'https://www.expertflyer.com/', '查每班機各訂位代碼還剩幾位、升等艙位、座位圖和座位提醒；大多功能要付費。'],
   ];
   function toolsHtml() {
     return `<h2 class="section" id="r-tools">好用的外部工具</h2>

@@ -1809,6 +1809,10 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 .mixed-line { margin: 6px 0 0; font-size: .82rem; color: var(--few-text); background: var(--few); border-radius: 8px; padding: 4px 10px; }
 .mixed-box { margin: 10px 0 4px; }
 .mixed-box .linklike { min-height: 32px; }
+.mixed-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.mixed-head .sub { margin: 0; }
+.mixed-min { font-size: .82rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.mixed-min select { min-height: 32px; }
 /* 哩數水準 */
 .lvl { display: inline-flex; align-items: baseline; gap: 6px; width: fit-content; font-size: .74rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin: 2px 0 4px; background: var(--surface-2); color: var(--muted); }
 .lvl { flex-wrap: wrap; row-gap: 0; }
@@ -2728,7 +2732,8 @@ dialog.al-dlg[open] { display: flex; flex-direction: column; }
 .detour-table td small { display: block; }
 /* #9 award sales (哩程票特惠) */
 .tag.sale { background: var(--few); color: var(--few-text); white-space: nowrap; }
-.deal .tag.sale, .deal-mini .tag.sale { margin-top: 4px; align-self: flex-start; }
+.tag.xfer-bonus { background: var(--few); color: var(--few-text); white-space: nowrap; }
+.deal .tag.sale, .deal-mini .tag.sale, .deal .tag.xfer-bonus { margin-top: 4px; align-self: flex-start; }
 .sale-note { border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 10px; padding: 8px 12px; margin: 0 0 12px; background: var(--surface); }
 .sale-note p { margin: 2px 0; }
 .sale-note small, .sale-trip small { display: block; color: var(--muted); font-size: .78rem; }

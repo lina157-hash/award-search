@@ -192,6 +192,7 @@ function mixedHtml(t) {
   const name = CABIN_ZH[t.cabin] || '這個艙等';
   return `<p class="mixed-line">⚠️ 混艙：約 ${t.mixedPct}% 的飛行距離坐比${esc(name)}低的艙等；${esc(name)}約佔 ${100 - t.mixedPct}%（seats.aero 沒有標出是哪一段）。</p>`;
 }
+const MIXED_MIN = [0, 70, 80, 90];
 // 「也看混艙行程」 at the end of the flights: seats.aero leaves mixed-cabin itineraries out unless asked (one call).
 function mixedMount(id, cabin) {
   const body = $('#trip-body');
@@ -212,7 +213,18 @@ function mixedMount(id, cabin) {
       if (!fresh()) return;
       const want = CABIN_API[cabin];
       const list = res.trips.filter((t) => t.mixedPct > 0 && t.cabin === want).sort((a, b) => a.miles - b.miles);
-      box.innerHTML = list.length ? `<h3 class="sub">混艙行程 ${list.length} 筆</h3>${list.map((t) => tripHtml(t, null)).join('')}` : '<p class="hint">這天沒有混艙行程（至少一半距離坐這個艙等的）。</p>';
+      if (!list.length) { box.innerHTML = '<p class="hint">這天沒有混艙行程（至少一半距離坐這個艙等的）。</p>'; return; }
+      // 「X 至少佔」: hide the trips flown mostly in the lower cabin (the choice is kept for the next search).
+      const name = CABIN_ZH[list[0].cabin] || '這個艙等';
+      const draw = () => {
+        const min = store.get('mixedMin:v1', 0);
+        const shown = list.filter((t) => 100 - t.mixedPct >= min);
+        box.innerHTML = `<div class="mixed-head"><h3 class="sub">混艙行程 ${min ? `${shown.length}／${list.length}` : list.length} 筆</h3>
+          <label class="mixed-min">${esc(name)}至少佔 <select>${MIXED_MIN.map((v) => `<option value="${v}"${v === min ? ' selected' : ''}>${v ? `${v}%` : '不限'}</option>`).join('')}</select></label></div>
+          ${shown.length ? shown.map((t) => tripHtml(t, null)).join('') : `<p class="hint">沒有${esc(name)}佔 ${min}% 以上的混艙行程，把比例調低看看。</p>`}`;
+        $('select', box).addEventListener('change', (e) => { store.set('mixedMin:v1', Number(e.target.value)); draw(); });
+      };
+      draw();
     } catch (err) {
       if (fresh()) box.innerHTML = `<p class="status error">${esc(err.message)}</p>`;
     }
