@@ -189,7 +189,7 @@ test('award sales routed by country wait for the airport list (a shared link ope
 const P9 = require('../public/prog9.js');
 
 test('gcmap: the route as one path, a comma where it breaks (open jaw or surface sector)', () => {
-  assert.equal(P9.gcmapUrl([{ from: 'TPE', to: 'HKG' }, { from: 'HKG', to: 'LHR' }]), 'https://www.gcmap.com/mapui?P=TPE-HKG-LHR');
+  assert.equal(P9.gcmapUrl([{ from: 'TPE', to: 'HKG' }, { from: 'HKG', to: 'LHR' }]), 'http://www.gcmap.com/mapui?P=TPE-HKG-LHR');
   assert.equal(P9.gcmapPath([{ from: 'tpe', to: 'nrt' }, { from: 'NRT', to: 'HND', surface: true }, { from: 'HND', to: 'TPE' }]), 'TPE-NRT,HND-TPE');
   assert.equal(P9.gcmapPath([{ from: 'TPE', to: 'HKG' }, { from: 'LHR', to: 'JFK' }]), 'TPE-HKG,LHR-JFK');
   assert.equal(P9.gcmapUrl([{ from: 'TPE', to: '' }, { from: 'X<Y', to: 'HKG' }]), '');

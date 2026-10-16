@@ -26,7 +26,8 @@ function gcmapPath(legs) {
   }
   return paths.map((p) => p.join('-')).join(',');
 }
-const gcmapUrl = (legs) => { const p = gcmapPath(legs); return p ? `https://www.gcmap.com/mapui?P=${p}` : ''; };
+// gcmap.com over https refused the owner's browser (2026-10-16); the plain http address opens.
+const gcmapUrl = (legs) => { const p = gcmapPath(legs); return p ? `http://www.gcmap.com/mapui?P=${p}` : ''; };
 
 // 「88,000 → 91,000」 as a signed whole percent: +3%, -4%, 0%.
 const p9Pct = (now, was) => { const p = Math.round(((now - was) / was) * 100); return `${p > 0 ? '+' : ''}${p}%`; };
@@ -214,7 +215,7 @@ if (typeof module === 'object' && module.exports) {
 
   // #17 好用的外部工具: links only, every one a third party.
   const P9_TOOLS = [
-    ['Great Circle Mapper', 'https://www.gcmap.com/', '畫出航線、算每段和全程的大圓距離，看行程落在哪個距離區間（Karl L. Swartz 製作）。'],
+    ['Great Circle Mapper', 'http://www.gcmap.com/', '畫出航線、算每段和全程的大圓距離，看行程落在哪個距離區間（Karl L. Swartz 製作）。'],
     ['FlightConnections', 'https://www.flightconnections.com/', '查一個機場直飛哪些城市、哪些航空在飛，找中停點或轉機點。'],
     ['wheretocredit', 'https://www.wheretocredit.com/', '付費機票依艙等代碼累積到各哩程計畫的比例，決定要累積到哪個計畫。'],
     ['SeatMaps', 'https://seatmaps.com/', '各航空、各機型的座位圖與座椅介紹。'],
