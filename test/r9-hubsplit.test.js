@@ -23,12 +23,12 @@ const ctx = { console };
 vm.createContext(ctx);
 vm.runInContext([
   grab('features.js', /function haversineMiles\(a, b\) \{[\s\S]*?\n\}/),
-  grab('rtw.js', /const rtwPairKey = [^\n]*/),
-  grab('rtw.js', /function rtwRouteIndex\(raw\) \{[\s\S]*?\n\}/),
+  grab('features.js', /const nonstopKey = [^\n]*/),
+  grab('features.js', /function nonstopIndex\(raw\) \{[\s\S]*?\n\}/),
   grab('cxfill.js', /const cxSeatsOk = [^\n]*/),
   grab('cxfill.js', /const cxNextDay = [^\n]*/),
   fs.readFileSync(path.join(__dirname, '..', 'public', 'hubsplit.js'), 'utf8'),
-  'this.H = { splitSeatDays, splitWanted, splitHubMap, splitCandidates, splitLegDays, splitBest, splitPairs, splitByProgram, splitCalls, splitCostText, rtwRouteIndex, rtwPairKey };',
+  'this.H = { splitSeatDays, splitWanted, splitHubMap, splitCandidates, splitLegDays, splitBest, splitPairs, splitByProgram, splitCalls, splitCostText, nonstopIndex, nonstopKey };',
 ].join('\n'), ctx);
 const { H } = ctx;
 const plain = (x) => JSON.parse(JSON.stringify(x));
@@ -39,9 +39,9 @@ const apOf = (c) => apMap.get(c) || null;
 const group = new Map(ap.groups.flatMap((g) => g.codes.map((c) => [c, g.zh])));
 const cityOf = (c) => group.get(c) || c;
 const members = Object.fromEntries(alliances.map((a) => [a.id, a.members]));
-const rtw = H.rtwRouteIndex(rtwRoutes);
-const sky = H.rtwRouteIndex(skyRoutes);
-const flies = (a, b) => [...(rtw.pairs.get(H.rtwPairKey(a, b)) || []), ...(sky.pairs.get(H.rtwPairKey(a, b)) || [])];
+const rtw = H.nonstopIndex(rtwRoutes);
+const sky = H.nonstopIndex(skyRoutes);
+const flies = (a, b) => [...(rtw.pairs.get(H.nonstopKey(a, b)) || []), ...(sky.pairs.get(H.nonstopKey(a, b)) || [])];
 const hubs = H.splitHubMap(hubData, alliances);
 const cands = (o, d, more = {}) => plain(H.splitCandidates({ origins: o.split(','), dests: d.split(','), hubs, members, flies, apOf, cityOf, ...more }));
 const at = (list, code) => list.find((h) => h.codes.includes(code));

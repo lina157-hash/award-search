@@ -3,7 +3,7 @@
 // hubs, each with its official source, in data/split-hubs.json). A hub's button searches origin→hub and hub→destination
 // through /api/search (2 seats.aero calls; the server and browser caches answer repeats) and pairs the legs by date like
 // cxfill.js's 經香港轉機: the second leg the same day or the next. Two tickets, so the totals are two awards added up.
-// Classic script after rtw.js (rtwRouteIndex, rtwPairKey) and cxfill.js (cxNextDay, cxSeatsOk). Pure helpers first.
+// Classic script after features.js (nonstopIndex, nonstopKey) and cxfill.js (cxNextDay, cxSeatsOk). Pure helpers first.
 
 // ---------- pure helpers ----------
 const SPLIT_SHOWN = 5; // hubs listed before 「再顯示」
@@ -163,13 +163,13 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   let baseP = null;
 
   const loadBase = () => (baseP ||= Promise.all([api('/api/data/splithubs'), api('/api/data/rtwroutes'), loadAirports()]).then(([sh, rr]) => {
-    const rtw = rtwRouteIndex(rr);
-    const sky = rtwRouteIndex(sh.skyteam);
+    const rtw = nonstopIndex(rr);
+    const sky = nonstopIndex(sh.skyteam);
     const alliances = data.alliances?.alliances || [];
     base = {
       hubs: splitHubMap(sh.hubs, alliances),
       members: Object.fromEntries(alliances.map((a) => [a.id, a.members])),
-      flies: (a, b) => [...(rtw.pairs.get(rtwPairKey(a, b)) || []), ...(sky.pairs.get(rtwPairKey(a, b)) || [])],
+      flies: (a, b) => [...(rtw.pairs.get(nonstopKey(a, b)) || []), ...(sky.pairs.get(nonstopKey(a, b)) || [])],
       hubData: sh.hubs,
       routeMeta: [rr, sh.skyteam].map((x) => ({ source: x.source, note: x.note })),
     };
