@@ -1,5 +1,5 @@
 {
-  "lastReviewed": "2026-10-14",
+  "lastReviewed": "2026-10-16",
   "note": "成員名單會變動，正式上線前請以各聯盟官網核實。memberNotes 記錄加入、退出與觀察中的變動（含日期與來源）；退出日過後要把該航空公司從 members 移除。",
   "alliances": [
     {
@@ -19,8 +19,8 @@
       "members": ["A3", "AC", "CA", "AI", "NZ", "NH", "OZ", "OS", "AV", "SN", "CM", "OU", "MS", "ET", "BR", "AZ", "LO", "LH", "ZH", "SQ", "SA", "LX", "TP", "TG", "TK", "UA"],
       "summary": "長榮、加航、全日空、聯合、新航、漢莎、土航等，是成員最多的聯盟。加航 Aeroplan、聯合 MileagePlus 常被用來換長榮與全日空的座位。義大利 ITA 航空 2026-04-01 加入；韓亞航空將於 2026-12-16 退出（2026-10-15 後出發的韓亞航班已不累積星盟哩程，用星盟哩程換韓亞的票須在 12-16 前飛完）。",
       "memberNotes": [
-        { "code": "AZ", "status": "joined", "date": "2026-04-01", "note": "ITA 航空加入，里程計畫改為漢莎 Miles & More（原 Volare 2026-03-30 結束）。", "source": { "label": "LoyaltyLobby（2026-03-22）", "url": "https://loyaltylobby.com/2026/03/22/ita-airways-joins-star-alliance-on-april-1-2026/" } },
-        { "code": "OZ", "status": "leaving", "date": "2026-12-16", "note": "韓亞航空 2026-12-16 韓國時間 23:59 退出，隔日併入大韓航空；2026-10-15（含）前出發的航班仍可累積星盟里程，星盟獎勵票與升等須在 12-16 前完成旅行。退出後請從 members 移除 OZ。", "source": { "label": "加航轉載星空聯盟新聞稿（2026-06）", "url": "https://www.aircanada.com/media/asiana-airlines-to-exit-star-alliance/" } }
+        { "code": "AZ", "status": "joined", "date": "2026-04-01", "note": "ITA 航空加入；同日起哩程計畫改為漢莎 Miles & More。", "source": [{ "label": "印航轉載星空聯盟新聞稿（2026-04-02）", "url": "https://www.airindia.com/in/en/newsroom/press-release/ita-airways-joins-star-alliance.html" }, { "label": "Miles & More 官網公告", "url": "https://www.miles-and-more.com/be/en/program/news/2603_announcement_m-m_neues_loyalitaetsprogramm_der_ita_news_2603.html" }] },
+        { "code": "OZ", "status": "leaving", "date": "2026-12-16", "note": "韓亞航空 2026-12-16 韓國時間 23:59 退出，隔日併入大韓航空；2026-10-16 起出發的韓亞航班不再累積星盟哩程，星盟獎勵票與升等須在 12-16（含）前完成旅行。退出後請從 members 移除 OZ。", "source": { "label": "加航轉載星空聯盟新聞稿（2026-06）", "url": "https://www.aircanada.com/media/asiana-airlines-to-exit-star-alliance/" } }
       ],
       "url": "https://www.staralliance.com/en/member-airlines"
     },

@@ -36,11 +36,11 @@ let base;
 before(() => new Promise((r) => server.listen(0, () => { base = `http://localhost:${server.address().port}`; r(); })));
 after(() => server.close());
 
-test('search and explore refuse a range that ended before today (Taiwan time)', async () => {
+test('search and explore refuse a range that ended before yesterday (Taiwan time)', async () => {
   const today = todayTW();
   for (const u of [
-    `/api/search?origin=TPE&destination=NRT&start=${addDays(today, -10)}&end=${addDays(today, -1)}`,
-    `/api/search?origin=TPE&destination=NRT&start=${addDays(today, -1)}`,
+    `/api/search?origin=TPE&destination=NRT&start=${addDays(today, -10)}&end=${addDays(today, -2)}`,
+    `/api/search?origin=TPE&destination=NRT&start=${addDays(today, -2)}`,
     `/api/explore?program=aeroplan&start=${addDays(today, -10)}&end=${addDays(today, -2)}`,
   ]) {
     const res = await fetch(base + u);
@@ -53,4 +53,12 @@ test('a range that is partly past is still searched, and today is fine', async (
   const today = todayTW();
   assert.equal((await fetch(`${base}/api/search?origin=TPE&destination=NRT&start=${addDays(today, -3)}&end=${addDays(today, 3)}`)).status, 200);
   assert.equal((await fetch(`${base}/api/search?origin=TPE&destination=NRT&start=${today}`)).status, 200);
+});
+
+// B1 (round 8): a visitor west of Taiwan (Americas, or Europe late in the evening) picks their own today, which is
+// Taiwan's yesterday; departure days are local to the departure airport, so that is still a valid search.
+test("a visitor's local today one day behind Taiwan is still searched", async () => {
+  const yesterday = addDays(todayTW(), -1);
+  assert.equal((await fetch(`${base}/api/search?origin=YVR&destination=TPE&start=${yesterday}`)).status, 200);
+  assert.equal((await fetch(`${base}/api/explore?program=aeroplan&start=${yesterday}&end=${yesterday}`)).status, 200);
 });

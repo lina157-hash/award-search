@@ -230,8 +230,10 @@ function reveal(el) {
   const r = el.getBoundingClientRect();
   if (r.top < 0 || r.top > innerHeight - 80) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-// Error text plus a 重試 button in a status line.
+// Error text plus a 重試 button in a status line. A 400 is a problem with the request itself, so trying it again
+// would fail the same way: no button then.
 function showError(status, err, retry) {
+  if (err?.status === 400) retry = null;
   status.className = 'status error';
   status.innerHTML = `<span>${esc(err.message || err)}</span>${retry ? '<button type="button" class="outline retry">重試</button>' : ''}`;
   if (retry) $('.retry', status).addEventListener('click', retry);
@@ -265,16 +267,42 @@ function amPrice(kind, dist, cabin, o, d) {
   return miles ? { miles, kind, band } : null;
 }
 
-const oneworld = () => new Set(allianceCarriers('oneworld'));
+// The distance Asia Miles prices a Cathay trip from o to d by. Connecting sectors are added together (Cathay T&C 2026,
+// Flight Awards General Conditions cl. 16), and Cathay connects in Hong Kong: a trip between two other places counts
+// o→HKG + HKG→d, unless it is nonstop (`direct`, from seats.aero) or the pair is in asiamiles.json cxNonstops.
+// Short-haul type 2 still goes by the two ends (cl. 9: a transfer city does not count), so callers pass o and d on.
+// → { dist, via: 'HKG' | '' }, or null when an airport's coordinates are not loaded (AP, or `apOf` in the tests).
+const AM_HUB = 'HKG';
+function amCxDist(o, d, dist, direct = false, apOf = (c) => (typeof AP === 'object' ? AP.byCode.get(c) : null)) {
+  const nonstop = (data.asiamiles?.cxNonstops || []).some((p) => (p[0] === o && p[1] === d) || (p[0] === d && p[1] === o));
+  if (direct || o === AM_HUB || d === AM_HUB || nonstop) return dist ? { dist, via: '' } : null;
+  const [a, h, b] = [o, AM_HUB, d].map((c) => apOf(c));
+  if (a?.lat == null || h?.lat == null || b?.lat == null) return null;
+  return { dist: haversineMiles(a, h) + haversineMiles(h, b), via: AM_HUB };
+}
+// Words for a price that went through Hong Kong.
+const AM_VIA_TEXT = '經香港轉機，依兩段距離相加';
 
-// Availability-level estimate: route distance is origin→destination, so connections may price higher.
+const oneworld = () => new Set(allianceCarriers('oneworld'));
+const amCarriers = (x) => String(x?.airlines || '').split(/,\s*/).filter(Boolean);
+// A Cathay-only row that is not nonstop and has neither end in Hong Kong: its price needs the airports' coordinates.
+const amNeedsHub = (r) => r.origin !== AM_HUB && r.destination !== AM_HUB
+  && Object.values(r.cabins || {}).some((x) => x?.available && !x.direct && amCarriers(x).length && amCarriers(x).every((c) => c === 'CX'));
+
+// Availability-level estimate. A Cathay-only row is priced by the distance Asia Miles counts (amCxDist); other rows by
+// the route's origin→destination distance, so their connections may price higher.
 function amFromAvailability(r, cabin) {
   const x = r.cabins?.[cabin];
   if (!x?.available) return null;
-  const carriers = x.airlines.split(/,\s*/).filter(Boolean);
+  const carriers = amCarriers(x);
   const ow = oneworld();
   // Only when every carrier is oneworld; a mix with non-members can't be booked as a single-carrier award.
   if (!carriers.length || !carriers.every((c) => ow.has(c))) return null;
+  if (carriers.every((c) => c === 'CX')) {
+    const route = amCxDist(r.origin, r.destination, r.distance, x.direct);
+    const p = route && amPrice('cx', route.dist, cabin, r.origin, r.destination);
+    return p ? { ...p, via: route.via, dist: route.dist } : null;
+  }
   return amPrice(carriers.includes('CX') ? 'cx' : 'partner', r.distance, cabin, r.origin, r.destination);
 }
 
@@ -312,7 +340,7 @@ function asiaMilesRows(results) {
         if (est && (!best || est.miles < best.est.miles)) best = { est, r };
       }
       cabins[c] = best
-        ? { available: true, miles: best.est.miles, seats: null, airlines: best.r.cabins[c].airlines, direct: best.r.cabins[c].direct, refId: best.r.id, refSource: best.r.source, kind: best.est.kind }
+        ? { available: true, miles: best.est.miles, seats: null, airlines: best.r.cabins[c].airlines, direct: best.r.cabins[c].direct, refId: best.r.id, refSource: best.r.source, kind: best.est.kind, ...(best.est.via ? { via: best.est.via } : {}) }
         : { available: false, miles: null, seats: null, airlines: '', direct: false };
       any ||= Boolean(best);
     }
@@ -718,6 +746,7 @@ function createDatePicker(form, label, opts = {}) {
     st.focus = null;
     st.month = (st.mode === 'flex' && st.center ? st.center : startIn.value || lo()).slice(0, 7);
     dlg.showModal();
+    btn.setAttribute('aria-expanded', 'true');
     render();
     ($('.dp-day.start', dlg) || $('.dp-day:not([disabled])', dlg))?.focus();
   }
@@ -728,8 +757,10 @@ function createDatePicker(form, label, opts = {}) {
     // Closing after only the first click of a range abandons it; the previous dates stay.
     st.anchor = null;
     st.hover = null;
+    btn.setAttribute('aria-expanded', 'false');
     btn.focus();
   });
+  btn.setAttribute('aria-expanded', 'false');
 
   btn.addEventListener('click', open);
   dlg.addEventListener('click', (e) => {
@@ -935,7 +966,7 @@ function clampShareDates(s, e, today) {
   if (e < today) return { s, e, clamped: false, past: true };
   return s < today ? { s: today, e, clamped: true, past: false } : { s, e, clamped: false, past: false };
 }
-// Today for that check: the earlier of the visitor's day and Taiwan's (the server counts days in Taiwan time).
+// Today for that check: the earlier of the visitor's day and Taiwan's (the server accepts up to Taiwan's yesterday).
 const searchToday = () => { const tw = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10); const here = isoDate(0); return here < tw ? here : tw; };
 
 // Fill the search form from share-link params and optionally run it (used by links, recents and favourites).
@@ -1255,6 +1286,8 @@ async function runSearch(share, pre, autoRange = false) {
   reveal(status);
   try {
     const [body] = await Promise.all([pre || api(`/api/search?${params}`), loadMore(), loadSearchScripts()]);
+    // Cathay trips that connect in Hong Kong are priced by both sectors' distances, which needs the airport list.
+    if (!AP.loaded && body.results.some(amNeedsHub)) await loadAirports();
     if (!fresh()) return;
     done();
     state.results = [...body.results, ...asiaMilesRows(body.results)];
@@ -1329,10 +1362,10 @@ function resultToolsHtml() {
   if (state.product && !prods.some((p) => p.id === state.product)) state.product = '';
   const chosen = prods.find((p) => p.id === state.product);
   const prodNote = !chosen ? '' : !state.withTaxes ? '<span class="hint">日期範圍 45 天內才有機型資料，請縮短範圍再用這個篩選。</span>'
-    : chosen.caveat ? `<span class="hint">ⓘ ${esc(chosen.caveat)}</span>` : '';
+    : `<span class="hint">ⓘ 產品資料為第三方整理${chosen.caveat ? `；${esc(chosen.caveat)}` : ''}</span>`;
   return `<div class="result-tools">
     <label class="switch"><input type="checkbox" id="afford-only" ${state.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>
-    ${prods.length ? `<label class="field compact">艙位產品<select id="product-filter"><option value="">全部</option>${prods.map((p) => `<option value="${esc(p.id)}" ${state.product === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
+    ${prods.length ? `<label class="field compact" title="${PROD_3P_TITLE}">艙位產品<select id="product-filter"><option value="">全部</option>${prods.map((p) => `<option value="${esc(p.id)}" ${state.product === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
     ${prodNote}
     ${typeof leaveToolsHtml === 'function' ? leaveToolsHtml('search') : ''}
     ${resultSortHtml()}
@@ -1495,12 +1528,13 @@ function resultParts(rows) {
       <div class="hint">來自 seats.aero 的亞洲萬里通實際資料。可在下方表格「國泰 亞洲萬里通」欄點選看航班。</div>
     </div>` : ''}
     ${amRows.length ? `<div class="am-callout">
-      <div><b>亞洲萬里通估算</b>　國泰／寰宇一家航班最低約 <b class="am-miles">${fmt(amRows[0].cabins[c].miles)} 哩</b>（${mmdd(amRows[0].date)} ${esc(amRows[0].origin)} → ${esc(amRows[0].destination)}，${amRows[0].cabins[c].kind === 'cx' ? '國泰航班' : '夥伴航班'}）</div>
+      <div><b>亞洲萬里通估算</b>　國泰／寰宇一家航班最低約 <b class="am-miles">${fmt(amRows[0].cabins[c].miles)} 哩</b>（${mmdd(amRows[0].date)} ${esc(amRows[0].origin)} → ${esc(amRows[0].destination)}，${amRows[0].cabins[c].kind === 'cx' ? '國泰航班' : '夥伴航班'}${amRows[0].cabins[c].via ? `，${AM_VIA_TEXT}` : ''}）</div>
       <div class="hint">依 2026-05-01 起的距離哩數表推算，實際座位與價格請至國泰官網確認；轉機行程依各段距離相加，可能落在更高區間。<a href="#rules" data-goto="rules">看哩數表</a></div>
     </div>` : ''}`;
   parts.deals = `<h2 class="section-title">最划算的選擇 <small>${byCost ? '依台幣成本（哩數 × 每哩成本 ＋ 稅金）；' : allSame ? `各計畫最低都是 ${fmt(lowMiles)} 哩，差在稅金和日期；` : '各計畫最低的日期；'}點卡片看航班明細</small></h2>
     <div class="best${folded ? ' folded' : ''}">${dealHtml}</div>
-    ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}`;
+    ${folded ? `<p class="same-more">同價的還有：${picks.slice(1).map((r) => esc(srcName(r.source))).join('、')} <button type="button" class="linklike" id="show-same">看這 ${picks.length - 1} 張卡片</button></p>` : ''}
+    ${feeAny3p(data.fees, (folded ? picks.slice(0, 1) : picks).map((r) => r.source)) ? `<p class="hint fee-3p-note">${FEE_3P_NOTE}</p>` : ''}`;
   parts.legend = matrixLegendHtml(rows, c, ph);
   return parts;
 }
@@ -1618,6 +1652,7 @@ function matrixLegendHtml(rows, c, ph) {
     has((r) => isOld(r.updatedAt)) ? '<span><i class="lg lg-old"></i>超過 3 天沒更新</span>' : '',
     rows.some((r) => r.estimate) ? '<span><i class="lg lg-est"></i>亞萬估算</span>' : '',
     has((r) => mileValueOf(r, c)?.good) ? '<span><i class="gv">好價</i>每哩價值高（比過現金票）</span>' : '',
+    feeAny3p(data.fees, [...new Set(rows.map((r) => r.source))]) ? `<span>${FEE_3P_NOTE}</span>` : '',
   ].filter(Boolean).join('');
   const notes = [...ph].map(([s, list]) => `<li><b>${esc(srcName(s))}</b>：${[...list].map(esc).join('；')}</li>`).join('');
   return `<div class="legend m-legend">${items}</div>${ph.size ? `<details class="ph-notes"><summary>⚠ ${ph.size} 個計畫可能有幻影機位（查得到、訂不到）</summary><ul>${notes}</ul></details>` : ''}`;
@@ -1828,7 +1863,7 @@ function tripHtml(t, i) {
     </div>
     ${phantomHtml(t.source, t.carriers)}${typeof mixedHtml === 'function' ? mixedHtml(t) : ''}
     ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
-      <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod">${esc(p.name)}</span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
+      <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod" title="${PROD_3P_TITLE}">${esc(p.name)}<sup class="mk-3p" aria-hidden="true">*</sup></span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
     ${amTripLine(t)}${typeof alsoFoldHtml === 'function' ? alsoFoldHtml(t) : ''}
   </div>`;
@@ -1868,6 +1903,7 @@ async function openTrips(id, title, cabin) {
     // The flights come first; booking guidance is one tap away.
     $('#trip-body').innerHTML = (main.map((t, i) => tripHtml(t, i)).join('') || '<p class="hint">此艙等沒有航班明細。</p>') +
       (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map((t, i) => tripHtml(t, main.length + i)).join('')}</details>` : '') +
+      (all.some((t) => t.segments.some((s) => productOfSegment(s).length)) ? `<p class="hint prod-3p-note">${PROD_3P_NOTE}</p>` : '') +
       (main.length && cashCfg.enabled ? `<div class="value-box" id="value-box"><button type="button" class="outline" id="value-btn">💵 和當天現金票比一比，算每哩價值（用 1 次查價）</button></div>` : '') +
       (links ? `<div class="links">${links}</div>` : '') +
       (first ? bookingNotesHtml(first.source, first.miles * pax) + homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
@@ -2852,7 +2888,7 @@ function memberNotesHtml(notes) {
   return `<ul class="member-notes">${notes.map((n) => {
     const [label, cls] = MEMBER_STATUS[n.status] || [n.status || '', ''];
     return `<li><span class="tag ${cls}">${esc(label)}${n.date ? ` ${esc(n.date)}` : ''}</span> ${airlineLogo(n.code, 'sm')}<b>${esc(airlineZh(n.code))}</b>
-      <small>${esc(memberNoteText(n.note))}${n.source?.url ? ` <a href="${esc(n.source.url)}" target="_blank" rel="noopener">${esc(n.source.label || '來源')} ↗</a>` : ''}</small></li>`;
+      <small>${esc(memberNoteText(n.note))}${[].concat(n.source || []).filter((x) => x.url).map((x) => ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label || '來源')} ↗</a>`).join('')}</small></li>`;
   }).join('')}</ul>`;
 }
 

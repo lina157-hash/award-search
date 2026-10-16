@@ -956,12 +956,14 @@ function param(q, name, re, { required = false, upper = false } = {}) {
 }
 
 // `future`: award searches refuse a range that has wholly passed (it would spend a seats.aero call on departed flights).
+// Departure days are local to the departure airport, and the page lets visitors west of Taiwan pick their own today,
+// which is at most one day behind Taiwan's, so the cut-off is yesterday in Taiwan time.
 function dateRange(q, { future = false } = {}) {
   const start = param(q, 'start', DATE, { required: true });
   const end = param(q, 'end', DATE) || start;
   const days = (new Date(end) - new Date(start)) / 864e5;
   if (days < 0) throw new BadRequest('結束日期不可早於開始日期');
-  if (future && end < todayTW()) throw new BadRequest('這段日期已經過了（以台灣時間計），請選今天以後的日期');
+  if (future && end < addDays(todayTW(), -1)) throw new BadRequest('這段日期已經過了，請選今天以後的日期');
   // seats.aero publishes award space about a year out, so a search may cover all of it.
   if (days > MAX_RANGE_DAYS) throw new BadRequest('日期範圍最多一年');
   return { start_date: start, end_date: end };
@@ -1040,6 +1042,8 @@ async function handleExplore(q, req) {
     origin_region: q.get('origin_region') || undefined,
     destination_region: q.get('destination_region') || undefined,
   };
+  // Only programs seats.aero names (data/source-names.json): a typo must not cost a call and budget first.
+  if (!Object.hasOwn(SOURCE_NAMES, params.source)) throw new BadRequest('參數 program 不是支援的哩程計畫');
   for (const r of [params.origin_region, params.destination_region]) {
     if (r && !REGIONS.has(r)) throw new BadRequest('區域參數錯誤');
   }

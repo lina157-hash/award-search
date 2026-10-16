@@ -163,14 +163,21 @@ function initAwardTools() {
 }
 
 // ---------- E12: change / cancel fee chip ----------
+// Fees from a third-party summary (confidence secondary) carry a small * that one line under the cards and the
+// table's legend explain (FEE_3P_NOTE); the tooltip says it too.
+const fee3p = (f) => f.confidence === 'secondary';
+const FEE_3P_MARK = '<sup class="mk-3p" aria-hidden="true">*</sup>';
+const FEE_3P_NOTE = '* 改退票費為第三方整理，以計畫官網為準';
 function feeChipHtml(program) {
   const f = feeShort(data.fees, program);
-  return f ? `<div class="fee-chip" title="${esc(`改票：${f.change}；取消：${f.cancel}${f.note ? `；${f.note}` : ''}`)}">${esc(feeChipText(f))}</div>` : '';
+  return f ? `<div class="fee-chip" title="${esc(`改票：${f.change}；取消：${f.cancel}${f.note ? `；${f.note}` : ''}${fee3p(f) ? '（第三方整理）' : ''}`)}">${esc(feeChipText(f))}${fee3p(f) ? FEE_3P_MARK : ''}</div>` : '';
 }
 function feeHeadHtml(program) {
   const f = feeShort(data.fees, program);
-  return f ? `<small class="fee-mini" title="${esc(`改票：${f.change}；取消：${f.cancel}`)}">${esc(feeChipText(f))}</small>` : '';
+  return f ? `<small class="fee-mini" title="${esc(`改票：${f.change}；取消：${f.cancel}${fee3p(f) ? '（第三方整理）' : ''}`)}">${esc(feeChipText(f))}${fee3p(f) ? FEE_3P_MARK : ''}</small>` : '';
 }
+// Any of these programs has a third-party fee chip on screen (the legend line shows only then).
+const feeAny3p = (fees, programs) => programs.some((s) => { const f = feeShort(fees, s); return Boolean(f && fee3p(f)); });
 
 // ---------- E2 + E12 in the flight details: fees, and hold the seat or transfer first ----------
 const PROGRAM_CARD_ID = { eva: 'evainfinity', ci: 'dynastyflyer' };
@@ -392,7 +399,7 @@ function renderUpgrade() {
 
 // Node (the tests) gets the pure helpers; the browser starts the wiring once every declaration above exists.
 if (typeof module === 'object' && module.exports) {
-  module.exports = { feeShort, feeChipText, transferTimeFor, transferRoutes, holdAdvice, perMileOf, cleanCosts, twdCost, inUpArea, upgradePairs, upgradeQuote, upgradeGroups };
+  module.exports = { feeShort, feeChipText, feeAny3p, fee3p, transferTimeFor, transferRoutes, holdAdvice, perMileOf, cleanCosts, twdCost, inUpArea, upgradePairs, upgradeQuote, upgradeGroups };
 } else {
   initAwardTools();
 }

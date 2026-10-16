@@ -369,7 +369,7 @@ function upcomingChanges(today = isoDate(0), { promoDays = 14, rateDays = 60 } =
     for (const n of a.memberNotes || []) {
       if (n.status !== 'leaving') continue;
       const name = typeof airlineZh === 'function' ? airlineZh(n.code) : n.code;
-      add({ date: n.date, kind: 'alliance', title: `${name}退出${a.name.replace(/\s+[A-Za-z].*$/, '')}`, advice: '用聯盟夥伴哩程換這家航空的票，要在這天前飛完', source: n.source });
+      add({ date: n.date, kind: 'alliance', title: `${name}退出${a.name.replace(/\s+[A-Za-z].*$/, '')}`, advice: '用聯盟夥伴哩程換這家航空的票，要在這天前飛完', source: [].concat(n.source || [])[0] });
     }
   }
   for (const c of data.changes?.changes || []) add({ date: c.date, kind: 'change', program: c.program, title: c.title, advice: c.advice || '', source: c.source });

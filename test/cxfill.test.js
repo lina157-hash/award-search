@@ -13,12 +13,16 @@ function grab(file, re) {
   assert.ok(m, `${re} in ${file}`);
   return m[0];
 }
-const ctx = { data: { asiamiles }, console };
+// The airport list, for Cathay trips priced through Hong Kong (app.js amCxDist reads AP).
+const AP = { byCode: new Map(require('../public/airports.min.json').airports.map(([code, , , country, , , , , lat, lon]) => [code, { code, country, lat, lon }])) };
+const ctx = { data: { asiamiles }, AP, console };
 vm.createContext(ctx);
 vm.runInContext([
   grab('features.js', /function haversineMiles\(a, b\) \{[\s\S]*?\n\}/),
   grab('app.js', /function amBand\(dist, o, d\) \{[\s\S]*?\n\}/),
   grab('app.js', /function amPrice\(kind, dist, cabin, o, d\) \{[\s\S]*?\n\}/),
+  grab('app.js', /const AM_HUB = 'HKG';/),
+  grab('app.js', /function amCxDist\([\s\S]*?\n\}/),
   fs.readFileSync(path.join(__dirname, '..', 'public', 'cxfill.js'), 'utf8'),
   'this.cx = { cxPartnerSources, cxBadgeInfo, cxLegDays, cxPair, cxStitchPrice, cxStitchOffer };',
 ].join('\n'), ctx);

@@ -1,6 +1,7 @@
 {
  "note": "Premium cabin products by operating airline and IATA aircraft code (seats.aero AircraftCode). Researched 2026-10-13; codes cannot tell refitted from old aircraft, see caveat.",
  "researched": "2026-10-13",
+ "confidence": "secondary",
  "products": [
   {
    "id": "br-royal-laurel",

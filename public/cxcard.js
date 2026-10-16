@@ -10,19 +10,20 @@
 const CXC_CABINS = ['Y', 'W', 'J', 'F'];
 
 // results: the page's rows (asiamiles = real, asiamiles_est = the chart estimate); routes: cxAutoRoutes(…).
-// → [{ c, price: { miles, real, date, origin, destination, airlines } | null, days }] for the cabins with anything.
+// → [{ c, price: { miles, real, date, origin, destination, airlines, via? } | null, days }] for the cabins with
+// anything. via 'HKG': an estimate priced through Hong Kong (app.js amCxDist).
 // The lowest price wins; at the same price a real Asia Miles one. days = dates with Cathay seats on any airport pair.
 function cxCardRows(results, routes, pax = 0) {
   return CXC_CABINS.map((c) => {
     let price = null;
-    const take = (miles, real, date, origin, destination, airlines) => {
-      if (miles && (!price || miles < price.miles || (miles === price.miles && real && !price.real))) price = { miles, real, date, origin, destination, airlines: airlines || '' };
+    const take = (miles, real, date, origin, destination, airlines, via) => {
+      if (miles && (!price || miles < price.miles || (miles === price.miles && real && !price.real))) price = { miles, real, date, origin, destination, airlines: airlines || '', ...(via ? { via } : {}) };
     };
     for (const r of results || []) {
       const x = r.cabins?.[c];
       if (!x?.available || !x.miles) continue;
       if (r.source === 'asiamiles' && !r.estimate && cxSeatsOk(x.seats, pax)) take(x.miles, true, r.date, r.origin, r.destination, x.airlines);
-      else if (r.source === 'asiamiles_est') take(x.miles, false, r.date, r.origin, r.destination, x.airlines);
+      else if (r.source === 'asiamiles_est') take(x.miles, false, r.date, r.origin, r.destination, x.airlines, x.via);
     }
     const days = new Set();
     for (const rt of routes || []) {
@@ -30,7 +31,7 @@ function cxCardRows(results, routes, pax = 0) {
         const cell = day.c?.[c];
         if (!cell) continue;
         days.add(iso);
-        if (cell.est) take(cell.est, false, iso, rt.fc, rt.tc, 'CX');
+        if (cell.est) take(cell.est, false, iso, rt.fc, rt.tc, 'CX', cell.estVia);
       }
     }
     return { c, price, days: days.size };
@@ -71,7 +72,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     return `<li class="cxc-row${x.c === cur ? ' cur' : ''}"><span class="cxc-cab">${CN[x.c]}</span>`
       + `<span class="cxc-p">${pr ? `${pr.real ? '' : '約 '}<b>${fmt(pr.miles)}</b> 哩起` : ''}</span>`
       + `<span class="cxc-d">${x.days ? `國泰有位 <b>${x.days}</b>/${total} 天` : ''}</span>`
-      + `${pr ? `<small class="cxc-w">${mmdd(pr.date)} ${esc(pr.origin)}→${esc(pr.destination)}${pr.airlines ? `・${carriersHtml(pr.airlines)}` : ''}${pr.real ? '・實際有位' : ''}</small>` : ''}</li>`;
+      + `${pr ? `<small class="cxc-w">${mmdd(pr.date)} ${esc(pr.origin)}→${esc(pr.destination)}${pr.airlines ? `・${carriersHtml(pr.airlines)}` : ''}${pr.real ? '・實際有位' : ''}${pr.via ? `・${AM_VIA_TEXT}` : ''}</small>` : ''}</li>`;
   }
 
   function cardHtml(c) {
@@ -125,11 +126,9 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   };
 
   document.addEventListener('search:start', () => { cc.open = ''; });
-  document.getElementById('search-results').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-cxc]');
-    if (!b) return;
-    const card = b.closest('#cxc-card');
-    cc.open = cc.open === b.dataset.cxc ? '' : b.dataset.cxc;
+  // Open `k`'s panel in the card ('' closes it), with each action's aria-expanded to match.
+  function showPanel(card, k) {
+    cc.open = k;
     const panel = card.querySelector('.cxc-panel');
     const html = cc.open ? panelHtml(cc.open, state.cabin) : '';
     if (!html) cc.open = '';
@@ -137,6 +136,21 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     panel.innerHTML = html;
     panel.hidden = !html;
     afterPanel(panel);
+  }
+  document.getElementById('search-results').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cxc]');
+    if (!b) return;
+    showPanel(b.closest('#cxc-card'), cc.open === b.dataset.cxc ? '' : b.dataset.cxc);
+  });
+  // Escape inside the card closes the open panel and puts focus back on the button that opened it.
+  document.getElementById('search-results').addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !cc.open) return;
+    const card = e.target.closest?.('#cxc-card');
+    if (!card) return;
+    const btn = card.querySelector(`[data-cxc="${cc.open}"]`);
+    e.preventDefault();
+    showPanel(card, '');
+    btn?.focus();
   });
 }
 

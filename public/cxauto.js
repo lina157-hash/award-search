@@ -24,15 +24,17 @@ function cxAutoRoutes(results, partners, pax = 0) {
       const key = `${r.origin}>${r.destination}`;
       if (!routes.has(key)) routes.set(key, { key, fc: r.origin, tc: r.destination, days: {} });
       const day = (routes.get(key).days[r.date] ||= { c: {} });
-      const cell = (day.c[c] ||= { seats: 0, nonstop: false, est: 0, am: 0, progs: [] });
+      const cell = (day.c[c] ||= { seats: 0, nonstop: false, est: 0, estVia: '', am: 0, progs: [] });
       const only = cxOnly(x);
       const seats = x.seats > 0 ? x.seats : null;
       cell.progs.push({ source: r.source, miles: x.miles || null, seats, direct: Boolean(x.direct), only, airlines: x.airlines || '' });
       if (seats) cell.seats = Math.max(cell.seats, seats);
       cell.nonstop ||= Boolean(x.direct);
-      // Priced on Cathay's own chart only when the whole itinerary is Cathay (same rule as the 國泰補查 badge).
-      const est = only && r.distance ? amPrice('cx', r.distance, c, r.origin, r.destination)?.miles || 0 : 0;
-      if (est && (!cell.est || est < cell.est)) cell.est = est;
+      // Priced on Cathay's own chart only when the whole itinerary is Cathay (same rule as the 國泰補查 badge), by the
+      // distance Asia Miles counts (through Hong Kong unless nonstop, app.js amCxDist).
+      const route = only && r.distance ? amCxDist(r.origin, r.destination, r.distance, x.direct) : null;
+      const est = route ? amPrice('cx', route.dist, c, r.origin, r.destination)?.miles || 0 : 0;
+      if (est && (!cell.est || est < cell.est)) Object.assign(cell, { est, estVia: route.via });
       if (r.source === 'asiamiles' && x.miles && (!cell.am || x.miles < cell.am)) cell.am = x.miles;
     }
   }

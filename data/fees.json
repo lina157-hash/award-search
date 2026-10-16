@@ -1,6 +1,6 @@
 {
-  "lastReviewed": "2026-10-15",
-  "note": "獎勵機票改票、取消（退回哩程）手續費的簡短版，給搜尋結果與航班明細的小標籤用；完整規定看規則庫各計畫的「改票與退票」（programs.json changes）。金額以一般會員、出發前辦理為準，菁英會員常可減免；改票另需補哩程或稅金差額。confidence：official 官方、secondary 第三方整理。from：programs.json 表示從規則庫摘要，其他為第三方整理。",
+  "lastReviewed": "2026-10-16",
+  "note": "獎勵機票改票、取消（退回哩程）手續費的簡短版，給搜尋結果與航班明細的小標籤用；完整規定看規則庫各計畫的「改票與退票」（programs.json changes）。金額以一般會員、出發前辦理為準，菁英會員常可減免；改票另需補哩程或稅金差額。confidence：official 官方、secondary 第三方整理。from：programs.json 表示從規則庫摘要，其他為第三方整理；source：核對過的官方頁面。",
   "sources": [
     { "label": "Frequent Miler：各計畫獎勵票改退費（2026-07-27 更新）", "url": "https://frequentmiler.com/award-ticket-change-and-cancellation-fees-by-transfer-partner/", "official": false }
   ],
@@ -8,7 +8,7 @@
     "asiamiles": { "change": "US$50（線上）", "cancel": "US$120", "note": "其他管道改期另加 US$40", "confidence": "official", "from": "programs.json" },
     "flyingblue": { "change": "€70（Standard 票）", "cancel": "€70（Standard 票）", "note": "法荷航 Light 票不能改退，Flex 免費", "confidence": "secondary", "from": "programs.json" },
     "aeroplan": { "change": "CA$75／方向（官網）", "cancel": "CA$150", "note": "Flex、Latitude 票改票免費", "confidence": "official", "from": "programs.json" },
-    "eva": { "change": "改日期多半免費", "cancel": "US$50", "note": "訂位服務費不退；銀卡以上免手續費；星盟夥伴票在長榮官網退票免費", "confidence": "secondary", "from": "programs.json" },
+    "eva": { "change": "US$50（星盟夥伴票重新開票）", "cancel": "官網免費／其他 US$50（星盟夥伴票）", "note": "星盟夥伴獎勵票依長榮官網：官網刷卡購票的在官網退票免手續費，其他管道 US$50，鑽石、金、銀卡免收；訂位服務費不退。長榮／立榮自營航班另有規定（第三方整理：同航點只改日期多半免費）", "confidence": "official", "from": "programs.json", "source": { "label": "長榮星空聯盟獎勵機票規定（官方，2026-10-16 核對）", "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html" } },
     "ci": { "change": "官網退票再重訂", "cancel": "官網免費", "note": "2026-09-16 起開票；分公司辦理 NT$1,500", "confidence": "secondary", "from": "programs.json" },
     "alaska": { "change": "免費", "cancel": "免費", "note": "夥伴開票費 US$20 不退", "confidence": "secondary", "from": "programs.json" },
     "american": { "change": "免費", "cancel": "免費", "confidence": "secondary", "from": "programs.json" },

@@ -1382,6 +1382,10 @@ label.switch { min-height: 40px; }
 /* ===== eresults: fee chips, hold vs transfer time, NT$ cost sort, upgrade calculator (award-tools.js) ===== */
 .deal .fee-chip { display: inline-block; margin: 6px 0 2px; font-size: .74rem; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 1px 9px; }
 th .fee-mini { display: block; font-size: .68rem; font-weight: 400; color: var(--muted); white-space: nowrap; }
+/* Third-party data (a fee, a cabin product): a small * that one line nearby explains. */
+sup.mk-3p { margin-left: 1px; line-height: 0; }
+.fee-3p-note { margin: 8px 2px 0; font-size: .78rem; }
+.prod-3p-note { margin: 8px 0 0; font-size: .78rem; }
 .deal .cost-line { font-size: .95rem; font-weight: 700; color: var(--text); margin: 2px 0 0; }
 .deal .cost-line small { display: block; font-size: .74rem; font-weight: 400; color: var(--muted); }
 td.cell i.cost { display: block; font-style: normal; font-size: .74rem; font-weight: 600; color: var(--text); }

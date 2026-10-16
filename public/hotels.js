@@ -468,7 +468,7 @@ function renderHotels() {
   const p = hotelState.params;
   const n = p.nights;
   const head = `<div class="h-bar">
-    <span>${body.mock ? '<b>示範資料</b>・' : ''}${list.length < all.length ? `${fmt(all.length)} 家裡符合篩選的有 ${fmt(list.length)} 家` : `找到 ${fmt(list.length)} 家有點數房的飯店`}${body.hasMore ? '（只列前 100 家）' : ''}${p.flex ? `，每家列出 ${dayLabel(p.date)} 前後 ${p.flex} 天最便宜的一晚` : ''}</span>
+    <span>${body.mock ? '<b>示範資料</b>・' : ''}${list.length < all.length ? `${fmt(all.length)} 家裡符合篩選的有 ${fmt(list.length)} 家` : `找到 ${fmt(list.length)} 家有點數房的飯店`}${body.hasMore ? '（只列前 100 家）' : ''}${p.flex ? `，每家列出 ${dayLabel(p.date)}前後 ${p.flex} 天最便宜的一晚` : ''}</span>
     ${walletEmpty() ? '' : `<label class="switch"><input type="checkbox" id="h-afford" ${hotelState.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>`}
     ${typeof hwBarButton === 'function' ? hwBarButton() : ''}
   </div>
