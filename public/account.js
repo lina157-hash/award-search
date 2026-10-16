@@ -289,7 +289,6 @@ async function applyUnlock() {
 const baseLockHint = updateLockHint;
 updateLockHint = function () {
   baseLockHint();
-  tgGate();
   if (!acct.lockFlipped || cashCfg.locked) return;
   const el = $('#cash-lock');
   el.hidden = false;
@@ -710,30 +709,11 @@ async function tgRender(host, note = '') {
       p.hidden = false;
     }
   }));
-  tgSummaries(st.linked);
 }
-const tgSummaries = (linked) => $$('.tg-count').forEach((s) => (s.textContent = linked ? '（已連結）' : ''));
-// A 「📨 Telegram 通知」 panel next to 機位提醒 (search tab) and 降價追蹤 (cash tab); works without an account.
-function mountTelegram() {
-  const add = (after, id) => {
-    const at = $(`#${after}`);
-    if (!at) return;
-    at.insertAdjacentHTML('afterend', `<details class="alerts-panel tg-panel" id="${id}" hidden><summary>📨 Telegram／LINE 通知 <span class="tg-count"></span></summary><div class="alerts-body nf-body"><h4 class="nf-h">Telegram</h4><div class="tg-box"></div><h4 class="nf-h">LINE</h4><div class="tg-box line-box"></div></div></details>`);
-    const d = $(`#${id}`);
-    d.addEventListener('toggle', () => { if (d.open) { tgRender($('.tg-box', d)); if (typeof lineRender === 'function') lineRender($('.line-box', d)); } });
-    return d;
-  };
-  add('alerts-panel', 'tg-panel');
-  add('watch-panel', 'tg-panel-cash');
-  whenReady().then(tgGate);
-}
-// The panels hold the owner's setup steps (the bot, the LINE account), so visitors don't see them; 帳號設定 still has
-// both. Next to 降價追蹤 only when price tracking is on. Follows the passcode (updateLockHint below).
-function tgGate() {
-  const own = ownerHere();
-  if ($('#tg-panel')) $('#tg-panel').hidden = !own;
-  if ($('#tg-panel-cash')) $('#tg-panel-cash').hidden = !own || $('#watch-panel').hidden;
-}
+// The status lines (notify.js) follow a link or unlink made here.
+const tgSummaries = () => { if (typeof notifyRefresh === 'function') notifyRefresh(true); };
+// Telegram and LINE are set up in 帳號設定 only (U5); 機位提醒, 降價追蹤 and 我的行程 show one status line whose
+// 設定 opens it (notify.js).
 
 // ---------- links from the mails: /#verify=<token> and /#reset=<token> ----------
 async function handleMailLink(hash) {
@@ -754,7 +734,6 @@ addEventListener('hashchange', () => { if (/^#(verify|reset)=/.test(location.has
 
 // ---------- start ----------
 (async function initAccount() {
-  mountTelegram();
   let st;
   const hideBtn = () => { const box = $('#acct'); if (box) box.hidden = true; };
   try { st = await acctCall('/api/account'); } catch { hideBtn(); return; }

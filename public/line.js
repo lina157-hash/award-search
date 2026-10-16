@@ -1,4 +1,4 @@
-// LINE notifications panel: shown under Telegram in the 「📨 Telegram／LINE 通知」 panels and in account settings.
+// LINE notifications panel: in 帳號設定 (and notify.js's 通知設定 dialog when no account is signed in).
 // Linking: the site shows a one-time 6-digit code, the owner sends it to the site's LINE Official Account, and the
 // server's webhook remembers who sent it. Passcode-gated like Telegram (see account.js tgOpen / app.js cashApi).
 // Classic script; uses the globals of app.js and account.js ($, esc, api, cashApi, busy, toast, tgOpen…).
@@ -27,7 +27,11 @@ async function lineRender(host, note = '', pending = null) {
   let st;
   try {
     const cfg = (await api('/api/config')).line || {};
-    st = cfg.configured && tgOpen() ? await cashApi('/api/line') : { ...cfg };
+    // Not set up: which settings are missing is the owner's to read (/api/line behind the passcode; /api/config
+    // tells visitors only that LINE is off).
+    const pass = store.get(PASS_KEY, '');
+    st = cfg.configured && tgOpen() ? await cashApi('/api/line')
+      : !cfg.configured && typeof ownerHere === 'function' && ownerHere() ? await api('/api/line', { headers: pass ? { 'x-cash-pass': pass } : {} }).catch(() => ({ ...cfg })) : { ...cfg };
   } catch (err) { host.innerHTML = `<p class="acct-err">${esc(err.message)}</p>`; return; }
   const mock = st.mock ? '<p class="hint">（示範模式：連結的是一個假的 LINE 帳號，不會真的傳訊息。）</p>' : '';
   const bot = st.botId ? `<a href="${esc(addFriendUrl(st.botId))}" target="_blank" rel="noopener" title="${esc(st.botName || '')}">${esc(st.botId)} ↗</a>` : '你的 LINE 官方帳號';
@@ -60,7 +64,7 @@ async function lineRender(host, note = '', pending = null) {
     const tick = async () => {
       if (!host.isConnected || Date.now() > until) return;
       const s = await cashApi('/api/line').catch(() => null);
-      if (s?.linked) { toast(`已連結 LINE${s.name ? `：${s.name}` : ''}`); return lineRender(host); }
+      if (s?.linked) { toast(`已連結 LINE${s.name ? `：${s.name}` : ''}`); if (typeof notifyRefresh === 'function') notifyRefresh(true); return lineRender(host); }
       linePoll.set(host, setTimeout(tick, 3000));
     };
     linePoll.set(host, setTimeout(tick, 3000));
@@ -82,10 +86,12 @@ async function lineRender(host, note = '', pending = null) {
       if (act === 'demo') {
         const r = await cashApi('/api/line/demo', { method: 'POST' });
         if (r.linked) toast(`已連結 LINE：${r.name || '示範帳號'}`);
+        if (typeof notifyRefresh === 'function') notifyRefresh(true);
         return lineRender(host);
       }
       await cashApi('/api/line', { method: 'DELETE' });
       toast('已取消連結 LINE');
+      if (typeof notifyRefresh === 'function') notifyRefresh(true);
       lineRender(host);
     } catch (err) {
       done();

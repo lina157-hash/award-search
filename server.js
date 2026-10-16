@@ -3,7 +3,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { createClient, normalizeAvailability, normalizeTrips, SeatsAeroError } = require('./lib/seats');
+const { createClient, normalizeAvailability, normalizeTrips, compactTrips, SeatsAeroError } = require('./lib/seats');
 const mock = require('./lib/mock');
 const { createCashClient, normalizeCash, CashError } = require('./lib/cash');
 const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = require('./lib/alerts');
@@ -28,6 +28,8 @@ const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 const { cronParts, cronSlot } = require('./lib/cronreport');
 const { createDealSub, DealSubError } = require('./lib/dealsub');
 const { createNlSearch, pickProvider, NlError } = require('./lib/nlsearch');
+const { createBooked } = require('./lib/booked');
+const { createDealRules, DealRuleError } = require('./lib/dealrules');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = (process.env.SEATS_AERO_API_KEY || '').trim(); // a key pasted into Vercel with a space or line break still works
@@ -240,6 +242,18 @@ const line = lineLib.createLine({
 const notifyAll = async (html) => { const rs = await Promise.all([telegram.notify(html), line.notify(html)]); return rs.includes(true) ? true : rs.includes(false) ? false : null; };
 // Award-space history from the searches the daily jobs already make (lib/history.js); needs Upstash.
 const history = createHistory({ kv, enabled: HAS_REDIS && !MOCK, demo: MOCK });
+// The daily jobs' cached search (seat alerts, booked legs). With `include_trips` (short ranges of a 只要這些航班 watch,
+// a booked leg's one day) each row also carries its trips' flight numbers and miles (`flightTrips`), so checking a
+// flight costs no extra call.
+function alertSearch(params, { until } = {}) {
+  return cached('alert:' + JSON.stringify(params), async () => {
+    const p = { ...params, order_by: 'lowest_mileage', take: 1000 };
+    const { items, hasMore } = MOCK ? { items: mock.mockSearch(p), hasMore: false } : await client.search(p, { maxPages: pagesFor(p, 1, 120), until });
+    const rows = items.map((it) => (p.include_trips ? { ...normalizeAvailability(it), flightTrips: compactTrips(it.AvailabilityTrips) } : normalizeAvailability(it)));
+    defer(history.note(p, rows, { hasMore }));
+    return rows;
+  });
+}
 const alerts = alertStore && createAlerts({
   store: alertStore,
   sendEmail: alertMailer,
@@ -252,20 +266,38 @@ const alerts = alertStore && createAlerts({
   // (four for a whole year), fetched only while seats.aero says there is more. `until`: see lib/seats.js.
   pagesFor: (a) => pagesFor({ start_date: a.start, end_date: a.end }, 1, 120),
   perCallMs: 2000, // per seats.aero call, when deciding whether a watch can still start in a run (live calls take 0.1–0.5 s)
-  search: (params, { until } = {}) => cached('alert:' + JSON.stringify(params), async () => {
-    const p = { ...params, order_by: 'lowest_mileage', take: 1000 };
-    const { items, hasMore } = MOCK ? { items: mock.mockSearch(p), hasMore: false } : await client.search(p, { maxPages: pagesFor(p, 1, 120), until });
-    const rows = items.map(normalizeAvailability);
-    defer(history.note(p, rows, { hasMore }));
-    return rows;
-  }),
+  search: alertSearch,
+  // 只要這些航班 beyond 45 days: one row's trips, only for new candidate rows, at most 5 calls a run (lib/alerts.js).
+  trips: (id, { until } = {}) => cached('alert-trips:' + id, async () => normalizeTrips(MOCK ? mock.mockTrips(id) : await client.trips(id, { until }))),
 });
+// 已開票「便宜了通知我」 (lib/booked.js): up to 5 legs from 我的行程, one one-day search each in the daily run.
+const bookedStore = HAS_REDIS ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'booked-legs:v1' }) : MOCK ? memoryStore() : null;
+const booked = bookedStore && createBooked({
+  store: bookedStore,
+  search: alertSearch,
+  sendEmail: alertMailer,
+  notify: notifyAll,
+  fees: require('./data/fees.json').programs,
+  programNames: SOURCE_NAMES,
+  siteUrl: SITE_URL,
+  listLock: () => waitLock(kv, 'booked-legs:v1:lock', 10),
+});
+// 今日好康「我的條件通知」 (lib/dealrules.js): the owner's rules, matched against each refresh's rows. Needs Upstash
+// (or the demo's memory), as the refresh and the owner's page may run on different instances.
+const dealRules = HAS_REDIS || MOCK ? createDealRules({
+  kv,
+  notify: { telegram: (html) => telegram.notify(html), line: (html) => line.notify(html) },
+  sendEmail: alertMailer,
+  names: { program: (s) => SOURCE_NAMES[s], city: (c) => require('./data/airport-names-zh.json').names[c] },
+  siteUrl: SITE_URL,
+}) : null;
 // Daily deals from Taipei, refreshed by the daily cron and kept in the same Redis. The demo looks two months ahead
 // (its made-up searches are slow over a whole year).
 const dealsStore = HAS_REDIS ? redisStore({ url: REDIS_URL, token: REDIS_TOKEN, key: 'award-deals:v1' }) : memoryStore(null);
 const deals = createDeals({
   store: dealsStore,
   days: MOCK ? 60 : 330,
+  onFetched: dealRules ? (groups) => dealRules.onFetched(groups) : null,
   lock: (name, seconds) => takeLock(kv, name, seconds),
   defer,
   // `fresh` (the owner's 立即更新): ask seats.aero now instead of reusing this instance's last 30 minutes.
@@ -310,6 +342,27 @@ async function handleWatch(req, q) {
   if (req.method === 'POST') return { configured: true, ...(await priceWatch.add(await readJson(req))) };
   if (req.method === 'DELETE') { await priceWatch.remove(String(q.get('id') || '')); return { ok: true }; }
   return { configured: true, email: Boolean(alertMailer), max: priceWatch.max, ...(await priceWatch.list()) };
+}
+
+// 已開票追蹤: GET the legs, POST one (from 我的行程), DELETE ?id=. Gated like seat alerts.
+async function handleBooked(req, q) {
+  if (!booked) return { configured: false, legs: [] };
+  if (!(await alertsAllowed(req))) throw cashPasscode() ? passError(req, '需要通關密碼才能設定已開票追蹤') : noPasscode('已開票追蹤');
+  if (req.method === 'POST') return { configured: true, ...(await booked.add(await readJson(req))) };
+  if (req.method === 'DELETE') { await booked.remove(String(q.get('id') || '')); return { ok: true }; }
+  return { configured: true, max: booked.max, email: Boolean(alertMailer), legs: await booked.list() };
+}
+// 我的條件通知: GET rules and latest matches; POST a rule (new or changed, by id); DELETE ?id=; POST /channels where
+// matches go. The owner only (the passcode), from the site's own page.
+async function handleDealRules(req, q, sub) {
+  if (!dealRules) return { configured: false, rules: [], hits: [] };
+  if (req.method !== 'GET' && !sameSite(req)) throw new BadRequest('請從網站本身操作');
+  if ((await runCaller(req)) !== 'owner') throw cashPasscode() ? passError(req, '需要通關密碼才能設定我的條件通知') : noPasscode('我的條件通知');
+  if (sub === 'channels' && req.method === 'POST') return { configured: true, ...(await dealRules.setChannels(await readJson(req))) };
+  if (sub) throw new BadRequest('未知的操作');
+  if (req.method === 'POST') return { configured: true, ...(await dealRules.saveRule(await readJson(req))) };
+  if (req.method === 'DELETE') return { configured: true, ...(await dealRules.removeRule(String(q.get('id') || ''))) };
+  return { configured: true, mail: Boolean(alertMailer), ...(await dealRules.view()) };
 }
 
 let dealsPending = null;
@@ -388,18 +441,19 @@ function readJson(req, limit = 10_000) {
 // a slow upstream ends in a timeout the run records instead of the function being killed mid-way.
 // digest: 今日好康每日信 (lib/dealsub.js), one Resend batch call, last: the owner's own price-drop and seat-alert mails
 // go out first, since all share Resend's 100 mails a day; what is left goes in the evening run.
-const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, alerts: 48e3, digest: 50e3, end: 54e3 };
+// booked: 已開票追蹤, at most 5 one-day searches, between the price watches and the seat alerts.
+const RUN_BUDGET = { expiry: 6e3, deals: 20e3, watches: 28e3, booked: 31e3, alerts: 48e3, digest: 50e3, end: 54e3 };
 // Whether CRON_SECRET is set (never its value), when Vercel's run last got in or was turned away, and when the last
 // one finished, how long it took and how many items failed or were left for later.
 async function cronStatus() {
   const [last, denied, done] = await Promise.all(['cron:last', 'cron:denied', 'cron:done'].map((k) => kv.get(k).catch(() => null)));
   return { secret: Boolean((process.env.CRON_SECRET || '').trim()), lastRun: last?.at || null, lastDenied: denied?.at || null, lastDone: done?.at || null, lastDoneMs: done?.ms ?? null, lastProblems: done?.problems ?? null };
 }
-const runProblems = (out) => [out.expiry?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.alertsError].filter(Boolean).length
-  + [...(out.report || []), ...(out.watches?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
+const runProblems = (out) => [out.expiry?.error, out.dealsError, out.digest?.error, out.digest?.errors || out.digest?.unsaved ? 'digest' : '', out.watches?.error, out.booked?.error, out.alertsError].filter(Boolean).length
+  + [...(out.report || []), ...(out.watches?.report || []), ...(out.booked?.report || [])].filter((r) => r.error || r.retry || r.skipped === 'time').length;
 async function runDaily(req, q) {
   const who = await runCaller(req);
-  // Remembered for /api/config, so the owner can see whether Vercel's daily run gets in (CRON_SECRET set) or is turned away.
+  // Remembered for /api/cron/status, so the owner can see whether Vercel's daily run gets in (CRON_SECRET set) or is turned away.
   const fromVercel = /vercel-cron/i.test(String(req.headers['user-agent'] || ''));
   if (!who) {
     if (fromVercel) await kv.set('cron:denied', { at: new Date().toISOString(), auth: Boolean(req.headers.authorization) }, { ex: 40 * 86400 }).catch(() => {});
@@ -407,7 +461,7 @@ async function runDaily(req, q) {
   }
   if (who === 'cron') await kv.set('cron:last', { at: new Date().toISOString() }, { ex: 40 * 86400 }).catch(() => {});
   const t0 = Date.now();
-  const parts = new Set((q.get('part') || 'expiry,deals,digest,watches,alerts').split(','));
+  const parts = new Set((q.get('part') || 'expiry,deals,digest,watches,booked,alerts').split(','));
   const out = { configured: Boolean(alerts), email: Boolean(alertMailer), by: who };
   if (parts.has('expiry')) out.expiry = await expiry.run({ deadline: t0 + RUN_BUDGET.expiry, lock: lockFor('expiry:run', 60) }).catch((e) => ({ error: e.message }));
   if (parts.has('deals')) {
@@ -420,6 +474,9 @@ async function runDaily(req, q) {
   }
   if (parts.has('watches') && priceWatch) {
     out.watches = await priceWatch.run({ deadline: t0 + RUN_BUDGET.watches, until: t0 + RUN_BUDGET.end, lock: lockFor('price-watch:run', 120) }).catch((e) => ({ error: e.message }));
+  }
+  if (parts.has('booked') && booked) {
+    out.booked = await booked.run({ deadline: t0 + RUN_BUDGET.booked, until: t0 + RUN_BUDGET.end, force: who !== 'cron', lock: lockFor('booked:run', 60) }).catch((e) => ({ error: e.message }));
   }
   if (parts.has('alerts') && alerts) {
     Object.assign(out, await alerts.run({ deadline: t0 + RUN_BUDGET.alerts, until: t0 + RUN_BUDGET.end, force: who !== 'cron', lock: lockFor('alerts:run', 120) }).catch((e) => ({ alertsError: e.message })));
@@ -1366,12 +1423,15 @@ async function route(req, res) {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await runDaily(req, q));
     }
-    // The owner's status line: how today's runs went and every instance's seats.aero calls. Not for visitors.
+    // The owner's status line: how today's runs went and every instance's seats.aero calls, plus what is not set up
+    // (the names of missing settings) and the shared cache's numbers. Not for visitors (/api/config has on/off only).
     if (p === '/api/cron/status') {
       if (req.method !== 'GET') return sendJson(res, 405, { error: 'method not allowed' });
       if ((await runCaller(req)) !== 'owner') return sendJson(res, 403, { error: '只有站長看得到排程狀態', code: 'owner-only' });
       const [morning, evening] = await Promise.all(['morning', 'evening'].map((k) => kv.get(`cron:done:${k}`).catch(() => null)));
-      return sendJson(res, 200, { ...(await cronStatus()), runs: [morning, evening].filter(Boolean).sort((a, b) => a.at.localeCompare(b.at)), callsTodayAll: Number(await kv.get(seatsAllKey()).catch(() => 0)) || 0, dailyLimit: 1000 });
+      const lineSt = await line.status().catch(() => ({}));
+      const setup = { missing: [!alertMailer && 'RESEND_API_KEY', !TELEGRAM_TOKEN && 'TELEGRAM_BOT_TOKEN', ...(lineSt.missing || []), !HAS_REDIS && 'Upstash Redis'].filter((x, i, all) => x && all.indexOf(x) === i), line: { missing: lineSt.missing || [] }, searchCache: await searchCache.stats() };
+      return sendJson(res, 200, { ...(await cronStatus()), runs: [morning, evening].filter(Boolean).sort((a, b) => a.at.localeCompare(b.at)), callsTodayAll: Number(await kv.get(seatsAllKey()).catch(() => 0)) || 0, dailyLimit: 1000, setup });
     }
     if (p === '/api/alerts' || p === '/api/alerts/run') {
       if (!['GET', 'POST', 'PUT', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
@@ -1421,6 +1481,15 @@ async function route(req, res) {
       if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleNl(req));
     }
+    if (p === '/api/booked') {
+      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleBooked(req, q));
+    }
+    const drm = p.match(/^\/api\/dealrules(?:\/(channels))?$/);
+    if (drm) {
+      if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleDealRules(req, q, drm[1] || ''));
+    }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleWatch(req, q));
@@ -1440,10 +1509,12 @@ async function route(req, res) {
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
         nl: nlSearch.enabled,
         accounts: Boolean(accounts), accountEmail: Boolean(accounts?.mailOn && alertMailer),
-        line: await line.status().then((s) => ({ configured: s.configured, linked: s.linked, ...(s.missing ? { missing: s.missing } : {}), ...(s.configured ? { tokenOk: s.tokenOk } : {}) })).catch(() => ({ configured: line.configured })),
-        searchCache: await searchCache.stats(),
+        // Visitors get on/off only: which settings are missing, the cache's numbers and the daily run's details are
+        // the owner's (GET /api/cron/status, GET /api/line behind the passcode).
+        line: await line.status().then((s) => ({ configured: s.configured, linked: s.linked, ...(s.configured ? { tokenOk: s.tokenOk } : {}) })).catch(() => ({ configured: line.configured })),
+        searchCache: { enabled: searchCache.enabled },
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true, tokenOk: telegram.configured ? (await telegram.bot()).tokenOk : null },
-        cron: await cronStatus(),
+        booked: Boolean(booked), dealRules: Boolean(dealRules),
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK },
         // Which deployment is answering, to confirm a redeploy went live.
         commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7),
@@ -1507,7 +1578,7 @@ async function route(req, res) {
   } catch (e) {
     if (e instanceof BadRequest) return sendJson(res, 400, { error: e.message });
     if (e instanceof AccountError && e.current) return sendJson(res, e.status, { error: e.message, code: e.code, ...e.current });
-    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError || e instanceof AdminError || e instanceof DealSubError || e instanceof NlError) return sendJson(res, e.status, { error: e.message, code: e.code });
+    if (e instanceof LimitError || e instanceof CxcalError || e instanceof SeatsAeroError || e instanceof CashError || e instanceof AlertError || e instanceof rooms.RoomsError || e instanceof DirectsError || e instanceof hotelCash.HotelCashError || e instanceof KvError || e instanceof tg.TelegramError || e instanceof lineLib.LineError || e instanceof AccountError || e instanceof AdminError || e instanceof DealSubError || e instanceof NlError || e instanceof DealRuleError) return sendJson(res, e.status, { error: e.message, code: e.code });
     console.error(e);
     sendJson(res, 500, { error: '伺服器錯誤' });
   }

@@ -1726,3 +1726,35 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .nl-row button { padding: 10px 16px; }
   .nl-go { font-size: .86rem; }
 }
+
+/* ---- round 6: alerts and notifications (N1 N2 N7 N14 N16 U5) ---- */
+/* U5: one line under 機位提醒, 降價追蹤 and 我的行程 instead of the Telegram／LINE panels */
+.nf-status { margin: 12px 0 0; font-size: .86rem; color: var(--muted); }
+.nf-status b { font-weight: 700; margin-left: 2px; }
+.nf-status .nf-on { color: var(--accent); }
+.nf-status .nf-off { color: var(--muted); }
+.nf-status .linkish { margin-left: 4px; }
+/* N1 / N16: the alert form's optional part; N14: route and dates from 一句話 */
+#alert-where:empty { display: none; }
+#alert-where { margin: 4px 0 8px; }
+.alert-more .switch { margin-top: 8px; }
+.alert-more .hint { margin: 6px 0 0; }
+.alert-more .field { max-width: 420px; }
+/* N7: 已開票，便宜了通知我 under an award leg */
+.plan-table label.bk-tog { display: flex; gap: 6px; align-items: center; margin-top: 6px; font-size: .82rem; color: var(--text); cursor: pointer; min-height: 28px; }
+.plan-table label.bk-tog input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); flex: none; }
+.plan-table small.bk-last { display: block; color: var(--muted); font-size: .76rem; }
+.bk-foot { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.bk-foot .hint { margin: 0; }
+/* N2: 我的條件通知 */
+.dr-link { font-size: .82rem; font-weight: 400; margin-left: 4px; white-space: nowrap; text-decoration: none; }
+.dr-link:hover, .dr-link:focus-visible { text-decoration: underline; }
+.dr-hits h3 small { font-weight: 400; color: var(--muted); font-size: .78rem; }
+.deal-mini.dm-hit { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset, var(--shadow); }
+.dm-tag { font-size: .72rem; font-weight: 700; color: var(--accent); }
+.dr-dlg .dr-form { margin-top: 8px; display: grid; gap: 6px; }
+.dr-dlg .dr-list .dr-form { grid-column: 1 / -1; }
+.dr-dlg .h-progs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.dr-mail { display: flex; gap: 8px; align-items: center; }
+.dr-mail input { flex: 1; min-width: 0; }
+.dr-dlg .dr-add summary { cursor: pointer; font-weight: 600; padding: 4px 0; }

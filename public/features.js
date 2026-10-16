@@ -1105,6 +1105,7 @@ function renderDeals() {
     applyShare(new URLSearchParams({ o, d, s, e: isoDateFrom(date, 3), c: dealsState.cabin }));
   }));
   if (typeof dealSubMount === 'function') dealSubMount(host); // 📬 每天寄給我 (dealsub.js)
+  if (typeof dealRulesMount === 'function') dealRulesMount(host); // 🎯 我的條件 (dealrules.js)
 }
 
 // ---------- explore map (Leaflet, loaded on first use) ----------
@@ -1300,14 +1301,14 @@ function planHtml(p, editable) {
   }
   const rows = p.legs.map((l, i) => `<tr>
     <td>${mmdd(l.date)}（${dowOf(l.date)}）</td><td><b>${esc(l.from)} → ${esc(l.to)}</b><small>${esc(l.flights)}</small></td><td>${CABIN_LABEL[l.cabin]}${l.pax > 1 ? `・${l.pax} 人` : ''}</td>
-    <td>${l.k === 'a' ? `<b>${fmt(l.miles * l.pax)} 哩</b><small>${esc(programName(l.program))}${l.tax ? `・稅 ${esc(l.tax.cur)} ${fmt(Math.round(l.tax.amount * l.pax))}` : ''}</small>` : l.price ? `<b>NT$${fmt(l.price)}</b><small>現金票${l.note ? `・${esc(l.note)}` : ''}</small>` : `<small>現金票・${esc(l.note)}</small>`}</td>
+    <td>${l.k === 'a' ? `<b>${fmt(l.miles * l.pax)} 哩</b><small>${esc(programName(l.program))}${l.tax ? `・稅 ${esc(l.tax.cur)} ${fmt(Math.round(l.tax.amount * l.pax))}` : ''}</small>${editable && typeof bookedToggleHtml === 'function' ? bookedToggleHtml(l, i) : ''}` : l.price ? `<b>NT$${fmt(l.price)}</b><small>現金票${l.note ? `・${esc(l.note)}` : ''}</small>` : `<small>現金票・${esc(l.note)}</small>`}</td>
     ${editable ? `<td><button type="button" class="linklike" data-leg-rm="${i}" aria-label="移除這段">✕</button></td>` : ''}</tr>`).join('');
   const sum = [
     ...Object.entries(milesBy).map(([k, v]) => `${esc(programName(k))} <b>${fmt(v)} 哩</b>`),
     ...Object.entries(taxBy).map(([c, v]) => `稅金 ${esc(c === '?' ? '' : c)} <b>${fmt(Math.round(v))}</b>`),
     cashTotal ? `現金票 <b>NT$${fmt(cashTotal)}</b>` : '',
   ].filter(Boolean).join('　');
-  return `<div class="table-wrap"><table class="plan-table"><tbody>${rows}</tbody></table></div><p class="plan-sum">合計：${sum}</p>`;
+  return `<div class="table-wrap"><table class="plan-table"><tbody>${rows}</tbody></table></div><p class="plan-sum">合計：${sum}</p>${editable && typeof bookedFootHtml === 'function' ? bookedFootHtml() : ''}`;
 }
 function renderPlan() {
   const body = $('#plan-body');
@@ -1322,6 +1323,7 @@ function renderPlan() {
     ${planHtml(plan, true)}
     ${plan.legs.length ? '<div class="plan-actions"><button type="button" class="outline" id="plan-share">🔗 複製行程連結</button><button type="button" class="outline" id="plan-clear">清空</button></div>' : ''}`;
   $('#plan-name').addEventListener('change', (e) => { plan.name = e.target.value.trim().slice(0, 40) || '我的行程'; store.set(PLAN_KEY, plan); });
+  if (typeof bookedBind === 'function') bookedBind(body); // 已開票，便宜了通知我 (notify.js)
   $$('[data-leg-rm]', body).forEach((b) => b.addEventListener('click', () => { plan.legs.splice(Number(b.dataset.legRm), 1); savePlan(); }));
   $('#plan-clear')?.addEventListener('click', () => { if (confirm('清空我的行程？')) { plan.legs = []; savePlan(); } });
   $('#plan-share')?.addEventListener('click', async () => {
@@ -1472,6 +1474,7 @@ async function loadWatches() {
         <div class="alert-actions">${sparkline((w.history || []).map(([d, p]) => [d, p]))}<button type="button" class="outline" data-wdel="${esc(w.id)}">停止追蹤</button></div>
       </li>`;
     }).join('')}</ul><p class="hint">本月追蹤已用 ${body.used || 0} / ${body.cap} 次查價額度。</p>` : '<p class="hint">還沒有追蹤。在查現金票選好航班後，按「📉 追蹤降價」。</p>';
+    if (typeof notifyLineHtml === 'function') box.insertAdjacentHTML('beforeend', notifyLineHtml()); // 通知狀態 (notify.js)
     $$('[data-wdel]', box).forEach((b) => b.addEventListener('click', async () => {
       try { await cashApi(`/api/watch?id=${encodeURIComponent(b.dataset.wdel)}`, { pass: '降價追蹤', method: 'DELETE' }); toast('已停止追蹤'); loadWatches(); } catch (err) { toast(err.message); }
     }));

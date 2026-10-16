@@ -1,6 +1,8 @@
 // 一句話搜尋: a one-line box above the 航線查詢 form. The sentence goes to /api/nl (GPT-6 Luna or Claude Haiku on the server, a demo
 // parser in demo mode); what comes back fills the form and shows as a row of chips the owner can click to fix or
-// remove. Parsing spends no seats.aero: the search still runs only when 搜尋機位 is pressed.
+// remove. Parsing spends no seats.aero: the search still runs only when 搜尋機位 is pressed. A sentence that asks to be
+// told when seats appear (「…有位通知我」, intent "alert") also opens the 機位提醒 dialog filled in the same way;
+// nothing is created until 建立提醒 is pressed there.
 // Shown only when the server has it on (config.nl, i.e. OPENAI_API_KEY or ANTHROPIC_API_KEY is set) and on the owner's
 // device (the passcode stored here or an unlocked account), like 帳號管理. Classic script loaded after features.js; uses app.js's
 // globals ($, $$, esc, store, PASS_KEY, cashCfg, cashApi, pickers, datePickers, setCabin, carrierHint, loadAirports, AP,
@@ -42,7 +44,10 @@ function nlRender() {
   </section>`);
   $('#nl-form').addEventListener('submit', nlParse);
   $('#nl-chips').addEventListener('click', nlChipClick);
-  $('#nl-msg').addEventListener('click', (e) => { if (e.target.closest('[data-explore]')) nlToExplore(); });
+  $('#nl-msg').addEventListener('click', (e) => {
+    if (e.target.closest('[data-explore]')) nlToExplore();
+    if (e.target.closest('[data-nl-alert]') && nl.result) nlToAlert(nl.result);
+  });
 }
 
 function nlMsg(html, kind = '') {
@@ -103,8 +108,23 @@ function nlApply(r) {
   const notes = [];
   if (r.dropped?.length) notes.push(`沒看懂的部分：${r.dropped.map(esc).join('、')}，請直接在表單補上。`);
   if (r.pax > NL_PAX_MAX) notes.push(`人數選單最多到「至少 ${NL_PAX_MAX} 位」。`);
+  if (r.intent === 'alert') {
+    const missed = r.dropped?.length ? `沒看懂的部分：${r.dropped.map(esc).join('、')}，請在提醒裡補上。` : '';
+    nlMsg(`看起來是要設<b>機位提醒</b>：已填好提醒的條件，確認後按「建立提醒」才會建立。${missed}${r.mock ? '（示範解析）' : ''} <button type="button" class="linkish" data-nl-alert>打開機位提醒</button> <small>${esc(nlLeft(r))}</small>`);
+    nlToAlert(r);
+    return;
+  }
   if (!r.start) notes.push('句子沒提到日期，搜尋時會先查未來 1 個月。');
   nlMsg(`已填進下方表單，確認無誤再按「搜尋機位」；點標籤或直接改表單都可以。${notes.join('')}${r.mock ? '（示範解析）' : ''} <small>${esc(nlLeft(r))}</small>`);
+}
+
+// 「…有位通知我」: the 機位提醒 dialog (app.js openAlertDialog) with the route, dates, cabin, seats, programs and the
+// optional cap and flights from the sentence, still editable. Nothing is saved until 建立提醒.
+function nlToAlert(r) {
+  if (typeof openAlertDialog !== 'function') return;
+  const cabin = r.cabin || $('#search-form input[name=cabin]:checked')?.value || 'J';
+  const share = new URLSearchParams({ o: (r.origin || []).join(','), d: (r.destination || []).join(','), s: r.start || '', e: r.end || r.start || '', c: cabin, ...(r.pax >= 2 ? { n: String(Math.min(r.pax, NL_PAX_MAX)) } : {}), ...(r.alliance ? { al: r.alliance } : {}), ...(r.direct ? { direct: '1' } : {}) });
+  openAlertDialog({ share, watch: { sources: r.programs || [], airlines: [], alliance: r.alliance || '', direct: Boolean(r.direct), maxMiles: r.maxMiles || 0, drops: false, flights: r.flights || [] } });
 }
 
 // Chips follow the form as it is now (the owner may have changed it since), plus the two things the form has no
