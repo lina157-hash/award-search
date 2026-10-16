@@ -202,3 +202,78 @@ test('gcmap: the route as one path, a comma where it breaks (open jaw or surface
   for (const name of ['Great Circle Mapper', 'FlightConnections', 'wheretocredit', 'SeatMaps', 'AeroLOPA', 'CX Planner']) assert.ok(tools.includes(`'${name}'`), name);
   assert.match(src('prog9.js'), /<span class="tag tp">第三方<\/span>/);
 });
+
+// ---------- #21 recent changes and the weekly digest ----------
+const dataSrc = () => ({
+  promos: read('promos.json').promos, history: read('promos-history.json').promos, log: read('changes.json').log,
+  changes: read('changes.json').changes, alliances: read('alliances.json').alliances, transfers: read('points.json').transfers,
+});
+
+test('changes.json log: dated entries with an official source', () => {
+  const c = read('changes.json');
+  assert.ok(c.log.length >= 2);
+  for (const x of c.log) {
+    assert.match(x.date, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(['rule', 'alliance'].includes(x.kind), x.title);
+    assert.equal(x.confidence, 'official', x.title);
+    assert.match(x.source.url, /^https:\/\//);
+  }
+});
+
+test('recentChanges: promos started and ended, log entries, alliance notes and bank rates, split at today', () => {
+  const s = {
+    promos: [{ id: 'a', type: 'transfer', title: 'A 加贈', start: '2026-10-01', end: '2026-10-20', sources: [{ url: 'https://a.test' }] }, { id: 'b', type: 'award', title: 'B 特惠', start: '2026-11-01', end: '2026-11-10' }],
+    history: [{ id: 'c', type: 'buy', title: 'C 買哩', start: '2026-08-01', end: '2026-10-10' }, { id: 'old', type: 'buy', title: 'Old', start: '2026-01-01', end: '2026-02-01' }],
+    log: [{ date: '2026-10-05', kind: 'rule', title: 'R 規則', source: { url: 'https://r.test' } }, { date: '2026-06-01', kind: 'rule', title: 'Too old' }],
+    changes: [{ date: '2026-11-01', title: 'Next 規則', pct: 7 }],
+    alliances: [{ name: '星空聯盟 Star Alliance', memberNotes: [{ code: 'OZ', status: 'leaving', date: '2026-11-05', source: { url: 'https://s.test' } }, { code: 'PR', status: 'upcoming', date: null }] }],
+    transfers: [{ bank: '台新', toName: '華航', validUntil: '2026-10-31' }, { bank: '台新', toName: '長榮', validUntil: '2026-10-31' }, { bank: 'X', toName: 'Y', validUntil: '2026-10-12' }],
+  };
+  const { past, next } = P9.recentChanges(s, '2026-10-16');
+  assert.deepEqual(past.map((x) => `${x.date} ${x.kind} ${x.title}`), ['2026-10-12 rate X 轉Y的比率保證期限', '2026-10-10 end C 買哩', '2026-10-05 rule R 規則', '2026-10-01 start A 加贈']);
+  assert.deepEqual(next.map((x) => `${x.date} ${x.kind} ${x.title}`), ['2026-10-20 end A 加贈', '2026-10-31 rate 台新 轉華航、長榮的比率保證期限', '2026-11-01 rule Next 規則', '2026-11-05 alliance OZ退出星空聯盟']);
+  assert.equal(next[2].pct, 7);
+  // Real data: the Asiana log entry and Taishin's rates running out show up.
+  const real = P9.recentChanges(dataSrc(), '2026-10-16');
+  assert.ok(real.past.some((x) => x.kind === 'alliance' && x.title.includes('韓亞')));
+  assert.ok(real.next.some((x) => x.kind === 'rate' && x.title.startsWith('台新')));
+});
+
+test('weekly digest: the first run of each week, Telegram and mail, nothing twice', async () => {
+  const { createWeekly, isoWeek } = require('../lib/weekly');
+  assert.equal(isoWeek('2026-10-19'), '2026-W43');
+  assert.equal(isoWeek('2026-10-18'), '2026-W42'); // Sunday still belongs to the week before
+  assert.equal(isoWeek('2027-01-01'), '2026-W53');
+  const kv = memoryKv();
+  const sent = [];
+  const mails = [];
+  let t = Date.parse('2026-10-19T00:10:00Z'); // Monday 08:10 Taiwan time
+  const w = createWeekly({ kv, src: dataSrc, notify: async (h) => { sent.push(h); return true; }, sendEmail: async (m) => { mails.push(m); }, emailOf: async () => 'owner@example.test', siteUrl: 'https://example.test', now: () => t });
+  const r = await w.run();
+  assert.equal(r.telegram, true);
+  assert.equal(r.mailed, true);
+  assert.ok(r.items > 0);
+  assert.match(sent[0], /^🗓 <b>本週變動（10\/13–10\/19）<\/b>/);
+  assert.match(sent[0], /<b>過去 7 天<\/b>/);
+  assert.match(sent[0], /【比率】台新 轉/);
+  assert.match(sent[0], /https:\/\/example\.test\/#rules$/);
+  assert.equal(mails[0].to, 'owner@example.test');
+  assert.match(mails[0].subject, /^【機票搜索雷達】本週變動 \d+ 項：/);
+  t += 13 * 3600e3; // the evening run, same week
+  assert.deepEqual(await w.run(), { already: '2026-W43' });
+  t = Date.parse('2026-10-26T00:10:00Z');
+  await w.run();
+  assert.equal(sent.length, 2);
+  // Not linked and no address: nothing is marked, so the next run tries again.
+  const kv2 = memoryKv();
+  const w2 = createWeekly({ kv: kv2, src: dataSrc, notify: async () => null, now: () => Date.parse('2026-10-19T00:10:00Z') });
+  assert.equal((await w2.run()).noChannel, true);
+  assert.equal(await kv2.get('weekly:v1:last'), null);
+  assert.deepEqual(await createWeekly({ kv: kv2, src: dataSrc, off: true }).run(), { off: true });
+  // server.js runs it with the daily cron (no new cron entry), right after the promo notice.
+  const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+  assert.match(server, /'expiry,promos,weekly,deals,digest,watches,booked,alerts,hotels'/);
+  assert.match(server, /emailOf: \(\) => promoWatch\.ownerEmail\(\)/);
+  const crons = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8')).crons || [];
+  assert.deepEqual(crons.map((c) => c.path), ['/api/alerts/run', '/api/cron/daily'], 'no new cron entry');
+});

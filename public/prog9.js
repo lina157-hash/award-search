@@ -28,8 +28,91 @@ function gcmapPath(legs) {
 }
 const gcmapUrl = (legs) => { const p = gcmapPath(legs); return p ? `https://www.gcmap.com/mapui?P=${p}` : ''; };
 
+const P9_KIND = { start: ['開始', 'ok'], end: ['結束', ''], rule: ['規則', 'until'], alliance: ['聯盟', 'soon'], rate: ['比率', 'until soon'] };
+const p9Src1 = (p) => (p.sources || []).find((s) => s?.url) || (p.source?.url ? p.source : null);
+const p9PromoWhat = (p) => (p.type === 'award' ? '哩程票特惠' : p.type === 'buy' ? '買哩促銷' : '轉點加贈');
+
+// What changed in the data files: `past` = dated within the last `back` days (newest first), `next` = within the next
+// `ahead` days (soonest first). src: { promos, history, log, changes, alliances, transfers, airlineName? }.
+// Items: { date, kind: start|end|rule|alliance|rate, title, note, source }.
+function recentChanges(src, today, { back = 30, ahead = 30 } = {}) {
+  const from = p9AddDays(today, -back);
+  const to = p9AddDays(today, ahead);
+  const past = [];
+  const next = [];
+  const seen = new Set();
+  const put = (x) => {
+    const id = `${x.kind}|${x.date}|${x.title}`;
+    if (seen.has(id)) return;
+    seen.add(id);
+    // A bank rate or a promo's last day that is today is still ahead; anything else dated today has happened.
+    const ahead = x.date > today || (x.date === today && (x.kind === 'rate' || x.kind === 'end'));
+    if (!ahead && x.date >= from) past.push(x);
+    else if (ahead && x.date <= to) next.push(x);
+  };
+  for (const p of [...(src.promos || []), ...(src.history || [])]) {
+    if (!p9Iso(p.start) || !p9Iso(p.end)) continue;
+    const what = p9PromoWhat(p);
+    if (p.start >= from && p.start <= today) put({ date: p.start, kind: 'start', title: p.title, note: `${what}・到 ${p9Md(p.end)}`, source: p9Src1(p) });
+    if (p.end < today && p.end >= from) put({ date: p.end, kind: 'end', title: p.title, note: `${what}已結束`, source: p9Src1(p) });
+    else if (p.end >= today && p.start <= today) put({ date: p.end, kind: 'end', title: p.title, note: p.type === 'award' ? '最後開票日' : p.type === 'buy' ? '最後一天' : '最後轉點日', source: p9Src1(p) });
+  }
+  for (const c of src.log || []) if (p9Iso(c.date) && c.date <= today) put({ date: c.date, kind: c.kind === 'alliance' ? 'alliance' : 'rule', title: c.title, note: c.advice || '', source: c.source || null });
+  for (const c of src.changes || []) if (p9Iso(c.date) && c.date > today) put({ date: c.date, kind: 'rule', title: c.title, note: c.advice || '', source: c.source || null, pct: c.pct });
+  const VERB = { joined: '加入', left: '退出', leaving: '退出', upcoming: '加入' };
+  for (const a of src.alliances || []) {
+    const al = String(a.name || '').replace(/\s+[A-Za-z].*$/, '');
+    for (const n of a.memberNotes || []) {
+      if (!p9Iso(n.date) || !VERB[n.status]) continue;
+      const name = src.airlineName ? src.airlineName(n.code) : n.code;
+      put({ date: n.date, kind: 'alliance', title: `${name}${VERB[n.status]}${al}`, note: '', source: [].concat(n.source || [])[0] || null });
+    }
+  }
+  // One line per bank and date: 「台新 轉華航 華夏哩程、長榮…的比率保證期限」.
+  const rates = new Map();
+  for (const t of src.transfers || []) {
+    const d = [t.validUntil, ...(Array.isArray(t.rates) ? t.rates.map((r) => r.validUntil) : [])].filter(p9Iso).sort()[0];
+    if (!d) continue;
+    const k = `${t.bank}|${d}`;
+    const r = rates.get(k) || { date: d, bank: t.bank, to: [], source: t.source || null };
+    for (const n of [].concat(t.toName || [])) if (n && !r.to.includes(n)) r.to.push(n);
+    rates.set(k, r);
+  }
+  for (const r of rates.values()) {
+    put({ date: r.date, kind: 'rate', title: `${r.bank} 轉${r.to.join('、') || '哩程'}的比率保證期限`, note: r.date < today ? '期限已過，比率可能已調整' : '之後比率可能調整，要用目前的比率請在這天前轉點', source: r.source });
+  }
+  past.sort((a, b) => b.date.localeCompare(a.date));
+  next.sort((a, b) => a.date.localeCompare(b.date));
+  return { past, next };
+}
+
+// The owner's weekly 本週變動: the last 7 days (today included) and the next 14. Null when there is nothing to say.
+// Returns { count, chat (Telegram HTML), text (plain), subject, html (mail) }.
+function weeklyDigest(src, today, siteUrl = '') {
+  const { past } = recentChanges(src, today, { back: 6, ahead: 0 });
+  const { next: ahead } = recentChanges(src, today, { back: 0, ahead: 14 });
+  if (!past.length && !ahead.length) return null;
+  const tag = (x) => `【${P9_KIND[x.kind][0]}】`;
+  const line = (x, withDate) => `${withDate ? `${p9Md(x.date)} ` : ''}${tag(x)}${x.title}${x.note ? `（${x.note}）` : ''}`;
+  const head = `本週變動（${p9Md(p9AddDays(today, -6))}–${p9Md(today)}）`;
+  const link = siteUrl ? `${siteUrl}/#rules` : '';
+  const block = (h, list, d) => (list.length ? `${h}\n${list.map((x) => `• ${line(x, d)}`).join('\n')}` : '');
+  const chat = [`🗓 <b>${p9Esc(head)}</b>`,
+    past.length ? `<b>過去 7 天</b>\n${past.map((x) => `• ${p9Esc(line(x, false))}`).join('\n')}` : '',
+    ahead.length ? `<b>接下來 14 天</b>\n${ahead.map((x) => `• ${p9Esc(line(x, true))}`).join('\n')}` : '',
+    link ? p9Esc(link) : ''].filter(Boolean).join('\n\n');
+  const text = [head, block('過去 7 天', past, false), block('接下來 14 天', ahead, true), link].filter(Boolean).join('\n\n');
+  const li = (x, d) => `<li>${p9Esc(line(x, d))}${x.source?.url ? `（<a href="${p9Esc(x.source.url)}">${p9Esc(x.source.label || '來源')}</a>）` : ''}</li>`;
+  const html = `<div style="font-family:system-ui,sans-serif;line-height:1.6"><h2 style="font-size:18px">${p9Esc(head)}</h2>
+    ${past.length ? `<p><b>過去 7 天</b></p><ul>${past.map((x) => li(x, false)).join('')}</ul>` : ''}
+    ${ahead.length ? `<p><b>接下來 14 天</b></p><ul>${ahead.map((x) => li(x, true)).join('')}</ul>` : ''}
+    ${link ? `<p><a href="${p9Esc(link)}">打開規則庫「最近變動」</a></p>` : ''}<p style="color:#777;font-size:13px">機票搜索雷達・每週一次，內容來自網站的資料檔與官方來源。</p></div>`;
+  const count = past.length + ahead.length;
+  return { count, chat, text, html, subject: `【機票搜索雷達】本週變動 ${count} 項：${(past[0] || ahead[0]).title}` };
+}
+
 if (typeof module === 'object' && module.exports) {
-  module.exports = { gcmapPath, gcmapUrl };
+  module.exports = { gcmapPath, gcmapUrl, recentChanges, weeklyDigest };
 } else {
   // ---------- browser ----------
   // #17: the link under a route. `legs` [{ from, to, surface? }].
@@ -40,6 +123,31 @@ if (typeof module === 'object' && module.exports) {
 
   const p9Link = (s) => (s?.url ? ` <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label || '來源')} ↗</a>` : '');
   const p9Today = () => (typeof twDate === 'function' ? twDate(0) : isoDate(0));
+
+  // #21 最近變動.
+  const p9Changes = (opts) => recentChanges({
+    promos: data.promos?.promos, history: data.promoHistory?.promos, log: data.changes?.log, changes: data.changes?.changes,
+    alliances: data.alliances?.alliances, transfers: data.points?.transfers, airlineName: airlineZh,
+  }, p9Today(), opts);
+  const p9Li = (x) => {
+    const [label, cls] = P9_KIND[x.kind];
+    return `<li><span class="tag ${cls}">${label}</span> <b>${esc(x.title)}</b><small>${p9Md(x.date)}${x.note ? `・${esc(x.note)}` : ''}${p9Link(x.source)}</small></li>`;
+  };
+  function recentHtml() {
+    const { past, next } = p9Changes();
+    const rates = next.filter((x) => x.kind === 'rate');
+    return `<h2 class="section" id="r-recent">最近變動</h2>
+      <p class="hint">過去 30 天網站資料裡的變動：優惠開始與結束、規則改變（附官方來源）、聯盟成員異動、轉點比率到期。</p>
+      <div class="promos recent-box"><ul>${past.map(p9Li).join('') || '<li>過去 30 天沒有記錄到變動。</li>'}</ul></div>
+      ${rates.length ? `<h3 class="sub">接下來 30 天到期的轉點比率</h3><div class="promos recent-box"><ul>${rates.map(p9Li).join('')}</ul></div>` : ''}`;
+  }
+  function recentSum() {
+    const { past, next } = p9Changes();
+    const n = (k) => past.filter((x) => x.kind === k).length;
+    const parts = [[n('start'), '個優惠開始'], [n('end'), '個結束'], [n('rule') + n('alliance'), '項規則或聯盟異動']].filter(([c]) => c).map(([c, t]) => `${c} ${t}`);
+    const rates = next.filter((x) => x.kind === 'rate').length;
+    return `過去 30 天：${parts.join('、') || '沒有變動'}${rates ? `・${rates} 家銀行比率快到期` : ''}`;
+  }
 
   // #17 好用的外部工具: links only, every one a third party.
   const P9_TOOLS = [
@@ -59,6 +167,7 @@ if (typeof module === 'object' && module.exports) {
 
   // [html, one-line summary] for renderRulesBody (app.js), in page order; empty ones left out.
   window.prog9Sections = () => [
+    [recentHtml(), recentSum()],
     [toolsHtml(), `${P9_TOOLS.length} 個第三方工具：距離、航點、累積、座位圖`],
   ].filter(([h]) => h);
 }
