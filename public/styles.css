@@ -1924,8 +1924,9 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 a.panel-link { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; font-weight: 700; font-size: .9rem; text-decoration: none; color: var(--preset-label); background: var(--preset-bg); border: 1px solid var(--preset-border); }
 a.panel-link span { font-weight: 400; }
 a.panel-link:hover { border-color: var(--accent); }
-/* The same height as the 機位提醒 and 中停／開口組合 pills beside it (.pill-row lines them up). */
-a.alerts-panel.panel-link { box-sizing: border-box; min-height: 36px; }
+/* The same height as the 機位提醒 and 中停／開口組合 pills beside it (.pill-row lines them up); inline-flex over
+   .alerts-panel:not([open])'s inline-block keeps its words centred in the taller phone pill. */
+a.alerts-panel.panel-link { display: inline-flex; box-sizing: border-box; min-height: 36px; }
 @media (pointer: coarse) { a.alerts-panel.panel-link { min-height: 44px; } }
 .rtw-back { margin: 0 0 4px; font-size: .9rem; }
 .rtw-back a { color: inherit; }
