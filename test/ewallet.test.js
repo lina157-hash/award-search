@@ -163,7 +163,7 @@ test('account sync merges expiry dates per program like balances', () => {
 
 // ---------- public/ewallet.js in a sandbox ----------
 const read = (f) => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', f), 'utf8'));
-function sandbox(today = '2026-10-14', bare = false) {
+function sandbox(today = '2026-10-14', bare = false, tweak = null) {
   const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
   const calcConvert = app.match(/function calcConvert\(rate, amount, mode\) \{[\s\S]*?\n\}/)[0];
   const ctx = {
@@ -176,6 +176,7 @@ function sandbox(today = '2026-10-14', bare = false) {
     programName: (k) => k,
     airlineZh: (c) => ({ OZ: '韓亞航空' }[c] || c),
   };
+  if (tweak) tweak(ctx.data);
   vm.createContext(ctx);
   vm.runInContext(`${calcConvert}\n${fs.readFileSync(path.join(__dirname, '..', 'public', 'ewallet.js'), 'utf8')}\nthis.api = { planTransfers, ewPointsFor, parseBuyPrice, buyPriceFor, buyCost, untilTag, upcomingChanges, programChangeTag, expiryOfEntry, walletExpiryList, calcConvert };`, ctx);
   return ctx.api;
@@ -216,15 +217,17 @@ test('planTransfers: fewest points, minimums and units respected, each balance u
 });
 
 test('buy price: a sale with a stated price first, else the usual price; cost per shortfall', () => {
-  const { parseBuyPrice, buyPriceFor, buyCost } = sandbox('2026-10-14');
+  // A priced sale (made up here, so the test outlives the real promos list).
+  const sale = (d) => d.promos.promos.push({ id: 'alaska-sale', type: 'buy', bank: null, program: 'alaska', title: '買點加贈', price: 'US$18.8/千哩', start: '2026-10-02', end: '2026-10-19' });
+  const { parseBuyPrice, buyPriceFor, buyCost } = sandbox('2026-10-14', false, sale);
   assert.deepEqual({ ...parseBuyPrice('US$18.8/千哩') }, { currency: 'USD', perThousand: 18.8 });
   assert.equal(parseBuyPrice('最高加贈 100%'), null);
   const alaska = buyPriceFor('alaska');
   assert.equal(alaska.perThousand, 18.8);
-  assert.equal(alaska.promo.id, 'alaska-atmos-buy-points-202610');
+  assert.equal(alaska.promo.id, 'alaska-sale');
   assert.equal(buyCost('alaska', 12000).amount, 225.6);
   // After the sale ends, the usual price.
-  assert.equal(sandbox('2026-11-01').buyPriceFor('alaska').perThousand, 37.6);
+  assert.equal(sandbox('2026-11-01', false, sale).buyPriceFor('alaska').perThousand, 37.6);
   // A sale without a price keeps the usual price and names the sale.
   const em = buyPriceFor('emirates');
   assert.equal(em.perThousand, 30);

@@ -148,26 +148,6 @@
       ]
     },
     {
-      "id": "turkish-buy-miles-202609",
-      "type": "buy",
-      "bank": null,
-      "program": "turkish",
-      "title": "土航Miles&Smiles買哩最高加贈100%",
-      "bonusPct": 100,
-      "price": null,
-      "start": "2026-09-29",
-      "end": "2026-10-15",
-      "conditions": "單筆買5萬哩起送25%、逾10萬送50%、逾25萬送100%；不可合併計算，年購上限50萬哩",
-      "confidence": "official",
-      "sources": [
-        {
-          "label": "Turkish Airlines 買哩加贈活動（繁中）",
-          "url": "https://www.turkishairlines.com/zh-tw/miles-and-smiles/campaigns/buy-miles-earn-extra-miles/",
-          "official": true
-        }
-      ]
-    },
-    {
       "id": "emirates-buy-miles-202610",
       "type": "buy",
       "bank": null,
@@ -183,36 +163,6 @@
         {
           "label": "Emirates Tiered Bonus Miles",
           "url": "https://www.emirates.com/english/special-offers/tiered-bonus-miles/",
-          "official": true
-        }
-      ]
-    },
-    {
-      "id": "alaska-atmos-buy-points-202610",
-      "type": "buy",
-      "bank": null,
-      "program": "alaska",
-      "title": "阿拉斯加Atmos買點最高加贈100%",
-      "bonusPct": 100,
-      "price": "US$18.8/千哩",
-      "start": "2026-10-02",
-      "end": "2026-10-19",
-      "conditions": "針對性優惠，各帳戶級距不同(部分達110-120%)；買3萬點起享100%；單筆上限10萬點",
-      "confidence": "secondary",
-      "sources": [
-        {
-          "label": "One Mile at a Time",
-          "url": "https://onemileatatime.com/alaska-buy-miles-promo-ending",
-          "official": false
-        },
-        {
-          "label": "The Points Party",
-          "url": "https://thepointsparty.com/articles/buy-atmos-rewards-points-100-percent-bonus-october-2026",
-          "official": false
-        },
-        {
-          "label": "Alaska Airlines 購買點數頁",
-          "url": "https://www.alaskaair.com/atmosrewards/content/buy-share-gift-points",
           "official": true
         }
       ]
