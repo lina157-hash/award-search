@@ -108,13 +108,6 @@
         "basis": "flown",
         "max": 50000,
         "chartUrl": "https://flights.cathaypacific.com/en_HK/redeem-flights/flight-award-chart.html#tab-ow-multi-carrier-award",
-        "secondary": {
-          "note": "哩數表是兩家媒體整理、數字一致的版本（國泰官網的表格要執行 JavaScript 才顯示，本站讀不到），2023-10-01 起適用，2026 年 5 月調整時沒有變動，僅供估算。",
-          "sources": [
-            { "label": "SuiteSmile（2026-09-13 更新）", "url": "https://suitesmile.com/blog/2026/05/02/cathay-pacific-asia-miles-award-charts/", "official": false, "checked": "2026-10-16" },
-            { "label": "AwardWallet（2026-09-27 更新）", "url": "https://awardwallet.com/blog/?p=80974", "official": false, "checked": "2026-10-16" }
-          ]
-        },
         "bands": [
           { "upTo": 1000, "Y": 30000, "J": 60000, "F": 75000 },
           { "upTo": 1500, "Y": 35000, "J": 65000, "F": 85000 },
@@ -145,7 +138,7 @@
         "validity": { "months": 12, "from": "issue" }
       },
       "summary": [
-        "依各段飛行距離相加的總距離決定區間（開口不算），最多 50,000 哩；沒有豪華經濟艙；哩數表是媒體整理的版本，僅供估算",
+        "依各段飛行距離相加的總距離決定區間（開口不算），最多 50,000 哩；沒有豪華經濟艙；哩數依國泰官網「寰宇一家」聯盟成員獎勵換算表（13 個區域，2026-10-16 核對），官網註明這張表用於來回獎勵機票",
         "不搭國泰時要 2 家寰宇一家航空；有搭國泰時要 3 家以上（只有國泰加 1 家夥伴屬於一般標準獎勵）",
         "最多 5 次停留，另外可以轉機 2 次、開口 2 次；同一城市只能停留或開口 1 次，而且不能是出發地或目的地",
         "條款沒寫要不要回到出發國家，但哩數表是給來回（環狀）行程用的，規劃時最好回到出發國家",
@@ -155,7 +148,8 @@
       "sources": [
         { "label": "國泰會員計劃條款 2026（寰宇一家多航空公司獎勵第 1–6 條）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "official": true, "checked": "2026-10-16" },
         { "label": "國泰會員計劃條款 2026 中文版（「寰宇一家」聯盟成員獎勵、缺口行程）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-zhTW.pdf", "official": true, "checked": "2026-10-16" },
-        { "label": "國泰：飛行獎勵哩數表（需瀏覽器開啟）", "url": "https://flights.cathaypacific.com/en_HK/redeem-flights/flight-award-chart.html", "official": true, "checked": "2026-10-16" }
+        { "label": "國泰官網：飛行獎勵換算表 › 「寰宇一家」聯盟成員獎勵換算表（哩數）",
+          "url": "https://flights.cathaypacific.com/en_HK/redeem-flights/flight-award-chart.html#tab-ow-multi-carrier-award", "official": true, "checked": "2026-10-16" }
       ]
     },
     {

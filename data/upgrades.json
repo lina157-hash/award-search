@@ -3,7 +3,7 @@
   "note": "用哩程把買好的現金票升等：所需哩程都是單程；多數航空每個航段分開算，新航依出發地到目的地計價。要先開好可升等票價的機票，而且要有升等機位（付費座位有空不代表能升等）；稅金、差額另計。區域依出發地與目的地判斷，同一條航線換機型價格不變（星宇除外，看兩艙或四艙機型）。",
   "fields": {
     "areas": "區域定義：countries 國家代碼、airports 機場、excludeAirports 排除的機場；機場清單優先。亞洲、歐洲列出常見國家，沒列到的國家要自己加。",
-    "airlines": "每家航空：code 是 IATA 代碼（顯示標誌），group 是選單分組，unit 是點數單位（沒寫就是哩）；fares 依原艙等列出可升等的票價（id 對應 rows 的 miles 鍵，一張表只顯示它有標價的票價）；charts 每張表一種升等（from → to，Y 經濟、W 豪經、J 商務、F 頭等），rows 依序比對 between 兩端區域，第一筆符合的為準，oneWay 為 true 時只算 between[0] 出發到 between[1]；miles 為 null 表示不適用。distance 類（全日空、澳航）依航段距離 bands 計價，band 的 miles 是數字（每種票價相同）或依 fares id 分開的物件；fares 的 codesFromJapan 是從日本出發時的可升等艙等。"
+    "airlines": "每家航空：code 是 IATA 代碼（顯示標誌），group 是選單分組，unit 是點數單位（沒寫就是哩）；fares 依原艙等列出可升等的票價（id 對應 rows 的 miles 鍵，一張表只顯示它有標價的票價）；charts 每張表一種升等（from → to，Y 經濟、W 豪經、J 商務、F 頭等），rows 依序比對 between 兩端區域，第一筆符合的為準，oneWay 為 true 時只算 between[0] 出發到 between[1]；miles 為 null 表示不適用。distance 類（全日空、澳航）依航段距離 bands 計價，band 的 miles 是數字（每種票價相同）或依 fares id 分開的物件；fares 的 codesFromJapan 是從日本出發時的可升等艙等；band 的 name 是距離區域名稱，type2 列出國家時，起點或終點在這些國家改用 band 的 name2／miles2（國泰短途類別 2）。"
   },
   "areas": {
     "TW": { "countries": ["TW"] },
@@ -228,6 +228,39 @@
         { "label": "Money101：星宇商務艙與哩程升等（2026-09-09）", "url": "https://www.money101.com.tw/blog/星宇商務艙", "official": false }
       ],
       "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "cx",
+      "name": "國泰航空",
+      "code": "CX",
+      "group": "香港",
+      "program": "亞洲萬里通 Asia Miles",
+      "kind": "distance",
+      "confidence": "official",
+      "type2": { "countries": ["BD", "IN", "ID", "JP", "NP", "LK"], "note": "起點或終點在孟加拉、印度、印尼、日本、尼泊爾、斯里蘭卡，用短途類別 2" },
+      "charts": [
+        { "from": "Y", "to": "W", "label": "", "fares": [{ "label": "經濟艙（Flex、Essential）", "codes": ["Y", "B", "H", "K", "M", "L", "V"] }],
+          "bands": [{ "upTo": 750, "name": "超短途", "miles": 6000 }, { "upTo": 2750, "name": "短途類別 1", "miles": 10000, "name2": "短途類別 2", "miles2": 13000 }, { "upTo": 5000, "name": "中途", "miles": 21000 }, { "upTo": 7500, "name": "長途", "miles": 29000 }, { "upTo": null, "name": "超長途", "miles": 43000 }] },
+        { "from": "Y", "to": "J", "label": "只限沒有特選經濟艙的航班", "fares": [{ "label": "經濟艙（Flex、Essential）", "codes": ["Y", "B", "H", "K", "M", "L", "V"] }],
+          "bands": [{ "upTo": 750, "name": "超短途", "miles": 11000 }, { "upTo": 2750, "name": "短途類別 1", "miles": 19000, "name2": "短途類別 2", "miles2": 23000 }, { "upTo": 5000, "name": "中途", "miles": 42000 }, { "upTo": 7500, "name": "長途", "miles": 63000 }, { "upTo": null, "name": "超長途", "miles": 82000 }] },
+        { "from": "W", "to": "J", "label": "", "fares": [{ "label": "特選經濟艙（Flex）", "codes": ["W", "R"] }],
+          "bands": [{ "upTo": 750, "name": "超短途", "miles": 8000 }, { "upTo": 2750, "name": "短途類別 1", "miles": 14000, "name2": "短途類別 2", "miles2": 17000 }, { "upTo": 5000, "name": "中途", "miles": 30000 }, { "upTo": 7500, "name": "長途", "miles": 44000 }, { "upTo": null, "name": "超長途", "miles": 58000 }] },
+        { "from": "J", "to": "F", "label": "", "fares": [{ "label": "商務艙（Flex、Essential、Light）", "codes": ["J", "C", "D", "P", "I"] }],
+          "bands": [{ "upTo": 750, "name": "超短途", "miles": 15000 }, { "upTo": 2750, "name": "短途類別 1", "miles": 26000, "name2": "短途類別 2", "miles2": 30000 }, { "upTo": 5000, "name": "中途", "miles": 54000 }, { "upTo": 7500, "name": "長途", "miles": 75000 }, { "upTo": null, "name": "超長途", "miles": 96000 }] }
+      ],
+      "rules": [
+        "只適用國泰航空銷售並營運的航班（機票號碼 160 開頭）；一次只能升一級，混艙或混航空公司的訂位不能升等。",
+        "依航段飛行距離計價，每段單程（本站用直線距離估算，接近分界的航線可能差一級）。",
+        "短途 751–2,750 哩：起點或終點在孟加拉、印度、印尼、日本、尼泊爾、斯里蘭卡用「短途類別 2」，其他用「短途類別 1」。",
+        "沒有特選經濟艙的航班，經濟艙可以直接升商務艙。",
+        "最早出發前 360 天可訂；候補到出發前 96 小時還沒確認就取消，同時最多 10 筆候補。",
+        "稅金與附加費差額另付；累積的哩數和會籍積分依原本購買的艙等。"
+      ],
+      "sources": [
+        { "label": "國泰官網：飛行獎勵換算表 ›「亞洲萬里通」客艙提升獎勵（2026-10-16 核對）", "url": "https://flights.cathaypacific.com/en_HK/redeem-flights/flight-award-chart.html", "official": true },
+        { "label": "國泰會員計劃條款 2026（客艙提升獎勵第 1–27 條、短途類別定義）", "url": "https://www.cathaypacific.com/content/dam/focal-point/cx/membership/programme-update/Cathay-membership-programme-terms-and-conditions-2026-EN.pdf", "official": true }
+      ],
+      "lastVerified": "2026-10-16"
     },
     {
       "id": "ana",

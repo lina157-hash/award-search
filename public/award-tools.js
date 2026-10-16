@@ -102,7 +102,7 @@ function upgradePairs(air) {
 // Returns { air, charts: [{ label, zone, fares: [{ label, codes, miles }] }] } or null for an unknown airline.
 // A zone row with oneWay prices only between[0] → between[1]; a zone chart lists only the fares its rows price.
 // A distance band's miles are one number for every fare, or one per fare id; fromJapan is set only for charts
-// whose eligible classes depend on starting in Japan (ANA).
+// whose eligible classes depend on starting in Japan (ANA); miles2/name2 apply when either end is in air.type2's countries.
 function upgradeQuote(upg, airlineId, a, b, from, to, dist) {
   const air = upg?.airlines?.find((x) => x.id === airlineId);
   if (!air) return null;
@@ -114,9 +114,13 @@ function upgradeQuote(upg, airlineId, a, b, from, to, dist) {
       const band = ch.bands[i];
       const lo = i ? ch.bands[i - 1].upTo + 1 : 0;
       const fromJapan = ch.fares.some((f) => f.codesFromJapan) ? a.country === 'JP' : null;
-      charts.push({ label: ch.label, zone: `航段距離 ${lo.toLocaleString('en-US')}${band.upTo == null ? ' 哩以上' : `–${band.upTo.toLocaleString('en-US')} 哩`}`, band: [lo, band.upTo], fromJapan,
+      // Cathay's short-haul type 2: a second price when either end is in one of the listed countries.
+      const two = band.miles2 != null && Boolean(air.type2?.countries?.some((c) => c === a.country || c === b.country));
+      const miles = two ? band.miles2 : band.miles;
+      const name = two ? band.name2 : band.name;
+      charts.push({ label: ch.label, zone: `${name ? `${name}・` : ''}航段距離 ${lo.toLocaleString('en-US')}${band.upTo == null ? ' 哩以上' : `–${band.upTo.toLocaleString('en-US')} 哩`}`, band: [lo, band.upTo], fromJapan, type2: two,
         fares: ch.fares.map((f) => ({ label: f.label, codes: fromJapan && f.codesFromJapan ? f.codesFromJapan : f.codes,
-          miles: typeof band.miles === 'object' ? band.miles?.[f.id] ?? null : band.miles })) });
+          miles: typeof miles === 'object' ? miles?.[f.id] ?? null : miles })) });
       continue;
     }
     const row = ch.rows.find((r) => {

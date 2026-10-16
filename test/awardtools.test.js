@@ -176,14 +176,15 @@ test('upgrades.json: every airline has a logo code, a picker group, a date and o
   }
   const ids = upg.airlines.map((a) => a.id);
   assert.equal(new Set(ids).size, ids.length);
-  for (const id of ['jal', 'sq', 'vn', 'qf', 'lh', 'tk']) assert.ok(ids.includes(id), id);
+  for (const id of ['cx', 'jal', 'sq', 'vn', 'qf', 'lh', 'tk']) assert.ok(ids.includes(id), id);
 });
 
 test('upgrade picker: airlines grouped by home region in data order', () => {
   const g = T.upgradeGroups(upg);
-  assert.deepEqual(g.map((x) => x.name), ['台灣', '日本', '東南亞', '澳洲', '歐洲']);
+  assert.deepEqual(g.map((x) => x.name), ['台灣', '香港', '日本', '東南亞', '澳洲', '歐洲']);
   assert.deepEqual(g[0].airlines.map((a) => a.id), ['eva', 'ci', 'starlux']);
-  assert.deepEqual(g[1].airlines.map((a) => a.id), ['ana', 'jal']);
+  assert.deepEqual(g[1].airlines.map((a) => a.id), ['cx']);
+  assert.deepEqual(g[2].airlines.map((a) => a.id), ['ana', 'jal']);
   // An airline without a group lands in 其他, last.
   const extra = { airlines: [{ id: 'x' }, ...upg.airlines.slice(0, 1)] };
   assert.deepEqual(T.upgradeGroups(extra).map((x) => x.name), ['台灣', '其他']);
@@ -296,4 +297,26 @@ test('upgrade quotes: Turkish Airlines from Türkiye to each region', () => {
   assert.deepEqual(miles(quote('tk', ist, ap('ECN', 'CY'), 'Y-J')), [[22000, 20000]]);
   assert.equal(quote('tk', TPE, ap('LHR', 'GB'), 'Y-J').charts.length, 0);
   assert.deepEqual(upgradePairsOf('tk'), ['Y-J']);
+});
+
+test('upgrade quotes: Cathay by sector distance, with short-haul type 2 for Japan, India and the rest of the list', () => {
+  const hkg = ap('HKG', 'HK');
+  // The official chart (checked 2026-10-16): ultra-short to ultra-long, each upgrade one class up.
+  assert.deepEqual(miles(quote('cx', TPE, hkg, 'Y-W', 500)), [[6000]]);
+  assert.equal(quote('cx', TPE, hkg, 'Y-W', 500).charts[0].zone, '超短途・航段距離 0–750 哩');
+  assert.deepEqual(miles(quote('cx', hkg, ap('BKK', 'TH'), 'Y-J', 1050)), [[19000]]);
+  assert.match(quote('cx', hkg, ap('BKK', 'TH'), 'Y-J', 1050).charts[0].zone, /^短途類別 1・/);
+  // Japan at either end: type 2.
+  const nrt = quote('cx', TPE, ap('NRT', 'JP'), 'Y-J', 1330);
+  assert.deepEqual([miles(nrt), nrt.charts[0].type2, nrt.charts[0].label], [[[23000]], true, '只限沒有特選經濟艙的航班']);
+  assert.match(nrt.charts[0].zone, /^短途類別 2・航段距離 751–2,750 哩$/);
+  assert.deepEqual(miles(quote('cx', ap('DEL', 'IN'), hkg, 'W-J', 2340)), [[17000]]);
+  assert.deepEqual(miles(quote('cx', hkg, ap('NRT', 'JP'), 'J-F', 1820)), [[30000]]);
+  // Medium, long and ultra-long have one price for every route.
+  assert.deepEqual(miles(quote('cx', hkg, ap('SYD', 'AU'), 'Y-W', 4580)), [[21000]]);
+  assert.deepEqual(miles(quote('cx', hkg, ap('LHR', 'GB'), 'J-F', 5990)), [[75000]]);
+  assert.deepEqual(miles(quote('cx', hkg, ap('JFK', 'US'), 'W-J', 8070)), [[58000]]);
+  assert.deepEqual(miles(quote('cx', hkg, ap('DEL', 'IN'), 'Y-W', 7600)), [[43000]], 'type 2 never touches the long bands');
+  assert.deepEqual(quote('cx', TPE, hkg, 'J-F', 500).charts[0].fares[0].codes, ['J', 'C', 'D', 'P', 'I']);
+  assert.deepEqual(T.upgradePairs(upg.airlines.find((x) => x.id === 'cx')), ['Y-W', 'Y-J', 'W-J', 'J-F']);
 });

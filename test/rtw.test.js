@@ -109,11 +109,14 @@ test('distance bands: JAL counts flown miles only, Qantas adds the surface leg; 
   assert.ok(R.rtwPrice(prog('jal_ow'), fake(9000), 'W', charts).noCabin, 'JAL has no premium economy column');
   assert.equal(R.rtwPrice(prog('mm_world'), t, 'F', charts).miles, 540000);
   assert.ok(R.rtwPrice(prog('tap_rtw'), t, 'F', charts).noCabin);
-  // Asia Miles: the official chart page is script-only, so the bands come from media copies and are marked 估算.
+  // Asia Miles: Cathay's own 「寰宇一家」聯盟成員獎勵換算表 (13 zones, checked against the official page 2026-10-16).
   const am = plain(R.rtwPrice(prog('asiamiles_ow'), t, 'J', charts));
   assert.deepEqual([am.miles, am.band.lo, am.band.hi, am.back], [230000, 18001, 20000, 0]);
-  const sec = prog('asiamiles_ow').price.secondary;
-  assert.ok(sec.note && sec.sources.length && sec.sources.every((s) => s.official === false && /^https:\/\//.test(s.url)));
+  const amp = prog('asiamiles_ow').price;
+  assert.ok(!amp.secondary, 'no longer an estimate');
+  assert.equal(amp.bands.length, 13);
+  assert.deepEqual(['Y', 'J', 'F'].map((c) => [amp.bands[0][c], amp.bands.at(-1)[c]]), [[30000, 160000], [60000, 280000], [75000, 380000]]);
+  assert.ok(prog('asiamiles_ow').sources.some((s) => s.official && s.url === amp.chartUrl));
   // Qantas prices a one-way trip as if it flew home: TPE → … → SYD adds SYD → TPE.
   const oneWay = trip(plan('TPE HKG LHR JFK LAX SYD'));
   const qo = plain(R.rtwPrice(prog('qantas_ow'), oneWay, 'J', charts));

@@ -14,8 +14,8 @@
     { "id": "long", "name": "長程", "max": 7500 },
     { "id": "ultralong", "name": "超長程", "max": null }
   ],
-  "shortType2Note": "短程第二類：往返日本、印度、印尼、尼泊爾、斯里蘭卡、哈薩克的航線。",
-  "shortType2Airports": ["NRT", "HND", "KIX", "NGO", "FUK", "CTS", "OKA", "KOJ", "DEL", "BOM", "BLR", "MAA", "HYD", "CCU", "CGK", "DPS", "SUB", "KTM", "CMB", "ALA", "NQZ"],
+  "shortType2Note": "短程第二類：起點、終點或折返點在孟加拉、印度、印尼、日本、尼泊爾、斯里蘭卡的航線（國泰會員計劃條款 2026，飛行獎勵一般條件第 9 條）。",
+  "shortType2Airports": ["NRT", "HND", "KIX", "NGO", "FUK", "CTS", "OKA", "KOJ", "DEL", "BOM", "BLR", "MAA", "HYD", "CCU", "CGK", "DPS", "SUB", "KTM", "CMB", "DAC"],
   "charts": {
     "cx": {
       "name": "國泰航班（標準獎勵）",
