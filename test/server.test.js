@@ -485,9 +485,17 @@ test('cash month calendar: demo grid, validation and RapidAPI round-trip fallbac
     return new Response(JSON.stringify({ status: true, data: [{ departure: '2026-11-01', price: 9000 }, { departure: '2026-11-02', price: 'unavailable' }] }));
   } });
   const cal = await q.calendar({ departure_id: 'TPE', arrival_id: 'NRT', start_date: '2026-11-01', end_date: '2026-11-30', trip_days: 5, travel_class: 1, adults: 1 });
-  assert.deepEqual(cal, { round: false, days: [{ date: '2026-11-01', price: 9000 }] });
+  assert.deepEqual(cal, { round: false, days: [{ date: '2026-11-01', price: 9000 }], currency: 'USD' });
   assert.equal(seen.length, 2);
   assert.match(seen[1], /getCalendarPicker\?.*start_date=2026-11-01/);
+  assert.match(seen[1], /currency=USD/);
+  // The grid is in US dollars: NT$ at the day's rate, marked as converted; the demo grid (NT$) passes through.
+  const { calendarTwd } = require('../lib/rapidflights');
+  assert.deepEqual(calendarTwd({ round: false, days: [{ date: '2026-11-01', price: 129 }, { date: '2026-11-02', price: 191 }], currency: 'USD' }, 31.96),
+    { round: false, currency: 'TWD', days: [{ date: '2026-11-01', price: 4123 }, { date: '2026-11-02', price: 6104 }], fx: { from: 'USD', rate: 31.96 } });
+  const demo = { round: true, days: [{ date: '2026-11-01', price: 9000 }] };
+  assert.equal(calendarTwd(demo, 31.96), demo);
+  assert.equal(calendarTwd(cal, 0), cal);
   assert.doesNotMatch(seen[1], /outbound_date|trip_type/);
 });
 

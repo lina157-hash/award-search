@@ -1016,8 +1016,8 @@ async function handleCashCalendar(q, req) {
   if (CASH_MODE === 'mock') return { configured: true, mock: true, ...mock.mockCashCalendar(params) };
   if (!rapidQuery) throw new CashError('整月價格要用 RapidAPI 的 Google Flights API，網站還沒設定 RAPIDAPI_KEY', 503);
   let spent = false;
-  const body = await shared('cashcal:' + JSON.stringify(params), 3600, () => { spent = true; return rapidQuery.calendar(params); });
-  return { configured: true, provider: 'rapid', cached: !spent, ...body };
+  const body = await shared('cashcal2:' + JSON.stringify(params), 3600, () => { spent = true; return rapidQuery.calendar(params); });
+  return { configured: true, provider: 'rapid', cached: !spent, ...rapid.calendarTwd(body, (await handleFx()).rates.USD) };
 }
 
 // A RapidAPI seller's booking page (one more request), fetched when the user presses its button.

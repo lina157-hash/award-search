@@ -2403,7 +2403,7 @@ function cashMonthHtml() {
   const cheapest = m.days.filter((d) => d.price === low).map((d) => dayLabel(d.date)).slice(0, 3).join('、');
   return `<div class="cash-month">
     <h2 class="section">每天最低價 <small>${m.round ? `來回、玩 ${tripDays(r)} 天的總價` : '單程價格'}${r.adults > 1 ? `，${r.adults} 人總價` : ''}；點日期用那天重新搜尋（再用 1 次查價）</small></h2>
-    <p class="hint">最便宜：${cheapest} NT$${fmt(low)}${m.roundFailed ? '。來回的每日價格查不到，先顯示單程價格。' : ''}${m.mock ? '（示範資料）' : ''}${m.cached ? '（剛查過，這次沒有用到額度）' : ''}</p>
+    <p class="hint">最便宜：${cheapest} NT$${fmt(low)}${m.roundFailed ? '。來回的每日價格查不到，先顯示單程價格。' : ''}${m.fx ? '（Google 給的是美金，已用今天的匯率換成台幣，是約略價格）' : ''}${m.mock ? '（示範資料）' : ''}${m.cached ? '（剛查過，這次沒有用到額度）' : ''}</p>
     <div class="cal-months">${months.join('')}</div>
     <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴${holidayLegend(HOL.cash)}</div>
   </div>`;
@@ -2419,7 +2419,7 @@ async function loadCashMonth() {
     if (r.ret) p.set('trip_days', String(tripDays(r)));
     const body = await cashApi(`/api/cash/calendar?${p}`);
     if (n !== seq.cashMonth) return;
-    cash.month = { start, end, days: body.days || [], round: body.round, roundFailed: Boolean(r.ret) && !body.round, mock: body.mock, cached: Boolean(body.cached) };
+    cash.month = { start, end, days: body.days || [], round: body.round, roundFailed: Boolean(r.ret) && !body.round, mock: body.mock, cached: Boolean(body.cached), fx: body.fx || null };
     loadCashQuota();
     // Mark holidays across the whole grid, not just the trip dates; a newer search or grid drops this answer.
     fetchHolidays(r.destination, start, end).then((info) => {
