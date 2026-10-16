@@ -420,7 +420,15 @@ if (typeof document !== 'undefined') {
         <div class="ac-list" id="${id}-ac" role="listbox" aria-label="下一站建議" hidden></div>
       </div></div></form>`;
     const form = $('form', host);
-    const pk = createAirportPicker(form, 'next');
+    // A whole route pasted (TPE-HKG-LHR-JFK-TPE, or legs: TPE-HKG, HKG-LHR) adds every stop in order (first airport of
+    // a stop like YVR/YYZ).
+    const onRoute = (routes) => {
+      const codes = [];
+      for (const r of routes) r.forEach((st, i) => { if (i || codes.at(-1) !== st[0]) codes.push(st[0]); });
+      onAdd(codes);
+      return true;
+    };
+    const pk = createAirportPicker(form, 'next', { onRoute });
     form.next.addEventListener('change', () => {
       const codes = pk.codes();
       if (!codes.length) return;
