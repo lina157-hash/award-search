@@ -42,6 +42,30 @@ function accSegEarn(rule, cls, seg) {
   if (pct > 0 && rule.min && !String(rule.minExcept || '').includes(cls)) miles = Math.max(miles, rule.min);
   return { lo: miles, hi: miles, pct };
 }
+// Programs that give a number per cabin, not per booking code → { lo, hi, pcts?, zone? } for one flight, or null when
+// the cabin is not on the chart. cabinRates: a % per cabin ([lo, hi] where the program splits a cabin it does not map
+// to codes). cabinMiles: fixed miles per distance band (zones), [lo row, hi row] for a split cabin; `routes` are the
+// pairs the program lists with their own numbers (Qantas: Australia's east-coast airports ↔ Hong Kong).
+function accCabinEarn(rule, cab, seg) {
+  const two = (v) => [].concat(v, v).slice(0, 2);
+  if (rule.cabinRates) {
+    if (rule.cabinRates[cab] == null) return null;
+    const [lo, hi] = two(rule.cabinRates[cab]);
+    return { lo: Math.round((seg.dist * lo) / 100), hi: Math.round((seg.dist * hi) / 100), pcts: [lo, hi] };
+  }
+  const on = (x) => (x.between.includes(seg.from) && x.and.includes(seg.to)) || (x.between.includes(seg.to) && x.and.includes(seg.from));
+  const fixed = (rule.routes || []).find(on);
+  if (fixed) {
+    if (fixed.cabinMiles[cab] == null) return null;
+    const [lo, hi] = two(fixed.cabinMiles[cab]);
+    return { lo, hi, zone: -1 };
+  }
+  const v = rule.cabinMiles?.[cab];
+  if (v == null) return null;
+  const zi = accZone(rule.zones, seg.dist, seg.countries);
+  const [lo, hi] = Array.isArray(v[0]) ? [v[0][zi], v[1][zi]] : [v[zi], v[zi]];
+  return { lo, hi, zone: zi };
+}
 // Every program the itinerary's airlines credit to, with the miles for the picked booking classes (picks: carrier →
 // letter, '' = unknown: the range over that airline's codes in `cabin`). segs: [{ carrier, from, to, dist, countries }].
 function accrualRows(A, segs, picks, cabin) {
@@ -57,15 +81,14 @@ function accrualRows(A, segs, picks, cabin) {
       if (rule.pending) { row.pending = rule; continue; }
       if (!(s.dist > 0)) continue;
       const pick = picks?.[s.carrier] || '';
-      // cabinRates: a % per cabin, not per booking code ([lo, hi] where the program splits a cabin it does not map to codes).
-      if (rule.cabinRates) {
+      if (rule.cabinRates || rule.cabinMiles) {
         const cab = pick ? Object.keys(C.cabins || {}).find((k) => C.cabins[k].includes(pick)) : cabin;
-        const r = rule.cabinRates[cab];
-        if (r == null) { if (!row.noCode.includes(s.carrier)) row.noCode.push(s.carrier); continue; }
-        const [lo, hi] = [].concat(r, r);
-        row.lo += Math.round((s.dist * lo) / 100);
-        row.hi += Math.round((s.dist * hi) / 100);
-        for (const x of [lo, hi]) if (!row.pcts.includes(x)) row.pcts.push(x);
+        const e = accCabinEarn(rule, cab, s);
+        if (!e) { if (!row.noCode.includes(s.carrier)) row.noCode.push(s.carrier); continue; }
+        row.lo += e.lo;
+        row.hi += e.hi;
+        for (const x of e.pcts || []) if (!row.pcts.includes(x)) row.pcts.push(x);
+        if (e.zone != null) row.zone = true;
         continue;
       }
       const letters = pick ? [pick] : String(C.cabins?.[cabin] || '').split('').filter(Boolean);
@@ -116,7 +139,7 @@ function alNonstopsFrom(routes, code) {
   return out.filter((x) => !seen.has(`${x.from}${x.to}`) && seen.add(`${x.from}${x.to}`))
     .sort((x, y) => AL_TW_AIRPORTS.indexOf(x.from) - AL_TW_AIRPORTS.indexOf(y.from) || x.to.localeCompare(y.to));
 }
-if (typeof module === 'object' && module.exports) module.exports = { accZone, accSegEarn, accrualRows, accNetFare, accParseRoute, accLegSegments, alNonstopsFrom };
+if (typeof module === 'object' && module.exports) module.exports = { accZone, accSegEarn, accCabinEarn, accrualRows, accNetFare, accParseRoute, accLegSegments, alNonstopsFrom };
 
 // ---------- the calculator ----------
 const accData = () => data.airlineInfo?.accrual;
@@ -344,13 +367,14 @@ function alSheetAccrual(c) {
   const tl = data.trips?.accrual?.[c];
   if (!C) return `<p class="hint">累積比例還沒整理。${tl ? alExtLink(tl) : ''}${A.wheretocredit ? `　<a href="${esc(A.wheretocredit)}${esc(c)}" target="_blank" rel="noopener">wheretocredit.com ↗</a><sup class="mk-3p" aria-hidden="true">*</sup>（第三方）` : ''}</p>`;
   const span = (r, k) => {
-    const v = String(C.cabins?.[k] || '').split('').filter(Boolean).map((l) => r.rates?.[l] || 0);
+    const v = r.cabinRates ? [].concat(r.cabinRates[k] ?? []) : String(C.cabins?.[k] || '').split('').filter(Boolean).map((l) => r.rates?.[l] || 0);
     return v.length ? (Math.min(...v) === Math.max(...v) ? `${v[0]}%` : `${Math.min(...v)}–${Math.max(...v)}%`) : '';
   };
   const items = C.earn.map((r) => {
     const name = A.programs[r.program]?.name || r.program;
     if (r.pending) return `<li><b>${esc(name)}</b>　<span class="tag verify">官方資料待補</span> ${alExtLink(r.source, '官方')}</li>`;
-    const what = r.kind === 'zone' ? '依距離區間給固定哩數' : ['Y', 'J'].map((k) => (span(r, k) ? `${CABIN_LABEL[k].replace('艙', '')} ${span(r, k)}` : '')).filter(Boolean).join('、');
+    const what = r.kind === 'zone' || r.cabinMiles ? `依距離區間給固定${A.programs[r.program]?.unit || '哩'}數`
+      : ['Y', 'J'].map((k) => (span(r, k) ? `${CABIN_LABEL[k].replace('艙', '')} ${span(r, k)}` : '')).filter(Boolean).join('、');
     return `<li><b>${esc(name)}</b>　${esc(what)} ${alExtLink(r.source, '官方')}</li>`;
   }).join('');
   return `<ul class="als-list">${items}</ul><p class="hint">要算一張票：<button type="button" class="linklike" data-acc-go="${esc(c)}">點數換算器 › 累積哩程試算</button>，或在查現金票選好航班後看「🎯 這張票的哩程可以累積到哪裡」。</p>`;

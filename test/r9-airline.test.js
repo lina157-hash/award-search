@@ -54,12 +54,25 @@ test('a percentage chart: the distance times the booking class\'s official %, pr
   assert.deepEqual([as('JX', 'J').lo, as('JX', 'J').hi], [8500, 8500]);
   assert.deepEqual([as('CX', 'Y').lo, as('CX', 'Y').hi], [1700, 3400]);
   assert.equal(as('JX', 'Y', 'C').hi, 8500, 'a picked code counts in its cabin');
-  // A program whose official chart is not readable yet (Qantas on Cathay): no numbers, last, with the official page.
-  const cx = A.accrualRows(accrual, [seg('CX', 'HKG', 'TPE', 501)], {}, 'J');
+  // Qantas on Cathay (owner's screenshots of the All other flights table): fixed points per distance band and cabin;
+  // economy from Discount Economy to Flexible Economy until Cathay's Earn Category table is in.
+  const qf = (from, to, dist, cab, pick) => rowOf(A.accrualRows(accrual, [seg('CX', from, to, dist)], pick ? { CX: pick } : {}, cab), 'qantas');
+  assert.deepEqual([qf('TPE', 'HKG', 501, 'J').lo, qf('TPE', 'HKG', 501, 'J').hi], [825, 825]);
+  assert.deepEqual([qf('TPE', 'HKG', 500, 'Y').lo, qf('TPE', 'HKG', 500, 'Y').hi], [100, 400]);
+  assert.equal(qf('HKG', 'JFK', 8060, 'F').hi, 11250);
+  assert.equal(qf('HKG', 'LHR', 5990, 'W', 'R').hi, 6300, 'a picked code counts in its cabin');
+  assert.ok(qf('TPE', 'HKG', 501, 'J').zone);
+  // Australia's east coast ↔ Hong Kong: the official route table, either way.
+  assert.equal(qf('SYD', 'HKG', 4580, 'J').hi, 5600);
+  assert.deepEqual([qf('HKG', 'BNE', 4400, 'Y').lo, qf('HKG', 'BNE', 4400, 'Y').hi], [1100, 4500]);
+  assert.equal(qf('PER', 'HKG', 3740, 'J').hi, 5250, 'Perth is not on the route table');
+  // A program whose official chart is not readable yet: no numbers, last, with the official page.
+  const withPend = plain(accrual);
+  withPend.carriers.CX.earn.push({ program: 'jal2', pending: true, source: { url: 'https://www.jal.co.jp/x/' } });
+  const cx = A.accrualRows(withPend, [seg('CX', 'HKG', 'TPE', 501)], {}, 'J');
   const pend = cx.filter((r) => r.pending);
-  assert.ok(pend.some((r) => r.program === 'qantas'));
+  assert.deepEqual(pend.map((r) => r.program), ['jal2']);
   assert.ok(cx.at(-1).pending);
-  for (const r of pend) assert.match(r.pending.source.url, /^https:\/\//);
   assert.equal(pend[0].hi, 0);
 });
 
@@ -202,6 +215,17 @@ test('data/accrual.json: each chart comes from the program\'s own site, dated; t
           for (const l of row.classes) assert.ok(letters.includes(l), `${at}: ${l}`);
           for (const m of row.miles) assert.ok(Number.isInteger(m) && m > 0, at);
         }
+      } else if (r.cabinMiles) {
+        const ok = (v) => Number.isInteger(v) && v > 0;
+        for (const [cab, v] of Object.entries(r.cabinMiles)) {
+          assert.ok(C.cabins?.[cab], `${at}: ${cab}`);
+          for (const line of Array.isArray(v[0]) ? v : [v]) {
+            assert.equal(line.length, r.zones.length, `${at}: ${cab}`);
+            assert.ok(line.every(ok) && line.every((m, i) => !i || m > line[i - 1]), `${at}: ${cab} grows with distance`);
+          }
+          if (Array.isArray(v[0])) assert.ok(v[0].every((m, i) => m <= v[1][i]), `${at}: ${cab} low ≤ high`);
+        }
+        for (const x of r.routes || []) for (const v of Object.values(x.cabinMiles)) assert.ok([].concat(v).every(ok), `${at}: ${x.label}`);
       } else if (r.cabinRates) {
         for (const [cab, pct] of Object.entries(r.cabinRates)) {
           assert.ok(C.cabins?.[cab], `${at}: ${cab} is one of ${c}'s cabins`);
@@ -279,7 +303,8 @@ test('the calculator draws rows, 官方資料待補 and the third-party link; th
   const html = X.accCalcHtml(st, '1');
   assert.match(html, /長榮 無限萬哩遊/);
   assert.match(html, /<b>2,328<\/b> 哩/);
-  assert.match(X.accCalcHtml({ ...st, segs: [seg('CX', 'HKG', 'TPE', 501, ['HK', 'TW'])], picks: {}, sel: '' }, '2'), /官方資料待補/);
+  assert.match(X.accRowHtml({ name: 'x', pending: { note: 'n', source: { url: 'https://www.qantas.com/' } }, rules: [] }, st, '2'), /官方資料待補/);
+  assert.match(X.accCalcHtml({ ...st, segs: [seg('CX', 'HKG', 'TPE', 501, ['HK', 'TW'])], picks: {}, sel: '' }, '2'), /澳航 Frequent Flyer[\s\S]*依距離區間[\s\S]*<b>825<\/b> 點/);
   assert.match(html, /wheretocredit\.com\/en\/BR" target="_blank" rel="noopener">wheretocredit\.com ↗<\/a><sup class="mk-3p"[^>]*>\*<\/sup>（第三方整理，以官網為準）/);
   assert.match(html, /還不知道/);
   // The 🎯 goal's program (also the most miles here): 2,328 × 0.5 = NT$1,164 off NT$30,000.

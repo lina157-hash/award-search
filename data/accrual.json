@@ -3,7 +3,7 @@
   "note": "現金票累積哩程試算（查現金票的已選取的航班、我的行程、點數換算器）：每家營運航空公司的票，累積到各計畫的官方比例。rates 是訂位艙等代碼 → 累積比例（%，乘上飛行距離），表上沒有的代碼不累積；kind zone 是依距離區間給固定哩數（國泰 2025-08-20 起的亞洲萬里通）；pending 表示官方頁讀不到（多半要開 JavaScript），只連到官方頁、不列數字。cabins 是這家航空公司自己的訂位艙等代碼分組（用在「還不知道代碼」時列出整個艙等的範圍），來自它自家累積表。只收官方頁面寫明的數字；第三方整理（例如 wheretocredit.com）只當標示「第三方」的連結，不抄數字。",
   "fields": {
     "programs": "計畫代碼 → 名稱與單位（哩、Avios、點）。代碼和網站其他地方一樣（eva、ci、starlux 用 programs.json 的代碼，其他用 seats.aero 來源代碼；korean 是大韓 SKYPASS）。",
-    "carriers": "營運航空公司 → cabins 與 earn（每個計畫一筆）。earn 欄位：rates、zero（官方表上寫明不累積的代碼）、min（每段最低哩數）、minDist（距離不足時以此計，再乘比例）、cabinRates（只按艙等給比例的計畫：艙等 → %，或 [最低, 最高]）、until（官方寫的適用期限）、minExcept（最低不適用的代碼）、except（特定航線例外）、basis（距離依據）、notes、source（官方頁）、checked（查核日）、effective（官方寫的生效日）。"
+    "carriers": "營運航空公司 → cabins 與 earn（每個計畫一筆）。earn 欄位：rates、zero（官方表上寫明不累積的代碼）、min（每段最低哩數）、minDist（距離不足時以此計，再乘比例）、cabinRates（只按艙等給比例的計畫：艙等 → %，或 [最低, 最高]）、cabinMiles（依距離區間按艙等給固定哩數：艙等 → 每個 zones 一格，或 [最低那列, 最高那列]；routes 是官方另列固定數字的航線）、until（官方寫的適用期限）、minExcept（最低不適用的代碼）、except（特定航線例外）、basis（距離依據）、notes、source（官方頁）、checked（查核日）、effective（官方寫的生效日）。"
   },
   "wheretocredit": "https://wheretocredit.com/en/",
   "programs": {
@@ -226,9 +226,31 @@
         },
         {
           "program": "qantas",
-          "pending": true,
-          "note": "澳航依距離區間給固定點數，表在官網的 Airline Earning Tables",
-          "source": { "label": "澳航 Frequent Flyer：國泰航空（官方）", "url": "https://qantas.com/ca/en/frequent-flyer/partners/cathay-pacific.html" }
+          "zones": [
+            { "id": "d1", "label": "100 哩以下", "max": 100 },
+            { "id": "d2", "label": "101–250 哩", "max": 250 },
+            { "id": "d3", "label": "251–500 哩", "max": 500 },
+            { "id": "d4", "label": "501–750 哩", "max": 750 },
+            { "id": "d5", "label": "751–1,500 哩", "max": 1500 },
+            { "id": "d6", "label": "1,501–2,500 哩", "max": 2500 },
+            { "id": "d7", "label": "2,501–3,500 哩", "max": 3500 },
+            { "id": "d8", "label": "3,501–5,000 哩", "max": 5000 },
+            { "id": "d9", "label": "5,001–6,500 哩", "max": 6500 },
+            { "id": "d10", "label": "6,501 哩以上", "max": null }
+          ],
+          "cabinMiles": {
+            "F": [150, 300, 600, 975, 1650, 3000, 4800, 6300, 8600, 11250],
+            "J": [125, 250, 500, 825, 1375, 2500, 4000, 5250, 7125, 9400],
+            "W": [110, 220, 450, 715, 1210, 2200, 3520, 4600, 6300, 8250],
+            "Y": [[25, 50, 100, 170, 275, 500, 800, 1050, 1425, 1875], [100, 200, 400, 650, 1100, 2000, 3200, 4200, 5700, 7500]]
+          },
+          "routes": [
+            { "label": "雪梨、墨爾本、布里斯本、黃金海岸 ↔ 香港", "between": ["SYD", "MEL", "BNE", "OOL"], "and": ["HKG"], "cabinMiles": { "F": 6750, "J": 5600, "W": 4950, "Y": [1100, 4500] } }
+          ],
+          "basis": "距離區間（單程）",
+          "notes": ["每段依距離區間給固定點數（官網 All other flights 表）；雪梨、墨爾本、布里斯本、黃金海岸往返香港用官網另一張固定點數表", "經濟艙分折扣經濟、經濟、彈性經濟三種，要看國泰的 Earn Category 表才知道哪個代碼算哪一種，所以經濟艙先顯示最低到最高", "距離用大圓距離算，剛好在區間邊上時可能和澳航算的差一級"],
+          "source": { "label": "澳航 Frequent Flyer：夥伴航空累積表（官方）", "url": "https://www.qantas.com/en-tw/frequent-flyer/calculators/earning-tables/partner-airlines" },
+          "checked": "2026-10-16"
         }
       ]
     }
