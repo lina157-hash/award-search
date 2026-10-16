@@ -469,16 +469,8 @@ function p6VoucherRemind() {
 // ---------- N17: family totals ----------
 const FAMQ_KEY = 'walletFamilyQ:v1';
 // A family member's miles in one program: their own balance plus their own bank points moved in (bank points only go
-// to the cardholder's own account).
-function p6PersonReach(m, key) {
-  const k = programKeyOf(key);
-  let total = m.miles[k] || 0;
-  for (const { source, rate } of transferRates(k)) {
-    const pts = m.banks[source.id];
-    if (pts) total += withBonus(calcConvert(rate, pts, 'p2m').value || 0, rate.to !== 'other' ? transferBonus(source, rate.to) : null);
-  }
-  return total;
-}
+// to the cardholder's own account), and their own Avios in a sister program (features.js reachFor).
+const p6PersonReach = (m, key) => reachFor(m, key).total;
 function p6RuleText(rule) {
   const t = {
     pool: `家庭帳戶可合併${rule.max ? `（最多 ${rule.max} 人）` : ''}`,

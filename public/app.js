@@ -1365,6 +1365,7 @@ function resultToolsHtml() {
     : `<span class="hint">ⓘ 產品資料為第三方整理${chosen.caveat ? `；${esc(chosen.caveat)}` : ''}</span>`;
   return `<div class="result-tools">
     <label class="switch"><input type="checkbox" id="afford-only" ${state.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>
+    ${state.affordOnly && typeof aviosAffordHtml === 'function' ? aviosAffordHtml() : ''}
     ${prods.length ? `<label class="field compact" title="${PROD_3P_TITLE}">艙位產品<select id="product-filter"><option value="">全部</option>${prods.map((p) => `<option value="${esc(p.id)}" ${state.product === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
     ${prodNote}
     ${typeof leaveToolsHtml === 'function' ? leaveToolsHtml('search') : ''}

@@ -3,7 +3,7 @@
 // daily deals, explore map, trip planner and the premium-product filter.
 
 // ---------- programs: names and which Taiwan bank points transfer in ----------
-const EXTRA_PROGRAM_NAMES = { eva: '長榮 無限萬哩遊', ci: '華航 華夏哩程', jal: '日航 JMB', ana: '全日空 ANA', starlux: '星宇 COSMILE' };
+const EXTRA_PROGRAM_NAMES = { eva: '長榮 無限萬哩遊', ci: '華航 華夏哩程', jal: '日航 JMB', ana: '全日空 ANA', starlux: '星宇 COSMILE', iberia: '西班牙國家航空 Iberia Club' };
 const programName = (key) => SOURCE_NAMES[key] || EXTRA_PROGRAM_NAMES[key] || key;
 // Program key (seats.aero source, or eva/ci/jal) → the matching rate in data/points.json calc.sources.
 const PROGRAM_TRANSFER = {
@@ -78,7 +78,7 @@ function promosHtml() {
 
 // ---------- my points wallet (this browser only) ----------
 const WALLET_KEY = 'wallet:v1';
-const WALLET_PROGRAMS = ['eva', 'ci', 'asiamiles', 'singapore', 'jal', 'aeroplan', 'united', 'flyingblue', 'alaska', 'american', 'british', 'qatar', 'turkish', 'lifemiles', 'etihad', 'emirates', 'delta', 'starlux'];
+const WALLET_PROGRAMS = ['eva', 'ci', 'asiamiles', 'singapore', 'jal', 'aeroplan', 'united', 'flyingblue', 'alaska', 'american', 'british', 'qatar', 'finnair', 'iberia', 'turkish', 'lifemiles', 'etihad', 'emirates', 'delta', 'starlux'];
 const cleanCount = (v) => { const n = Math.floor(Number(v)); return Number.isFinite(n) && n > 0 ? Math.min(n, 1e9) : 0; };
 function loadWallet() {
   const w = store.get(WALLET_KEY, {});
@@ -111,18 +111,105 @@ function reachHotel(key) {
   return { own, banks, total: own + banks.reduce((n, b) => n + b.miles, 0) };
 }
 
-// Miles reachable in one program: own balance plus everything each bank balance could transfer in.
-function reach(program) {
-  const key = programKeyOf(program);
-  const own = wallet.miles[key] || 0;
-  const banks = [];
-  for (const { source, rate } of transferRates(key)) {
-    const pts = wallet.banks[source.id];
-    if (!pts) continue;
-    const got = withBonus(calcConvert(rate, pts, 'p2m').value || 0, rate.to !== 'other' ? transferBonus(source, rate.to) : null);
-    if (got) banks.push({ source, rate, points: pts, miles: got });
+// ---------- Avios: one currency moved 1:1 between British Airways, Qatar, Finnair, Iberia and Aer Lingus ----------
+// data/points.json calc.avios: the programs and the official pairs that link directly (Qatar only with BA).
+const aviosData = () => data.points?.calc?.avios || null;
+const isAvios = (k) => Boolean(aviosData()?.programs?.[programKeyOf(k)]);
+const aviosName = (k) => aviosData()?.programs?.[k] || programName(k);
+const aviosShort = (k) => aviosName(k).replace(/\s*Avios$/, '');
+// Shortest chain of linked programs, e.g. aviosPath('qatar', 'finnair') → ['qatar', 'british', 'finnair'].
+function aviosPath(from, to) {
+  const av = aviosData();
+  if (!av || from === to || !av.programs[from] || !av.programs[to]) return null;
+  const prev = { [from]: null };
+  const queue = [from];
+  while (queue.length) {
+    const k = queue.shift();
+    for (const l of av.links) {
+      const next = l.a === k ? l.b : l.b === k ? l.a : null;
+      if (!next || next in prev) continue;
+      prev[next] = k;
+      if (next === to) { const path = [to]; for (let x = k; x; x = prev[x]) path.unshift(x); return path; }
+      queue.push(next);
+    }
   }
-  return { own, banks, total: own + banks.reduce((n, b) => n + b.miles, 0) };
+  return null;
+}
+// The official link between two neighbours on a chain (its rule and source).
+const aviosLink = (a, b) => aviosData()?.links.find((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a)) || null;
+// 「國泰世華 → 英航 Avios → 卡達 Avios」
+const aviosChainText = (path, start = '') => [...(start ? [start] : []), ...path.map(aviosName)].join(' → ');
+// 「需先把 Avios 轉到卡達（1:1，官網）」, linked to the official page of the last step.
+function aviosNeedHtml(path) {
+  const to = path.at(-1);
+  const src = aviosLink(path.at(-2), to)?.source;
+  return `需先把 Avios 轉到${esc(aviosShort(to))}（1:1，${src ? `<a href="${esc(src.url)}" target="_blank" rel="noopener">官網</a>` : '官網'}）`;
+}
+// Every way bank points reach one program: its own rates, plus rates into the other Avios programs (path = the moves after).
+function ratesInto(key) {
+  const out = transferRates(key).map((x) => ({ ...x, path: null }));
+  for (const sib of Object.keys(aviosData()?.programs || {})) {
+    const path = isAvios(key) && sib !== key ? aviosPath(sib, key) : null;
+    if (path) out.push(...transferRates(sib).map((x) => ({ ...x, path })));
+  }
+  return out;
+}
+const rateMiles = (x, pts) => withBonus(calcConvert(x.rate, pts, 'p2m').value || 0, x.rate.to !== 'other' ? transferBonus(x.source, x.rate.to) : null);
+
+// Miles one person could gather in one program: own balance, each bank balance moved in (its best route, Avios moves
+// included), and their Avios held in the other Avios programs. `person` is { miles, banks } (the wallet, or a family
+// member in points6.js); { avios: false } leaves the Avios moves out.
+function reachFor(person, program, { avios = true } = {}) {
+  const key = programKeyOf(program);
+  const own = person.miles?.[key] || 0;
+  const best = new Map();
+  for (const x of avios ? ratesInto(key) : transferRates(key).map((r) => ({ ...r, path: null }))) {
+    const pts = person.banks?.[x.source.id];
+    if (!pts) continue;
+    const got = rateMiles(x, pts);
+    const cur = best.get(x.source.id);
+    if (got && (!cur || got > cur.miles || (got === cur.miles && !x.path))) best.set(x.source.id, { source: x.source, rate: x.rate, points: pts, miles: got, path: x.path });
+  }
+  const banks = [...best.values()];
+  const moved = [];
+  if (avios && isAvios(key)) {
+    for (const sib of Object.keys(aviosData().programs)) {
+      const n = sib !== key && person.miles?.[sib];
+      const path = n ? aviosPath(sib, key) : null;
+      if (path) moved.push({ program: sib, miles: n, path });
+    }
+  }
+  return { own, banks, moved, total: own + banks.reduce((n, b) => n + b.miles, 0) + moved.reduce((n, m) => n + m.miles, 0) };
+}
+// Miles reachable in one program from 我的點數.
+function reach(program, opts) { return reachFor(wallet, program, opts); }
+// What a reach counts only through Avios moves (each with its chain), for 「需先把 Avios 轉到卡達」.
+const aviosMoves = (r) => [...r.banks.filter((b) => b.path), ...(r.moved || [])];
+// 只看我換得起的: the programs whose seats count as affordable only after moving Avios (BA Avios into Qatar…).
+function aviosAffordHtml() {
+  if (walletEmpty() || !aviosData()) return '';
+  const c = state.cabin;
+  const pax = Math.max(1, state.pax || 1);
+  const need = new Map();
+  for (const r of visibleRows()) {
+    const key = programKeyOf(r.source);
+    if (need.has(key) || !isAvios(key) || reach(key, { avios: false }).total >= r.cabins[c].miles * pax) continue;
+    const moves = aviosMoves(reach(key));
+    if (moves.length) need.set(key, moves[0].path);
+  }
+  return need.size ? `<p class="hint avios-afford">✈ ${[...need].map(([k, path]) => `${esc(programName(k))}：${aviosNeedHtml(path)}`).join('；')}</p>` : '';
+}
+// 航班明細 › 怎麼湊到這些哩 for an Avios program: which Avios move in, by which chain, and each official condition.
+function aviosEarnHtml(key, head = '<h4>Avios 互轉</h4>') {
+  const av = aviosData();
+  const others = Object.keys(av.programs).filter((k) => k !== key).map((k) => ({ k, path: aviosPath(k, key) })).filter((x) => x.path);
+  if (!others.length) return '';
+  const direct = others.filter((x) => x.path.length === 2).map((x) => aviosShort(x.k));
+  const via = others.filter((x) => x.path.length > 2);
+  const lead = key === 'british' ? `${direct.join('、')}的 Avios 都能 1:1 轉過來` : '你可以用英航 Avios 轉過來（1:1）';
+  const links = av.links.filter((l) => l.a === key || l.b === key);
+  return `${head}<p class="earn-avios">✈ ${esc(lead)}${key !== 'british' && direct.length > 1 ? `；${esc(direct.filter((n) => n !== '英航').join('、'))}的 Avios 也可以` : ''}。${via.length ? `${esc(via.map((x) => aviosShort(x.k)).join('、'))}的 Avios 要先轉到${esc(aviosShort(via[0].path[1]))}再轉過來。` : ''}只能轉進自己的帳戶。</p>
+    <ul class="earn-avios-rules">${links.map((l) => { const o = l.a === key ? l.b : l.a; return `<li><b>${esc(aviosShort(o))} ↔ ${esc(aviosShort(key))}</b><small>${esc(l.rule)}。<a href="${esc(l.source.url)}" target="_blank" rel="noopener">${esc(l.source.label)} ↗</a></small></li>`; }).join('')}</ul>`;
 }
 
 // ---------- booking channels, release windows, phantom space (data/booking.json) ----------
@@ -192,8 +279,14 @@ function earnHtml(program, miles) {
   const key = programKeyOf(program);
   if (!key || !(miles > 0)) return '';
   const mine = (x) => (wallet.banks[x.source.id] ? 1 : 0);
-  const rates = transferRates(key).map((x) => ({ ...x, need: calcConvert(x.rate, miles, 'm2p') }))
-    .sort((a, b) => mine(b) - mine(a) || a.need.value - b.need.value);
+  // Each bank once, by its cheapest way in: its own rate, or a sister Avios program's rate and a 1:1 move.
+  const byBank = new Map();
+  for (const x of ratesInto(key)) {
+    const need = calcConvert(x.rate, miles, 'm2p');
+    const cur = byBank.get(x.source.id);
+    if (!cur || need.value < cur.need.value || (need.value === cur.need.value && !x.path)) byBank.set(x.source.id, { ...x, need });
+  }
+  const rates = [...byBank.values()].sort((a, b) => mine(b) - mine(a) || a.need.value - b.need.value);
   const banks = new Set(rates.map((x) => x.source.bank));
   const cheapest = rates.reduce((a, b) => (!a || b.need.value < a.need.value ? b : a), null);
   const promos = promosFor(key);
@@ -205,8 +298,8 @@ function earnHtml(program, miles) {
   let sum;
   if (r?.total) {
     const only = r.banks.length === 1 && !r.own ? r.banks[0] : null;
-    sum = `${only ? `你的${esc(only.source.bank)}點數` : '你的點數'}可換約 ${fmt(r.total)} 哩，${goal(r.total)}`;
-  } else if (cheapest) sum = `${esc(cheapest.source.bank)} 約 ${fmt(cheapest.need.value)} 點可換・${banks.size} 家銀行可轉`;
+    sum = `${only ? `你的${esc(only.source.bank)}點數` : '你的點數'}可換約 ${fmt(r.total)} 哩，${goal(r.total)}${aviosMoves(r).length ? '・需先轉 Avios' : ''}`;
+  } else if (cheapest) sum = `${esc(cheapest.source.bank)} 約 ${fmt(cheapest.need.value)} 點可換${cheapest.path ? `（經${esc(aviosShort(cheapest.path[0]))} Avios）` : ''}・${banks.size} 家銀行可轉`;
   else if (cob.length) sum = `卡點不能直接轉，${cob.length} 張聯名卡可直接累積`;
   else if (hotels.length) sum = '卡點不能直接轉，可經飯店點數繞路';
   else sum = '台灣的卡點不能轉入這個計畫';
@@ -216,7 +309,8 @@ function earnHtml(program, miles) {
   if (r) {
     const lines = [];
     if (r.own) lines.push(`<li>你有 ${esc(programName(key))} <b>${fmt(r.own)} 哩</b></li>`);
-    for (const b of r.banks) lines.push(`<li>你的${esc(b.source.bank)}點數 ${fmt(b.points)} 點可換約 <b>${fmt(b.miles)} 哩</b>${r.banks.length === 1 && !r.own ? `，${goal(b.miles)}` : ''}</li>`);
+    for (const b of r.banks) lines.push(`<li>你的${esc(b.source.bank)}點數 ${fmt(b.points)} 點可換約 <b>${fmt(b.miles)} 哩</b>${r.banks.length === 1 && !r.own && !r.moved.length ? `，${goal(b.miles)}` : ''}${b.path ? `<small>${esc(aviosChainText(b.path, b.source.bank))}・${aviosNeedHtml(b.path)}</small>` : ''}</li>`);
+    for (const m of r.moved) lines.push(`<li>你的${esc(aviosName(m.program))} <b>${fmt(m.miles)}</b> 可以轉過來<small>${esc(aviosChainText(m.path))}・${aviosNeedHtml(m.path)}</small></li>`);
     if (lines.length > 1) lines.push(`<li>合計約 <b>${fmt(r.total)} 哩</b>，${goal(r.total)}</li>`);
     parts.push(lines.length ? `<ul class="earn-mine">${lines.join('')}</ul>` : '<p class="hint">你在「我的點數」填的點數都不能轉進這個計畫。</p>');
     if (r.total < miles) parts.push(buyMilesHtml(key, miles - r.total));
@@ -226,11 +320,12 @@ function earnHtml(program, miles) {
       const bonus = x.rate.to !== 'other' ? transferBonus(x.source, x.rate.to) : null;
       const unit = x.rate.minPoints || x.rate.stepPoints ? `<small>${x.rate.minPoints ? `最低 ${fmt(x.rate.minPoints)} 點` : ''}${x.rate.minPoints && x.rate.stepPoints ? '，' : ''}${x.rate.stepPoints ? `每 ${fmt(x.rate.stepPoints)} 點一單位` : ''}${x.need.note ? `・${esc(x.need.note)}` : ''}</small>` : '';
       return `<li><span><b>${esc(x.source.bank)}</b> <small class="inline">${esc(x.source.program)}${x.source.variant ? `（${esc(x.source.variant)}）` : ''}</small>${mine(x) ? ' <span class="tag ok">你有</span>' : ''}${verifyTag(x.source)}</span>
-        <span class="earn-need">${ratioLabel(x.rate)}・需 <b>${fmt(x.need.value)} 點</b>${bonus ? ' <span class="pill">🎁 有加贈</span>' : ''}</span>${unit}</li>`;
+        <span class="earn-need">${ratioLabel(x.rate)}・需 <b>${fmt(x.need.value)} 點</b>${bonus ? ' <span class="pill">🎁 有加贈</span>' : ''}</span>${unit}${x.path ? `<small>${esc(aviosChainText(x.path, x.source.bank))}（先轉${esc(aviosName(x.path[0]))}，再 1:1 轉過來）</small>` : ''}</li>`;
     };
     parts.push(`<h4>銀行點數轉入 <small>換 ${fmt(miles)} 哩要多少點</small></h4><ul class="earn-rates">${rates.slice(0, 3).map(li).join('')}</ul>
       ${rates.length > 3 ? `<details class="howto-more"><summary>其他 ${rates.length - 3} 家</summary><ul class="earn-rates">${rates.slice(3).map(li).join('')}</ul></details>` : ''}`);
   } else parts.push('<p class="hint">台灣的信用卡點數目前沒有直接轉入這個計畫。</p>');
+  if (isAvios(key)) parts.push(aviosEarnHtml(key));
   if (promos.length) parts.push(`<h4>進行中的優惠</h4><ul class="earn-promos">${promos.map(promoLine).join('')}</ul>`);
   if (cob.length) parts.push(`<h4>直接累積的聯名卡</h4><ul class="earn-cob">${cob.map((c) => `<li><b>${esc(c.bank)}</b> ${esc(c.card)}<small>${esc(c.earn)}</small></li>`).join('')}</ul>`);
   if (hotels.length) {
@@ -422,8 +517,10 @@ function renderWalletSum() {
   const keys = [...new Set([...WALLET_PROGRAMS, ...Object.keys(PROGRAM_TRANSFER)])];
   const rows = keys.map((k) => ({ k, r: reach(k) })).filter(({ r }) => r.total > 0).sort((a, b) => b.r.total - a.r.total);
   host.innerHTML = rows.length ? `<div class="table-wrap"><table class="wallet-sum"><thead><tr><th>計畫</th><th>最多可湊到</th><th>來源</th></tr></thead><tbody>
-    ${rows.map(({ k, r }) => `<tr><td><b>${esc(programName(k))}</b></td><td><b>${fmt(r.total)} 哩</b></td><td><small>${[r.own ? `自有 ${fmt(r.own)}` : '', ...r.banks.map((b) => `${esc(b.source.bank)} ${fmt(b.points)} 點 → ${fmt(b.miles)}`)].filter(Boolean).join('、')}</small></td></tr>`).join('')}
-    </tbody></table></div><p class="hint">每一列各自計算：同一筆點數只能轉進一個計畫，不能同時用在兩列。</p>`
+    ${rows.map(({ k, r }) => `<tr><td><b>${esc(programName(k))}</b>${aviosMoves(r).length ? `<small class="avios-need">${aviosNeedHtml(aviosMoves(r)[0].path)}</small>` : ''}</td><td><b>${fmt(r.total)} 哩</b></td><td><small>${[r.own ? `自有 ${fmt(r.own)}` : '',
+      ...r.banks.map((b) => `${esc(b.source.bank)} ${fmt(b.points)} 點 → ${fmt(b.miles)}${b.path ? `（${esc(b.path.slice(0, -1).map(aviosName).join(' → '))} → ${esc(aviosShort(k))}）` : ''}`),
+      ...r.moved.map((m) => `${esc(aviosName(m.program))} ${fmt(m.miles)}（${m.path.length > 2 ? `經${esc(m.path.slice(1, -1).map(aviosShort).join('、'))} ` : ''}1:1 轉過來）`)].filter(Boolean).join('、')}</small></td></tr>`).join('')}
+    </tbody></table></div><p class="hint">每一列各自計算：同一筆點數只能轉進一個計畫，不能同時用在兩列。${rows.some(({ r }) => aviosMoves(r).length) ? '英航、卡達、芬航等計畫的 Avios 可以 1:1 互轉，所以同一筆 Avios 會出現在好幾列，一樣只能用一次。' : ''}</p>`
     : `<p class="hint">${walletEmpty() ? '加入點數後，這裡會算出每個航空計畫最多能湊到多少哩。' : '你填的點數都不能轉進航空計畫。'}</p>`;
   renderWalletHotelSum();
   renderWalletDetourSum();
@@ -434,7 +531,7 @@ function renderWalletDetourSum() {
   const host = $('#wallet-detour-sum');
   if (!host || !toAir()) return;
   const names = data.points.calc.hotels.programs;
-  const rows = detourAirlines().map((k) => ({ k, d: reachDetour(k), direct: transferRates(k).length ? reach(k).total : 0 }))
+  const rows = detourAirlines().map((k) => ({ k, d: reachDetour(k), direct: ratesInto(k).length ? reach(k).total : 0 }))
     // Airlines the site can search come first, so ANA or Alaska is not buried under obscure programs.
     .filter(({ d, direct }) => d && d.miles > direct).sort((a, b) => searchable(b.k) - searchable(a.k) || b.d.miles - a.d.miles);
   host.parentElement.hidden = !rows.length;
@@ -509,8 +606,19 @@ function bindWallet(host) {
 // Some airlines take no Taiwanese bank points directly, but most hotel programs transfer on to dozens of airlines.
 const toAir = () => data.points?.calc?.hotels?.toAir || null;
 const airName = (k) => SOURCE_NAMES[k] || EXTRA_PROGRAM_NAMES[k] || toAir()?.airlines?.[k] || k;
-const hotelPartner = (hotel, air) => toAir()?.hotels?.[hotel]?.partners?.find((p) => p.to === air) || null;
-const hotelRatioLabel = (p) => `${fmt(p.hotelPoints)} 點 = ${fmt(p.miles)} 哩`;
+// The hotel's partner for one airline. For an Avios program, a sister program the hotel sends more to wins, followed by
+// 1:1 moves (Accor → Iberia 1:1 beats Accor → Qatar 4:3): then `via` is that program and `path` the chain.
+function hotelPartner(hotel, air) {
+  const list = toAir()?.hotels?.[hotel]?.partners || [];
+  let best = list.find((p) => p.to === air) || null;
+  if (!isAvios(air)) return best;
+  for (const p of list) {
+    const path = p.to !== air && isAvios(p.to) ? aviosPath(p.to, air) : null;
+    if (path && (!best || p.miles / p.hotelPoints > best.miles / best.hotelPoints)) best = { ...p, to: air, via: p.to, path };
+  }
+  return best;
+}
+const hotelRatioLabel = (p) => `${fmt(p.hotelPoints)} 點 = ${fmt(p.miles)} 哩${p.via ? `（轉${aviosName(p.via)}，再轉過來）` : ''}`;
 
 // Hotel points → miles: the minimum, the transfer unit, and Marriott's bonus for each 60,000 points sent.
 function hotelToAir(hotel, partner, points) {
@@ -536,11 +644,20 @@ function detourRoutes(air, sourceId, amount) {
   }
   return out.sort((a, b) => b.miles - a.miles);
 }
-// Direct transfer from the same bank program, for comparison (0 when there is none).
-function directMiles(air, sourceId, amount) {
-  const hit = transferRates(air).find((x) => x.source.id === sourceId);
-  return hit ? withBonus(calcConvert(hit.rate, amount, 'p2m').value || 0, hit.rate.to !== 'other' ? transferBonus(hit.source, hit.rate.to) : null) : 0;
+// Direct transfer from the same bank program (or through a sister Avios program), for comparison (null when none).
+function directRoute(air, sourceId, amount) {
+  let best = null;
+  for (const x of ratesInto(air)) {
+    if (x.source.id !== sourceId) continue;
+    const miles = rateMiles(x, amount);
+    if (!best || miles > best.miles || (miles === best.miles && !x.path)) best = { miles, path: x.path, source: x.source };
+  }
+  return best;
 }
+const directMiles = (air, sourceId, amount) => directRoute(air, sourceId, amount)?.miles || 0;
+// 繞路兌換's 直接轉 column: 「直接轉」, or 「經英航 Avios」 with the chain under it (國泰世華 → 英航 Avios → 卡達 Avios).
+const directLabel = (d) => (d.path ? `經${esc(aviosShort(d.path[0]))} Avios` : '直接轉');
+const directChain = (d) => (d.path ? `<small>${esc(aviosChainText(d.path, d.source.bank))}・${aviosNeedHtml(d.path)}</small>` : '');
 // Smallest amount whose result reaches `target` (results only grow with the amount).
 function pointsFor(target, fn) {
   let lo = 1, hi = 1e8;
@@ -608,23 +725,24 @@ function renderDetour() {
         return need && { hotel: r.to, partner, need, hotelPoints: calcConvert(hotelRate(r), need, 'p2m').value };
       }).filter(Boolean).sort((a, b) => a.need - b.need);
       if (!routes.length) continue;
-      const direct = transferRates(air).find((x) => x.source.id === src.id);
-      const dNeed = direct ? pointsFor(amount, (x) => directMiles(air, src.id, x)) : null;
+      const dRoute = directRoute(air, src.id, amount * 10);
+      const dNeed = dRoute ? pointsFor(amount, (x) => directMiles(air, src.id, x)) : null;
       rows.push({ src, sort: routes[0].need, html: `<td><b>${esc(src.bank)}</b><small>${esc(src.program)}${src.variant ? `（${esc(src.variant)}）` : ''}</small></td>
-        <td>經 <b>${esc(data.points.calc.hotels.programs[routes[0].hotel])}</b>（${fmt(routes[0].hotelPoints)} 點）${routes.length > 1 ? `<small>${routes.slice(1).map((x) => `經${esc(data.points.calc.hotels.programs[x.hotel])}：要 ${fmt(x.need)} 點`).join('、')}</small>` : ''}</td>
-        <td><b>${fmt(routes[0].need)} 點</b></td><td>${dNeed ? `直接轉要 ${fmt(dNeed)} 點${dNeed <= routes[0].need ? ' <span class="ok-text">直接轉比較省</span>' : ''}` : '<small>不能直接轉</small>'}</td>` });
+        <td>經 <b>${esc(data.points.calc.hotels.programs[routes[0].hotel])}</b>（${fmt(routes[0].hotelPoints)} 點）${routes[0].partner.via ? `→ ${esc(aviosName(routes[0].partner.via))}` : ''}${routes.length > 1 ? `<small>${routes.slice(1).map((x) => `經${esc(data.points.calc.hotels.programs[x.hotel])}：要 ${fmt(x.need)} 點`).join('、')}</small>` : ''}</td>
+        <td><b>${fmt(routes[0].need)} 點</b></td><td>${dNeed ? `${directLabel(dRoute)}要 ${fmt(dNeed)} 點${dNeed <= routes[0].need ? ` <span class="ok-text">${dRoute.path ? '這樣' : '直接轉'}比較省</span>` : ''}${directChain(dRoute)}` : '<small>不能直接轉</small>'}</td>` });
       continue;
     }
     const routes = detourRoutes(air, src.id, pts);
     if (!routes.length) continue;
     const best = routes[0];
-    const direct = directMiles(air, src.id, pts);
+    const dRoute = directRoute(air, src.id, pts);
+    const direct = dRoute?.miles || 0;
     const hotelName = (k) => esc(data.points.calc.hotels.programs[k]);
     rows.push({ src, sort: best.miles, html: `<td><b>${esc(src.bank)}</b><small>${esc(src.program)}${src.variant ? `（${esc(src.variant)}）` : ''}${mode === 'mine' ? `・${fmt(pts)} 點` : ''}</small></td>
-      <td>${best.miles ? `經 <b>${hotelName(best.hotel)}</b>（${fmt(best.hotelPoints)} 點）${best.bonus ? ` <span class="pill">含加贈 ${fmt(best.bonus)} 哩</span>` : ''}` : `<small>${esc(best.short)}</small>`}
+      <td>${best.miles ? `經 <b>${hotelName(best.hotel)}</b>（${fmt(best.hotelPoints)} 點）${best.partner.via ? `→ ${esc(aviosName(best.partner.via))}` : ''}${best.bonus ? ` <span class="pill">含加贈 ${fmt(best.bonus)} 哩</span>` : ''}` : `<small>${esc(best.short)}</small>`}
         ${routes.length > 1 ? `<small>${routes.slice(1).map((x) => `經${hotelName(x.hotel)}：${x.miles ? `${fmt(x.miles)} 哩` : esc(x.short)}`).join('、')}</small>` : ''}</td>
       <td>${best.miles ? `<b>${fmt(best.miles)} 哩</b>` : '—'}</td>
-      <td>${direct ? `直接轉 ${fmt(direct)} 哩${direct >= best.miles ? ' <span class="ok-text">直接轉比較多</span>' : ''}` : '<small>不能直接轉</small>'}</td>` });
+      <td>${direct ? `${directLabel(dRoute)} ${fmt(direct)} 哩${direct >= best.miles ? ` <span class="ok-text">${dRoute.path ? '這樣' : '直接轉'}比較多</span>` : ''}${directChain(dRoute)}` : '<small>不能直接轉</small>'}</td>` });
   }
   rows.sort((a, b) => (mode === 'm2p' ? a.sort - b.sort : b.sort - a.sort));
   host.innerHTML = (rows.length ? `<div class="table-wrap"><table class="wallet-sum detour-table"><thead><tr><th>銀行點數</th><th>路線</th><th>${mode === 'm2p' ? '需要' : '最後拿到'}</th><th>直接轉</th></tr></thead><tbody>
@@ -643,7 +761,7 @@ function detourRefHtml(air) {
   return `<h3 class="sub">飯店轉到 ${esc(airName(air))} 的比率</h3><ul class="detour-ref">
     ${list.map(({ k, h, p }) => `<li><b>${esc(names[k] || k)}</b>　${hotelRatioLabel(p)}${p.bonus && h.bonus ? `，每轉 ${fmt(h.bonus.every)} 點加贈 ${fmt(p.bonusMiles || h.bonus.miles)} 哩` : ''}${p.minPoints || h.minPoints ? `，最低 ${fmt(p.minPoints || h.minPoints)} 點` : ''}
       <small>${p.note ? `${esc(p.note)}・` : ''}入帳 ${esc(h.transferDays || '')}　${CONFIDENCE_TAG[p.confidence] || ''} ${srcs(h, p)}</small></li>`).join('')}
-    </ul><p class="hint">${esc(t.note)} 飯店點數轉出後不能退回，建議先確認航空有位子再轉。（整理於 ${esc(t.researched)}）</p>`;
+    </ul><p class="hint">${esc(t.note)} 飯店點數轉出後不能退回，建議先確認航空有位子再轉。（整理於 ${esc(t.researched)}）</p>${isAvios(air) ? aviosEarnHtml(air, `<h3 class="sub">${esc(aviosName(air))} 互轉</h3>`) : ''}`;
 }
 function bindDetour(host) {
   const sync = () => {

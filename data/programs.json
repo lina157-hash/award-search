@@ -823,7 +823,7 @@
       "poolMax": 7,
       "poolOfficial": true,
       "expiryWays": ["36 個月內有任何累積、使用、購買或轉移 Avios，就不會失效"],
-      "notes": "Avios 可在英航、卡達、西班牙國家航空、愛爾蘭航空、芬蘭航空之間 1:1 互轉。台灣可由國泰世華小樹點（450 點 = 1,000 Avios）轉入。訂位在出發前 355 天開放，起飛前 24 小時內不可訂。seats.aero 有收錄英航計畫。",
+      "notes": "Avios 可在英航與卡達、西班牙國家航空、愛爾蘭航空、芬蘭航空之間 1:1 互轉（卡達只能和英航互轉，芬航不能直接轉卡達；帳戶開立滿 30 天、兩邊姓名相同，見卡達與芬航官方條款），「我的點數」會把它算進去。台灣可由國泰世華小樹點（450 點 = 1,000 Avios）轉入。訂位在出發前 355 天開放，起飛前 24 小時內不可訂。seats.aero 有收錄英航計畫。",
       "confidence": "official",
       "officialUrl": "https://www.britishairways.com/content/the-british-airways-club/avios/spending-avios/reward-flights",
       "sources": [

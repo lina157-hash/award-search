@@ -2460,3 +2460,14 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 @media (max-width: 560px) { .aw-table td { white-space: normal; padding: 8px 10px; } .aw-table td:first-child { min-width: 5.5em; } }
 .aw-table td small { display: block; color: var(--muted); font-size: .78rem; }
 
+
+/* round 9: r9-prog */
+/* #7 Avios moves */
+.result-tools .avios-afford { flex-basis: 100%; margin: -4px 0 0; }
+.wallet-sum td small.avios-need { display: block; font-size: .74rem; }
+.earn-mine li small { display: block; color: var(--muted); font-size: .76rem; }
+.earn-avios { margin: 4px 0; }
+.earn-avios-rules { margin: 4px 0 8px; padding-left: 1.2em; }
+.earn-avios-rules li { margin: 2px 0; }
+.earn-avios-rules li small { display: block; color: var(--muted); font-size: .76rem; }
+.detour-table td small { display: block; }
