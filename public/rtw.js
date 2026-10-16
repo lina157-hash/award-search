@@ -537,7 +537,11 @@ if (typeof document !== 'undefined') {
         <ul>${prog.summary.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
         <p class="hint">來源：${prog.sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)}</a>（${esc(s.checked)} 查核）`).join('、')}</p></details>`;
     out.innerHTML = list + sum + res + rtwOtherHtml(d);
-    if (rtwAirOpen >= 0) ($('.rtw-air-pop .rtw-air-q') || $('.rtw-air-pop [aria-selected="true"]') || $('.rtw-air-pop .rtw-air-opt'))?.focus();
+    if (rtwAirOpen >= 0) {
+      // Bring the whole menu into view (it opens below the button), then focus its search box.
+      $('.rtw-air-pop')?.scrollIntoView({ block: 'nearest' });
+      ($('.rtw-air-pop .rtw-air-q') || $('.rtw-air-pop [aria-selected="true"]') || $('.rtw-air-pop .rtw-air-opt'))?.focus({ preventScroll: true });
+    }
   }
 
   function rtwPriceText(p, price) {
@@ -657,11 +661,13 @@ if (typeof document !== 'undefined') {
       pins.get(k).nos.push(i + 1);
     });
     for (const p of pins.values()) {
-      L.marker(p.x, { icon: L.divIcon({ className: 'rtw-pin', html: `<span class="rtw-pin-n">${p.nos.join('・')}</span><span class="rtw-pin-c">${esc(p.code)}</span>`, iconSize: null, iconAnchor: [13, 13] }), keyboard: false })
+      // The start and end sit on top when a nearby stop overlaps them at world zoom.
+      const ends = p.nos.includes(1) || p.nos.includes(at.length);
+      L.marker(p.x, { icon: L.divIcon({ className: 'rtw-pin', html: `<span class="rtw-pin-n">${p.nos.join('・')}</span><span class="rtw-pin-c">${esc(p.code)}</span>`, iconSize: null, iconAnchor: [13, 13] }), keyboard: false, zIndexOffset: ends ? 1000 : 0 })
         .bindTooltip(`${p.nos.join('・')}. ${esc(p.code)} ${esc(rtwPlace(p.code))}`).addTo(rtwLayer);
     }
     const all = [...lines.flatMap((l) => l.arc), ...at.filter(Boolean)];
-    rtwMap.fitBounds(L.latLngBounds(all), { padding: [20, 20], maxZoom: 5 });
+    rtwMap.fitBounds(L.latLngBounds(all), { paddingTopLeft: [24, 20], paddingBottomRight: [60, 20], maxZoom: 5 });
   }
 
   // ---- 國泰混艙計算 (inside 規則庫 › 亞洲萬里通哩數表; that section re-renders, so the state lives here) ----
