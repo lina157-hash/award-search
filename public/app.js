@@ -1287,7 +1287,8 @@ async function runSearch(share, pre, autoRange = false) {
   try {
     const [body] = await Promise.all([pre || api(`/api/search?${params}`), loadMore(), loadSearchScripts()]);
     // Cathay trips that connect in Hong Kong are priced by both sectors' distances, which needs the airport list.
-    if (!AP.loaded && body.results.some(amNeedsHub)) await loadAirports();
+    // So do 哩程票特惠 routed by country (features.js).
+    if (!AP.loaded && (body.results.some(amNeedsHub) || (typeof awardSaleNeedsAirports === 'function' && awardSaleNeedsAirports(body.results)))) await loadAirports();
     if (!fresh()) return;
     done();
     state.results = [...body.results, ...asiaMilesRows(body.results)];

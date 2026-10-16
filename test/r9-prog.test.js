@@ -27,7 +27,7 @@ function featSandbox({ today = '2026-10-16', promos = read('promos.json') } = {}
   };
   vm.createContext(ctx);
   vm.runInContext(`${calcConvert}\nconst CABIN_API = { Y: 'economy', W: 'premium', J: 'business', F: 'first' };\nconst AP = { byCode: new Map([['IST', { country: 'TR' }], ['ESB', { country: 'TR' }], ['TPE', { country: 'TW' }]]) };\n${head}
-this.api = { reach, reachFor, aviosPath, ratesInto, aviosMoves, aviosNeedHtml, aviosEarnHtml, setWallet: (w) => { wallet = w; }, awardSaleFor, awardSaleNoticeHtml, awardSaleTripHtml, promosFor, promosHtml };`, ctx);
+this.api = { reach, reachFor, aviosPath, ratesInto, aviosMoves, aviosNeedHtml, aviosEarnHtml, setWallet: (w) => { wallet = w; }, awardSaleFor, awardSaleNeedsAirports, awardSaleNoticeHtml, awardSaleTripHtml, promosFor, promosHtml };`, ctx);
   return ctx.api;
 }
 
@@ -175,4 +175,12 @@ test('promo watch: a new award sale touching the wallet goes out as 「新的哩
   assert.equal(out.fresh, 1);
   assert.match(sent[0], /✈️ <b>新的哩程票特惠碰到你的計畫<\/b>\n• 新航測試特惠（少 30%），11\/1–11\/30 搭乘、10\/31 前開票・你有這個計畫的哩程/);
   assert.doesNotMatch(sent[0], /轉點加贈/);
+});
+
+test('award sales routed by country wait for the airport list (a shared link opens without it)', () => {
+  const f = featSandbox();
+  assert.equal(f.awardSaleNeedsAirports([{ source: 'turkish' }]), true); // Türkiye is a country token
+  assert.equal(f.awardSaleNeedsAirports([{ source: 'singapore' }]), false); // KrisFlyer lists airports
+  assert.equal(f.awardSaleNeedsAirports([{ source: 'united' }]), false);
+  assert.match(src('app.js'), /awardSaleNeedsAirports\(body\.results\)\)\)\) await loadAirports\(\);/);
 });

@@ -96,6 +96,9 @@ function awardSaleFor({ source, origin, destination, date, cabin, airlines }) {
     && (!p.carriers?.length || !codes.length || codes.every((c) => p.carriers.includes(c)))
     && (p.routes || []).some((rt) => saleRouteHit(rt, origin, destination, cabin))) || null;
 }
+// A sale routed by country (TR) needs the airport list to know which country IST is in; the results wait for it (app.js).
+const awardSaleNeedsAirports = (rows) => activePromos().some((p) => p.type === 'award' && rows.some((r) => programKeyOf(r.source) === p.program)
+  && (p.routes || []).some((rt) => [rt.from, rt.to, rt.between, rt.and].flat().some((t) => typeof t === 'string' && t.length === 2)));
 const saleWindow = (p) => `${mmdd(p.travelFrom)}–${mmdd(p.travelTo)} 搭乘、${mmdd(p.end)} 前開票`;
 const saleSrc = (p) => (p.sources || []).slice(0, 1).map((x) => ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('');
 const saleTag = (p) => `<span class="tag sale" title="${esc(`${p.title}：${saleWindow(p)}`)}">🏷 哩程票特惠 −${p.discountPct}%</span>`;
