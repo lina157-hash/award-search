@@ -2460,3 +2460,49 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 @media (max-width: 560px) { .aw-table td { white-space: normal; padding: 8px 10px; } .aw-table td:first-child { min-width: 5.5em; } }
 .aw-table td small { display: block; color: var(--muted); font-size: .78rem; }
 
+
+/* round 9: r9-split */
+/* 拆兩段查：經樞紐轉機 (public/hubsplit.js), under the route results */
+.split-fold { margin-top: 18px; }
+.split-fold > .hint { max-width: 860px; }
+.split-warn { display: inline-block; margin: 4px 0 8px; padding: 4px 10px; border-radius: 8px; background: var(--few); color: var(--few-text); font-size: .88rem; }
+.split-hubs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.split-hub { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; }
+.split-hub-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+.split-hub-name { flex: 1 1 320px; min-width: 0; }
+.split-hub-name small { display: block; color: var(--muted); font-size: .8rem; }
+.split-al { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--text); font-size: .74rem; vertical-align: 1px; }
+.split-act { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; max-width: 100%; }
+.split-act button { white-space: normal; text-align: left; }
+.split-act small.error { color: var(--danger); font-size: .8rem; }
+.split-done { color: var(--muted); font-size: .85rem; }
+.split-out { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.split-out .cx-total b { color: var(--accent); font-size: 1.08rem; }
+.split-out .cx-total small { display: block; color: var(--muted); font-size: .8rem; }
+.split-progs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 6px 0 2px; font-size: .88rem; }
+.split-prog small { color: var(--muted); font-size: .76rem; margin-left: 4px; }
+.split-table td .linklike { display: inline-block; margin-top: 2px; font-size: .8rem; min-height: 28px; }
+.split-table td:last-child { white-space: nowrap; }
+.split-notes { margin: 8px 0 0; padding-left: 1.2em; max-width: 860px; }
+.split-src { margin-top: 10px; font-size: .84rem; color: var(--muted); }
+.split-src > summary { cursor: pointer; }
+.split-src p { margin: 6px 0; }
+@media (max-width: 560px) {
+  .split-hub { padding: 10px; }
+  .split-act, .split-act button { width: 100%; }
+  .split-act button { min-height: 44px; }
+  .split-also { display: none; }
+  /* Each paired day as a small card: date and total on top, the two legs side by side. */
+  .split-table thead { display: none; }
+  .split-table, .split-table tbody { display: block; }
+  .split-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  .split-table tbody tr:last-child { border-bottom: 0; }
+  .split-table td { display: block; padding: 0; border: 0; white-space: normal; }
+  .split-table td:first-child { order: 0; }
+  .split-table td:first-child small { display: inline; margin-left: 4px; }
+  .split-table td:last-child { order: 1; text-align: right; white-space: normal; }
+  .split-table td:last-child small, .split-table td:last-child .linklike { display: inline-block; margin-left: 6px; }
+  .split-table td:nth-child(2) { order: 2; }
+  .split-table td:nth-child(3) { order: 3; }
+  .split-table td[data-l]::before { content: attr(data-l); display: block; color: var(--muted); font-size: .72rem; }
+}

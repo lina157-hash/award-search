@@ -1561,6 +1561,7 @@ function renderSearch() {
       ${byChips ? `${matrixTitle}<div class="filters">${p.chips}</div>` : ''}
       <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && p.hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」、改選全部艙位產品，或放寬請假天數。' : gap ? `沒有一班有 ${state.pax} 位以上；下面「差一點」是只差幾位的班次。` : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>
       ${gap}`;
+    if (typeof splitRender === 'function') splitRender(); // 拆兩段查 (public/hubsplit.js)
     return;
   }
 
@@ -1589,6 +1590,7 @@ function renderSearch() {
   $('#cal-fold').addEventListener('toggle', (e) => { calOpen = e.target.open; });
   if (typeof wkRender === 'function') wkRender();
   if (typeof pairRender === 'function') pairRender(); // 來回配對 (public/pairing.js)
+  if (typeof splitRender === 'function') splitRender(); // 拆兩段查 (public/hubsplit.js)
 }
 
 // A program chip or 全部勾選／全部取消: redraw only what follows the ticked programs (chips, cards, calendar, legend,
@@ -3385,7 +3387,7 @@ function withTools(host, draw) {
 // builds on the one before. The 規則庫 tab (the 書籤小工具 cards), and #cxcal= and #gf? landing links load them too.
 // aihelper.js (交給 AI 助理) comes before cxmuse.js, which copies with its aiCopy; nlsearch.js before cxshot.js, whose
 // 貼上截圖 shows when nl.on (the server has the 一句話搜尋 model).
-const SEARCH_SCRIPTS = ['etrips', 'flightplus', 'pairing', 'seathistory', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'aihelper', 'nlsearch', 'cxmuse', 'cxshot', 'cxcard'];
+const SEARCH_SCRIPTS = ['etrips', 'flightplus', 'pairing', 'seathistory', 'weekday', 'cxfill', 'hubsplit', 'cxcal', 'cxlive', 'cxauto', 'aihelper', 'nlsearch', 'cxmuse', 'cxshot', 'cxcard'];
 const loadSearchScripts = () => loadScripts([...TOOL_SCRIPTS, ...SEARCH_SCRIPTS]);
 // The owner's tools, fetched on the owner's device only (account.js, next to 帳號管理): 哪裡都好 under 區域探索,
 // 今日好康's 🎯 我的條件通知 and the 一句話搜尋 box draw themselves when they arrive and follow the passcode after that.
