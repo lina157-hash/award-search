@@ -3,7 +3,7 @@
   "note": "現金票累積哩程試算（查現金票的已選取的航班、我的行程、點數換算器）：每家營運航空公司的票，累積到各計畫的官方比例。rates 是訂位艙等代碼 → 累積比例（%，乘上飛行距離），表上沒有的代碼不累積；kind zone 是依距離區間給固定哩數（國泰 2025-08-20 起的亞洲萬里通）；pending 表示官方頁讀不到（多半要開 JavaScript），只連到官方頁、不列數字。cabins 是這家航空公司自己的訂位艙等代碼分組（用在「還不知道代碼」時列出整個艙等的範圍），來自它自家累積表。只收官方頁面寫明的數字；第三方整理（例如 wheretocredit.com）只當標示「第三方」的連結，不抄數字。",
   "fields": {
     "programs": "計畫代碼 → 名稱與單位（哩、Avios、點）。代碼和網站其他地方一樣（eva、ci、starlux 用 programs.json 的代碼，其他用 seats.aero 來源代碼；korean 是大韓 SKYPASS）。",
-    "carriers": "營運航空公司 → cabins 與 earn（每個計畫一筆）。earn 欄位：rates、zero（官方表上寫明不累積的代碼）、min（每段最低哩數）、minDist（距離不足時以此計，再乘比例）、minExcept（最低不適用的代碼）、except（特定航線例外）、basis（距離依據）、notes、source（官方頁）、checked（查核日）、effective（官方寫的生效日）。"
+    "carriers": "營運航空公司 → cabins 與 earn（每個計畫一筆）。earn 欄位：rates、zero（官方表上寫明不累積的代碼）、min（每段最低哩數）、minDist（距離不足時以此計，再乘比例）、cabinRates（只按艙等給比例的計畫：艙等 → %，或 [最低, 最高]）、until（官方寫的適用期限）、minExcept（最低不適用的代碼）、except（特定航線例外）、basis（距離依據）、notes、source（官方頁）、checked（查核日）、effective（官方寫的生效日）。"
   },
   "wheretocredit": "https://wheretocredit.com/en/",
   "programs": {
@@ -142,9 +142,12 @@
         },
         {
           "program": "alaska",
-          "pending": true,
-          "note": "官方頁有兩張累積表（在阿拉斯加官網訂、在其他地方買），我們讀到的版本對不起來，先不列數字",
-          "source": { "label": "阿拉斯加 Atmos：星宇航空（官方）", "url": "https://www.alaskaair.com/atmosrewards/content/partners/airlines/starlux" }
+          "cabinRates": { "F": 150, "J": 125, "W": 100, "Y": [25, 50] },
+          "basis": "飛行距離",
+          "notes": ["在星宇官網、旅行社等其他地方買的票：頭等 150%、商務 125%、豪經 100%、經濟 50%、折扣經濟 25%（官網沒寫哪些代碼算折扣經濟，所以經濟艙顯示 25%–50%）", "在阿拉斯加或夏威夷航空官網買的票多很多：國際線頭等 350%、商務 250%、豪經 150%、經濟和折扣經濟 100%", "這張表適用到 2026-12-31；2027-01-01 起可以選依距離、票價或航段累積", "在星宇官網買的票不累積 Atmos 會籍點數"],
+          "source": { "label": "阿拉斯加 Atmos：夥伴航空累積（官方，2026 年）", "url": "https://www.alaskaair.com/atmosrewards/content/earn-points/flights" },
+          "checked": "2026-10-16",
+          "until": "2026-12-31"
         }
       ]
     },
@@ -214,9 +217,12 @@
         },
         {
           "program": "alaska",
-          "pending": true,
-          "note": "官方頁有兩張累積表（在阿拉斯加官網訂、在其他地方買），我們讀到的版本對不起來，先不列數字",
-          "source": { "label": "阿拉斯加 Atmos：國泰航空（官方）", "url": "https://www.alaskaair.com/atmosrewards/content/partners/airlines/cathay-pacific" }
+          "cabinRates": { "F": 150, "J": 125, "W": 100, "Y": [25, 50] },
+          "basis": "飛行距離",
+          "notes": ["在國泰官網、旅行社等其他地方買的票：頭等 150%、商務 125%、豪經 100%、經濟 50%、折扣經濟 25%（官網沒寫哪些代碼算折扣經濟，所以經濟艙顯示 25%–50%）", "在阿拉斯加或夏威夷航空官網買的票多很多：國際線頭等 350%、商務 250%、豪經 150%、經濟和折扣經濟 100%", "這張表適用到 2026-12-31；2027-01-01 起可以選依距離、票價或航段累積"],
+          "source": { "label": "阿拉斯加 Atmos：夥伴航空累積（官方，2026 年）", "url": "https://www.alaskaair.com/atmosrewards/content/earn-points/flights" },
+          "checked": "2026-10-16",
+          "until": "2026-12-31"
         },
         {
           "program": "qantas",

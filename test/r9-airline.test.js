@@ -49,6 +49,11 @@ test('a percentage chart: the distance times the booking class\'s official %, pr
   // COSMILE on 星宇 (owner's screenshot): D 130%, Q earns nothing.
   assert.equal(rowOf(A.accrualRows(accrual, [seg('JX', 'TPE', 'NRT', 1330)], { JX: 'D' }, 'J'), 'starlux').hi, Math.round(1330 * 1.3));
   assert.equal(rowOf(A.accrualRows(accrual, [seg('JX', 'TPE', 'NRT', 1330)], { JX: 'Q' }, 'Y'), 'starlux').hi, 0);
+  // Atmos (owner's screenshots, 2026 partner-site table): per cabin, economy 25%–50% since codes are not mapped.
+  const as = (c, cab, pick) => A.accrualRows(accrual, [seg(c, 'TPE', 'LAX', 6800)], pick ? { [c]: pick } : {}, cab).find((r) => r.program === 'alaska');
+  assert.deepEqual([as('JX', 'J').lo, as('JX', 'J').hi], [8500, 8500]);
+  assert.deepEqual([as('CX', 'Y').lo, as('CX', 'Y').hi], [1700, 3400]);
+  assert.equal(as('JX', 'Y', 'C').hi, 8500, 'a picked code counts in its cabin');
   // A program whose official chart is not readable yet (Qantas on Cathay): no numbers, last, with the official page.
   const cx = A.accrualRows(accrual, [seg('CX', 'HKG', 'TPE', 501)], {}, 'J');
   const pend = cx.filter((r) => r.pending);
@@ -111,8 +116,9 @@ test('two airlines on one ticket: each program counts the flights it has a chart
   assert.deepEqual(rowOf(rows, 'eva').missing, ['CX']);
   assert.deepEqual(rowOf(rows, 'asiamiles').missing, ['BR']);
   assert.equal(rowOf(rows, 'eva').hi, Math.round(501 * 1.75));
-  // Alaska credits both but has no readable chart for either.
-  assert.ok(rowOf(rows, 'alaska').pending);
+  // Atmos credits the Cathay flight per cabin (business 125%) and has no chart for EVA.
+  assert.equal(rowOf(rows, 'alaska').hi, Math.round(5990 * 1.25));
+  assert.deepEqual(rowOf(rows, 'alaska').missing, ['BR']);
   // A flight without a distance counts nothing (and does not throw).
   assert.equal(rowOf(A.accrualRows(accrual, [seg('BR', 'TPE', 'XXX', null)], {}, 'J'), 'eva').hi, 0);
   // An airline without a chart gives no rows (the calculator shows the official links instead).
@@ -195,6 +201,11 @@ test('data/accrual.json: each chart comes from the program\'s own site, dated; t
           assert.equal(row.miles.length, r.zones.length, at);
           for (const l of row.classes) assert.ok(letters.includes(l), `${at}: ${l}`);
           for (const m of row.miles) assert.ok(Number.isInteger(m) && m > 0, at);
+        }
+      } else if (r.cabinRates) {
+        for (const [cab, pct] of Object.entries(r.cabinRates)) {
+          assert.ok(C.cabins?.[cab], `${at}: ${cab} is one of ${c}'s cabins`);
+          for (const p of [].concat(pct)) assert.ok(Number.isInteger(p) && p >= 0 && p <= 400, `${at}: ${cab} ${p}`);
         }
       } else {
         assert.ok(Object.keys(r.rates).length >= 5, at);

@@ -57,6 +57,17 @@ function accrualRows(A, segs, picks, cabin) {
       if (rule.pending) { row.pending = rule; continue; }
       if (!(s.dist > 0)) continue;
       const pick = picks?.[s.carrier] || '';
+      // cabinRates: a % per cabin, not per booking code ([lo, hi] where the program splits a cabin it does not map to codes).
+      if (rule.cabinRates) {
+        const cab = pick ? Object.keys(C.cabins || {}).find((k) => C.cabins[k].includes(pick)) : cabin;
+        const r = rule.cabinRates[cab];
+        if (r == null) { if (!row.noCode.includes(s.carrier)) row.noCode.push(s.carrier); continue; }
+        const [lo, hi] = [].concat(r, r);
+        row.lo += Math.round((s.dist * lo) / 100);
+        row.hi += Math.round((s.dist * hi) / 100);
+        for (const x of [lo, hi]) if (!row.pcts.includes(x)) row.pcts.push(x);
+        continue;
+      }
       const letters = pick ? [pick] : String(C.cabins?.[cabin] || '').split('').filter(Boolean);
       if (!letters.length) { if (!row.noCode.includes(s.carrier)) row.noCode.push(s.carrier); continue; }
       const each = letters.map((l) => accSegEarn(rule, l, s));
