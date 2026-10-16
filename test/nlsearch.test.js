@@ -11,7 +11,7 @@ const TODAY = '2026-10-15';
 const codes = new Set(AIRPORTS.airports.map((a) => a[0]));
 const programs = Object.entries(names).filter(([id]) => !id.endsWith('_est')).map(([id, name]) => ({ id, name }));
 const ctx = { today: TODAY, airportOk: (c) => codes.has(c), programIds: programs.map((p) => p.id), regions: ['Asia', 'North America', 'Europe', 'Oceania', 'South America', 'Africa'] };
-const EMPTY = { origin: [], destination: [], region: null, date_start: null, date_end: null, holiday: null, holiday_year: null, return_start: null, return_end: null, cabin: null, alliance: null, programs: [], passengers: null, direct_only: null };
+const EMPTY = { origin: [], destination: [], region: null, date_start: null, date_end: null, holiday: null, holiday_year: null, return_start: null, return_end: null, cabin: null, alliance: null, programs: [], passengers: null, direct_only: null, intent: 'search', max_miles: null, flights: [] };
 const answer = (o) => ({ ...EMPTY, ...o });
 
 // A stand-in for the Anthropic client: records each request and answers with `reply` (JSON text) or throws it.

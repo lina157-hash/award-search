@@ -125,7 +125,7 @@ let base;
 before(() => new Promise((r) => server.listen(0, () => { base = `http://localhost:${server.address().port}`; r(); })));
 after(() => server.close());
 
-test('R10: /api/cron/status is for the owner only and has each slot\'s parts; /api/config keeps its short summary', async () => {
+test('R10: /api/cron/status is for the owner only and has each slot\'s parts; /api/config has none of it (U18)', async () => {
   Object.assign(process.env, { CASH_PASSCODE: 'pw5', CRON_SECRET: 'tick5' });
   try {
     assert.equal((await fetch(`${base}/api/cron/status`)).status, 403);
@@ -143,9 +143,13 @@ test('R10: /api/cron/status is for the owner only and has each slot\'s parts; /a
     assert.deepEqual(Object.keys(st.runs[0].parts).filter((k) => k !== 'digest').sort(), ['alerts', 'deals', 'expiry', 'watches']);
     assert.equal(typeof st.callsTodayAll, 'number');
     assert.equal(st.dailyLimit, 1000);
+    assert.ok(st.lastDone);
+    assert.ok(Array.isArray(st.setup.missing) && Array.isArray(st.setup.line.missing), 'what is not set up is the owner\'s to read');
+    // Visitors: on/off only, no setting names and no run details.
     const cfg = await (await fetch(`${base}/api/config`)).json();
-    assert.deepEqual(Object.keys(cfg.cron).sort(), ['lastDenied', 'lastDone', 'lastDoneMs', 'lastProblems', 'lastRun', 'secret']);
-    assert.ok(cfg.cron.lastDone);
+    assert.equal(cfg.cron, undefined);
+    assert.equal(cfg.line.missing, undefined);
+    assert.deepEqual(cfg.searchCache, { enabled: false });
   } finally {
     delete process.env.CASH_PASSCODE;
     delete process.env.CRON_SECRET;

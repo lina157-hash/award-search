@@ -959,7 +959,7 @@ const ALERT_EMAIL_KEY = 'alertEmail';
 const alertCabins = (a) => Object.keys(CABIN_LABEL).filter((c) => String(a.cabin || '').includes(c));
 const alertSummary = (a) => `${a.origin} → ${a.destination}　${ymd(a.start)}${a.end !== a.start ? ` – ${ymd(a.end)}` : ''}　${alertCabins(a).map((c) => CABIN_LABEL[c]).join('、')}${a.pax ? `　至少 ${a.pax} 位` : ''}`;
 const allianceName = (id) => data.alliances?.alliances.find((x) => x.id === id)?.name || '';
-const alertFilterText = (a) => [a.sources?.length ? `哩程：${a.sources.map(srcName).join('、')}` : '', a.alliance ? `聯盟：${allianceName(a.alliance) || a.alliance}` : '', a.airlines?.length ? `航空公司：${a.airlines.map((x) => `${airlineZh(x)}（${x}）`).join('、')}${a.anyLeg ? '（含轉機）' : ''}` : '', a.direct ? '只要直飛' : ''].filter(Boolean).join('　');
+const alertFilterText = (a) => [a.sources?.length ? `哩程：${a.sources.map(srcName).join('、')}` : '', a.alliance ? `聯盟：${allianceName(a.alliance) || a.alliance}` : '', a.airlines?.length ? `航空公司：${a.airlines.map((x) => `${airlineZh(x)}（${x}）`).join('、')}${a.anyLeg ? '（含轉機）' : ''}` : '', a.direct ? '只要直飛' : '', a.flights?.length ? `只要航班：${a.flights.join('、')}` : '', a.maxMiles ? `最多 ${fmt(a.maxMiles)} 哩` : '', a.drops ? '降哩也通知' : ''].filter(Boolean).join('　');
 // The search a watch came from, for its 「查看」 button.
 const alertShare = (a) => new URLSearchParams({ o: a.origin, d: a.destination, s: a.start, e: a.end, c: alertCabins(a)[0] || 'J', ...(a.pax ? { n: a.pax } : {}), ...(a.alliance ? { al: a.alliance } : {}), ...(a.direct ? { direct: '1' } : {}) });
 // Which programs and airlines a watch reports. Programs: every seats.aero program, the ones in this search first, ticked
@@ -989,7 +989,8 @@ function alertFiltersHtml(share, a = null) {
       <label class="switch"><input type="checkbox" name="anyLeg" ${a?.anyLeg ? 'checked' : ''}><span class="knob"></span>轉機也通知（只要其中一段是這些航空公司）</label>
       <p class="hint">沒勾的話，整趟都是這些航空公司飛的才通知。</p>
     </details>
-    <label class="switch"><input type="checkbox" name="direct" ${share.get('direct') === '1' ? 'checked' : ''}><span class="knob"></span>只通知直飛</label>`;
+    <label class="switch"><input type="checkbox" name="direct" ${share.get('direct') === '1' ? 'checked' : ''}><span class="knob"></span>只通知直飛</label>
+    ${typeof alertExtraHtml === 'function' ? alertExtraHtml(a) : ''}`;
 }
 // Cabin chips: tick any number; each cabin's new seats are reported, labelled with the cabin.
 const alertCabinChipsHtml = (on) => `<div class="h-progs alert-cabins">${Object.entries(CABIN_LABEL).map(([k, t]) => `<label class="h-chip"><input type="checkbox" name="a-cab" value="${k}" ${on.includes(k) ? 'checked' : ''}><span>${t}</span></label>`).join('')}</div>`;
@@ -1002,6 +1003,7 @@ function alertFilterValues(f) {
     anyLeg: f.anyLeg.checked,
     alliance: f.alliance.value,
     direct: f.direct.checked,
+    ...(typeof alertExtraValues === 'function' ? alertExtraValues(f) : {}), // 哩數上限、降哩、指定航班 (notify.js)
   };
 }
 const PAX_OPTIONS = [['', '不限'], ['2', '至少 2 位'], ['3', '至少 3 位'], ['4', '至少 4 位'], ['5', '至少 5 位']];
@@ -1024,17 +1026,31 @@ function alertEditHtml(a) {
   </form>`;
 }
 const ALERT_SETUP = `<p class="hint">機位提醒還沒啟用。網站主人要在 Vercel 做兩件事：① Storage 分頁用 Marketplace 建一個 Upstash Redis（免費方案），它會自動加上連線設定；② 到 resend.com 申請免費金鑰，在 Environment Variables 新增 <code>RESEND_API_KEY</code>。都設好後重新部署。</p>`;
-function openAlertDialog() {
-  const share = tabParams('search');
-  if (!share.get('o')) return toast('請先搜尋一條航線');
+// The route and dates the open dialog will save: the search's own (shown as a line), or, from 一句話搜尋 (`pre`),
+// fields the owner can still change. `pre`: { share, watch } — share as tabParams gives it, `watch` the other
+// conditions (programs, alliance, cap, flights) to tick. Nothing is saved until 建立提醒 is pressed.
+let alertDraft = { share: null, editable: false };
+function openAlertDialog(pre = null) {
+  if (pre instanceof Event) pre = null;
+  const share = pre?.share || tabParams('search');
+  if (!share.get('o') && !pre) return toast('請先搜尋一條航線');
+  alertDraft = { share, editable: Boolean(pre) };
   const dlg = $('#alert-dialog');
   const f = $('#alert-form');
   f.email.value = store.get(ALERT_EMAIL_KEY, '');
   f.pax.value = share.get('n') || '';
-  $('#alert-filters').innerHTML = `<div class="field"><span>艙等（可複選）</span>${alertCabinChipsHtml([share.get('c') || 'J'])}</div>${alertFiltersHtml(share)}`;
-  $('#alert-summary').textContent = alertSummary({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: '' });
+  const lo = isoDate(0);
+  $('#alert-where').innerHTML = pre ? `<div class="alert-edit-grid">
+      <label class="field">出發地<input name="w-origin" value="${esc(share.get('o') || '')}" autocomplete="off" autocapitalize="characters" required placeholder="TPE"></label>
+      <label class="field">目的地<input name="w-destination" value="${esc(share.get('d') || '')}" autocomplete="off" autocapitalize="characters" required placeholder="YVR"></label>
+      <label class="field">出發日期（從）<input type="date" name="w-start" value="${esc(share.get('s') || '')}" min="${lo}" max="${isoDate(MAX_AHEAD_DAYS)}" required></label>
+      <label class="field">到<input type="date" name="w-end" value="${esc(share.get('e') || share.get('s') || '')}" min="${lo}" max="${isoDate(MAX_AHEAD_DAYS)}" required></label>
+    </div>` : '';
+  $('#alert-filters').innerHTML = `<div class="field"><span>艙等（可複選）</span>${alertCabinChipsHtml([share.get('c') || 'J'])}</div>${alertFiltersHtml(share, pre?.watch || null)}`;
+  $('#alert-summary').hidden = Boolean(pre);
+  $('#alert-summary').textContent = pre ? '' : alertSummary({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: '' });
   $('#alert-note').innerHTML = alertCfg.store
-    ? `每天早上自動檢查一次，有新的獎勵位就${alertCfg.email ? '寄信通知' : '顯示在「機位提醒」裡（網站尚未設定寄信服務）'}；現在已有的座位不會重複通知。`
+    ? `${pre ? '已依照你的句子填好，確認後按「建立提醒」才會建立。' : ''}每天早上自動檢查一次，有新的獎勵位就${alertCfg.email ? '寄信通知' : '顯示在「機位提醒」裡（網站尚未設定寄信服務）'}；現在已有的座位不會重複通知。`
     : ALERT_SETUP;
   dlg.showModal();
 }
@@ -1043,13 +1059,18 @@ $('#alert-dialog').addEventListener('click', (e) => { if (e.target.id === 'alert
 $('#alert-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!alertCfg.store) return;
-  const share = tabParams('search');
+  const share = alertDraft.share || tabParams('search');
   const f = e.target;
   const btn = $('button[type=submit]', f);
+  const codes = (v) => v.toUpperCase().split(/[\s,，、]+/).filter(Boolean).join(',');
+  // From 一句話搜尋 the route and dates are fields; from a search, the search's own.
+  const where = alertDraft.editable
+    ? { origin: codes(f['w-origin'].value), destination: codes(f['w-destination'].value), start: f['w-start'].value, end: f['w-end'].value || f['w-start'].value }
+    : { origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s') };
   btn.disabled = true;
   try {
     store.set(ALERT_EMAIL_KEY, f.email.value.trim());
-    const body = await cashApi('/api/alerts', { pass: '機位提醒', method: 'POST', body: JSON.stringify({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), pax: f.pax.value, email: f.email.value.trim(), ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
+    const body = await cashApi('/api/alerts', { pass: '機位提醒', method: 'POST', body: JSON.stringify({ ...where, pax: f.pax.value, email: f.email.value.trim(), ...alertFilterValues(f) }), headers: { 'content-type': 'application/json' } });
     $('#alert-dialog').close();
     toast(body.duplicate ? '一樣的提醒已經有了，不用再建一次' : `已建立提醒，目前有 ${body.found} 筆有位`);
     $('#alerts-panel').open = true;
@@ -1078,7 +1099,8 @@ async function loadAlerts() {
         <div class="hint">${a.lastRun ? `上次檢查 ${ago(a.lastRun)}：有位 ${a.lastFound ?? '—'} 筆${a.lastNew ? `，<b class="new">新增 ${a.lastNew} 筆</b>` : ''}` : '尚未檢查'}${a.lastError ? `　⚠ ${esc(a.lastError)}` : ''}</div>
         <div class="alert-actions"><button type="button" class="outline" data-open="${esc(alertShare(a))}">查看</button><button type="button" class="outline" data-edit="${esc(a.id)}" aria-expanded="false">修改</button><button type="button" class="outline" data-del="${esc(a.id)}">刪除</button></div>
       </li>`).join('')}</ul>` : '<p class="hint">還沒有提醒。搜尋一條航線後，按結果上方的「🔔 新機位通知」。</p>')
-      + `<div class="alert-foot">${list.length ? '<button type="button" class="outline" id="alerts-run">立即檢查全部</button>' : ''}<span class="hint">每天早上 8 點多（台灣時間）自動檢查${body.email ? '並寄信' : '；尚未設定寄信服務，只會顯示在這裡'}。</span></div>`;
+      + `<div class="alert-foot">${list.length ? '<button type="button" class="outline" id="alerts-run">立即檢查全部</button>' : ''}<span class="hint">每天早上 8 點多（台灣時間）自動檢查${body.email ? '並寄信' : '；尚未設定寄信服務，只會顯示在這裡'}。</span></div>`
+      + (typeof notifyLineHtml === 'function' ? notifyLineHtml() : ''); // 通知：Email｜Telegram｜LINE (notify.js)
     $$('[data-open]', box).forEach((b) => b.addEventListener('click', () => applyShare(new URLSearchParams(b.dataset.open))));
     $$('[data-edit]', box).forEach((b) => b.addEventListener('click', () => {
       const li = b.closest('li');
@@ -3276,6 +3298,7 @@ tabInit.cash = () => loadCashQuota();
   datePickers.explore.set(isoDate(30), isoDate(44));
   initFeatures();
   if (typeof nlInit === 'function') nlInit(config); // 一句話搜尋 (nlsearch.js)
+  if (typeof notifyInit === 'function') notifyInit(config); // 通知狀態、已開票追蹤 (notify.js)
   // Hidden tabs (rules, points, hotels) and the cash quota are set up when first opened.
   dataReady = true;
   ensureTab(currentTab);
