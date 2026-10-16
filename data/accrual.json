@@ -3,7 +3,7 @@
   "note": "現金票累積哩程試算（查現金票的已選取的航班、我的行程、點數換算器）：每家營運航空公司的票，累積到各計畫的官方比例。rates 是訂位艙等代碼 → 累積比例（%，乘上飛行距離），表上沒有的代碼不累積；kind zone 是依距離區間給固定哩數（國泰 2025-08-20 起的亞洲萬里通）；pending 表示官方頁讀不到（多半要開 JavaScript），只連到官方頁、不列數字。cabins 是這家航空公司自己的訂位艙等代碼分組（用在「還不知道代碼」時列出整個艙等的範圍），來自它自家累積表。只收官方頁面寫明的數字；第三方整理（例如 wheretocredit.com）只當標示「第三方」的連結，不抄數字。",
   "fields": {
     "programs": "計畫代碼 → 名稱與單位（哩、Avios、點）。代碼和網站其他地方一樣（eva、ci、starlux 用 programs.json 的代碼，其他用 seats.aero 來源代碼；korean 是大韓 SKYPASS）。",
-    "carriers": "營運航空公司 → cabins 與 earn（每個計畫一筆）。earn 欄位：rates、zero（官方表上寫明不累積的代碼）、min（每段最低）、minExcept（最低不適用的代碼）、except（特定航線例外）、basis（距離依據）、notes、source（官方頁）、checked（查核日）、effective（官方寫的生效日）。"
+    "carriers": "營運航空公司 → cabins 與 earn（每個計畫一筆）。earn 欄位：rates、zero（官方表上寫明不累積的代碼）、min（每段最低哩數）、minDist（距離不足時以此計，再乘比例）、minExcept（最低不適用的代碼）、except（特定航線例外）、basis（距離依據）、notes、source（官方頁）、checked（查核日）、effective（官方寫的生效日）。"
   },
   "wheretocredit": "https://wheretocredit.com/en/",
   "programs": {
@@ -73,8 +73,11 @@
         },
         {
           "program": "aeroplan",
-          "pending": true,
-          "source": { "label": "Aeroplan：合作航空（官方）", "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/partners.html" }
+          "rates": { "C": 125, "J": 125, "D": 125, "K": 100, "L": 100, "T": 100, "P": 100, "Y": 100, "B": 100, "M": 75, "H": 75, "Q": 50, "S": 50 },
+          "basis": "實際飛行哩程",
+          "notes": ["這是不是加航開的票（票號不是 014 開頭）的比例：依實際飛行哩程乘艙等代碼比例；表上沒有的代碼不累積", "加航開的票（票號 014 開頭）2026-01-01 起搭乘的，改依花費累積，Aeroplan 菁英會員另有加成"],
+          "source": { "label": "Aeroplan：長榮航空（官方）", "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/partners.html" },
+          "checked": "2026-10-16"
         }
       ]
     },
@@ -116,17 +119,26 @@
         },
         {
           "program": "flyingblue",
-          "pending": true,
-          "source": { "label": "Flying Blue：夥伴航空累積（官方）", "url": "https://www.flyingblue.com/en/earn/partners/china-airlines" }
+          "rates": { "J": 130, "C": 125, "D": 115, "W": 115, "U": 115, "A": 100, "E": 100, "Y": 100, "B": 100, "M": 100, "K": 80, "V": 80, "T": 80, "R": 50, "Q": 50, "H": 50, "N": 50 },
+          "minDist": 500,
+          "basis": "起訖兩地的距離",
+          "notes": ["華航班號的航班（任何天合聯盟夥伴營運），以及華航營運的指定華信班號；表上沒有的代碼、獎勵機票不累積", "華航航班每段最少算 500 哩，例如 274 哩的 N 艙一般會員得 500 × 50% = 250 哩", "CI1000–1999、4000–4999、5000–6999、7000–7999 的航班不累積（CI7863、7867–7868 台南—香港、CI7915–7916 台北—仰光除外）"],
+          "source": { "label": "Flying Blue：中華航空（官方）", "url": "https://www.flyingblue.com/en/earn/partners/airline-china-airlines" },
+          "checked": "2026-10-16"
         }
       ]
     },
     "JX": {
+      "cabins": { "F": "FA", "J": "JCD", "W": "WRE", "Y": "YBHKMLVSNQ" },
       "earn": [
         {
           "program": "starlux",
-          "pending": true,
-          "source": { "label": "星宇 COSMILE：累積哩程（官方）", "url": "https://www.starlux-airlines.com/zh-TW/cosmile/my-cosmile/mileage-accrual" }
+          "rates": { "F": 200, "A": 200, "J": 175, "C": 150, "D": 130, "W": 125, "R": 115, "E": 105, "Y": 100, "B": 100, "H": 100, "K": 80, "M": 80, "L": 80, "V": 60, "S": 60, "N": 60, "Q": 0 },
+          "zero": "Q",
+          "basis": "IATA TPM",
+          "notes": ["星宇班號的航班；機票艙等和實際搭乘艙等不同時，以較低的計算", "Q（Limited）、獎勵機票、用阿拉斯加哩程換的票、折扣票、包機、團體票和嬰兒票不累積", "INSIGHTER、EXPLORER、ADVENTURER 會員搭星宇營運的航班另有加贈"],
+          "source": { "label": "星宇 COSMILE：哩程累積（官方）", "url": "https://www.starlux-airlines.com/en-US/cosmile/my-cosmile/mileage-accrual" },
+          "checked": "2026-10-16"
         },
         {
           "program": "alaska",

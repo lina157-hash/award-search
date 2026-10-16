@@ -37,7 +37,8 @@ function accSegEarn(rule, cls, seg) {
   let pct = rule.rates?.[cls] || 0;
   const ex = (rule.except || []).find((e) => e.classes.includes(cls) && e.routes.some((r) => r === `${seg.from}-${seg.to}` || r === `${seg.to}-${seg.from}`));
   if (ex) pct = ex.pct;
-  let miles = Math.round((seg.dist * pct) / 100);
+  // minDist: a floor on the distance before the % (Flying Blue: 500 miles); min: a floor on the miles earned.
+  let miles = Math.round((Math.max(seg.dist, rule.minDist || 0) * pct) / 100);
   if (pct > 0 && rule.min && !String(rule.minExcept || '').includes(cls)) miles = Math.max(miles, rule.min);
   return { lo: miles, hi: miles, pct };
 }

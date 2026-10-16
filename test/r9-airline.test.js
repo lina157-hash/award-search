@@ -42,12 +42,20 @@ test('a percentage chart: the distance times the booking class\'s official %, pr
   // United: the owner's screenshot of its official EVA page (tickets bought outside United, by distance).
   assert.equal(rowOf(rows, 'united').hi, Math.round(1330 * 1.5));
   assert.equal(A.accrualRows(accrual, [seg('BR', 'TPE', 'NRT', 1330)], { BR: 'V' }, 'Y').find((r) => r.program === 'united').hi, 0);
-  // Aeroplan: no readable official chart, so no numbers, last, with the official page.
-  const pend = rows.filter((r) => r.pending);
-  assert.deepEqual(pend.map((r) => r.program).sort(), ['aeroplan']);
-  assert.ok(rows.at(-1).pending);
+  // Aeroplan: the owner's screenshot of its EVA page (C 125%).
+  assert.equal(rowOf(rows, 'aeroplan').hi, Math.round(1330 * 1.25));
+  // Flying Blue on 華航 (owner's screenshot): at least 500 miles a flight, the official 274-mile N example earns 250.
+  assert.equal(A.accrualRows(accrual, [seg('CI', 'TPE', 'XXX', 274)], { CI: 'N' }, 'Y').find((r) => r.program === 'flyingblue').hi, 250);
+  // COSMILE on 星宇 (owner's screenshot): D 130%, Q earns nothing.
+  assert.equal(rowOf(A.accrualRows(accrual, [seg('JX', 'TPE', 'NRT', 1330)], { JX: 'D' }, 'J'), 'starlux').hi, Math.round(1330 * 1.3));
+  assert.equal(rowOf(A.accrualRows(accrual, [seg('JX', 'TPE', 'NRT', 1330)], { JX: 'Q' }, 'Y'), 'starlux').hi, 0);
+  // A program whose official chart is not readable yet (Qantas on Cathay): no numbers, last, with the official page.
+  const cx = A.accrualRows(accrual, [seg('CX', 'HKG', 'TPE', 501)], {}, 'J');
+  const pend = cx.filter((r) => r.pending);
+  assert.ok(pend.some((r) => r.program === 'qantas'));
+  assert.ok(cx.at(-1).pending);
   for (const r of pend) assert.match(r.pending.source.url, /^https:\/\//);
-  assert.equal(rows.find((r) => r.pending).hi, 0);
+  assert.equal(pend[0].hi, 0);
 });
 
 test('「還不知道」: the range over every booking code of the cabin', () => {
@@ -260,7 +268,7 @@ test('the calculator draws rows, 官方資料待補 and the third-party link; th
   const html = X.accCalcHtml(st, '1');
   assert.match(html, /長榮 無限萬哩遊/);
   assert.match(html, /<b>2,328<\/b> 哩/);
-  assert.match(html, /官方資料待補/);
+  assert.match(X.accCalcHtml({ ...st, segs: [seg('CX', 'HKG', 'TPE', 501, ['HK', 'TW'])], picks: {}, sel: '' }, '2'), /官方資料待補/);
   assert.match(html, /wheretocredit\.com\/en\/BR" target="_blank" rel="noopener">wheretocredit\.com ↗<\/a><sup class="mk-3p"[^>]*>\*<\/sup>（第三方整理，以官網為準）/);
   assert.match(html, /還不知道/);
   // The 🎯 goal's program (also the most miles here): 2,328 × 0.5 = NT$1,164 off NT$30,000.
