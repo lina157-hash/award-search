@@ -3190,7 +3190,7 @@ for (const ev of ['pointerdown', 'focusin']) $('#tab-search').addEventListener(e
 // Scripts only the route results use (the 國泰 card and calendars, 請 AI 助理查官網, seat history; about 55 KB gzipped):
 // fetched on the first sign of a search instead of with the page. In this order: each one builds on the one before.
 // The 規則庫 tab (cxcal.js's bookmarklet card) and a #cxcal= landing link load them too.
-const SEARCH_SCRIPTS = ['seathistory', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'cxmuse', 'cxcard'];
+const SEARCH_SCRIPTS = ['seathistory', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'cxmuse', 'cxshot', 'cxcard'];
 let searchScriptsP = null;
 function loadSearchScripts() {
   searchScriptsP ||= Promise.all(SEARCH_SCRIPTS.map((name) => new Promise((resolve) => {

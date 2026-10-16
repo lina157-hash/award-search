@@ -28,6 +28,7 @@ const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
 const { cronParts, cronSlot } = require('./lib/cronreport');
 const { createDealSub, DealSubError } = require('./lib/dealsub');
 const { createNlSearch, pickProvider, NlError } = require('./lib/nlsearch');
+const { createNlImage, MAX_BODY: NL_IMAGE_BODY } = require('./lib/nlimage');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = (process.env.SEATS_AERO_API_KEY || '').trim(); // a key pasted into Vercel with a space or line break still works
@@ -1275,6 +1276,26 @@ async function handleNl(req) {
   const body = await readJson(req, 2000);
   return nlSearch.parse(body.text);
 }
+// 截圖讀入官網結果 (lib/nlimage.js): the same model reads a screenshot the owner took of an airline's own award page into
+// the lines 「請 AI 助理查官網」 reads. Owner only, NL_IMAGE_DAILY_LIMIT reads a Taiwan day; the image is never kept.
+const nlImage = createNlImage({
+  mode: NL.mode,
+  provider: NL.provider || undefined,
+  apiKey: NL.apiKey,
+  kv,
+  today: () => todayTW(),
+  airportCodes: new Set(AIRPORTS.keys()),
+  templates: require('./data/muse-templates.json').airlines,
+  limit: Number(process.env.NL_IMAGE_DAILY_LIMIT) || 30,
+  timeoutMs: 25000,
+});
+async function handleNlImage(req) {
+  if (!fromPage(req)) throw new NlError('請從網站頁面使用截圖讀取', 403);
+  if ((await runCaller(req)) !== 'owner') {
+    throw cashPasscode() ? passError(req, '需要通關密碼才能讀截圖') : Object.assign(new CashError('要先在 Vercel 設定 CASH_PASSCODE，才能讀截圖', 401), { code: 'setup' });
+  }
+  return nlImage.read(await readJson(req, NL_IMAGE_BODY));
+}
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.txt': 'text/plain; charset=utf-8', '.webmanifest': 'application/manifest+json' };
 
@@ -1420,6 +1441,11 @@ async function route(req, res) {
       if (!nlSearch.enabled) return sendJson(res, 404, { error: 'not found' });
       if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleNl(req));
+    }
+    if (p === '/api/nl/image') {
+      if (!nlImage.enabled) return sendJson(res, 404, { error: 'not found' });
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleNlImage(req));
     }
     if (p === '/api/watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });

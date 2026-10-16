@@ -1,4 +1,5 @@
-// 一句話搜尋 on a live site without OPENAI_API_KEY or ANTHROPIC_API_KEY: invisible. /api/config says nl: false and /api/nl is a 404.
+// 一句話搜尋 on a live site without OPENAI_API_KEY or ANTHROPIC_API_KEY: invisible. /api/config says nl: false and /api/nl (and
+// /api/nl/image, 貼上截圖) is a 404.
 // Own file (own process): the server reads its keys when it loads. No request here reaches seats.aero.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert');
@@ -17,8 +18,8 @@ test('no key: no box, no endpoint', async () => {
   const cfg = await (await fetch(base + '/api/config')).json();
   assert.equal(cfg.mock, false);
   assert.equal(cfg.nl, false);
-  for (const method of ['POST', 'GET']) {
-    const res = await fetch(base + '/api/nl', { method, headers: { 'x-requested-with': 'fetch', 'content-type': 'application/json' }, body: method === 'POST' ? '{"text":"去大阪"}' : undefined });
+  for (const [path, method] of [['/api/nl', 'POST'], ['/api/nl', 'GET'], ['/api/nl/image', 'POST'], ['/api/nl/image', 'GET']]) {
+    const res = await fetch(base + path, { method, headers: { 'x-requested-with': 'fetch', 'content-type': 'application/json' }, body: method === 'POST' ? '{"text":"去大阪"}' : undefined });
     assert.equal(res.status, 404);
   }
 });
