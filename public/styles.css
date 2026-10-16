@@ -2471,12 +2471,13 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 .mk-alt { color: var(--accent); }
 .mk-h { margin: 16px 0 8px; font-size: .95rem; }
 .mk-via { margin: 8px 0 0; max-width: 520px; }
-.mk-compare th, .mk-compare td { vertical-align: top; }
+.mk-compare th, .mk-compare td { vertical-align: top; white-space: normal; }
+.need-main td .mk-edge, .need-main td .mk-alt { white-space: normal; }
 .mk-compare thead th { min-width: 150px; text-align: left; font-weight: 600; }
 .mk-compare thead th:first-child { min-width: 120px; }
 .mk-compare th small, .mk-compare td small { display: block; color: var(--muted); font-size: .76rem; font-weight: 400; }
 .mk-compare .mk-more { color: var(--few-text); font-weight: 600; }
-.mk-compare td .mk-tag { margin-top: 3px; white-space: normal; }
+.mk-compare td .mk-tag { margin-top: 3px; white-space: normal; border-radius: 8px; }
 .mk-compare td.mk-best { background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface)); }
 .mk-compare td.mk-best > b { color: var(--accent); }
 .mk-src { font-size: .78rem; }
@@ -2490,7 +2491,8 @@ path.mk-ring.on { stroke: var(--sun-2); stroke-opacity: .95; }
 path.mk-arc { stroke: var(--sun-2); stroke-linecap: round; fill: none; }
 .leaflet-marker-icon.mk-ring-label { white-space: nowrap; padding: 1px 6px; border-radius: 6px; background: var(--surface); color: var(--muted); font-size: .7rem; box-shadow: 0 1px 3px rgb(0 0 0 / .2); }
 .leaflet-marker-icon.mk-ring-label.on { color: var(--text); font-weight: 700; outline: 2px solid var(--sun-2); }
-.mk-pop { margin: 6px 0 0; font-size: .8rem; line-height: 1.45; }
+.leaflet-popup-content p.mk-pop { margin: 6px 0 0; font-size: .8rem; line-height: 1.45; }
+.rm-pop td:first-child { white-space: normal; }
 .mk-pop small { display: block; color: #777; }
 .mk-pop.warn { color: #8a5a00; }
 .mk-list { margin: 8px 0 0; }
@@ -2503,9 +2505,22 @@ path.mk-arc { stroke: var(--sun-2); stroke-linecap: round; fill: none; }
 .combo-map { margin: 10px 0; }
 .combo-map > summary { cursor: pointer; font-weight: 600; font-size: .92rem; padding: 4px 0; }
 .combo-map-box { height: 340px; margin: 6px 0; }
-.combo-dists { margin: 6px 0; padding-left: 1.6em; font-size: .86rem; }
-.combo-dists li.oj { color: var(--muted); list-style: circle; }
+.combo-dists { margin: 6px 0; padding: 0; list-style: none; font-size: .86rem; }
+.combo-dists li { padding: 2px 0; }
+.combo-dists li.oj { color: var(--muted); padding-left: 1em; }
 @media (max-width: 640px) {
+  /* 哩程試算 on a phone: each program a card (name and miles, then the basis, tags and source) instead of a wide table. */
+  .need-main thead { display: none; }
+  .need-main, .need-main tbody { display: block; }
+  .need-main tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .need-main tbody tr:last-child { border-bottom: 0; }
+  .need-main td { display: block; padding: 0; border: 0; position: static; background: none; white-space: normal; }
+  .need-main td:nth-child(2) { text-align: right; }
+  .need-main td:nth-child(n+3) { grid-column: 1 / -1; }
+  .need-main td:nth-child(4) { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+  .need-main td:nth-child(4) small { display: inline; }
+  .need-main tr.best-row { background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
+  .need-main tr.best-row td { background: none; }
   .combo-map-box { height: 260px; }
   .mk-air, .mk-air select { max-width: 100%; }
   .mk-compare thead th { min-width: 130px; }

@@ -300,14 +300,14 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     return { pts: pts.map((code) => ({ code, ap: comboAp(code) })), surface };
   }
   function comboMapHtml(legs, ev) {
-    const gap = (a, b) => { const [x, y] = [comboAp(a), comboAp(b)]; return x && y ? `<li class="oj">${esc(a)} ↔ ${esc(b)}　開口（地面段，自行前往）${miKm(haversineMiles(x, y))}</li>` : ''; };
-    const rows = legs.map((l, i) => `<li><b>${esc(l.from)} → ${esc(l.to)}</b>　${miKm(ev.trip.dist[i])}</li>${legs[i + 1] && legs[i + 1].from !== l.to ? gap(l.to, legs[i + 1].from) : ''}`).join('');
+    const gap = (a, b) => { const [x, y] = [comboAp(a), comboAp(b)]; return x && y ? `<li class="oj">開口 ${esc(a)} ↔ ${esc(b)}（地面段，自行前往）${miKm(haversineMiles(x, y))}</li>` : ''; };
+    const rows = legs.map((l, i) => `<li><b>第 ${i + 1} 段 ${esc(l.from)} → ${esc(l.to)}</b>　${miKm(ev.trip.dist[i])}</li>${legs[i + 1] && legs[i + 1].from !== l.to ? gap(l.to, legs[i + 1].from) : ''}`).join('');
     const back = ev.trip.openJaws.find((x) => x.at === 'origin');
     const p = ev.price || ev.splitPrice;
     const bands = typeof mkBandText === 'function' ? (p?.parts || []).filter((x) => x.bands && x.d && x.miles != null) : [];
     return `<details class="combo-map" id="combo-map" ${comboMapOpen ? 'open' : ''}><summary>在地圖上看・每段距離</summary>
       <div class="ex-map combo-map-box" id="combo-map-box"><p class="hint">地圖載入中…</p></div>
-      <ol class="combo-dists">${rows}${back ? gap(back.b, back.a) : ''}</ol>
+      <ul class="combo-dists">${rows}${back ? gap(back.b, back.a) : ''}</ul>
       ${bands.length ? `<p class="hint">計價距離：${bands.map((x) => `${esc(x.label)} ${fmt(x.d)} 哩，落在 ${esc(mkBandText(x.bands, x.d))}`).join('；')}。</p>` : ''}
       <p class="hint">距離是兩地的大圓距離（英里），和航空公司的計算可能差幾哩${ev.trip.openJaws.length ? '；虛線是開口，要自己安排交通' : ''}。</p></details>`;
   }

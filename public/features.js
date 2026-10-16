@@ -890,7 +890,7 @@ function renderNeed() {
   const compare = kit && need.vias.length ? mkCompareHtml(a, b, need.vias, c, rt) : '';
   host.innerHTML = `<h3 class="sub">${esc(need.origin)} ${esc(airportCity(need.origin))} → ${esc(need.destination)} ${esc(airportCity(need.destination))}　${rt ? '來回・' : ''}${CABIN_LABEL[c]}・直線距離 ${miKm(dist)}</h3>
     ${compare ? `<h4 class="mk-h">轉機走法比較</h4>${compare}<h4 class="mk-h">各計畫明細（${esc(need.origin)} → ${esc(need.destination)} 直飛距離）</h4>` : ''}
-    ${rows.length ? `<div class="table-wrap"><table class="need-table"><thead><tr><th>計畫</th><th>${rt ? '來回' : '單程'}哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
+    ${rows.length ? `<div class="table-wrap"><table class="need-table need-main"><thead><tr><th>計畫</th><th>${rt ? '來回' : '單程'}哩數</th><th>依據</th><th>資料</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${i === 0 ? 'best-row' : ''}"><td><b>${esc(chartProgram(r.key, r.name).name)}</b><small>${esc(r.label)}</small></td><td><b>${fmt(r.miles)} 哩</b>${shortfallHtml(r.key, r.miles)}</td>
         <td><small>${esc(r.note)}${r.perSegment ? '；每段航班分開計價，轉機會更貴' : ''}</small>${r.extra ? `<span class="mk-bits">${r.extra}</span>` : ''}</td>
         <td>${CONFIDENCE_TAG[r.confidence] || ''}${r.src ? `<small><a href="${esc(r.src.url)}" target="_blank" rel="noopener">${esc(r.src.label)} ↗</a></small>` : ''}</td></tr>`).join('')}
@@ -1109,6 +1109,8 @@ function drawRmap(el, froms, dests, multi) {
   // On a phone the map is short: fewer rows, and never taller than the map (Leaflet scrolls the rest).
   const narrow = matchMedia('(max-width: 640px)').matches;
   const rows = narrow ? 5 : 8;
+  // A phone's card fits beside the zoom buttons (autoPanPaddingTopLeft) with Leaflet's own padding.
+  const popW = Math.max(200, Math.min(320, el.clientWidth - 110));
   const marks = [];
   dests.forEach((d, i) => {
     const icon = L.divIcon({ className: `rm-pin t${tier(d.min)}${d.ring ? ' rm-direct' : ''}`, html: `<span class="rm-k">${Math.round(d.min / 1000)}</span><span class="rm-label"><b>${esc(d.city)}</b>${fmt(d.min)} 哩起</span>`, iconSize: null, iconAnchor: [14, 14] });
@@ -1129,7 +1131,7 @@ function drawRmap(el, froms, dests, multi) {
       ${d.prices.length > rows ? `<small>還有 ${d.prices.length - rows} 個計畫</small>` : ''}
       ${kit ? mkPopupHtml(d) : ''}
       <div class="map-actions"><button type="button" data-rm-search="${esc(d.codes.join(','))}">到航線查詢找座位</button><button type="button" data-rm-need="${esc(d.ap.code)}" data-rm-from="${esc(d.from)}">看計算依據</button></div>`,
-    { minWidth: narrow ? 220 : 240, maxWidth: 320, autoPanPaddingTopLeft: L.point(52, 12), ...(narrow ? { maxHeight: Math.max(200, el.clientHeight - 70) } : {}) });
+    { minWidth: narrow ? Math.min(220, popW) : 240, maxWidth: narrow ? popW : 320, autoPanPaddingTopLeft: L.point(52, 12), ...(narrow ? { maxHeight: Math.max(200, el.clientHeight - 70) } : {}) });
   });
   // Declutter on every move: in rank order, a pin gets its label when the label has room, only its dot when the dot
   // has room, and hides otherwise (zoom in to see it).

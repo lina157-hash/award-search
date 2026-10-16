@@ -171,7 +171,7 @@ function mkReach(froms, tos, only = null) {
 function mkReachText(r) {
   if (!r) return '';
   if (r.stops === 0) return `直飛約 ${r.hours} 小時`;
-  if (r.stops === 1) return `需轉機・約 ${r.hours} 小時（經 ${r.via} ${airportCity(r.via)}）`;
+  if (r.stops === 1) return `需轉機・約 ${r.hours} 小時（經 ${r.via} ${airportCity(r.via).replace(/（.*）$/, '')}）`;
   return '需轉機兩次以上';
 }
 
@@ -385,7 +385,7 @@ function mkDrawLayers(map, froms, dests) {
       const on = r === can;
       L.polyline(mkCircle(from, r.upTo), { className: `mk-ring${on ? ' on' : ''}`, weight: on ? 3 : 1.5, dashArray: on ? null : '6 6', interactive: false }).addTo(mkLayer);
       const at = mkDest(from, 150, r.upTo);
-      L.marker(at, { icon: L.divIcon({ className: `mk-ring-label${on ? ' on' : ''}`, html: `≤${fmt(r.upTo)} 哩・${CABIN_SHORT[rmap.cabin]} ${r.miles ? fmt(r.miles) : '—'}`, iconSize: null }), interactive: false, keyboard: false }).addTo(mkLayer);
+      L.marker(at, { icon: L.divIcon({ className: `mk-ring-label${on ? ' on' : ''}`, html: `≤${fmt(r.upTo)} 哩・${CABIN_SHORT[rmap.cabin]} ${r.miles ? fmt(r.miles) : '—'}`, iconSize: null }), interactive: false, keyboard: false, zIndexOffset: 100000 }).addTo(mkLayer);
     }
   }
   const arc = L.layerGroup().addTo(map);
@@ -444,7 +444,7 @@ function mkRowTag(x) {
 function mkAfterMapHtml(dests) {
   const rings = rmap.rings && mkRingBands(rmap.program, rmap.cabin, rmap.trip, rmapFroms()[0]);
   const sorted = [...dests].sort(rmap.sort === 'time' ? (m, n) => (m.reach?.hours ?? 99) + (m.reach?.stops === 2 ? 99 : 0) - ((n.reach?.hours ?? 99) + (n.reach?.stops === 2 ? 99 : 0)) || m.min - n.min : (m, n) => m.min - n.min);
-  return `${rings?.length ? `<p class="hint">虛線圈是${esc(rmapProgramName(rmap.program))}的距離級距（以 ${esc(rmap.origins[0])} 為中心的直線距離${rmap.program === 'asiamiles' ? '，標國泰航班價；國泰經香港轉機時依兩段相加' : ''}${rmap.budget ? '，粗線是「我有幾哩」換得到的最遠一圈' : ''}）。</p>` : ''}
+  return `${rings?.length ? `<p class="hint mk-legend">虛線圈是${esc(rmapProgramName(rmap.program))}的距離級距（以 ${esc(rmap.origins[0])} 為中心的直線距離${rmap.program === 'asiamiles' ? '，標國泰航班價；國泰經香港轉機時依兩段相加' : ''}${rmap.budget ? '，粗線是「我有幾哩」換得到的最遠一圈' : ''}）。</p>` : ''}
     <p class="hint">✈ 飛行時間依直線距離估算（時速約 800 公里加 30 分鐘起降，轉機另加 2 小時），只是大約；實際以航空公司時刻表為準。</p>
     ${mkSourceHtml()}
     <details class="mk-list" ${rmap.listOpen ? 'open' : ''}><summary>城市列表（${dests.length} 個，可依哩數或飛行時間排序）</summary>
