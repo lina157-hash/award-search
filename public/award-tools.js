@@ -100,6 +100,9 @@ function upgradePairs(air) {
 }
 // Miles and qualifying fares for one route and one upgrade; `dist` (miles) is only used by distance charts.
 // Returns { air, charts: [{ label, zone, fares: [{ label, codes, miles }] }] } or null for an unknown airline.
+// A zone row with oneWay prices only between[0] → between[1]; a zone chart lists only the fares its rows price.
+// A distance band's miles are one number for every fare, or one per fare id; fromJapan is set only for charts
+// whose eligible classes depend on starting in Japan (ANA).
 function upgradeQuote(upg, airlineId, a, b, from, to, dist) {
   const air = upg?.airlines?.find((x) => x.id === airlineId);
   if (!air) return null;
@@ -110,19 +113,32 @@ function upgradeQuote(upg, airlineId, a, b, from, to, dist) {
       if (i < 0) continue;
       const band = ch.bands[i];
       const lo = i ? ch.bands[i - 1].upTo + 1 : 0;
-      const fromJapan = a.country === 'JP';
+      const fromJapan = ch.fares.some((f) => f.codesFromJapan) ? a.country === 'JP' : null;
       charts.push({ label: ch.label, zone: `航段距離 ${lo.toLocaleString('en-US')}${band.upTo == null ? ' 哩以上' : `–${band.upTo.toLocaleString('en-US')} 哩`}`, band: [lo, band.upTo], fromJapan,
-        fares: ch.fares.map((f) => ({ label: f.label, codes: fromJapan && f.codesFromJapan ? f.codesFromJapan : f.codes, miles: band.miles })) });
+        fares: ch.fares.map((f) => ({ label: f.label, codes: fromJapan && f.codesFromJapan ? f.codesFromJapan : f.codes,
+          miles: typeof band.miles === 'object' ? band.miles?.[f.id] ?? null : band.miles })) });
       continue;
     }
     const row = ch.rows.find((r) => {
       const [x, y] = r.between.map((id) => upg.areas[id]);
-      return (inUpArea(x, a) && inUpArea(y, b)) || (inUpArea(x, b) && inUpArea(y, a));
+      return (inUpArea(x, a) && inUpArea(y, b)) || (!r.oneWay && inUpArea(x, b) && inUpArea(y, a));
     });
     if (!row) continue;
-    charts.push({ label: ch.label, zone: row.name, fares: (air.fares?.[from] || []).map((f) => ({ label: f.label, codes: f.codes, miles: row.miles[f.id] ?? null })) });
+    const priced = new Set(ch.rows.flatMap((r) => Object.keys(r.miles)));
+    charts.push({ label: ch.label, zone: row.name, fares: (air.fares?.[from] || []).filter((f) => priced.has(f.id)).map((f) => ({ label: f.label, codes: f.codes, miles: row.miles[f.id] ?? null })) });
   }
   return { air, charts };
+}
+// The airline picker's groups in data order: [{ name, airlines }]; airlines without a group go last under 其他.
+function upgradeGroups(upg) {
+  const groups = [];
+  for (const air of upg?.airlines || []) {
+    const name = air.group || '其他';
+    let g = groups.find((x) => x.name === name);
+    if (!g) groups.push(g = { name, airlines: [] });
+    g.airlines.push(air);
+  }
+  return groups.sort((x, y) => (x.name === '其他') - (y.name === '其他'));
 }
 
 // ---------- browser wiring ----------
@@ -287,6 +303,8 @@ function paintCostSettings() {
 const upgState = { air: 'eva', pair: 'Y-J', origin: 'TPE', destination: '' };
 const UPG_CABIN = { Y: '經濟艙', W: '豪華經濟艙', J: '商務艙', F: '頭等艙' };
 const upgPairLabel = (p) => { const [f, t] = p.split('-'); return `${UPG_CABIN[f]} → ${UPG_CABIN[t]}`; };
+// The airline's mark (logos.js, loaded on every page); decorative, the name is always next to it.
+const upgLogo = (air) => (typeof airlineLogo === 'function' && air?.code ? airlineLogo(air.code, 'sm') : '');
 function upgradeHtml() {
   const U = data.upgrades;
   if (!U) { loadMore().then(() => { if (pointsView.view === 'upgrade' && data.upgrades) renderPoints(); }); return '<p class="hint">升等資料載入中…</p>'; }
@@ -295,9 +313,9 @@ function upgradeHtml() {
   const pairs = upgradePairs(air);
   if (!pairs.includes(upgState.pair)) upgState.pair = pairs.includes('Y-J') ? 'Y-J' : pairs[0];
   return `<form id="upg-form" class="need upg" autocomplete="off">
-    <p class="hint">已經買好現金票，想用哩程升等？選航空公司、航線和艙等，看每段單程要多少哩、哪些票價艙等可以升。不查座位、不花額度。</p>
+    <p class="hint">已經買好現金票，想用哩程升等？選航空公司、航線和艙等，看單程要多少哩、哪些票價艙等可以升。不查座位、不花額度。</p>
     <div class="opts-row">
-      <label class="field">航空公司<select id="upg-air">${U.airlines.map((a) => `<option value="${esc(a.id)}" ${a.id === air.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></label>
+      <label class="field">航空公司<span class="upg-air">${upgLogo(air)}<select id="upg-air">${upgradeGroups(U).map((g) => `<optgroup label="${esc(g.name)}">${g.airlines.map((a) => `<option value="${esc(a.id)}" ${a.id === air.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</optgroup>`).join('')}</select></span></label>
       <label class="field">升等<select id="upg-pair">${pairs.map((p) => `<option value="${p}" ${p === upgState.pair ? 'selected' : ''}>${upgPairLabel(p)}</option>`).join('')}</select></label>
     </div>
     <div class="route-row">
@@ -350,15 +368,17 @@ function renderUpgrade() {
   if (!q) return;
   const { air } = q;
   const codes = (f) => (f.codes.length ? f.codes.join('、') : '—');
-  const table = (ch) => `<div class="upg-card">
+  const unit = air.unit || '哩';
+  // The codes column only when the chart publishes some booking codes.
+  const table = (ch) => { const withCodes = ch.fares.some((f) => f.codes.length); return `<div class="upg-card">
     <div class="upg-zone"><b>${esc(ch.zone)}</b>${ch.label ? `<span class="pill">${esc(ch.label)}</span>` : ''}${ch.fromJapan != null ? `<small>${ch.fromJapan ? '日本出發' : '日本以外出發'}的可升等艙等</small>` : ''}</div>
-    <div class="table-wrap"><table class="upg-table"><thead><tr><th>你的機票</th><th>可升等的艙等代碼</th><th>每段單程</th></tr></thead><tbody>
-      ${ch.fares.map((f) => `<tr><td>${esc(f.label)}</td><td>${esc(codes(f))}</td><td>${f.miles ? `<b>${fmt(f.miles)} 哩</b>` : '<span class="muted">不適用</span>'}</td></tr>`).join('')}
-    </tbody></table></div></div>`;
+    <div class="table-wrap"><table class="upg-table"><thead><tr><th>你的機票</th>${withCodes ? '<th>可升等的艙等代碼</th>' : ''}<th>單程所需</th></tr></thead><tbody>
+      ${ch.fares.map((f) => `<tr><td>${esc(f.label)}</td>${withCodes ? `<td>${esc(codes(f))}</td>` : ''}<td>${f.miles ? `<b>${fmt(f.miles)} ${esc(unit)}</b>` : '<span class="muted">不適用</span>'}</td></tr>`).join('')}
+    </tbody></table></div></div>`; };
   const not = air.notEligible?.[from] || air.notEligible?.['*'];
   const src = (air.sources || []).map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a>`).join('　');
   const other = upgradePairs(air).filter((p) => p !== upgState.pair && upgradeQuote(data.upgrades, air.id, a, b, ...p.split('-'), dist).charts.length);
-  host.innerHTML = `<h3 class="sub">${esc(air.name)}　${esc(upgState.origin)} ${esc(airportCity(upgState.origin))} → ${esc(upgState.destination)} ${esc(airportCity(upgState.destination))}　${upgPairLabel(upgState.pair)}</h3>
+  host.innerHTML = `<h3 class="sub upg-head">${upgLogo(air)}${esc(air.name)}　${esc(upgState.origin)} ${esc(airportCity(upgState.origin))} → ${esc(upgState.destination)} ${esc(airportCity(upgState.destination))}　${upgPairLabel(upgState.pair)}</h3>
     ${q.charts.length ? q.charts.map(table).join('') : `<p class="hint">這條航線沒有${esc(air.name)}的${upgPairLabel(upgState.pair)}升等價格（航線不在表上，或這條線沒有這個艙等）。${other.length ? `可以試試：${other.map((p) => `<button type="button" class="linklike" data-upg-pair="${p}">${upgPairLabel(p)}</button>`).join('、')}` : ''}</p>`}
     ${q.charts.length && not ? `<p class="hint">✕ ${esc(not)}</p>` : ''}
     <ul class="upg-rules">${(air.rules || []).map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
@@ -368,7 +388,7 @@ function renderUpgrade() {
 
 // Node (the tests) gets the pure helpers; the browser starts the wiring once every declaration above exists.
 if (typeof module === 'object' && module.exports) {
-  module.exports = { feeShort, feeChipText, transferTimeFor, transferRoutes, holdAdvice, perMileOf, cleanCosts, twdCost, inUpArea, upgradePairs, upgradeQuote };
+  module.exports = { feeShort, feeChipText, transferTimeFor, transferRoutes, holdAdvice, perMileOf, cleanCosts, twdCost, inUpArea, upgradePairs, upgradeQuote, upgradeGroups };
 } else {
   initAwardTools();
 }

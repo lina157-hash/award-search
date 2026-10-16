@@ -1,9 +1,9 @@
 {
-  "lastReviewed": "2026-10-14",
-  "note": "用哩程把買好的現金票升等：所需哩程都是單程、每一個航段。要先開好可升等票價的機票，而且要有升等機位（付費座位有空不代表能升等）；稅金、差額另計。區域依出發地與目的地判斷，同一條航線換機型價格不變（星宇除外，看兩艙或四艙機型）。",
+  "lastReviewed": "2026-10-16",
+  "note": "用哩程把買好的現金票升等：所需哩程都是單程；多數航空每個航段分開算，新航依出發地到目的地計價。要先開好可升等票價的機票，而且要有升等機位（付費座位有空不代表能升等）；稅金、差額另計。區域依出發地與目的地判斷，同一條航線換機型價格不變（星宇除外，看兩艙或四艙機型）。",
   "fields": {
     "areas": "區域定義：countries 國家代碼、airports 機場、excludeAirports 排除的機場；機場清單優先。亞洲、歐洲列出常見國家，沒列到的國家要自己加。",
-    "airlines": "每家航空：fares 依原艙等列出可升等的票價（id 對應 rows 的 miles 鍵）；charts 每張表一種升等（from → to，Y 經濟、W 豪經、J 商務、F 頭等），rows 依序比對 between 兩端區域，第一筆符合的為準；miles 為 null 表示不適用。distance 類（全日空）依航段距離 bands 計價，fares 的 codesFromJapan 是從日本出發時的可升等艙等。"
+    "airlines": "每家航空：code 是 IATA 代碼（顯示標誌），group 是選單分組，unit 是點數單位（沒寫就是哩）；fares 依原艙等列出可升等的票價（id 對應 rows 的 miles 鍵，一張表只顯示它有標價的票價）；charts 每張表一種升等（from → to，Y 經濟、W 豪經、J 商務、F 頭等），rows 依序比對 between 兩端區域，第一筆符合的為準，oneWay 為 true 時只算 between[0] 出發到 between[1]；miles 為 null 表示不適用。distance 類（全日空、澳航）依航段距離 bands 計價，band 的 miles 是數字（每種票價相同）或依 fares id 分開的物件；fares 的 codesFromJapan 是從日本出發時的可升等艙等。"
   },
   "areas": {
     "TW": { "countries": ["TW"] },
@@ -24,12 +24,76 @@
     "EVA_AMERICA": { "countries": ["US", "CA"], "excludeAirports": ["ORD", "JFK", "EWR", "LGA", "IAH", "YYZ"] },
     "EVA_EU_AMERICA": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR", "US", "CA"], "excludeAirports": ["ORD", "JFK", "EWR", "LGA", "IAH", "YYZ"] },
     "NAM_EU": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR", "US", "CA"] },
-    "NAM_EU_OC": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR", "US", "CA", "AU", "NZ"] }
+    "NAM_EU_OC": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR", "US", "CA", "AU", "NZ"] },
+    "JP": { "countries": ["JP"] },
+    "KR": { "countries": ["KR"] },
+    "GU": { "countries": ["GU"] },
+    "PH": { "countries": ["PH"] },
+    "QA": { "countries": ["QA"] },
+    "SG": { "countries": ["SG"] },
+    "MY": { "countries": ["MY"] },
+    "VN": { "countries": ["VN"] },
+    "TR": { "countries": ["TR"] },
+    "US": { "countries": ["US"] },
+    "GB": { "countries": ["GB"] },
+    "DK": { "countries": ["DK"] },
+    "RU": { "countries": ["RU"] },
+    "IN": { "countries": ["IN"] },
+    "VVO": { "airports": ["VVO"] },
+    "JL_CHN_TW": { "countries": ["CN", "HK", "TW"] },
+    "JL_SEA_SA": { "countries": ["TH", "IN", "VN", "ID", "MY", "SG"] },
+    "JL_EU": { "countries": ["GB", "FR", "DE", "FI"] },
+    "JL_HI": { "airports": ["HNL", "KOA"] },
+    "JL_NAM": { "countries": ["US", "CA"], "excludeAirports": ["HNL", "KOA"] },
+    "SQ_Z2": { "countries": ["MY", "ID", "BN"] },
+    "SQ_Z3": { "countries": ["PH", "TH", "VN", "MM", "KH"] },
+    "SQ_Z4": { "countries": ["TW", "HK"] },
+    "SQ_Z5": { "airports": ["PEK", "PKX", "PVG", "SHA"] },
+    "SQ_Z6": { "countries": ["IN", "LK", "MV", "NP", "BD"] },
+    "SQ_Z7": { "countries": ["JP", "KR"] },
+    "SQ_Z8": { "airports": ["PER", "DRW"] },
+    "SQ_Z9": { "countries": ["AU", "NZ"], "excludeAirports": ["PER", "DRW"] },
+    "SQ_Z10": { "countries": ["TR", "AE", "QA", "OM", "BH", "KW", "SA", "IL", "JO", "EG", "MA", "ZA", "KE", "ET", "NG", "MU"] },
+    "SQ_Z11": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY"] },
+    "SQ_Z12": { "airports": ["LAX", "SFO", "SEA"] },
+    "SQ_Z13": { "airports": ["JFK", "EWR"] },
+    "VN_SEA": { "countries": ["ID", "MM", "PH", "SG", "TH"] },
+    "VN_CN_TW": { "countries": ["CN", "MO", "TW"] },
+    "VN_SA": { "countries": ["IN", "LK"] },
+    "VN_EU": { "countries": ["DE", "IT", "NL", "FR"] },
+    "LH_EU": { "countries": ["GB", "IE", "FR", "DE", "NL", "BE", "LU", "AT", "CH", "IT", "ES", "PT", "DK", "SE", "NO", "FI", "IS", "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "GR", "BG", "RO", "LT", "LV", "EE", "MT", "CY", "TR", "UA", "RU", "AL", "BA", "ME", "MK", "MD", "XK"], "excludeAirports": ["LPA", "TFS", "TFN", "ACE", "FUE", "SPC", "FNC", "PDL", "TER"] },
+    "LH_NA": { "countries": ["US", "CA", "GL"], "excludeAirports": ["HNL", "OGG", "KOA", "LIH", "ITO"] },
+    "LH_HI": { "airports": ["HNL", "OGG", "KOA", "LIH", "ITO"] },
+    "LH_NA_SAF_IN": { "countries": ["US", "CA", "GL", "ZA", "NA", "BW", "ZW", "ZM", "MZ", "IN"] },
+    "LH_SAF": { "countries": ["ZA", "NA", "BW", "ZW", "ZM", "MZ"] },
+    "LH_CAM": { "countries": ["PA", "CR", "GT", "SV", "HN", "NI", "BZ", "CU", "DO", "JM", "BS", "BB", "TT", "HT"] },
+    "LH_SAM": { "countries": ["AR", "BR", "CL", "CO", "PE", "EC", "VE", "UY", "PY", "BO"] },
+    "LH_LATAM": { "countries": ["PA", "CR", "GT", "SV", "HN", "NI", "BZ", "CU", "DO", "JM", "BS", "BB", "TT", "HT", "AR", "BR", "CL", "CO", "PE", "EC", "VE", "UY", "PY", "BO"] },
+    "LH_ME": { "countries": ["IL", "JO", "LB", "SY", "IQ", "IR", "AE", "QA", "SA", "OM", "BH", "KW", "YE", "GE", "AM", "AZ", "EG", "MA", "TN", "DZ", "LY", "NG", "GH", "KE", "ET", "SN", "CM", "CI", "TZ", "UG", "RW", "SD"], "airports": ["LPA", "TFS", "TFN", "ACE", "FUE", "SPC", "FNC", "PDL", "TER"] },
+    "LH_SEA": { "countries": ["TH", "VN", "SG", "MY", "PH", "ID", "KH", "MM", "LA", "BN"] },
+    "LH_FE": { "countries": ["CN", "HK", "MO", "TW", "JP", "KR"] },
+    "LH_ASIA": { "countries": ["TH", "VN", "SG", "MY", "PH", "ID", "KH", "MM", "LA", "BN", "CN", "HK", "MO", "TW", "JP", "KR"] },
+    "LH_OC": { "countries": ["AU", "NZ", "FJ", "PF", "NC", "PG", "VU", "WS", "TO"] },
+    "LH_OC_IN": { "countries": ["AU", "NZ", "FJ", "PF", "NC", "PG", "VU", "WS", "TO", "IN"] },
+    "LH_ASIA_OC": { "countries": ["AU", "NZ", "FJ", "PF", "NC", "PG", "VU", "WS", "TO", "TH", "VN", "SG", "MY", "PH", "ID", "KH", "MM", "LA", "BN", "CN", "HK", "MO", "TW", "JP", "KR"] },
+    "TK_EU1": { "countries": ["AL", "AM", "BA", "BG", "HR", "GE", "GR", "HU", "XK", "MK", "MD", "ME", "RO", "RS", "SI", "UA"], "airports": ["ECN"] },
+    "TK_EU2": { "countries": ["AT", "AZ", "BY", "BE", "CZ", "DK", "EE", "FO", "FI", "FR", "DE", "IS", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "NO", "PL", "PT", "RU", "SK", "ES", "SE", "CH", "GB"] },
+    "TK_CAS": { "countries": ["AF", "BD", "IN", "KZ", "KG", "NP", "PK", "TJ", "TM", "UZ"] },
+    "TK_ME": { "countries": ["BH", "IR", "IQ", "IL", "JO", "KW", "LB", "OM", "QA", "SA", "SY", "AE", "YE"] },
+    "TK_NAF": { "countries": ["DZ", "MA", "LY", "EG", "TN"] },
+    "TK_CAF": { "countries": ["BJ", "BF", "BI", "CM", "CG", "DJ", "TD", "CD", "CF", "ER", "ET", "GA", "GM", "GH", "GN", "KE", "CI", "ML", "MR", "NE", "NG", "RW", "SN", "SL", "SO", "SD", "SS", "TZ", "UG", "GQ"] },
+    "TK_SAF": { "countries": ["AO", "ZA", "KM", "MG", "MU", "MZ", "SC", "ZM"] },
+    "TK_FE": { "countries": ["BN", "KH", "CN", "TW", "HK", "ID", "JP", "KR", "LA", "MO", "MY", "MV", "MN", "MM", "PH", "SG", "LK", "TH", "VN"] },
+    "TK_NAM": { "countries": ["CA", "MX", "US", "BM", "CW", "SX", "BQ"] },
+    "TK_SAM": { "countries": ["AR", "BR", "CL", "CO", "PE", "VE", "EC", "BO", "PY", "UY", "PA", "CR", "GT", "SV", "HN", "NI", "BZ", "CU", "DO", "HT", "JM", "BS", "BB", "TT"] },
+    "TK_OC": { "countries": ["AU", "CK", "FM", "FJ", "PF", "GU", "MH", "NC", "NZ", "NU", "NF", "MP", "PW", "PG", "WS", "TO", "VU"] }
   },
   "airlines": [
     {
       "id": "eva",
       "name": "長榮航空",
+      "code": "BR",
+      "group": "台灣",
       "program": "無限萬哩遊",
       "kind": "zone",
       "confidence": "official",
@@ -82,6 +146,8 @@
     {
       "id": "ci",
       "name": "中華航空",
+      "code": "CI",
+      "group": "台灣",
       "program": "華夏會員",
       "kind": "zone",
       "confidence": "official",
@@ -126,6 +192,8 @@
     {
       "id": "starlux",
       "name": "星宇航空",
+      "code": "JX",
+      "group": "台灣",
       "program": "COSMILE",
       "kind": "zone",
       "confidence": "secondary",
@@ -164,6 +232,8 @@
     {
       "id": "ana",
       "name": "全日空",
+      "code": "NH",
+      "group": "日本",
       "program": "ANA Mileage Club",
       "kind": "distance",
       "confidence": "official",
@@ -187,6 +257,495 @@
         { "label": "ANA：升等所需哩程表（官方）", "url": "https://www.ana.co.jp/en/jp/guide/amc/upgrade/international/terms/", "official": true }
       ],
       "lastVerified": "2026-10-14"
+    },
+    {
+      "id": "jal",
+      "name": "日本航空",
+      "code": "JL",
+      "group": "日本",
+      "program": "JAL Mileage Bank",
+      "kind": "zone",
+      "confidence": "official",
+      "fares": {
+        "Y": [{ "id": "y", "label": "經濟艙", "codes": ["Y", "B", "H", "K"] }],
+        "W": [{ "id": "w", "label": "豪華經濟艙", "codes": ["W", "R"] }],
+        "J": [{ "id": "j", "label": "商務艙", "codes": ["J", "C", "D", "I"] }]
+      },
+      "notEligible": { "*": "團體票、個人或團體包辦旅遊票價、特殊折扣票價與 JMB 獎勵機票不能升等；J、Y 以外的艙等，日本出發的動態套裝與套裝行程也不行" },
+      "charts": [
+        { "from": "Y", "to": "W", "label": "", "rows": [
+          { "between": ["JP", "KR"], "name": "日本—首爾", "miles": { "y": 9000 } },
+          { "between": ["JP", "JL_CHN_TW"], "name": "日本—台北、香港、中國大陸（北京、大連、廣州、上海、天津）", "miles": { "y": 9000 } },
+          { "between": ["JP", "GU"], "name": "日本—關島", "miles": { "y": 9000 } },
+          { "between": ["JP", "PH"], "name": "日本—馬尼拉", "miles": { "y": 9000 } },
+          { "between": ["JP", "JL_SEA_SA"], "name": "日本—東南亞、南亞（曼谷、班加羅爾、德里、河內、胡志明市、雅加達、吉隆坡、新加坡）", "miles": { "y": 15000 } },
+          { "between": ["JP", "AU"], "name": "日本—澳洲（墨爾本、雪梨）", "miles": { "y": 15000 } },
+          { "between": ["JP", "JL_EU"], "name": "日本—歐洲（倫敦、巴黎、法蘭克福、赫爾辛基）", "miles": { "y": 20000 } },
+          { "between": ["JP", "VVO"], "name": "日本—海參崴", "miles": { "y": 9000 } },
+          { "between": ["JP", "RU"], "name": "日本—莫斯科", "miles": { "y": 15000 } },
+          { "between": ["JP", "QA"], "name": "日本—杜哈", "miles": { "y": 15000 } },
+          { "between": ["JP", "JL_HI"], "name": "日本—夏威夷（檀香山、科納）", "miles": { "y": 15000 } },
+          { "between": ["JP", "JL_NAM"], "name": "日本—北美", "miles": { "y": 20000 } }
+        ] },
+        { "from": "Y", "to": "J", "label": "", "rows": [
+          { "between": ["JP", "KR"], "name": "日本—首爾", "miles": { "y": 12000 } },
+          { "between": ["JP", "JL_CHN_TW"], "name": "日本—台北、香港、中國大陸（北京、大連、廣州、上海、天津）", "miles": { "y": 12000 } },
+          { "between": ["JP", "GU"], "name": "日本—關島", "miles": { "y": 12000 } },
+          { "between": ["JP", "PH"], "name": "日本—馬尼拉", "miles": { "y": 12000 } },
+          { "between": ["JP", "JL_SEA_SA"], "name": "日本—東南亞、南亞（曼谷、班加羅爾、德里、河內、胡志明市、雅加達、吉隆坡、新加坡）", "miles": { "y": 20000 } },
+          { "between": ["JP", "AU"], "name": "日本—澳洲（墨爾本、雪梨）", "miles": { "y": 25000 } },
+          { "between": ["JP", "JL_EU"], "name": "日本—歐洲（倫敦、巴黎、法蘭克福、赫爾辛基）", "miles": { "y": 33000 } },
+          { "between": ["JP", "VVO"], "name": "日本—海參崴", "miles": { "y": 12000 } },
+          { "between": ["JP", "RU"], "name": "日本—莫斯科", "miles": { "y": 25000 } },
+          { "between": ["JP", "QA"], "name": "日本—杜哈", "miles": { "y": 30000 } },
+          { "between": ["JP", "JL_HI"], "name": "日本—夏威夷（檀香山、科納）", "miles": { "y": 25000 } },
+          { "between": ["JP", "JL_NAM"], "name": "日本—北美", "miles": { "y": 30000 } }
+        ] },
+        { "from": "W", "to": "J", "label": "", "rows": [
+          { "between": ["JP", "KR"], "name": "日本—首爾", "miles": { "w": 12000 } },
+          { "between": ["JP", "JL_CHN_TW"], "name": "日本—台北、香港、中國大陸（北京、大連、廣州、上海、天津）", "miles": { "w": 12000 } },
+          { "between": ["JP", "GU"], "name": "日本—關島", "miles": { "w": 12000 } },
+          { "between": ["JP", "PH"], "name": "日本—馬尼拉", "miles": { "w": 12000 } },
+          { "between": ["JP", "JL_SEA_SA"], "name": "日本—東南亞、南亞（曼谷、班加羅爾、德里、河內、胡志明市、雅加達、吉隆坡、新加坡）", "miles": { "w": 20000 } },
+          { "between": ["JP", "AU"], "name": "日本—澳洲（墨爾本、雪梨）", "miles": { "w": 25000 } },
+          { "between": ["JP", "JL_EU"], "name": "日本—歐洲（倫敦、巴黎、法蘭克福、赫爾辛基）", "miles": { "w": 33000 } },
+          { "between": ["JP", "VVO"], "name": "日本—海參崴", "miles": { "w": 12000 } },
+          { "between": ["JP", "RU"], "name": "日本—莫斯科", "miles": { "w": 25000 } },
+          { "between": ["JP", "QA"], "name": "日本—杜哈", "miles": { "w": 30000 } },
+          { "between": ["JP", "JL_HI"], "name": "日本—夏威夷（檀香山、科納）", "miles": { "w": 25000 } },
+          { "between": ["JP", "JL_NAM"], "name": "日本—北美", "miles": { "w": 30000 } }
+        ] },
+        { "from": "J", "to": "F", "label": "", "rows": [
+          { "between": ["JP", "JL_CHN_TW"], "name": "日本—台北、香港、中國大陸（北京、大連、廣州、上海、天津）", "miles": { "j": 25000 } },
+          { "between": ["JP", "PH"], "name": "日本—馬尼拉", "miles": { "j": 25000 } },
+          { "between": ["JP", "JL_SEA_SA"], "name": "日本—東南亞、南亞（曼谷、班加羅爾、德里、河內、胡志明市、雅加達、吉隆坡、新加坡）", "miles": { "j": 35000 } },
+          { "between": ["JP", "AU"], "name": "日本—澳洲（墨爾本、雪梨）", "miles": { "j": 38000 } },
+          { "between": ["JP", "JL_EU"], "name": "日本—歐洲（倫敦、巴黎、法蘭克福、赫爾辛基）", "miles": { "j": 48000 } },
+          { "between": ["JP", "QA"], "name": "日本—杜哈", "miles": { "j": 45000 } },
+          { "between": ["JP", "JL_HI"], "name": "日本—夏威夷（檀香山、科納）", "miles": { "j": 30000 } },
+          { "between": ["JP", "JL_NAM"], "name": "日本—北美", "miles": { "j": 45000 } }
+        ] }
+      ],
+      "rules": [
+        "每個航段單程計價，一端要在日本；從日本以外經日本轉機（例如曼谷—東京—洛杉磯）要分兩段算。",
+        "起飛前 360 天（日本時間 0 點）開放；網路最晚起飛前 25 小時、電話 24 小時。沒有升等機位可候補到起飛前 24 小時，候補時不扣哩。",
+        "一次只升一級（經濟或豪經升商務、商務升頭等），不能付現金補差額；兒童、嬰兒所需哩程與成人相同。",
+        "從英國、法國、馬來西亞出發的部分升等，要另付當地稅金。"
+      ],
+      "sources": [
+        { "label": "日航：國際線升等所需哩程（官方）", "url": "https://www.jal.co.jp/jp/en/jalmile/use/jal/upgrade/miles.html", "official": true },
+        { "label": "日航：國際線升等可用艙等（官方）", "url": "https://www.jal.co.jp/jp/en/jalmile/use/jal/upgrade/", "official": true },
+        { "label": "日航：國際線升等申請與候補（官方）", "url": "https://www.jal.co.jp/jp/en/jalmile/use/jal/upgrade/application.html", "official": true }
+      ],
+      "lastVerified": "2026-10-16"
+    },
+    {
+      "id": "sq",
+      "name": "新加坡航空",
+      "code": "SQ",
+      "group": "東南亞",
+      "program": "KrisFlyer",
+      "kind": "zone",
+      "confidence": "official",
+      "fares": {
+        "Y": [{ "id": "std_s", "label": "經濟艙 Standard（Saver 升等）", "codes": ["M", "H", "W"] }, { "id": "std_a", "label": "經濟艙 Standard（Advantage 升等）", "codes": ["M", "H", "W"] }, { "id": "flex_s", "label": "經濟艙 Flexi（Saver 升等）", "codes": ["Y", "B", "E"] }, { "id": "flex_a", "label": "經濟艙 Flexi（Advantage 升等）", "codes": ["Y", "B", "E"] }],
+        "W": [{ "id": "std_s", "label": "豪經 Standard（Saver 升等）", "codes": ["P", "L"] }, { "id": "std_a", "label": "豪經 Standard（Advantage 升等）", "codes": ["P", "L"] }, { "id": "flex_s", "label": "豪經 Flexi（Saver 升等）", "codes": ["S", "T"] }, { "id": "flex_a", "label": "豪經 Flexi（Advantage 升等）", "codes": ["S", "T"] }],
+        "J": [{ "id": "s", "label": "商務艙（Saver 升等）", "codes": ["Z", "C", "J", "U"] }, { "id": "a", "label": "商務艙（Advantage 升等）", "codes": ["Z", "C", "J", "U"] }]
+      },
+      "notEligible": { "*": "表上沒列的票價代碼不能升等" },
+      "charts": [
+        { "from": "Y", "to": "W", "label": "", "rows": [
+          { "between": ["SG", "SQ_Z4"], "name": "新加坡—台灣、香港", "miles": { "std_s": 16000, "flex_s": 9500 } },
+          { "between": ["SG", "SQ_Z5"], "name": "新加坡—北京、上海", "miles": { "std_s": 23500, "flex_s": 15000 } },
+          { "between": ["SG", "SQ_Z6"], "name": "新加坡—南亞", "miles": { "std_s": 23500, "flex_s": 15000 } },
+          { "between": ["SG", "SQ_Z7"], "name": "新加坡—日本、韓國", "miles": { "std_s": 25500, "flex_s": 16000 } },
+          { "between": ["SG", "SQ_Z9"], "name": "新加坡—澳洲（伯斯、達爾文以外）、紐西蘭", "miles": { "std_s": 36000, "flex_s": 24000 } },
+          { "between": ["SG", "SQ_Z10"], "name": "新加坡—非洲、中東、土耳其", "miles": { "std_s": 34500, "flex_s": 23500 } },
+          { "between": ["SG", "SQ_Z11"], "name": "新加坡—歐洲", "miles": { "std_s": 51500, "flex_s": 35500 } },
+          { "between": ["SG", "SQ_Z12"], "name": "新加坡—美西（洛杉磯、舊金山、西雅圖）", "miles": { "std_s": 53500, "flex_s": 35500 } },
+          { "between": ["SG", "SQ_Z13"], "name": "新加坡—美東（紐約）", "miles": { "std_s": 56500, "flex_s": 37000 } },
+          { "between": ["SQ_Z4", "SQ_Z9"], "name": "台灣、香港—澳洲（伯斯、達爾文以外）、紐西蘭", "miles": { "std_s": 38500, "flex_s": 26000 } },
+          { "between": ["SQ_Z4", "SQ_Z13"], "name": "台灣、香港—美東（紐約）", "miles": { "std_s": 66500, "flex_s": 40000 } }
+        ] },
+        { "from": "Y", "to": "J", "label": "", "rows": [
+          { "between": ["SG", "SQ_Z2"], "name": "新加坡—馬來西亞、印尼、汶萊", "miles": { "std_s": 18000, "std_a": 38000, "flex_s": 16500, "flex_a": 34500 } },
+          { "between": ["SG", "SQ_Z3"], "name": "新加坡—菲律賓、泰國、越南、緬甸、柬埔寨", "miles": { "std_s": 19500, "std_a": 43500, "flex_s": 16500, "flex_a": 34500 } },
+          { "between": ["SG", "SQ_Z4"], "name": "新加坡—台灣、香港", "miles": { "std_s": 27500, "std_a": 48500, "flex_s": 20000, "flex_a": 34500 } },
+          { "between": ["SG", "SQ_Z5"], "name": "新加坡—北京、上海", "miles": { "std_s": 37000, "std_a": 69000, "flex_s": 31000, "flex_a": 57500 } },
+          { "between": ["SG", "SQ_Z6"], "name": "新加坡—南亞", "miles": { "std_s": 37000, "std_a": 69000, "flex_s": 31000, "flex_a": 57500 } },
+          { "between": ["SG", "SQ_Z7"], "name": "新加坡—日本、韓國", "miles": { "std_s": 47000, "std_a": 82500, "flex_s": 35500, "flex_a": 63500 } },
+          { "between": ["SG", "SQ_Z8"], "name": "新加坡—伯斯、達爾文", "miles": { "std_s": 34000, "std_a": 69000, "flex_s": 28500, "flex_a": 57500 } },
+          { "between": ["SG", "SQ_Z9"], "name": "新加坡—澳洲（伯斯、達爾文以外）、紐西蘭", "miles": { "std_s": 61500, "std_a": 98000, "flex_s": 51000, "flex_a": 80500 } },
+          { "between": ["SG", "SQ_Z10"], "name": "新加坡—非洲、中東、土耳其", "miles": { "std_s": 60000, "std_a": 127500, "flex_s": 50500, "flex_a": 104500 } },
+          { "between": ["SG", "SQ_Z11"], "name": "新加坡—歐洲", "miles": { "std_s": 96000, "std_a": 143500, "flex_s": 78000, "flex_a": 117500 } },
+          { "between": ["SG", "SQ_Z12"], "name": "新加坡—美西（洛杉磯、舊金山、西雅圖）", "miles": { "std_s": 99500, "std_a": 143500, "flex_s": 79000, "flex_a": 117500 } },
+          { "between": ["SG", "SQ_Z13"], "name": "新加坡—美東（紐約）", "miles": { "std_s": 103000, "std_a": 159000, "flex_s": 82000, "flex_a": 130000 } },
+          { "between": ["SQ_Z4", "SQ_Z8"], "name": "台灣、香港—伯斯、達爾文", "miles": { "std_s": 38000, "std_a": 76000, "flex_s": 32500, "flex_a": 63000 } },
+          { "between": ["SQ_Z4", "SQ_Z9"], "name": "台灣、香港—澳洲（伯斯、達爾文以外）、紐西蘭", "miles": { "std_s": 67500, "std_a": 106000, "flex_s": 55500, "flex_a": 87000 } },
+          { "between": ["SQ_Z4", "SQ_Z13"], "name": "台灣、香港—美東（紐約）", "miles": { "std_s": 121000, "std_a": 188500, "flex_s": 96000, "flex_a": 153500 } }
+        ] },
+        { "from": "W", "to": "J", "label": "", "rows": [
+          { "between": ["SG", "SQ_Z4"], "name": "新加坡—台灣、香港", "miles": { "std_s": 18500, "std_a": 30000, "flex_s": 14500, "flex_a": 23000 } },
+          { "between": ["SG", "SQ_Z5"], "name": "新加坡—北京、上海", "miles": { "std_s": 28000, "std_a": 51000, "flex_s": 20500, "flex_a": 40500 } },
+          { "between": ["SG", "SQ_Z6"], "name": "新加坡—南亞", "miles": { "std_s": 28000, "std_a": 51000, "flex_s": 20500, "flex_a": 40500 } },
+          { "between": ["SG", "SQ_Z7"], "name": "新加坡—日本、韓國", "miles": { "std_s": 31500, "std_a": 56000, "flex_s": 24500, "flex_a": 44500 } },
+          { "between": ["SG", "SQ_Z9"], "name": "新加坡—澳洲（伯斯、達爾文以外）、紐西蘭", "miles": { "std_s": 46500, "std_a": 71500, "flex_s": 35000, "flex_a": 57500 } },
+          { "between": ["SG", "SQ_Z10"], "name": "新加坡—非洲、中東、土耳其", "miles": { "std_s": 47500, "std_a": 93000, "flex_s": 37500, "flex_a": 75000 } },
+          { "between": ["SG", "SQ_Z11"], "name": "新加坡—歐洲", "miles": { "std_s": 70500, "std_a": 103500, "flex_s": 56000, "flex_a": 85000 } },
+          { "between": ["SG", "SQ_Z12"], "name": "新加坡—美西（洛杉磯、舊金山、西雅圖）", "miles": { "std_s": 71000, "std_a": 109500, "flex_s": 56000, "flex_a": 89000 } },
+          { "between": ["SG", "SQ_Z13"], "name": "新加坡—美東（紐約）", "miles": { "std_s": 74500, "std_a": 120000, "flex_s": 58000, "flex_a": 95000 } },
+          { "between": ["SQ_Z4", "SQ_Z13"], "name": "台灣、香港—美東（紐約）", "miles": { "std_s": 85000, "std_a": 136500, "flex_s": 64500, "flex_a": 102500 } }
+        ] },
+        { "from": "J", "to": "F", "label": "頭等艙或套房", "rows": [
+          { "between": ["SG", "SQ_Z2"], "name": "新加坡—馬來西亞、印尼、汶萊", "miles": { "s": 16500, "a": 34500 } },
+          { "between": ["SG", "SQ_Z3"], "name": "新加坡—菲律賓、泰國、越南、緬甸、柬埔寨", "miles": { "s": 16500, "a": 34500 } },
+          { "between": ["SG", "SQ_Z4"], "name": "新加坡—台灣、香港", "miles": { "s": 27000, "a": 48500 } },
+          { "between": ["SG", "SQ_Z5"], "name": "新加坡—北京、上海", "miles": { "s": 37500, "a": 71500 } },
+          { "between": ["SG", "SQ_Z6"], "name": "新加坡—南亞", "miles": { "s": 37500, "a": 71500 } },
+          { "between": ["SG", "SQ_Z7"], "name": "新加坡—日本、韓國", "miles": { "s": 45000, "a": 91000 } },
+          { "between": ["SG", "SQ_Z8"], "name": "新加坡—伯斯、達爾文", "miles": { "s": 35000, "a": 71500 } },
+          { "between": ["SG", "SQ_Z9"], "name": "新加坡—澳洲（伯斯、達爾文以外）、紐西蘭", "miles": { "s": 56500, "a": 106000 } },
+          { "between": ["SG", "SQ_Z10"], "name": "新加坡—非洲、中東、土耳其", "miles": { "s": 59000, "a": 114500 } },
+          { "between": ["SG", "SQ_Z11"], "name": "新加坡—歐洲", "miles": { "s": 82000, "a": 172500 } },
+          { "between": ["SG", "SQ_Z12"], "name": "新加坡—美西（洛杉磯、舊金山、西雅圖）", "miles": { "s": 83500, "a": 174500 } },
+          { "between": ["SG", "SQ_Z13"], "name": "新加坡—美東（紐約）", "miles": { "s": 84000, "a": 187500 } },
+          { "between": ["SQ_Z4", "SQ_Z8"], "name": "台灣、香港—伯斯、達爾文", "miles": { "s": 41000, "a": 80500 } },
+          { "between": ["SQ_Z4", "SQ_Z9"], "name": "台灣、香港—澳洲（伯斯、達爾文以外）、紐西蘭", "miles": { "s": 63500, "a": 116500 } },
+          { "between": ["SQ_Z4", "SQ_Z13"], "name": "台灣、香港—美東（紐約）", "miles": { "s": 105500, "a": 231500 } }
+        ] }
+      ],
+      "rules": [
+        "依出發地與目的地所在區域計價（單程，轉機不分段），來回要兩倍；只限新航自營航班，不含其他航空營運的共掛航班。",
+        "Saver 升等哩程較少、機位較少；Advantage 較貴、較容易有位。豪經、頭等與套房只在部分航班有。",
+        "要照航空公司公布的航線飛；官方表上沒有列出哩數，或註明繞路、超過最高哩程的區域組合，本站不顯示。",
+        "稅金與費用另付。"
+      ],
+      "sources": [
+        { "label": "新航：升等獎勵哩程表（2025-11-01 起，官方 PDF）", "url": "https://www.singaporeair.com/content/dam/sia/web-assets/pdfs/ppsclub-krisflyer/krisflyer/progupdates/awardcharts/SingaporeAirlinesUpgradeChartupdated1Nov25.pdf", "official": true },
+        { "label": "新航：KrisFlyer 2025 計畫調整（官方）", "url": "https://www.singaporeair.com/vi_VN/vn/ppsclub-krisflyer/KFupdates2025/", "official": true }
+      ],
+      "lastVerified": "2026-10-16"
+    },
+    {
+      "id": "vn",
+      "name": "越南航空",
+      "code": "VN",
+      "group": "東南亞",
+      "program": "Lotusmiles",
+      "kind": "zone",
+      "confidence": "official",
+      "fares": {
+        "Y": [{ "id": "flex", "label": "經濟艙 Flex", "codes": ["Y", "B", "M"] }, { "id": "classic", "label": "經濟艙 Classic", "codes": ["S", "H", "K", "L"] }, { "id": "lite", "label": "經濟艙 Lite", "codes": ["Q", "N", "R"] }],
+        "W": [{ "id": "pe", "label": "豪華經濟艙", "codes": ["W", "Z", "U"] }]
+      },
+      "notEligible": { "*": "獎勵機票與折扣票不能升等" },
+      "charts": [
+        { "from": "Y", "to": "J", "label": "一般期間", "rows": [
+          { "between": ["VN", "VN_SEA"], "name": "越南—印尼、緬甸、菲律賓、新加坡、泰國", "miles": { "flex": 16000, "classic": 20000, "lite": 24000 } },
+          { "between": ["VN", "MY"], "name": "越南出發—馬來西亞", "oneWay": true, "miles": { "flex": 16000, "classic": 20000, "lite": 24000 } },
+          { "between": ["MY", "VN"], "name": "馬來西亞出發—越南", "oneWay": true, "miles": { "flex": 18000, "classic": 22000, "lite": 26000 } },
+          { "between": ["VN", "VN_CN_TW"], "name": "越南—台灣（台北、台中、高雄）、中國大陸、澳門", "miles": { "flex": 50000, "classic": 54000, "lite": 58000 } },
+          { "between": ["VN", "HK"], "name": "越南—香港", "miles": { "flex": 52000, "classic": 56000, "lite": 60000 } },
+          { "between": ["VN", "KR"], "name": "越南—韓國", "miles": { "flex": 30000, "classic": 40000, "lite": 45000 } },
+          { "between": ["VN", "JP"], "name": "越南—日本", "miles": { "flex": 40000, "classic": 55000, "lite": 60000 } },
+          { "between": ["VN", "VN_SA"], "name": "越南出發—印度、斯里蘭卡", "oneWay": true, "miles": { "flex": 25000, "classic": 30000, "lite": 35000 } },
+          { "between": ["VN_SA", "VN"], "name": "印度、斯里蘭卡出發—越南", "oneWay": true, "miles": { "flex": 38000, "classic": 44000, "lite": 50000 } },
+          { "between": ["VN", "AU"], "name": "越南—澳洲", "miles": { "flex": 100000, "classic": 110000, "lite": 120000 } },
+          { "between": ["VN", "RU"], "name": "越南—俄羅斯", "miles": { "flex": 100000, "classic": 110000, "lite": 120000 } },
+          { "between": ["VN", "GB"], "name": "越南出發—英國", "oneWay": true, "miles": { "flex": 113000, "classic": 123000, "lite": 133000 } },
+          { "between": ["GB", "VN"], "name": "英國出發—越南", "oneWay": true, "miles": { "flex": 120000, "classic": 130000, "lite": 140000 } },
+          { "between": ["VN", "VN_EU"], "name": "越南出發—德國、義大利、荷蘭、法國", "oneWay": true, "miles": { "flex": 115000, "classic": 125000, "lite": 135000 } },
+          { "between": ["VN_EU", "VN"], "name": "德國、義大利、荷蘭、法國出發—越南", "oneWay": true, "miles": { "flex": 118000, "classic": 128000, "lite": 138000 } },
+          { "between": ["VN", "DK"], "name": "越南出發—丹麥", "oneWay": true, "miles": { "flex": 105000, "classic": 115000, "lite": 125000 } },
+          { "between": ["DK", "VN"], "name": "丹麥出發—越南", "oneWay": true, "miles": { "flex": 109000, "classic": 119000, "lite": 129000 } },
+          { "between": ["VN", "US"], "name": "越南—美國", "miles": { "flex": 176000, "classic": 196000, "lite": 206000 } }
+        ] },
+        { "from": "Y", "to": "J", "label": "旺季", "rows": [
+          { "between": ["VN", "VN_SEA"], "name": "越南—印尼、緬甸、菲律賓、新加坡、泰國", "miles": { "flex": 16000, "classic": 20000, "lite": 24000 } },
+          { "between": ["VN", "MY"], "name": "越南出發—馬來西亞", "oneWay": true, "miles": { "flex": 16000, "classic": 20000, "lite": 24000 } },
+          { "between": ["MY", "VN"], "name": "馬來西亞出發—越南", "oneWay": true, "miles": { "flex": 18000, "classic": 22000, "lite": 26000 } },
+          { "between": ["VN", "VN_CN_TW"], "name": "越南—台灣（台北、台中、高雄）、中國大陸、澳門", "miles": { "flex": 52000, "classic": 56000, "lite": 60000 } },
+          { "between": ["VN", "HK"], "name": "越南—香港", "miles": { "flex": 54000, "classic": 58000, "lite": 62000 } },
+          { "between": ["VN", "KR"], "name": "越南—韓國", "miles": { "flex": 32000, "classic": 42000, "lite": 47000 } },
+          { "between": ["VN", "JP"], "name": "越南—日本", "miles": { "flex": 40000, "classic": 55000, "lite": 60000 } },
+          { "between": ["VN", "VN_SA"], "name": "越南出發—印度、斯里蘭卡", "oneWay": true, "miles": { "flex": 30000, "classic": 35000, "lite": 40000 } },
+          { "between": ["VN_SA", "VN"], "name": "印度、斯里蘭卡出發—越南", "oneWay": true, "miles": { "flex": 43000, "classic": 49000, "lite": 55000 } },
+          { "between": ["VN", "AU"], "name": "越南—澳洲", "miles": { "flex": 115000, "classic": 125000, "lite": 135000 } },
+          { "between": ["VN", "RU"], "name": "越南—俄羅斯", "miles": { "flex": 120000, "classic": 130000, "lite": 140000 } },
+          { "between": ["VN", "GB"], "name": "越南出發—英國", "oneWay": true, "miles": { "flex": 123000, "classic": 133000, "lite": 143000 } },
+          { "between": ["GB", "VN"], "name": "英國出發—越南", "oneWay": true, "miles": { "flex": 130000, "classic": 140000, "lite": 150000 } },
+          { "between": ["VN", "VN_EU"], "name": "越南出發—德國、義大利、荷蘭、法國", "oneWay": true, "miles": { "flex": 125000, "classic": 135000, "lite": 145000 } },
+          { "between": ["VN_EU", "VN"], "name": "德國、義大利、荷蘭、法國出發—越南", "oneWay": true, "miles": { "flex": 128000, "classic": 138000, "lite": 148000 } },
+          { "between": ["VN", "DK"], "name": "越南出發—丹麥", "oneWay": true, "miles": { "flex": 115000, "classic": 125000, "lite": 135000 } },
+          { "between": ["DK", "VN"], "name": "丹麥出發—越南", "oneWay": true, "miles": { "flex": 119000, "classic": 129000, "lite": 139000 } },
+          { "between": ["VN", "US"], "name": "越南—美國", "miles": { "flex": 206000, "classic": 226000, "lite": 236000 } }
+        ] },
+        { "from": "W", "to": "J", "label": "一般期間", "rows": [
+          { "between": ["VN", "JP"], "name": "越南—日本", "miles": { "pe": 30000 } },
+          { "between": ["VN", "VN_SA"], "name": "越南出發—印度、斯里蘭卡", "oneWay": true, "miles": { "pe": 20000 } },
+          { "between": ["VN_SA", "VN"], "name": "印度、斯里蘭卡出發—越南", "oneWay": true, "miles": { "pe": 33000 } },
+          { "between": ["VN", "AU"], "name": "越南—澳洲", "miles": { "pe": 80000 } },
+          { "between": ["VN", "RU"], "name": "越南—俄羅斯", "miles": { "pe": 75000 } },
+          { "between": ["VN", "GB"], "name": "越南出發—英國", "oneWay": true, "miles": { "pe": 93000 } },
+          { "between": ["GB", "VN"], "name": "英國出發—越南", "oneWay": true, "miles": { "pe": 100000 } },
+          { "between": ["VN", "VN_EU"], "name": "越南出發—德國、義大利、荷蘭、法國", "oneWay": true, "miles": { "pe": 95000 } },
+          { "between": ["VN_EU", "VN"], "name": "德國、義大利、荷蘭、法國出發—越南", "oneWay": true, "miles": { "pe": 98000 } },
+          { "between": ["VN", "DK"], "name": "越南出發—丹麥", "oneWay": true, "miles": { "pe": 90000 } },
+          { "between": ["DK", "VN"], "name": "丹麥出發—越南", "oneWay": true, "miles": { "pe": 94000 } },
+          { "between": ["VN", "US"], "name": "越南—美國", "miles": { "pe": 146000 } }
+        ] },
+        { "from": "W", "to": "J", "label": "旺季", "rows": [
+          { "between": ["VN", "JP"], "name": "越南—日本", "miles": { "pe": 30000 } },
+          { "between": ["VN", "VN_SA"], "name": "越南出發—印度、斯里蘭卡", "oneWay": true, "miles": { "pe": 25000 } },
+          { "between": ["VN_SA", "VN"], "name": "印度、斯里蘭卡出發—越南", "oneWay": true, "miles": { "pe": 38000 } },
+          { "between": ["VN", "AU"], "name": "越南—澳洲", "miles": { "pe": 90000 } },
+          { "between": ["VN", "RU"], "name": "越南—俄羅斯", "miles": { "pe": 85000 } },
+          { "between": ["VN", "GB"], "name": "越南出發—英國", "oneWay": true, "miles": { "pe": 103000 } },
+          { "between": ["GB", "VN"], "name": "英國出發—越南", "oneWay": true, "miles": { "pe": 110000 } },
+          { "between": ["VN", "VN_EU"], "name": "越南出發—德國、義大利、荷蘭、法國", "oneWay": true, "miles": { "pe": 105000 } },
+          { "between": ["VN_EU", "VN"], "name": "德國、義大利、荷蘭、法國出發—越南", "oneWay": true, "miles": { "pe": 108000 } },
+          { "between": ["VN", "DK"], "name": "越南出發—丹麥", "oneWay": true, "miles": { "pe": 100000 } },
+          { "between": ["DK", "VN"], "name": "丹麥出發—越南", "oneWay": true, "miles": { "pe": 104000 } },
+          { "between": ["VN", "US"], "name": "越南—美國", "miles": { "pe": 166000 } }
+        ] },
+        { "from": "Y", "to": "W", "label": "一般期間", "rows": [
+          { "between": ["VN", "JP"], "name": "越南—日本", "miles": { "flex": 25000, "classic": 30000 } },
+          { "between": ["VN", "VN_SA"], "name": "越南出發—印度、斯里蘭卡", "oneWay": true, "miles": { "flex": 13000, "classic": 15000 } },
+          { "between": ["VN_SA", "VN"], "name": "印度、斯里蘭卡出發—越南", "oneWay": true, "miles": { "flex": 13000, "classic": 15000 } },
+          { "between": ["VN", "AU"], "name": "越南—澳洲", "miles": { "flex": 40000, "classic": 50000 } },
+          { "between": ["VN", "RU"], "name": "越南—俄羅斯", "miles": { "flex": 40000, "classic": 45000 } },
+          { "between": ["VN", "GB"], "name": "越南出發—英國", "oneWay": true, "miles": { "flex": 38000, "classic": 48000 } },
+          { "between": ["GB", "VN"], "name": "英國出發—越南", "oneWay": true, "miles": { "flex": 42000, "classic": 52000 } },
+          { "between": ["VN", "VN_EU"], "name": "越南出發—德國、義大利、荷蘭、法國", "oneWay": true, "miles": { "flex": 40000, "classic": 50000 } },
+          { "between": ["VN_EU", "VN"], "name": "德國、義大利、荷蘭、法國出發—越南", "oneWay": true, "miles": { "flex": 41000, "classic": 51000 } },
+          { "between": ["VN", "DK"], "name": "越南出發—丹麥", "oneWay": true, "miles": { "flex": 35000, "classic": 45000 } },
+          { "between": ["DK", "VN"], "name": "丹麥出發—越南", "oneWay": true, "miles": { "flex": 36000, "classic": 46000 } },
+          { "between": ["VN", "US"], "name": "越南—美國", "miles": { "flex": 56000, "classic": 66000 } }
+        ] },
+        { "from": "Y", "to": "W", "label": "旺季", "rows": [
+          { "between": ["VN", "JP"], "name": "越南—日本", "miles": { "flex": 30000, "classic": 35000 } },
+          { "between": ["VN", "VN_SA"], "name": "越南出發—印度、斯里蘭卡", "oneWay": true, "miles": { "flex": 13000, "classic": 15000 } },
+          { "between": ["VN_SA", "VN"], "name": "印度、斯里蘭卡出發—越南", "oneWay": true, "miles": { "flex": 13000, "classic": 15000 } },
+          { "between": ["VN", "AU"], "name": "越南—澳洲", "miles": { "flex": 45000, "classic": 55000 } },
+          { "between": ["VN", "RU"], "name": "越南—俄羅斯", "miles": { "flex": 50000, "classic": 55000 } },
+          { "between": ["VN", "GB"], "name": "越南出發—英國", "oneWay": true, "miles": { "flex": 46000, "classic": 56000 } },
+          { "between": ["GB", "VN"], "name": "英國出發—越南", "oneWay": true, "miles": { "flex": 50000, "classic": 60000 } },
+          { "between": ["VN", "VN_EU"], "name": "越南出發—德國、義大利、荷蘭、法國", "oneWay": true, "miles": { "flex": 48000, "classic": 58000 } },
+          { "between": ["VN_EU", "VN"], "name": "德國、義大利、荷蘭、法國出發—越南", "oneWay": true, "miles": { "flex": 49000, "classic": 59000 } },
+          { "between": ["VN", "DK"], "name": "越南出發—丹麥", "oneWay": true, "miles": { "flex": 43000, "classic": 53000 } },
+          { "between": ["DK", "VN"], "name": "丹麥出發—越南", "oneWay": true, "miles": { "flex": 44000, "classic": 54000 } },
+          { "between": ["VN", "US"], "name": "越南—美國", "miles": { "flex": 71000, "classic": 81000 } }
+        ] }
+      ],
+      "rules": [
+        "每個航段單程計價；限越航購買的機票（票號 738 開頭）與越航（VN）航班號。哩程已含稅金、費用差額，不必另付現金（在分公司辦理的開票服務費除外）。",
+        "要有升等機位：商務艙 O 艙、豪經 U 艙。旺季日期依官方旺季表。",
+        "越南往返歐洲、澳洲、美國、中國大陸的航線，Q 艙算經典經濟艙（Classic）。"
+      ],
+      "sources": [
+        { "label": "越航：升等哩程表（2026-06-01 起，官方 PDF）", "url": "https://www.vietnamairlines.com/content/dam/vna/vna-assets/global/documents/lotusmiles/redeem/EN_UpgradeAward.pdf", "official": true },
+        { "label": "越航：國際線旺季日期（官方 PDF）", "url": "https://www.vietnamairlines.com/content/dam/vna/vna-assets/global/documents/lotusmiles/redeem/EN_PeakSeason_International_Flight.pdf", "official": true },
+        { "label": "越航：哩程升等規定（官方）", "url": "https://www.vietnamairlines.com/en/lotusmile/redeem-mile/upgrade-awards", "official": true }
+      ],
+      "lastVerified": "2026-10-16"
+    },
+    {
+      "id": "qf",
+      "name": "澳洲航空",
+      "code": "QF",
+      "group": "澳洲",
+      "program": "Qantas Frequent Flyer",
+      "unit": "點",
+      "kind": "distance",
+      "confidence": "official",
+      "notEligible": { "Y": "國際線經濟艙折扣票（E、N、O、Q 艙）不能升等", "J": "國際線商務艙 Classic Flight Reward 獎勵機票不能升等" },
+      "charts": [
+        { "from": "Y", "to": "W", "label": "", "fares": [{ "id": "reward", "label": "經濟艙獎勵機票", "codes": [] }, { "id": "eco", "label": "經濟艙", "codes": ["G", "K", "L", "M", "S", "V"] }, { "id": "flex", "label": "經濟艙 Flex", "codes": ["B", "H", "Y"] }],
+          "bands": [
+            { "upTo": 600, "miles": { "reward": 9600, "eco": 7200, "flex": 2300 } },
+            { "upTo": 1200, "miles": { "reward": 14300, "eco": 11300, "flex": 3500 } },
+            { "upTo": 2400, "miles": { "reward": 21600, "eco": 15000, "flex": 4700 } },
+            { "upTo": 3600, "miles": { "reward": 31100, "eco": 22100, "flex": 7200 } },
+            { "upTo": 4800, "miles": { "reward": 49700, "eco": 40900, "flex": 13100 } },
+            { "upTo": 5800, "miles": { "reward": 62800, "eco": 49000, "flex": 15600 } },
+            { "upTo": 7000, "miles": { "reward": 73200, "eco": 57100, "flex": 18200 } },
+            { "upTo": 8400, "miles": { "reward": 91600, "eco": 73900, "flex": 23500 } },
+            { "upTo": 9600, "miles": { "reward": 104600, "eco": 81700, "flex": 26200 } },
+            { "upTo": null, "miles": { "reward": 117700, "eco": 98000, "flex": 31300 } }
+          ] },
+        { "from": "Y", "to": "J", "label": "", "fares": [{ "id": "reward", "label": "經濟艙獎勵機票", "codes": [] }, { "id": "eco", "label": "經濟艙", "codes": ["G", "K", "L", "M", "S", "V"] }, { "id": "flex", "label": "經濟艙 Flex", "codes": ["B", "H", "Y"] }],
+          "bands": [
+            { "upTo": 600, "miles": { "reward": 14300, "eco": 12000, "flex": 6500 } },
+            { "upTo": 1200, "miles": { "reward": 21600, "eco": 17900, "flex": 10100 } },
+            { "upTo": 2400, "miles": { "reward": 31100, "eco": 24000, "flex": 13100 } },
+            { "upTo": 3600, "miles": { "reward": 41900, "eco": 36000, "flex": 19700 } },
+            { "upTo": 4800, "miles": { "reward": 70600, "eco": 65400, "flex": 35900 } },
+            { "upTo": 5800, "miles": { "reward": 83600, "eco": 78500, "flex": 43100 } },
+            { "upTo": 7000, "miles": { "reward": 104600, "eco": 91600, "flex": 50400 } },
+            { "upTo": 8400, "miles": { "reward": 130800, "eco": 117700, "flex": 64800 } },
+            { "upTo": 9600, "miles": { "reward": 143900, "eco": 130800, "flex": 72000 } },
+            { "upTo": null, "miles": { "reward": 162100, "eco": 157000, "flex": 86300 } }
+          ] },
+        { "from": "W", "to": "J", "label": "", "fares": [{ "id": "reward", "label": "豪經獎勵機票", "codes": [] }, { "id": "disc", "label": "豪經 Discount", "codes": [] }, { "id": "std", "label": "豪經", "codes": [] }, { "id": "flex", "label": "豪經 Flexible", "codes": [] }],
+          "bands": [
+            { "upTo": 600, "miles": { "reward": 8400, "disc": 6500, "std": 5900, "flex": 5400 } },
+            { "upTo": 1200, "miles": { "reward": 12500, "disc": 10100, "std": 8900, "flex": 7700 } },
+            { "upTo": 2400, "miles": { "reward": 19100, "disc": 13100, "std": 12000, "flex": 10800 } },
+            { "upTo": 3600, "miles": { "reward": 27000, "disc": 19700, "std": 17900, "flex": 16200 } },
+            { "upTo": 4800, "miles": { "reward": 47000, "disc": 35900, "std": 32600, "flex": 29400 } },
+            { "upTo": 5800, "miles": { "reward": 52300, "disc": 43100, "std": 39200, "flex": 35300 } },
+            { "upTo": 7000, "miles": { "reward": 70600, "disc": 50400, "std": 45800, "flex": 41200 } },
+            { "upTo": 8400, "miles": { "reward": 88200, "disc": 64800, "std": 58900, "flex": 52900 } },
+            { "upTo": 9600, "miles": { "reward": 98000, "disc": 72000, "std": 65400, "flex": 58800 } },
+            { "upTo": null, "miles": { "reward": 111100, "disc": 86300, "std": 78500, "flex": 70600 } }
+          ] },
+        { "from": "J", "to": "F", "label": "", "fares": [{ "id": "reward", "label": "商務艙 Classic Plus 獎勵機票", "codes": [] }, { "id": "disc", "label": "商務艙 Discount", "codes": [] }, { "id": "std", "label": "商務艙", "codes": [] }, { "id": "flex", "label": "商務艙 Flexible", "codes": [] }],
+          "bands": [
+            { "upTo": 600, "miles": { "reward": 9900, "disc": 7700, "std": 6800, "flex": 5900 } },
+            { "upTo": 1200, "miles": { "reward": 15400, "disc": 11300, "std": 10100, "flex": 8900 } },
+            { "upTo": 2400, "miles": { "reward": 19800, "disc": 15000, "std": 13400, "flex": 12000 } },
+            { "upTo": 3600, "miles": { "reward": 29700, "disc": 22100, "std": 20000, "flex": 17900 } },
+            { "upTo": 4800, "miles": { "reward": 55200, "disc": 40900, "std": 36700, "flex": 32600 } },
+            { "upTo": 5800, "miles": { "reward": 66000, "disc": 49000, "std": 44000, "flex": 39200 } },
+            { "upTo": 7000, "miles": { "reward": 76800, "disc": 57100, "std": 51500, "flex": 45800 } },
+            { "upTo": 8400, "miles": { "reward": 99600, "disc": 73900, "std": 66400, "flex": 58900 } },
+            { "upTo": 9600, "miles": { "reward": 110400, "disc": 81700, "std": 73600, "flex": 65400 } },
+            { "upTo": null, "miles": { "reward": 132000, "disc": 98000, "std": 88200, "flex": 78500 } }
+          ] }
+      ],
+      "rules": [
+        "依每段航班的距離計價（本站用直線距離估算），轉機時每段分開算；限澳航營運、澳航（QF）航班號的航班，共掛航班不一定開放。",
+        "國際線起飛前 353 天到 10 小時前申請，屬候補制，確認後才扣點數，可能到出發前 7 天內才確認。",
+        "確認後在起飛 24 小時前取消要付退點手續費；24 小時內取消或沒搭，點數不退。",
+        "只有商務艙能升頭等；豪經只在部分澳航航班有。"
+      ],
+      "sources": [
+        { "label": "澳航：Classic Upgrade Rewards 點數表（2025-08-05 起，官方）", "url": "https://qantas.com/id/en/frequent-flyer/use-points/classic-upgrade-rewards/tables.html", "official": true },
+        { "label": "澳航：常客計畫條款第 17 條（官方）", "url": "https://www.qantas.com/au/en/frequent-flyer/discover-and-join/terms-and-conditions.html", "official": true }
+      ],
+      "lastVerified": "2026-10-16"
+    },
+    {
+      "id": "lh",
+      "name": "漢莎航空集團",
+      "code": "LH",
+      "group": "歐洲",
+      "program": "Miles & More",
+      "kind": "zone",
+      "confidence": "official",
+      "fares": {
+        "Y": [{ "id": "by", "label": "經濟艙 B、Y", "codes": ["B", "Y"] }, { "id": "other", "label": "經濟艙其他代碼", "codes": [] }, { "id": "klt", "label": "經濟艙 K、L、T", "codes": ["K", "L", "T"] }],
+        "W": [{ "id": "g", "label": "豪經 G", "codes": ["G"] }, { "id": "e", "label": "豪經 E", "codes": ["E"] }, { "id": "n", "label": "豪經 N", "codes": ["N"] }],
+        "J": [{ "id": "cdj", "label": "商務艙 C、D、J", "codes": ["C", "D", "J"] }, { "id": "pz", "label": "商務艙 P、Z", "codes": ["P", "Z"] }]
+      },
+      "charts": [
+        { "from": "Y", "to": "W", "label": "", "rows": [
+          { "between": ["LH_EU", "LH_NA_SAF_IN"], "name": "歐洲—北美、南部非洲、印度", "miles": { "by": 20000, "other": 30000, "klt": 45000 } },
+          { "between": ["LH_EU", "LH_LATAM"], "name": "歐洲—中美洲、加勒比海、南美", "miles": { "by": 25000, "other": 30000, "klt": 45000 } },
+          { "between": ["LH_EU", "LH_ME"], "name": "歐洲—中東、高加索、北非與中非", "miles": { "by": 20000, "other": 20000, "klt": 30000 } },
+          { "between": ["LH_EU", "LH_ASIA"], "name": "歐洲—東南亞、中亞、遠東", "miles": { "by": 30000, "other": 35000, "klt": 50000 } }
+        ] },
+        { "from": "Y", "to": "J", "label": "", "rows": [
+          { "between": ["LH_EU", "LH_EU"], "name": "歐洲境內（跨國）", "miles": { "by": 10000, "other": 15000, "klt": 20000 } },
+          { "between": ["LH_FE", "LH_FE"], "name": "遠東區域內（台灣、中國大陸、港澳、日本、韓國）", "miles": { "by": 10000, "other": 15000, "klt": null } },
+          { "between": ["LH_SEA", "LH_SEA"], "name": "東南亞區域內", "miles": { "by": 10000, "other": 15000, "klt": null } },
+          { "between": ["LH_NA", "LH_NA"], "name": "北美區域內", "miles": { "by": 10000, "other": 15000, "klt": null } },
+          { "between": ["LH_SAM", "LH_SAM"], "name": "南美區域內", "miles": { "by": 10000, "other": 15000, "klt": null } },
+          { "between": ["LH_ME", "LH_ME"], "name": "中東、高加索、北非與中非區域內", "miles": { "by": 10000, "other": 15000, "klt": null } },
+          { "between": ["LH_EU", "LH_NA_SAF_IN"], "name": "歐洲—北美、南部非洲、印度", "miles": { "by": 35000, "other": 50000, "klt": 75000 } },
+          { "between": ["LH_EU", "LH_LATAM"], "name": "歐洲—中美洲、加勒比海、南美", "miles": { "by": 40000, "other": 55000, "klt": 75000 } },
+          { "between": ["LH_EU", "LH_ME"], "name": "歐洲—中東、高加索、北非與中非", "miles": { "by": 30000, "other": 35000, "klt": 45000 } },
+          { "between": ["LH_EU", "LH_ASIA"], "name": "歐洲—東南亞、中亞、遠東", "miles": { "by": 50000, "other": 65000, "klt": 85000 } },
+          { "between": ["LH_EU", "NZ"], "name": "歐洲—紐西蘭", "miles": { "by": 60000, "other": 75000, "klt": null } },
+          { "between": ["LH_NA", "LH_HI"], "name": "北美—夏威夷", "miles": { "by": 10000, "other": 15000, "klt": null } },
+          { "between": ["LH_NA", "LH_ASIA"], "name": "北美—東南亞、中亞、遠東", "miles": { "by": 40000, "other": 55000, "klt": null } },
+          { "between": ["LH_NA", "LH_CAM"], "name": "北美—中美洲、加勒比海", "miles": { "by": 15000, "other": 20000, "klt": null } },
+          { "between": ["LH_NA", "LH_SAM"], "name": "北美—南美", "miles": { "by": 30000, "other": 45000, "klt": null } },
+          { "between": ["LH_NA", "LH_ME"], "name": "北美—中東、高加索、北非與中非", "miles": { "by": 45000, "other": 55000, "klt": null } },
+          { "between": ["LH_HI", "LH_ASIA_OC"], "name": "夏威夷—澳紐、大洋洲、中亞、遠東、東南亞", "miles": { "by": 25000, "other": 35000, "klt": null } },
+          { "between": ["LH_SAF", "LH_SEA"], "name": "南部非洲—東南亞", "miles": { "by": 40000, "other": 55000, "klt": null } },
+          { "between": ["IN", "LH_ME"], "name": "印度—中東、高加索、北非與中非", "miles": { "by": 25000, "other": 35000, "klt": null } },
+          { "between": ["IN", "LH_NA"], "name": "印度—北美", "miles": { "by": 60000, "other": 75000, "klt": null } },
+          { "between": ["IN", "AU"], "name": "印度—澳洲", "miles": { "by": 30000, "other": 45000, "klt": null } },
+          { "between": ["LH_FE", "LH_OC_IN"], "name": "中亞、遠東—澳紐、大洋洲、印度", "miles": { "by": 30000, "other": 35000, "klt": null } },
+          { "between": ["LH_FE", "LH_ME"], "name": "中亞、遠東—中東", "miles": { "by": 35000, "other": 50000, "klt": null } },
+          { "between": ["LH_FE", "LH_SAM"], "name": "中亞、遠東—南美", "miles": { "by": 60000, "other": 75000, "klt": null } },
+          { "between": ["LH_SEA", "LH_FE"], "name": "東南亞—中亞、遠東", "miles": { "by": 30000, "other": 45000, "klt": null } },
+          { "between": ["LH_SEA", "LH_OC"], "name": "東南亞—澳紐、大洋洲", "miles": { "by": 30000, "other": 45000, "klt": null } },
+          { "between": ["LH_SEA", "LH_ME"], "name": "東南亞—中東、高加索、北非與中非", "miles": { "by": 35000, "other": 50000, "klt": null } },
+          { "between": ["LH_SEA", "IN"], "name": "東南亞—印度", "miles": { "by": 25000, "other": 35000, "klt": null } }
+        ] },
+        { "from": "W", "to": "J", "label": "", "rows": [
+          { "between": ["LH_EU", "LH_NA_SAF_IN"], "name": "歐洲—北美、南部非洲、印度", "miles": { "g": 20000, "e": 30000, "n": 45000 } },
+          { "between": ["LH_EU", "LH_LATAM"], "name": "歐洲—中美洲、加勒比海、南美", "miles": { "g": 25000, "e": 30000, "n": 45000 } },
+          { "between": ["LH_EU", "LH_ME"], "name": "歐洲—中東、高加索、北非與中非", "miles": { "g": 20000, "e": 20000, "n": 30000 } },
+          { "between": ["LH_EU", "LH_ASIA"], "name": "歐洲—東南亞、中亞、遠東", "miles": { "g": 30000, "e": 35000, "n": 50000 } }
+        ] },
+        { "from": "J", "to": "F", "label": "", "rows": [
+          { "between": ["LH_EU", "LH_NA_SAF_IN"], "name": "歐洲—北美、南部非洲、印度", "miles": { "cdj": 50000, "pz": 70000 } },
+          { "between": ["LH_EU", "LH_LATAM"], "name": "歐洲—中美洲、加勒比海、南美", "miles": { "cdj": 55000, "pz": 75000 } },
+          { "between": ["LH_EU", "LH_ME"], "name": "歐洲—中東、高加索、北非與中非", "miles": { "cdj": 35000, "pz": 55000 } },
+          { "between": ["LH_EU", "LH_ASIA"], "name": "歐洲—東南亞、中亞、遠東", "miles": { "cdj": 65000, "pz": 85000 } },
+          { "between": ["LH_EU", "NZ"], "name": "歐洲—紐西蘭", "miles": { "cdj": 75000, "pz": 95000 } },
+          { "between": ["LH_NA", "LH_ASIA"], "name": "北美—東南亞、中亞、遠東", "miles": { "cdj": 55000, "pz": null } },
+          { "between": ["LH_NA", "LH_CAM"], "name": "北美—中美洲、加勒比海", "miles": { "cdj": 55000, "pz": null } },
+          { "between": ["LH_HI", "LH_ASIA_OC"], "name": "夏威夷—澳紐、大洋洲、中亞、遠東、東南亞", "miles": { "cdj": 35000, "pz": null } },
+          { "between": ["LH_FE", "LH_OC_IN"], "name": "中亞、遠東—澳紐、大洋洲、印度", "miles": { "cdj": 45000, "pz": null } },
+          { "between": ["LH_FE", "LH_ME"], "name": "中亞、遠東—中東", "miles": { "cdj": 50000, "pz": null } },
+          { "between": ["LH_FE", "LH_SAM"], "name": "中亞、遠東—南美", "miles": { "cdj": 75000, "pz": null } },
+          { "between": ["LH_SEA", "LH_FE"], "name": "東南亞—中亞、遠東", "miles": { "cdj": 45000, "pz": null } },
+          { "between": ["LH_SEA", "LH_OC"], "name": "東南亞—澳紐、大洋洲", "miles": { "cdj": 45000, "pz": null } }
+        ] }
+      ],
+      "rules": [
+        "每個航段單程計價，來回加倍。漢莎、奧地利、瑞士、布魯塞爾、Discover 航空與 Lufthansa City 可在網路直接訂；其他星空聯盟航空用線上表單申請。",
+        "經濟艙 K、L、T 與豪經的升等只限漢莎集團自營航班；經濟艙最多升到商務艙，不能直升頭等。",
+        "歐洲國內線只能搭配洲際航段一起升，費用已含在洲際航段的哩程裡。",
+        "改票、退票依原機票規定；候補到起飛前 72 小時還沒確認會先扣哩，最後沒升到再退回。"
+      ],
+      "sources": [
+        { "label": "Miles & More：Upgrade Award 哩程表（官方）", "url": "https://www.miles-and-more.com/row/en/program/flight-benefits/upgrade-award.html", "official": true }
+      ],
+      "lastVerified": "2026-10-16"
+    },
+    {
+      "id": "tk",
+      "name": "土耳其航空",
+      "code": "TK",
+      "group": "歐洲",
+      "program": "Miles&Smiles",
+      "kind": "zone",
+      "confidence": "official",
+      "fares": {
+        "Y": [{ "id": "eco", "label": "經濟艙 EcoFly", "codes": [] }, { "id": "other", "label": "其他經濟艙方案", "codes": [] }]
+      },
+      "charts": [
+        { "from": "Y", "to": "J", "label": "", "rows": [
+          { "between": ["TR", "TR"], "name": "土耳其國內線", "miles": { "eco": 12000, "other": 10000 } },
+          { "between": ["TR", "TK_EU1"], "name": "土耳其—歐洲第 1 區（希臘、巴爾幹、烏克蘭、高加索等）", "miles": { "eco": 22000, "other": 20000 } },
+          { "between": ["TR", "TK_EU2"], "name": "土耳其—歐洲第 2 區（西歐、北歐、中歐等）", "miles": { "eco": 27500, "other": 25000 } },
+          { "between": ["TR", "TK_CAS"], "name": "土耳其—中亞、南亞", "miles": { "eco": 38500, "other": 35000 } },
+          { "between": ["TR", "TK_ME"], "name": "土耳其—中東", "miles": { "eco": 32500, "other": 28000 } },
+          { "between": ["TR", "TK_NAF"], "name": "土耳其—北非", "miles": { "eco": 44000, "other": 40000 } },
+          { "between": ["TR", "TK_CAF"], "name": "土耳其—中非", "miles": { "eco": 65000, "other": 60000 } },
+          { "between": ["TR", "TK_SAF"], "name": "土耳其—南部非洲", "miles": { "eco": 80000, "other": 75000 } },
+          { "between": ["TR", "TK_FE"], "name": "土耳其—遠東（台灣、日韓、中國大陸、港澳、東南亞等）", "miles": { "eco": 90000, "other": 65000 } },
+          { "between": ["TR", "TK_NAM"], "name": "土耳其—北美", "miles": { "eco": 90000, "other": 65000 } },
+          { "between": ["TR", "TK_SAM"], "name": "土耳其—中南美", "miles": { "eco": 80000, "other": 75000 } },
+          { "between": ["TR", "TK_OC"], "name": "土耳其—大洋洲", "miles": { "eco": 110000, "other": 100000 } }
+        ] }
+      ],
+      "rules": [
+        "只限土耳其航空自營航班（不含其他航空營運的共掛），最晚起飛前 24 小時完成。",
+        "單程計價，一端要在土耳其；經伊斯坦堡轉機要分段算。同一區域內的直飛航班升商務艙是 20,000 哩。",
+        "官網在「其他經濟艙方案」欄註明適用經濟艙獎勵機票的升等。",
+        "累積哩程依原本購買的艙等；巴基斯坦出發另收當地稅金。"
+      ],
+      "sources": [
+        { "label": "土耳其航空：哩程升等表與區域（官方）", "url": "https://www.turkishairlines.com/en-int/miles-and-smiles/redeem-miles/redeem-miles-on-flights/turkish-airlines-award-tickets", "official": true },
+        { "label": "土耳其航空：Business Upgrade 規定（官方）", "url": "https://www.turkishairlines.com/en-at/miles-and-smiles/business-upgrade/", "official": true }
+      ],
+      "lastVerified": "2026-10-16"
     }
   ]
 }
