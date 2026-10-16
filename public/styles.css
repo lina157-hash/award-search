@@ -232,7 +232,10 @@ dialog::backdrop { background: rgb(8 15 30 / .55); backdrop-filter: blur(2px); }
 .trip .pill { display: inline-block; font-size: .72rem; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); margin-left: 6px; }
 .seg-line { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; color: var(--muted); font-size: .84rem; margin-top: 8px; padding-left: 10px; border-left: 2px solid var(--accent-soft); }
 .seg-line b { color: var(--text); }
-details summary { cursor: pointer; margin-top: 12px; color: var(--muted); }
+/* No margin here: a fold that needs room above it gets it from its own rule (card folds and pills sat 12px low). */
+details summary { cursor: pointer; color: var(--muted); }
+/* 航班明細's bare 「其他艙等」 fold keeps the gap it had under the last flight. */
+#trip-body > details:not([class]) { margin-top: 12px; }
 
 /* ---------- rules ---------- */
 .rules-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 20px 0 6px; }
@@ -485,9 +488,14 @@ dialog.pass { width: min(380px, calc(100vw - 32px)); border-radius: 16px; }
 .value-result .hint { margin: 6px 0 0; }
 
 /* ---------- seat alerts ---------- */
-.alerts-panel { margin-top: 12px; color: var(--hero-text); }
-/* The panels sit side by side as pills; an open one takes the full width. */
+.alerts-panel { margin-top: 16px; color: var(--hero-text); }
+/* The panels sit side by side as pills; an open one takes the full width. On 航線查詢 they share one row (.pill-row). */
 .alerts-panel:not([open]) { display: inline-block; vertical-align: top; margin-right: 6px; }
+.pill-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; margin-top: 16px; }
+.pill-row > .alerts-panel { margin: 0; }
+.pill-row > .alerts-panel[open] { flex-basis: 100%; }
+.alerts-panel > summary { vertical-align: top; } /* no line-box gap under a pill */
+@media (max-width: 640px) { #rtw-link > span { display: none; } } /* two pills to a row on phones */
 .alerts-panel > summary { cursor: pointer; font-weight: 700; font-size: .9rem; color: var(--preset-label); list-style: none; display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; background: var(--preset-bg); border: 1px solid var(--preset-border); }
 .alerts-panel > summary::-webkit-details-marker { display: none; }
 .alerts-panel > summary span { font-weight: 400; }
@@ -648,7 +656,6 @@ details.release li { margin: 3px 0; }
 .map-actions button { font: inherit; font-size: .8rem; border: 1px solid #ccc; background: #fff; color: #06798f; border-radius: 999px; padding: 3px 10px; cursor: pointer; }
 
 /* ---------- trip planner ---------- */
-#plan-panel { margin-top: 8px; }
 .plan-name { max-width: 320px; margin-bottom: 8px; }
 .plan-table td { vertical-align: top; }
 .plan-table td small { display: block; color: var(--muted); font-size: .78rem; }
@@ -1368,7 +1375,7 @@ details.sub-fold > .cards { margin: 6px 0 12px; }
 
 /* tap targets: switches, the changelog toggle, preset chips and the airport-chip × reach about 40px */
 label.switch { min-height: 40px; }
-.foot summary { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 8px 0; list-style: none; }
+.foot summary { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 4px 0; list-style: none; }
 .foot summary::-webkit-details-marker { display: none; }
 .foot summary::before { content: "▸"; }
 .foot details[open] > summary::before { content: "▾"; }
@@ -1912,9 +1919,8 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 a.panel-link { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; font-weight: 700; font-size: .9rem; text-decoration: none; color: var(--preset-label); background: var(--preset-bg); border: 1px solid var(--preset-border); }
 a.panel-link span { font-weight: 400; }
 a.panel-link:hover { border-color: var(--accent); }
-/* Lines up with the 機位提醒 and 中停／開口組合 pills beside it: same height, and the same top (their summaries
-   add `details summary`'s 12px to the panel's own 12px). */
-a.alerts-panel.panel-link { display: inline-flex; vertical-align: top; box-sizing: border-box; min-height: 36px; margin-top: 24px; }
+/* The same height as the 機位提醒 and 中停／開口組合 pills beside it (.pill-row lines them up). */
+a.alerts-panel.panel-link { box-sizing: border-box; min-height: 36px; }
 @media (pointer: coarse) { a.alerts-panel.panel-link { min-height: 44px; } }
 .rtw-back { margin: 0 0 4px; font-size: .9rem; }
 .rtw-back a { color: inherit; }
