@@ -7,7 +7,7 @@
 // status ('held' | 'waitlist' | 'ticketed', none = 規劃中; the names points6.js and notify.js read too), holdUntil, ticketedOn, backup, dep, arr, arrDays, pnr, tk.
 // Saving a status fires `plan:status` on document ({ leg, index, from, to }). The date math up to 「page」 needs no DOM
 // and is exported for test/trips.test.js.
-/* global $, $$, esc, fmt, mmdd, dowOf, data, loadMore, loadAirports, AP, AL, isoDate, store, toast, api, cashApi, plan, savePlan, renderPlan, programName, programKeyOf, CABIN_LABEL, countryZh, VISA_TYPE, acct, signedIn, joinedHere, alertCfg, nl, nlOwnerHere, addLegs, ALERT_EMAIL_KEY, PLAN_KEY, cash */
+/* global $, $$, esc, fmt, mmdd, dowOf, data, loadMore, loadAirports, AP, AL, isoDate, store, toast, api, cashApi, plan, savePlan, renderPlan, programName, programKeyOf, CABIN_LABEL, countryZh, VISA_TYPE, acct, signedIn, joinedHere, alertCfg, nl, nlOwnerHere, addLegs, ALERT_EMAIL_KEY, PLAN_KEY, cash, configP, loadScripts, ttLegTerminal, ttLoadTerminals */
 
 const TRIP_STATUS = { held: '已保留', waitlist: '候補中', ticketed: '已開票' }; // no status = 規劃中
 const tpPad = (n) => String(n).padStart(2, '0');
@@ -231,6 +231,14 @@ function tpEnsure() {
   const done = () => { tp.loading = false; tp.tried = true; tripRemindSync(); renderPlan(); }; // one try per page view
   Promise.all([loadMore(), loadAirports()]).then(done, done);
 }
+// The TPE terminals (flightdata.js) once per page view, when the site has them; the plan redraws with them.
+function tpTermEnsure() {
+  if (tp.termTried || typeof configP === 'undefined') return;
+  tp.termTried = true;
+  configP.then((c) => (c.flightdata?.terminals ? loadScripts(['flightdata']) : [false]))
+    .then(([ok]) => (ok && typeof ttLoadTerminals === 'function' ? ttLoadTerminals() : null))
+    .then((t) => { if (t) renderPlan(); }).catch(() => {});
+}
 function tpWantVisa(cc) {
   if (!cc || cc === 'TW' || tp.visa.has(cc) || tp.visaWant.has(cc)) return;
   tp.visaWant.add(cc);
@@ -262,7 +270,9 @@ function tripRowHtml(p, i, editable) {
   if (conn?.country) tpWantVisa(conn.country);
   const chip = (d) => (d.kind === 'wait' ? `<span class="tp-date"><b>備案</b> ${esc(l.backup || '還沒填')}</span>`
     : (d.date && (d.kind !== 'cancel' || d.steps)) || d.kind === 'hold' ? `<span class="tp-date${d.warn ? ' warn' : ''}"><b>${esc(d.label)}</b> ${d.date ? tpWhen(d, ctx.today) : '還沒填'}${d.verify && d.date ? ' <span class="tag verify">待確認</span>' : ''}</span>` : '');
-  const chips = dates.map(chip).join('');
+  // 桃園機場航廈 (flightdata.js, 桃園機場's weekly schedule) for a leg leaving or landing at TPE.
+  const term = typeof ttLegTerminal === 'function' ? ttLegTerminal(l) : null;
+  const chips = dates.map(chip).join('') + (term ? `<span class="tp-date" title="資料來源：${esc(term.src)}（${esc(term.updated)} 更新）"><b>桃園${term.dir}</b> 第 ${esc(term.t)} 航廈</span>` : '');
   const srcs = [...new Map(dates.flatMap((d) => d.src || []).map((s) => [s.url, s])).values()];
   const more = dates.filter((d) => d.text);
   const info = more.length ? `<details class="tp-more"><summary>ⓘ 規定與來源</summary><ul>${more.map((d) => `<li><b>${esc(d.label)}</b>：${esc(d.text)}${d.verify ? '（官方資料待確認）' : ''}</li>`).join('')}</ul>${srcs.length ? `<p class="hint">${srcs.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a>`).join('　')}（${esc(ctx.trips.lastReviewed || '')} 查核）</p>` : ''}</details>` : '';
@@ -324,6 +334,7 @@ function tripPlanExtras(p) {
   if (!p.legs.length) return '';
   // The rules (data more) and the 270 KB airport list load once the panel is open or a leg has a status.
   if ($('#plan-panel')?.open || p.legs.some((l) => l.status)) tpEnsure();
+  if ($('#plan-panel')?.open && p.legs.some((l) => l.from === 'TPE' || l.to === 'TPE')) tpTermEnsure();
   return `${tpPlanPassport(p)}${tpRemindHtml(p)}`;
 }
 function tripActionsHtml(p) {
