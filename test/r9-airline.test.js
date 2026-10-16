@@ -39,10 +39,13 @@ test('a percentage chart: the distance times the booking class\'s official %, pr
   assert.equal(rowOf(rows, 'turkish').hi, Math.round(1330 * 1.5));
   assert.equal(rowOf(rows, 'singapore').hi, Math.round(1330 * 1.25));
   assert.equal(rows[0].program, 'eva');
-  // United and Aeroplan: no readable official chart, so no numbers, last, with the official page.
+  // United: the owner's screenshot of its official EVA page (tickets bought outside United, by distance).
+  assert.equal(rowOf(rows, 'united').hi, Math.round(1330 * 1.5));
+  assert.equal(A.accrualRows(accrual, [seg('BR', 'TPE', 'NRT', 1330)], { BR: 'V' }, 'Y').find((r) => r.program === 'united').hi, 0);
+  // Aeroplan: no readable official chart, so no numbers, last, with the official page.
   const pend = rows.filter((r) => r.pending);
-  assert.deepEqual(pend.map((r) => r.program).sort(), ['aeroplan', 'united']);
-  assert.ok(rows.slice(-2).every((r) => r.pending));
+  assert.deepEqual(pend.map((r) => r.program).sort(), ['aeroplan']);
+  assert.ok(rows.at(-1).pending);
   for (const r of pend) assert.match(r.pending.source.url, /^https:\/\//);
   assert.equal(rows.find((r) => r.pending).hi, 0);
 });

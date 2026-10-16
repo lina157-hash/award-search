@@ -64,8 +64,12 @@
         },
         {
           "program": "united",
-          "pending": true,
-          "source": { "label": "聯合 MileagePlus：夥伴航空累積（官方）", "url": "https://www.united.com/en/us/fly/mileageplus/earn/airline-partners.html" }
+          "rates": { "C": 150, "J": 150, "D": 125, "K": 125, "L": 115, "T": 115, "P": 100, "Y": 100, "B": 100, "M": 75, "H": 75, "Q": 75, "S": 50, "W": 50 },
+          "zero": "AEFGINORUVXZ",
+          "basis": "飛行距離",
+          "notes": ["這是在長榮、其他航空、第三方網站或旅行社買的票：依飛行距離和艙等代碼累積（已含加贈）", "在聯合官網買的票改依票價累積：2026-04-02 起開票，一般會員每 1 美元 3 哩（Premier Silver 5、Gold 6、Platinum 7、1K 9 哩）", "立榮（UNI Air）營運的航班不能累積，也不能兌換"],
+          "source": { "label": "聯合 MileagePlus：搭長榮航空累積（官方）", "url": "https://www.united.com/en/us/fly/mileageplus/partners/earn-miles-on-eva-air.html" },
+          "checked": "2026-10-16"
         },
         {
           "program": "aeroplan",
