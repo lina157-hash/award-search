@@ -2488,3 +2488,9 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 /* #21 最近變動 */
 .recent-box ul { margin: 4px 0; }
 .recent-box li .tag { margin-right: 2px; }
+/* #27 會籍匹配 */
+.sm-card { min-width: 0; }
+.sm-card[open] .card-sum { display: none; }
+.sm-card dl { margin: 6px 0; }
+.sm-card dd ul { margin: 2px 0; padding-left: 1.2em; }
+.sm-card .sub-fold summary h4 { margin: 0; font-size: .9rem; }

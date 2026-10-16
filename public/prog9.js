@@ -149,6 +149,25 @@ if (typeof module === 'object' && module.exports) {
     return `過去 30 天：${parts.join('、') || '沒有變動'}${rates ? `・${rates} 家銀行比率快到期` : ''}`;
   }
 
+  // #27 會籍匹配.
+  function statusHtml() {
+    const sm = data.programs?.statusMatch;
+    if (!sm?.offers?.length) return '';
+    const today = p9Today();
+    const live = sm.offers.filter((o) => !o.ends || o.ends >= today);
+    if (!live.length) return '';
+    const card = (o) => `<details class="card sm-card"><summary>${airlineLogo(o.airline, 'md')}<span class="card-head"><h3>${esc(o.program)}：${esc(o.title)}</h3>
+        <small class="card-sum">${o.ends ? `報名到 ${esc(o.ends)}` : '沒有寫截止日'}・${esc(o.gives)}</small></span></summary>
+      <dl><dt>拿到什麼</dt><dd>${esc(o.gives)}</dd><dt>條件</dt><dd><ul>${o.needs.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></dd>
+        <dt>保級</dt><dd>${esc(o.keep)}</dd><dt>限制</dt><dd><ul>${o.limits.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></dd>
+        <dt>截止</dt><dd>${esc(o.endsNote || o.ends || '')}</dd></dl>
+      ${o.matrix?.length ? `<details class="sub-fold"><summary><h4>可以匹配的計畫與等級</h4><small>${o.matrix.length} 個</small></summary><div class="table-wrap"><table><thead><tr><th>你現在的計畫</th><th>換 Gold</th><th>換 Silver</th></tr></thead>
+        <tbody>${o.matrix.map(([p, g, s]) => `<tr><td>${esc(p)}</td><td>${esc(g)}</td><td>${esc(s)}</td></tr>`).join('')}</tbody></table></div></details>` : ''}
+      <div class="src">${CONFIDENCE_TAG[o.confidence] || ''} 來源（${esc(o.checked)} 查核）：${p9Link(o.source)}</div></details>`;
+    return `<h2 class="section" id="r-status">會籍匹配</h2>
+      <p class="hint">航空公司官網公開的會籍匹配：用你在別家的會籍換這家的同級會籍。只收官方計畫頁（${esc(sm.lastReviewed)} 查核），申請前請再看一次官網條款。</p><div class="cards">${live.map(card).join('')}</div>`;
+  }
+
   // #17 好用的外部工具: links only, every one a third party.
   const P9_TOOLS = [
     ['Great Circle Mapper', 'https://www.gcmap.com/', '畫出航線、算每段和全程的大圓距離，看行程落在哪個距離區間（Karl L. Swartz 製作）。'],
@@ -168,6 +187,7 @@ if (typeof module === 'object' && module.exports) {
   // [html, one-line summary] for renderRulesBody (app.js), in page order; empty ones left out.
   window.prog9Sections = () => [
     [recentHtml(), recentSum()],
+    [statusHtml(), `${(data.programs?.statusMatch?.offers || []).filter((o) => !o.ends || o.ends >= p9Today()).length} 個官方會籍匹配：條件與截止日`],
     [toolsHtml(), `${P9_TOOLS.length} 個第三方工具：距離、航點、累積、座位圖`],
   ].filter(([h]) => h);
 }

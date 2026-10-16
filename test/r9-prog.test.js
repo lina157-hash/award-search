@@ -277,3 +277,17 @@ test('weekly digest: the first run of each week, Telegram and mail, nothing twic
   const crons = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8')).crons || [];
   assert.deepEqual(crons.map((c) => c.path), ['/api/alerts/run', '/api/cron/daily'], 'no new cron entry');
 });
+
+// ---------- #27 status match ----------
+test('status match: official program pages only, with conditions and an end date (or none stated)', () => {
+  const sm = read('programs.json').statusMatch;
+  assert.ok(sm.offers.length >= 2);
+  for (const o of sm.offers) {
+    assert.equal(o.confidence, 'official', o.id);
+    assert.match(o.source.url, /^https:\/\/www\.(delta|virginatlantic)\.com\//, o.id);
+    assert.ok(o.needs.length && o.limits.length && o.keep && o.gives, o.id);
+    assert.ok(o.ends === null || /^\d{4}-\d{2}-\d{2}$/.test(o.ends), o.id);
+    assert.ok(o.endsNote, o.id);
+  }
+  assert.equal(sm.offers.find((o) => o.id === 'delta-challenge').ends, '2026-12-31');
+});

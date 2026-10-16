@@ -1329,5 +1329,72 @@
         "asiamiles_est"
       ]
     }
+  },
+  "statusMatch": {
+    "lastReviewed": "2026-10-16",
+    "note": "航空公司官網公開的會籍匹配（用你在別家的會籍換這家的同級會籍）。只收官方計畫頁，第三方代辦或懶人包不收；ends 是報名截止日，null 是官網沒有寫截止日。",
+    "offers": [
+      {
+        "id": "delta-challenge",
+        "airline": "DL",
+        "program": "達美 SkyMiles",
+        "title": "Medallion 會籍匹配挑戰（Status Match Challenge）",
+        "gives": "依你在其他航空自己飛到的會籍，先給 Silver、Gold 或 Platinum Medallion 90 天（不給 Diamond）",
+        "needs": [
+          "現在持有其他航空依公開門檻累積達成的會籍；贈送或促銷取得的不算，要附會員卡與累積紀錄",
+          "SkyMiles 帳戶開立滿 30 天",
+          "過去 3 年內搭過至少 1 段達美行銷、艙等高於 Main Basic 的航班（訂位時有填 SkyMiles 號碼）",
+          "2023–2026 年沒有透過會籍匹配、促銷或贈送拿過 Medallion"
+        ],
+        "keep": "90 天內累積 MQD：Silver US$1,250、Gold US$2,500、Platinum US$3,750，並搭 1 段達美行銷航班（Main Basic 除外），會籍延到 2028-01-31",
+        "limits": [
+          "通過後每 3 年只能參加一次",
+          "審核最多 15 個工作天；通過後 90 天就開始算，準備好要飛再申請"
+        ],
+        "ends": "2026-12-31",
+        "endsNote": "2026-12-31 前報名、完成挑戰，會籍才到 2028-01-31",
+        "confidence": "official",
+        "checked": "2026-10-16",
+        "source": { "label": "達美官網：Status Match Challenge", "url": "https://www.delta.com/us/en/skymiles/medallion-program/status-match-challenge" }
+      },
+      {
+        "id": "virgin-status-match",
+        "airline": "VS",
+        "program": "維珍航空 Flying Club",
+        "title": "會籍匹配（Status Match）",
+        "gives": "12 個指定計畫的最高級會籍換 Gold、次一級換 Silver，效期 12 個月",
+        "needs": [
+          "先加入 Flying Club，訂一張有 VS 航班號碼的機票（付錢或用哩程都可以），訂位時填會員號碼",
+          "換 Gold 要訂豪華經濟艙（Premium）或高級艙（Upper Class）；經濟艙只給 Silver",
+          "在官網表單上傳現有會員卡（看得到全名、等級與到期日）",
+          "官網條款寫明：持有天合聯盟夥伴航空會籍的人不適用"
+        ],
+        "keep": "12 個月內 Gold 累積 1,000、Silver 累積 400 個 Tier Points 才能保級",
+        "limits": [
+          "5 年內透過會籍匹配拿過 Gold 或 Silver 的不行",
+          "會籍在合格航班出發前 72 小時升上去；出發前 48 小時內才申請可能來不及",
+          "取消或改訂合格航班沒有提前 72 小時通知，匹配可能被取消"
+        ],
+        "matrix": [
+          ["英航 The British Airways Club", "Gold", "Silver"],
+          ["加航 Aeroplan", "50K、75K、Super Elite", "25K、35K"],
+          ["印航 Flying Returns", "Gold、Platinum", "Silver"],
+          ["美航 AAdvantage", "Executive Platinum、Concierge Key", "Platinum Pro"],
+          ["國泰 Marco Polo", "Diamond", "Gold"],
+          ["阿聯酋 Skywards", "Platinum、Gold", "Silver"],
+          ["阿提哈德 Etihad Guest", "Gold、Platinum、Emerald", "Silver"],
+          ["西班牙國家航空 Iberia Plus", "Platino", "Oro"],
+          ["漢莎 Miles & More", "HON Circle", "Senator"],
+          ["卡達 Privilege Club", "Platinum、Gold", "Silver"],
+          ["南非航空 Voyager", "Platinum、Gold", "Silver"],
+          ["聯合 MileagePlus", "Premier 1K、Global Services", "Premier Platinum"]
+        ],
+        "ends": null,
+        "endsNote": "官網沒有寫截止日，維珍可隨時修改或終止",
+        "confidence": "official",
+        "checked": "2026-10-16",
+        "source": { "label": "維珍航空官網：Status Match", "url": "https://www.virginatlantic.com/en-US/flying-club/status-match" }
+      }
+    ]
   }
 }
