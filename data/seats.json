@@ -1,0 +1,85 @@
+{
+  "lastReviewed": "2026-10-16",
+  "note": "商務艙座椅類型（平躺、斜躺），依營運航空公司和 IATA 機型代碼（seats.aero 的 AircraftCode），只收航空公司官網寫明的。flat：官方寫全平躺（fully flat、lie-flat、full-flat、全平躺）；recliner：官方寫斜躺或只能躺到接近平躺；mixed：同一機型有兩種座椅，代碼分不出來。aisle：官方寫明每個座位都能直通走道。regional：這個機型常飛亞洲短程，今日好康的短程商務艙會標「可能斜躺」。機型代碼分不出新舊座椅、航空公司會換機，以訂位時的座位圖為準。",
+  "types": { "flat": "平躺", "recliner": "斜躺", "mixed": "平躺或斜躺" },
+  "airlines": {
+    "BR": {
+      "sources": [
+        { "label": "長榮：皇璽桂冠艙（官方）", "url": "https://www.evaair.com/en-au/fly-prepare/flying-with-eva/cabin-classes/royal-laurel-class/" },
+        { "label": "長榮：桂冠艙／商務艙（官方）", "url": "https://www.evaair.com/en-au/fly-prepare/flying-with-eva/cabin-classes/premium-laurel-class-and-business-class/" }
+      ],
+      "J": [
+        { "ac": ["77W"], "type": "flat", "layout": "反魚骨", "quote": "Royal Laurel Class are configured in a reverse herringbone layout … each seat converts into an approximately two-metre-long, fully lie-flat bed", "src": 0 },
+        { "ac": ["789", "781"], "type": "flat", "note": "787 機隊", "quote": "redesigned Royal Laurel Class seats with fully lie-flat beds", "src": 0 },
+        { "ac": ["333"], "type": "recliner", "regional": true, "note": "桂冠艙，可躺到接近平躺", "quote": "recline to an almost flat position without cramping passengers in front or behind", "src": 1 }
+      ],
+      "pending": "A321 商務艙：官方頁只寫「cosy, spacious」，沒寫能不能平躺"
+    },
+    "CI": {
+      "sources": [
+        { "label": "華航：A321neo 交機新聞（官方企業永續網）", "url": "https://calec.china-airlines.com/csr/news20211129.html" },
+        { "label": "華航：客艙空間（官方）", "url": "https://www.china-airlines.com/uk/zh/prepare-for-the-fly/cabin/business/detail.html" }
+      ],
+      "J": [
+        { "ac": ["32Q"], "type": "flat", "quote": "配置12席豪華商務艙…全平躺豪華商務艙座椅", "src": 0 }
+      ],
+      "pending": "A350、777-300ER、A330、737-800：官方座艙配置頁只有圖，沒有文字寫座椅類型"
+    },
+    "CX": {
+      "sources": [
+        { "label": "國泰：商務艙（官方）", "url": "https://flights.cathaypacific.com/en_US/flying-with-us/cabin-classes/business-class.html" },
+        { "label": "國泰：空中巴士 A321neo（官方）", "url": "https://www.cathaypacific.com/cx/en_US/flying-with-us/aircraft-and-fleet/airbus-a321neo.html" },
+        { "label": "國泰：空中巴士 A330（官方）", "url": "https://www.cathaypacific.com/cx/en_US/flying-with-us/aircraft-and-fleet/airbus-a330/a330.html" }
+      ],
+      "J": [
+        { "ac": ["77W"], "type": "flat", "note": "長程商務艙或 Aria Suite", "quote": "Long-haul Business class … A350 and Boeing 777-300ER aircraft (fully flat bed)", "src": 0 },
+        { "ac": ["359", "351"], "type": "flat", "quote": "Long-haul Business class … A350 and Boeing 777-300ER aircraft (fully flat bed)", "src": 0 },
+        { "ac": ["333"], "type": "mixed", "regional": true, "note": "部分 A330 是平躺，部分是斜躺的區域商務艙", "quote": "Business class: 39 (flat bed) / Business class: 24 / Regional Business class: selected Airbus A330 and Boeing 777-300 aircraft, recliner seats", "src": 2 },
+        { "ac": ["773"], "type": "recliner", "regional": true, "note": "區域商務艙", "quote": "Regional Business class: available on our selected Airbus A330 and Boeing 777-300 aircraft (recliner seats)", "src": 0 },
+        { "ac": ["32Q"], "type": "recliner", "regional": true, "note": "區域商務艙", "quote": "recliner seats featuring divider screens for more privacy", "src": 1 }
+      ]
+    },
+    "JL": {
+      "sources": [
+        { "label": "日航：JAL SKY SUITE（官方）", "url": "https://www.jal.co.jp/jp/en/inter/service/business/seat/skysuite.html" },
+        { "label": "日航：JAL SKY SUITE III（官方）", "url": "https://www.jal.co.jp/jp/en/inter/service/business/seat/skysuite3.html" },
+        { "label": "日航：JAL SKY SUITE II（官方）", "url": "https://www.jal.co.jp/jp/en/inter/service/business/seat/skysuite2.html" },
+        { "label": "日航：國際線商務艙座椅（官方）", "url": "https://www.jal.co.jp/jp/en/inter/service/business/seat/" },
+        { "label": "日航：787-8 機型與座位（官方）", "url": "https://www.jal.co.jp/jp/en/aircraft/conf/787.html" }
+      ],
+      "J": [
+        { "ac": ["77W"], "type": "flat", "aisle": true, "note": "JAL SKY SUITE", "quote": "Full-flat beds with plenty of room to stretch your legs … Stress-free aisle access from all seats", "src": 0 },
+        { "ac": ["789"], "type": "flat", "aisle": true, "note": "JAL SKY SUITE 或 SKY SUITE III", "quote": "Relax to your heart's content in full-flat beds … 1-2-1 (4-across) layout enabling direct aisle access from all seats", "src": 1 },
+        { "ac": ["763"], "type": "flat", "aisle": true, "note": "JAL SKY SUITE II", "quote": "Convertible to full-flat beds … Stress-free aisle access from all seats with a 1-2-1 layout", "src": 2 },
+        { "ac": ["788"], "type": "mixed", "regional": true, "note": "E12 版是 JAL SKY SUITE（平躺）；E03 版是 JAL SHELL FLAT NEO，官方頁沒寫能不能平躺", "quote": "E12: JAL SKY SUITE / E03: JAL SHELL FLAT NEO", "src": 4 },
+        { "ac": ["738"], "type": "recliner", "regional": true, "note": "JAL SKYLUXE SEAT", "quote": "the deep-reclining seat with plenty of space to relax", "src": 3 }
+      ]
+    },
+    "NH": {
+      "sources": [
+        { "label": "全日空：777-300ER 商務艙（官方）", "url": "https://www.ana.co.jp/en/us/travel-information/cabin/b777-300er-business-class/" },
+        { "label": "全日空：787-9 商務艙（官方）", "url": "https://www.ana.co.jp/en/us/travel-information/cabin/b787-9-business-class/" },
+        { "label": "全日空：國際線商務艙座椅一覽（官方）", "url": "https://www.ana.co.jp/en/jp/guide/flight_service_info/int-service/c/seat/" },
+        { "label": "全日空：787-8 商務艙（官方）", "url": "https://www.ana.co.jp/en/us/travel-information/cabin/b787-8-business-class/" }
+      ],
+      "J": [
+        { "ac": ["77W"], "type": "flat", "aisle": true, "note": "THE Room 或 ANA BUSINESS STAGGERED", "quote": "Fully flat seat … All these seats have direct aisle access", "src": 0 },
+        { "ac": ["789"], "type": "flat", "note": "ANA BUSINESS STAGGERED 或 THE Room FX", "quote": "These are lie-flat seats with a staggered arrangement / THE Room FX: converted into a bed", "src": 1 },
+        { "ac": ["781"], "type": "flat", "aisle": true, "note": "ANA BUSINESS STAGGERED", "quote": "lie-flat design … direct aisle access no matter where you are seated", "src": 2 },
+        { "ac": ["788"], "type": "mixed", "regional": true, "note": "184 席版是 ANA BUSINESS STAGGERED（平躺）；240 席版是 ANA BUSINESS CRADLE（斜躺）", "quote": "The reclining seat supports you with cradle-like comfort", "src": 3 },
+        { "ac": ["763"], "type": "recliner", "regional": true, "note": "ANA BUSINESS CRADLE", "quote": "ANA BUSINESS CRADLE: B787-8 (240 seats); B767-300ER (202 seats) — cradle-style seat", "src": 2 }
+      ]
+    },
+    "VN": {
+      "sources": [
+        { "label": "越南航空：商務艙座椅（官方）", "url": "https://www.vietnamairlines.com/us/en/experience/business-class/seats" }
+      ],
+      "J": [
+        { "ac": ["789"], "type": "flat", "quote": "fully convertible flat-bed seats", "src": 0 },
+        { "ac": ["359"], "type": "flat", "aisle": true, "quote": "fully convertible flat-bed seats … a unique staggered layout allowing direct access to the aisle for all passengers", "src": 0 },
+        { "ac": ["321"], "type": "recliner", "regional": true, "quote": "a reclining distance of nearly 10” … pitch of up to 45”", "src": 0 }
+      ]
+    }
+  },
+  "pending": ["JX 星宇（機隊頁要開 JavaScript）", "SQ 新航", "KE 大韓（官網禁止讀取座椅頁）", "TG 泰航", "MH 馬航", "PR 菲航", "OZ 韓亞"]
+}

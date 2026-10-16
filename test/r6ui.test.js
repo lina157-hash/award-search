@@ -212,7 +212,7 @@ test('U15: hotels, admin, etrips, ewallet and award-tools are not in the page; t
   for (const f of ['hotels', 'admin', 'etrips', 'ewallet', 'award-tools']) assert.doesNotMatch(html, new RegExp(`<script src="/${f}\\.js`), f);
   const app = read('app.js');
   const list = (name) => JSON.parse(grab(app, new RegExp(`const ${name} = (\\[[^\\]]*\\])`)).replace(/^[^[]*/, '').replace(/'/g, '"'));
-  assert.deepEqual(list('TOOL_SCRIPTS'), ['rtw', 'award-tools', 'ewallet']); // rtw.js first: toolsIn() then means it ran too
+  assert.deepEqual(list('TOOL_SCRIPTS'), ['rtw', 'award-tools', 'ewallet', 'airline']); // rtw.js first: toolsIn() then means it ran too
   const search = list('SEARCH_SCRIPTS');
   assert.ok(search.indexOf('etrips') >= 0 && search.indexOf('etrips') < search.indexOf('cxcal'), 'Google 航班快捷 card before 國泰哩程日曆');
   // Everything that draws with those scripts' functions waits for them.
@@ -226,7 +226,7 @@ test('U15: hotels, admin, etrips, ewallet and award-tools are not in the page; t
   // by nothing else (admOpen behind a typeof check).
   const own = (f) => [...read(f).matchAll(/^(?:async\s+)?(?:function\s+([\w$]+)|(?:const|let)\s+([\w$]+))/gm)].map((m) => m[1] || m[2]);
   const eager = [...html.matchAll(/<script src="\/([\w-]+)\.js/g)].map((m) => m[1]).filter((f) => !['app', 'features'].includes(f));
-  for (const lazy of ['hotels', 'admin', 'ewallet', 'award-tools', 'etrips']) {
+  for (const lazy of ['hotels', 'admin', 'ewallet', 'award-tools', 'etrips', 'airline', 'airinfo']) {
     for (const name of own(`${lazy}.js`)) {
       for (const f of eager) {
         const src = read(`${f}.js`);

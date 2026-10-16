@@ -1225,7 +1225,7 @@ function renderDeals() {
       <button type="button" class="deal-mini" data-deal="${esc(d.origin)}|${esc(d.destination)}|${esc(d.date)}">
         <span class="dm-route">${esc(d.origin)} → ${esc(d.destination)} <small>${esc(airportCity(d.destination))}</small></span>
         <span class="dm-miles">${fmt(d.miles)} <small>哩</small>${d.direct ? '<small class="dm-direct">直飛</small>' : ''}</span>
-        <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>${typeof leaveChip === 'function' ? leaveChip(d.date) : ''}
+        <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>${typeof leaveChip === 'function' ? leaveChip(d.date) : ''}${d.seat ? `<span class="dm-seat" title="${esc(d.seat.note)}">${esc(d.seat.label)}</span>` : ''}
         ${d.usual ? `<span class="dm-usual${d.miles < d.usual ? ' low' : ''}" title="這條航線這個計畫過去有位的日子，每天最低價的中位數（每日排程記下的，少於 7 天不顯示）">平常約 ${fmt(d.usual)} 哩${d.miles < d.usual ? `・少 ${kfmt(d.usual - d.miles)}` : ''}</span>` : ''}
       </button>`).join('')}</div></div>`).join('') || `<p class="hint">${typeof leaveFiltering === 'function' && leaveFiltering() ? '符合請假天數的好康今天沒有，可以放寬「只看」。' : '這個艙等今天沒有整理到好康。'}</p>`}
     <p class="hint">每 12 小時整理一次（早上 8 點多、晚上 9 點多），座位可能已被訂走；點卡片會查那一天前後三天。${dealsRefreshHtml()}</p>`;
@@ -1454,7 +1454,7 @@ function cleanLeg(x) {
   const hm = (v) => str(v, /^([01]\d|2[0-3]):[0-5]\d$/, 5);
   const extra = { status: ['held', 'waitlist', 'ticketed'].includes(x.status) ? x.status : null, holdUntil: day(x.holdUntil), ticketedOn: day(x.ticketedOn),
     backup: typeof x.backup === 'string' && x.backup.trim() ? x.backup.trim().slice(0, 40) : null, dep: hm(x.dep), arr: hm(x.arr), arrDays: [1, 2].includes(x.arrDays) ? x.arrDays : null,
-    pnr: str(x.pnr, /^[A-Z0-9]{5,8}$/, 8), tk: str(x.tk, /^[a-z0-9]{4,8}$/, 8) };
+    pnr: str(x.pnr, /^[A-Z0-9]{5,8}$/, 8), tk: str(x.tk, /^[a-z0-9]{4,8}$/, 8), via: str(x.via, /^[A-Z]{3}(,[A-Z]{3}){0,3}$/, 15) };
   for (const [k, v] of Object.entries(extra)) if (v) leg[k] = v;
   return leg.k && leg.date && leg.from && leg.to ? leg : null;
 }
@@ -1494,8 +1494,9 @@ function cashLegs() {
   // Local times "YYYY-MM-DD HH:MM"; a round trip is one ticket (tk), so its two legs never count as a separate-ticket connection.
   const times = (o) => { const a = o.segments[0].from.time || ''; const b = o.segments.at(-1).to.time || ''; return { dep: a.slice(11, 16), arr: b.slice(11, 16), arrDays: a && b ? Math.round((Date.parse(b.slice(0, 10)) - Date.parse(a.slice(0, 10))) / 864e5) : 0 }; };
   const tk = back ? Math.random().toString(36).slice(2, 8) : undefined;
-  const legs = [{ k: 'c', date: r.depart, from: out.segments[0].from.code, to: out.segments.at(-1).to.code, flights: fl(out), cabin: r.cabin, pax: r.adults, price: total, note: back ? '來回總價' : '', ...times(out), tk }];
-  if (back) legs.push({ k: 'c', date: r.ret, from: back.segments[0].from.code, to: back.segments.at(-1).to.code, flights: fl(back), cabin: r.cabin, pax: r.adults, price: null, note: '含在去程票價', ...times(back), tk });
+  const via = (o) => o.segments.slice(1).map((s) => s.from.code).join(',') || undefined; // connecting airports
+  const legs = [{ k: 'c', date: r.depart, from: out.segments[0].from.code, to: out.segments.at(-1).to.code, flights: fl(out), cabin: r.cabin, pax: r.adults, price: total, note: back ? '來回總價' : '', ...times(out), tk, via: via(out) }];
+  if (back) legs.push({ k: 'c', date: r.ret, from: back.segments[0].from.code, to: back.segments.at(-1).to.code, flights: fl(back), cabin: r.cabin, pax: r.adults, price: null, note: '含在去程票價', ...times(back), tk, via: via(back) });
   return legs;
 }
 

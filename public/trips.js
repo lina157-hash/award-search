@@ -1,13 +1,15 @@
 // 我的行程 round 6: each leg's booking status (規劃中／已保留／候補中／已開票) and its key dates (hold expiry, ticket validity,
 // free cancellation, online check-in), reminders through the miles-expiry mail (lib/expiry.js), a whole-trip .ics,
 // 貼上確認信 (owner, AI), the separate-ticket connection check, the passport validity check (also in 出發前小提醒),
-// where a cash fare's miles can go, and the 規則庫 card on credit-card benefits for award tickets.
+// where a cash fare's miles can go (the calculator itself is public/airinfo.js, loaded on first use), each leg's
+// 行李・貴賓室 fold, and the 規則庫 card on credit-card benefits for award tickets.
 // Rules come from data/trips.json and data/holds.json (official pages, cited there). Classic script loaded after
 // features.js (plan, savePlan…) and tripinfo.js (countryZh, VISA_TYPE). Leg fields other code may read:
-// status ('held' | 'waitlist' | 'ticketed', none = 規劃中; the names points6.js and notify.js read too), holdUntil, ticketedOn, backup, dep, arr, arrDays, pnr, tk.
+// status ('held' | 'waitlist' | 'ticketed', none = 規劃中; the names points6.js and notify.js read too), holdUntil, ticketedOn, backup, dep, arr, arrDays, pnr, tk,
+// via (a cash leg's connecting airports, 'HKG' or 'HKG,NRT').
 // Saving a status fires `plan:status` on document ({ leg, index, from, to }). The date math up to 「page」 needs no DOM
 // and is exported for test/trips.test.js.
-/* global $, $$, esc, fmt, mmdd, dowOf, data, loadMore, loadAirports, AP, AL, isoDate, store, toast, api, cashApi, plan, savePlan, renderPlan, programName, programKeyOf, CABIN_LABEL, countryZh, VISA_TYPE, acct, signedIn, joinedHere, alertCfg, nl, nlOwnerHere, addLegs, ALERT_EMAIL_KEY, PLAN_KEY, cash, configP, loadScripts, ttLegTerminal, ttLoadTerminals */
+/* global $, $$, esc, fmt, mmdd, dowOf, data, loadMore, loadAirports, AP, AL, isoDate, store, toast, api, cashApi, plan, savePlan, renderPlan, programName, programKeyOf, CABIN_LABEL, countryZh, VISA_TYPE, acct, signedIn, joinedHere, alertCfg, nl, nlOwnerHere, addLegs, ALERT_EMAIL_KEY, PLAN_KEY, cash, configP, loadScripts, ttLegTerminal, ttLoadTerminals, TOOL_SCRIPTS, accrualCalcMount, alLegFill */
 
 const TRIP_STATUS = { held: '已保留', waitlist: '候補中', ticketed: '已開票' }; // no status = 規劃中
 const tpPad = (n) => String(n).padStart(2, '0');
@@ -349,8 +351,9 @@ function tripRowHtml(p, i, editable) {
   const info = more.length ? `<details class="tp-more"><summary>ⓘ 規定與來源</summary><ul>${more.map((d) => `<li><b>${esc(d.label)}</b>：${esc(d.text)}${d.verify ? '（官方資料待確認）' : ''}</li>`).join('')}</ul>${srcs.length ? `<p class="hint">${srcs.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a>`).join('　')}（${esc(ctx.trips.lastReviewed || '')} 查核）</p>` : ''}</details>` : '';
   const connHtml = conn ? `<ul class="tp-conn" aria-label="和下一段的轉機">${conn.lines.map((x) => `<li class="${x.level}">${{ bad: '⚠️', warn: '⚠️', ok: '✓', info: '🧳' }[x.level]} ${esc(x.text)}</li>`).join('')}</ul>` : '';
   const ed = editable && tp.edit === i ? tpEditorHtml(l, i) : '';
-  if (!chips && !info && !connHtml && !ed && !(l.pnr && editable)) return '';
-  return `<tr class="tp-sub"><td colspan="${editable ? 5 : 4}">${chips || (l.pnr && editable) ? `<div class="tp-dates">${chips}${l.pnr && editable ? `<span class="tp-date"><b>訂位代號</b> ${esc(l.pnr)}</span>` : ''}</div>` : ''}${info}${connHtml}${ed}</td></tr>`;
+  const air = editable ? tpAirHtml(l, i) : '';
+  if (!chips && !info && !connHtml && !ed && !air && !(l.pnr && editable)) return '';
+  return `<tr class="tp-sub"><td colspan="${editable ? 5 : 4}">${chips || (l.pnr && editable) ? `<div class="tp-dates">${chips}${l.pnr && editable ? `<span class="tp-date"><b>訂位代號</b> ${esc(l.pnr)}</span>` : ''}</div>` : ''}${info}${connHtml}${air}${ed}</td></tr>`;
 }
 function tpEditorHtml(l, i) {
   const s = tpStatus(l);
@@ -562,7 +565,41 @@ tpOn('submit', (e) => {
 // Opening 我的行程 loads what the dates need, and shows 貼上確認信 once the one-sentence search is known to be on.
 tpOn('toggle', (e) => { if (e.target.id === 'plan-panel' && e.target.open) { tpEnsure(); renderPlan(); } }, true);
 
+// ---------- airline extras: 累積哩程試算, 行李與貴賓室, 航空公司小檔案 (public/airinfo.js) ----------
+// The calculator, the profile sheet and their data (/api/data/airlineinfo) load on first use, with the tools (每哩成本,
+// 我的點數's goal), the rules (data more) and the airport list (distances).
+let airInfoP = null;
+function airLoad() {
+  airInfoP ||= Promise.all([loadMore(), loadScripts([...TOOL_SCRIPTS, 'airinfo']), loadAirports(), api('/api/data/airlineinfo')]).then(([, ok, , d]) => {
+    if (!ok.every(Boolean) || typeof accrualCalcMount !== 'function') throw new Error('載入失敗');
+    data.airlineInfo = d;
+  }).catch((err) => { airInfoP = null; throw err; });
+  return airInfoP;
+}
+// 我的行程: one closed fold per leg with an airline code; opened, airinfo.js fills it (baggage and lounge links, and for
+// a cash leg the miles it can earn). The open ones stay open when the plan redraws.
+const tpAirOpen = new Set();
+const tpAirKey = (l) => `${l.date}|${l.from}|${l.to}|${l.flights}`;
+function tpAirHtml(l, i) {
+  if (!tpCarrier(l.flights)) return '';
+  return `<details class="tp-air" data-tp-air="${i}"${tpAirOpen.has(tpAirKey(l)) ? ' open' : ''}><summary>🧳 行李・貴賓室${l.k === 'c' ? '・累積哩程' : ''}</summary><div class="tp-air-body"><p class="hint">載入中…</p></div></details>`;
+}
+function tpAirFill(d) {
+  const l = plan.legs[Number(d.dataset.tpAir)];
+  if (!l) return;
+  const body = $('.tp-air-body', d);
+  airLoad().then(() => { if (d.isConnected && d.open && typeof alLegFill === 'function') alLegFill(body, l); }, () => { body.innerHTML = '<p class="hint">載入失敗，請檢查網路後再打開一次。</p>'; });
+}
+tpOn('toggle', (e) => {
+  const d = e.target;
+  if (!d.matches?.('.tp-air')) return;
+  const l = plan.legs[Number(d.dataset.tpAir)];
+  if (l) { if (d.open) tpAirOpen.add(tpAirKey(l)); else tpAirOpen.delete(tpAirKey(l)); }
+  if (d.open) tpAirFill(d);
+}, true);
+
 // ---------- 現金票累積到哪裡 (the cash tab's 已選取的航班) ----------
+// The links only: what shows until the calculator (airinfo.js) arrives, or if it cannot load.
 function accrualHtml(fares) {
   const T = data.trips?.accrual;
   if (!T) return '';
@@ -577,8 +614,10 @@ function accrualHtml(fares) {
 }
 function accrualMount(box, fares) {
   if (!box) return;
-  if (data.trips) { box.innerHTML = accrualHtml(fares); return; }
-  loadMore().then(() => { if (box.isConnected) box.innerHTML = accrualHtml(fares); }).catch(() => {});
+  const links = () => { if (box.isConnected && data.trips) box.innerHTML = accrualHtml(fares); };
+  if (typeof accrualCalcMount === 'function' && data.airlineInfo) { accrualCalcMount(box, fares); return; }
+  links();
+  airLoad().then(() => { if (box.isConnected) accrualCalcMount(box, fares); }, () => loadMore().then(links).catch(() => {}));
 }
 
 // ---------- 規則庫：哩程票的信用卡權益 ----------

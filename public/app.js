@@ -1405,7 +1405,8 @@ function visibleRows() {
   return state.results.filter((r) => cab(r, c)?.available && !state.hidden.has(r.source) && enoughSeats(r.cabins[c].seats, state.pax)
     && (!state.affordOnly || walletEmpty() || reach(r.source).total >= r.cabins[c].miles * Math.max(1, state.pax))
     && (!prod || (!r.estimate && productMatches(prod, r.cabins[c].fleet)))
-    && (typeof leaveOk !== 'function' || leaveOk(r.date))); // leave.js: 不用請假／請 ≤2 天
+    && (typeof leaveOk !== 'function' || leaveOk(r.date)) // leave.js: 不用請假／請 ≤2 天
+    && (typeof flatOk !== 'function' || flatOk(r, c))); // airline.js: 只看平躺商務
 }
 
 // Result filters that need extra data: my points, and a specific premium product (aircraft from the trips).
@@ -1422,6 +1423,7 @@ function resultToolsHtml() {
     ${prods.length ? `<label class="field compact" title="${PROD_3P_TITLE}">艙位產品<select id="product-filter"><option value="">全部</option>${prods.map((p) => `<option value="${esc(p.id)}" ${state.product === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
     ${prodNote}
     ${typeof leaveToolsHtml === 'function' ? leaveToolsHtml('search') : ''}
+    ${typeof flatToolsHtml === 'function' ? flatToolsHtml() : ''}
     ${resultSortHtml()}
   </div>`;
 }
@@ -1571,7 +1573,7 @@ function resultParts(rows) {
       <div class="miles">${fmt(x.miles)} <small>哩起</small>${x.taxes ? `<small class="tax">＋ 稅 ${esc(taxText(x.taxes))}</small>` : ''}</div>
       ${typeof levelTagHtml === 'function' ? levelTagHtml(r, c) : ''}
       <div class="meta">${dayLabel(r.date)} · ${esc(r.origin)} → ${esc(r.destination)}</div>
-      <div class="meta">${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}</div>
+      <div class="meta">${carriersHtml(x.airlines)}${x.direct ? ' · 直飛' : ''}${x.seats ? ` · 剩 ${x.seats} 位` : ''}${r.updatedAt ? ` · 🕒 ${ago(r.updatedAt)}` : ''}${typeof fleetTagHtml === 'function' ? fleetTagHtml(x.fleet, c) : ''}</div>
       ${costLineHtml(r, c)}${feeChipHtml(r.source)}${valueTag(r, c)}
     </button>`;
   }).join('');
@@ -1607,7 +1609,7 @@ function renderSearch() {
   const matrixTitle = `<h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>`;
   if (!rows.length) {
     matrixObs?.disconnect();
-    const filtered = state.affordOnly || state.product || (typeof leaveFiltering === 'function' && leaveFiltering());
+    const filtered = state.affordOnly || state.product || (typeof leaveFiltering === 'function' && leaveFiltering()) || (typeof flatFiltering === 'function' && flatFiltering());
     // Nothing left because programs were unticked: keep the chips so they can be ticked again.
     const byChips = state.hidden.size && state.results.some((r) => state.hidden.has(r.source) && cab(r, c)?.available);
     const gap = !filtered && !byChips && typeof gapHtml === 'function' ? gapHtml(true) : ''; // 差一點 (flightplus.js)
@@ -1910,7 +1912,8 @@ function seatLinks(seg) {
 }
 
 // 「長榮航空・」 for a segment's flight number (the marketing carrier).
-const segAirline = (s) => { const c = (s.flight || '').slice(0, 2).toUpperCase(); return airlineZh(c) !== c ? `<span class="al" title="${esc(c)}">${esc(airlineZh(c))}</span>・` : ''; };
+// A button: it opens the airline's 航空公司小檔案 (airline.js).
+const segAirline = (s) => { const c = (s.flight || '').slice(0, 2).toUpperCase(); return airlineZh(c) !== c ? `<button type="button" class="al linklike" data-al="${esc(c)}" title="${esc(c)}：航空公司小檔案">${esc(airlineZh(c))}</button>・` : ''; };
 function tripHtml(t, i) {
   // 「NT$8,500」, or 「USD 56」 without a symbol (not both, as 「NT$8,500 TWD」 read).
   const taxes = t.taxes != null ? esc(taxText({ symbol: t.taxesSymbol, currency: t.taxesCurrency, amount: t.taxes / 100 })) : '稅金未提供';
@@ -1925,7 +1928,7 @@ function tripHtml(t, i) {
     </div>
     ${phantomHtml(t.source, t.carriers)}${typeof mixedHtml === 'function' ? mixedHtml(t) : ''}
     ${t.segments.map((s, k) => `${k ? fx?.conns[k - 1] || '' : ''}<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)}${plusDay(fx?.dep?.[k])} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${plusDay(fx?.plus[k])}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
-      <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod" title="${PROD_3P_TITLE}">${esc(p.name)}<sup class="mk-3p" aria-hidden="true">*</sup></span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
+      <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod" title="${PROD_3P_TITLE}">${esc(p.name)}<sup class="mk-3p" aria-hidden="true">*</sup></span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${typeof seatTagHtml === 'function' ? seatTagHtml(s, t.cabin) : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur || fx?.tz ? `<div class="hint" style="margin-top:6px">${dur ? `總飛行時間 ${dur}` : ''}${dur && fx?.tz ? '・' : ''}${fx?.tz || ''}</div>` : ''}
     ${amTripLine(t)}${typeof alsoFoldHtml === 'function' ? alsoFoldHtml(t) : ''}
   </div>`;
@@ -1988,6 +1991,7 @@ async function openTrips(id, title, cabin) {
     const aiMount = () => { if (fresh() && typeof aiHelperMount === 'function') aiHelperMount(main[0], pax, main.length); };
     if (main[0]) { if (typeof aiHelperMount === 'function') aiMount(); else aiP.then(aiMount); }
     if (typeof mixedMount === 'function') mixedMount(id, cabin); // 也看混艙行程 (public/flightplus.js)
+    if (typeof alTripMount === 'function') alTripMount($('#trip-body'), main.length ? main : rest); // 行李與貴賓室 (airline.js)
   } catch (err) {
     if (!fresh()) return;
     $('#trip-body').innerHTML = `<p class="status error">${esc(err.message)}</p>`;
@@ -2978,7 +2982,7 @@ function renderRulesBody() {
       <summary>${allianceLogo(a.id, 'lg')}<span class="card-head"><h3>${esc(a.name)}</h3>
         <small class="card-sum">${a.members.length} 家成員${a.memberNotes?.length ? `・${a.memberNotes.length} 則近期異動` : ''}</small></span></summary>
       <p>${esc(a.summary)}</p>
-      <ul class="member-grid" aria-label="成員">${a.members.map((m) => `<li title="${esc(m)}">${airlineLogo(m, 'sm')}<span>${esc(airlineZh(m))}</span></li>`).join('')}</ul>
+      <ul class="member-grid" aria-label="成員">${a.members.map((m) => `<li title="${esc(m)}"><button type="button" class="mg-al" data-al="${esc(m)}" aria-label="${esc(airlineZh(m))}：航空公司小檔案">${airlineLogo(m, 'sm')}<span>${esc(airlineZh(m))}</span></button></li>`).join('')}</ul>
       ${memberNotesHtml(a.memberNotes)}
       <p class="src"><a href="${esc(a.url)}" target="_blank" rel="noopener">官方成員名單 ↗</a></p>
     </details>`).join('');
@@ -3080,7 +3084,7 @@ function renderPoints() {
   if (!calc) { host.innerHTML = '<p class="hint">點數資料載入失敗，請重新整理。</p>'; return; }
   const view = pointsView.view;
   host.innerHTML = pointsTabsHtml() + (view === 'wallet' ? walletHtml() : view === 'need' ? needHtml() : view === 'detour' ? detourHtml() : view === 'upgrade' ? upgradeHtml()
-    : `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積哩程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉哩程」</a>。</p>`);
+    : `${calc}<p class="hint tab-link-hint">各銀行轉點的完整規則、入帳時間、來源，以及直接累積哩程的聯名卡，請看 <a href="#rules" data-tab-link="rules" data-anchor="points-rules">規則庫的「台灣信用卡點數轉哩程」</a>。</p>${typeof accrualToolHtml === 'function' ? accrualToolHtml() : ''}`);
   bindPointsTabs(host);
   if (view === 'wallet') bindWallet(host);
   else if (view === 'need') bindNeed(host);
@@ -3398,12 +3402,12 @@ function renderVersion(config) {
 // The data comes in two bundles, each cached per release (?v=): `core` for the first screen (index.html preloads it)
 // and `more` (points, charts, rules, booking notes) once a search, a flight's details or a tab that needs it opens.
 const DATA_CORE = ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'];
-const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'];
+const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips', 'seats'];
 const DATA_KEY = { sourcenames: 'sourceNames', airlinenames: 'airlineNames', airportnames: 'airportNames', promohistory: 'promoHistory' };
 // Niceties the page works without: Chinese airline and airport names (codes show as they are), expiry rules,
 // buy-miles prices, dated rule changes, and the fee, hold, cost-per-mile and upgrade notes, the round-the-world
-// rules, past transfer bonuses and 我的行程's trip rules.
-const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'];
+// rules, past transfer bonuses, 我的行程's trip rules and the business seat types.
+const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips', 'seats'];
 async function loadPart(part, names) {
   try {
     const all = await api(`/api/data/${part}${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);
@@ -3439,7 +3443,7 @@ function loadScripts(names) {
 // Booking-cost helpers (fee chips, cost sort, upgrades) and the 我的點數 extras: drawn by the route results, 航班明細,
 // 點數換算器 and 規則庫, which wait for these first (about 18 KB gzipped).
 // rtw.js (環球票規劃 and the 國泰混艙 calculator in 規則庫) goes first, so toolsIn() also means it has run.
-const TOOL_SCRIPTS = ['rtw', 'award-tools', 'ewallet'];
+const TOOL_SCRIPTS = ['rtw', 'award-tools', 'ewallet', 'airline'];
 const loadTools = () => loadScripts(TOOL_SCRIPTS);
 const toolsIn = () => typeof untilTag === 'function' && typeof upgradeHtml === 'function';
 // Drawn once the tools are in; until then a placeholder (or, if they would not load, a 重試).
