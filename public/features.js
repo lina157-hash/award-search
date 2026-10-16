@@ -1075,6 +1075,7 @@ function renderDeals() {
         <span class="dm-route">${esc(d.origin)} → ${esc(d.destination)} <small>${esc(airportCity(d.destination))}</small></span>
         <span class="dm-miles">${fmt(d.miles)} <small>哩</small>${d.direct ? '<small class="dm-direct">直飛</small>' : ''}</span>
         <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>
+        ${d.usual ? `<span class="dm-usual${d.miles < d.usual ? ' low' : ''}" title="這條航線這個計畫過去有位的日子，每天最低價的中位數（每日排程記下的，少於 7 天不顯示）">平常約 ${fmt(d.usual)} 哩${d.miles < d.usual ? `・少 ${kfmt(d.usual - d.miles)}` : ''}</span>` : ''}
       </button>`).join('')}</div></div>`).join('') || '<p class="hint">這個艙等今天沒有整理到好康。</p>'}
     <p class="hint">每 12 小時整理一次（早上 8 點多、晚上 9 點多），座位可能已被訂走；點卡片會查那一天前後三天。${dealsRefreshHtml()}</p>`;
   $$('input[name=deal-cabin]', host).forEach((i) => i.addEventListener('change', () => { dealsState.cabin = i.value; renderDeals(); }));

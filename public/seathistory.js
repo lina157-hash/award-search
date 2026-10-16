@@ -29,14 +29,37 @@ function histRoute(r, cabin) {
     return `<div class="hist-row${s.cabin === cabin ? '' : ' other'}">
       <span class="hist-name">${esc(srcName(s.source))} <small>${esc(CABIN_SHORT[s.cabin] || s.cabin)}</small></span>
       <span class="hist-strip" style="--n:${last - first + 1}">${cells.join('')}</span>
-      <span class="hist-sum">${s.days}/${obs.length} 天有位・最低 ${fmt(s.minMiles)} 哩</span>
+      <span class="hist-sum"${histUsual(s)}>${s.days}/${obs.length} 天有位・最低 ${fmt(s.minMiles)} 哩</span>
     </div>`;
   }).join('');
   return `<div class="hist-route">
     <p class="hist-title">${esc(r.origin)} → ${esc(r.destination)}</p>
     ${rows || '<p class="hint">這段期間每天檢查都沒看到位子。</p>'}
     <div class="hist-row hist-axis"><span></span><span class="ax"><span>${esc(histIso(first).slice(5).replace('-', '/'))}</span><span>${last >= histDayNum(new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)) ? '今天' : esc(histIso(last).slice(5).replace('-', '/'))}</span></span><span></span></div>
+    ${histLeadHtml(r, cabin)}
   </div>`;
+}
+
+// 「平常約 X 哩」 (哩數水準) as the summary's tooltip: the lower median of the daily lowest miles, once space was seen
+// on 7 days or more (the row has no room for it on screen).
+function histUsual(s) {
+  const lv = typeof priceLevel === 'function' ? priceLevel(s.minMiles, s.points.map((p) => p[2])) : null;
+  return lv ? ` title="平常約 ${fmt(lv.usual)} 哩（有位的 ${lv.n} 天每天最低價的中位數）"` : '';
+}
+
+// 什麼時候放位: one line per route for the searched cabin, from the dates first seen with space (lib/history.js
+// mergeLead). A program needs 5 such dates before its pattern is shown.
+function histLeadHtml(r, cabin) {
+  if (!r.lead || typeof leadMain !== 'function') return '';
+  const list = r.lead.series.filter((s) => s.cabin === cabin).sort((a, b) => b.n - a.n);
+  const enough = list.filter((s) => s.n >= 5).slice(0, 3);
+  const total = list.reduce((a, s) => a + s.n, 0);
+  const parts = enough.map((s) => {
+    const m = leadMain(s.b);
+    return `${esc(srcName(s.source))} ${m.i >= 0 ? `多半在出發前 <b>${LEAD_TEXT[m.i]}</b>${m.i === 0 ? '才' : ''}出現（${m.k}/${m.n} 次）` : `出現時間分散（${m.n} 次）`}`;
+  });
+  const text = parts.length ? parts.join('；') : total ? `還在累積，${esc(CABIN_SHORT[cabin] || '')}艙目前只記到 ${total} 個新出現的出發日，每個計畫至少要 5 個才看得出規律` : `還沒有記到${esc(CABIN_SHORT[cabin] || '')}艙新出現的位子`;
+  return `<p class="hist-lead">🕒 什麼時候放位：${text}。<small>自 ${esc(mmdd(r.lead.since))} 起，只算每日排程查過的日期裡「前一次沒位、這次有位」的出發日；排程第一次查就有位的不算。</small></p>`;
 }
 
 // `share`: the search's share params (o, d, c), or null to clear when a new search starts.
@@ -57,6 +80,7 @@ async function histShow(share) {
   } catch { return; }
   if (n !== histSeq.n || !body.routes?.length) return;
   histSeq.body = body;
+  if (typeof levelRefresh === 'function') levelRefresh(); // 哩數水準 on the cards and program chips (flightplus.js)
   const cabin = share.get('c') || 'J';
   const days = Math.max(...body.routes.map((r) => (r.observed.length ? histDayNum(r.observed.at(-1)) - histDayNum(r.observed[0]) + 1 : 0)));
   box.innerHTML = `<details class="hist">

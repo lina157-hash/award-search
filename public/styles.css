@@ -1726,3 +1726,87 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .nl-row button { padding: 10px 16px; }
   .nl-go { font-size: .86rem; }
 }
+/* ---- round 6: 搜尋結果與明細 (flightplus.js, pairing.js, seathistory.js) ---- */
+/* 這班還可以用 */
+.also { margin-top: 8px; border-radius: 8px; background: var(--surface-2); padding: 6px 10px; font-size: .85rem; }
+#trip-body .also > summary { cursor: pointer; font-weight: 600; min-height: 32px; margin-top: 0; color: var(--text); flex-wrap: wrap; row-gap: 0; }
+#trip-body .also > summary small { color: var(--muted); font-weight: 400; }
+.also-list { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 8px; }
+.also-list li { border-top: 1px dashed var(--border); padding-top: 6px; }
+.also-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.also-miles { font-weight: 700; color: var(--accent); }
+.also-diff { color: var(--muted); }
+.also-diff.less { color: var(--accent); font-weight: 600; }
+.also-meta { display: block; color: var(--muted); font-size: .78rem; }
+.also-meta .tag { margin-left: 2px; }
+.also .hint { font-size: .76rem; margin: 4px 0 0; }
+/* 混艙 */
+.mixed-line { margin: 6px 0 0; font-size: .82rem; color: var(--few-text); background: var(--few); border-radius: 8px; padding: 4px 10px; }
+.mixed-box { margin: 10px 0 4px; }
+.mixed-box .linklike { min-height: 32px; }
+/* 哩數水準 */
+.lvl { display: inline-flex; align-items: baseline; gap: 6px; width: fit-content; font-size: .74rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin: 2px 0 4px; background: var(--surface-2); color: var(--muted); }
+.lvl { flex-wrap: wrap; row-gap: 0; }
+.lvl b, .lvl small { white-space: nowrap; }
+.lvl b { font-weight: 600; }
+.lvl small { font-weight: 400; }
+.lvl-cheap { background: var(--accent-soft); color: var(--accent); }
+.lvl-dear { background: #fde5e8; color: #8c1f33; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lvl-dear { background: #4a1f28; color: #ffc9d2; } }
+:root[data-theme="dark"] .lvl-dear { background: #4a1f28; color: #ffc9d2; }
+.chip .lvl-chip { font-size: .7rem; font-weight: 600; border-radius: 999px; padding: 0 6px; background: var(--surface-2); color: var(--muted); }
+.chip .lvl-chip.lvl-cheap { background: var(--accent-soft); color: var(--accent); }
+.chip .lvl-chip.lvl-dear { background: #fde5e8; color: #8c1f33; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip .lvl-chip.lvl-dear { background: #4a1f28; color: #ffc9d2; } }
+:root[data-theme="dark"] .chip .lvl-chip.lvl-dear { background: #4a1f28; color: #ffc9d2; }
+.dm-usual { font-size: .74rem; color: var(--muted); }
+.dm-usual.low { color: var(--accent); font-weight: 600; }
+/* 什麼時候放位 */
+.hist-lead { margin: 2px 0 0; font-size: .82rem; }
+.hist-lead small { display: block; color: var(--muted); font-size: .74rem; }
+/* 差一點 */
+.gap-fold { margin: 12px 0 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 14px; font-size: .88rem; }
+.gap-fold summary { cursor: pointer; font-weight: 700; min-height: 30px; }
+.gap-fold summary small { font-weight: 400; color: var(--muted); margin-left: 4px; }
+.gap-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
+.gap-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 3px 0; border-bottom: 1px dashed var(--border); }
+.gap-list li .linklike { min-height: 30px; font-weight: 600; }
+.gap-list li small { color: var(--few-text); background: var(--few); border-radius: 999px; padding: 0 8px; }
+.gap-fold .hint { font-size: .8rem; margin: 6px 0 2px; }
+/* 來回配對 */
+.pair-box { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 14px 0 0; }
+.pair-box .hint { margin: 0; }
+.pair-box .error { color: var(--danger); }
+.pair { margin-top: 6px; }
+.pair-tools { margin-bottom: 8px; }
+.pair-tools .chip { min-height: 32px; }
+.pair-stays { display: flex; gap: 6px; margin: 0 0 10px; }
+.pair-wrap { max-height: 460px; overflow: auto; width: fit-content; max-width: 100%; }
+.pair-grid { border-collapse: collapse; width: 100%; font-size: .84rem; }
+.pair-grid th, .pair-grid td { padding: 0; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.pair-grid thead th { position: sticky; top: 0; background: var(--surface-2); padding: 6px 8px; font-weight: 600; z-index: 1; }
+.pair-grid tbody th { text-align: left; padding: 4px 10px; font-weight: 500; position: sticky; left: 0; background: var(--surface); }
+.pair-grid td button { font: inherit; width: 100%; min-width: 64px; min-height: 34px; border: 0; background: none; color: var(--text); cursor: pointer; padding: 4px 6px; }
+.pair-grid td button:hover { color: var(--accent); text-decoration: underline; }
+.pair-grid td.p-good button { background: var(--heat-1); }
+.pair-grid td.p-best button { background: var(--heat-4); font-weight: 700; color: var(--heat-text-strong); }
+.pair-grid td.p-sel button { outline: 2px solid var(--sun); outline-offset: -2px; }
+.pair-grid td.p-none { color: var(--muted); }
+.pair-pick { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); display: grid; gap: 6px; font-size: .88rem; }
+.pair-leg { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.pair-leg small { color: var(--muted); }
+.pair-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; border-top: 1px dashed var(--border); padding-top: 6px; }
+.pair-sum b { color: var(--accent); }
+.pair-top { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; font-size: .88rem; }
+.pair-top li small { color: var(--muted); }
+.pair-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.pair-line b { color: var(--accent); }
+.pair-acts { display: flex; gap: 12px; }
+.pair-acts .linklike { min-height: 30px; }
+.pair .hint { font-size: .8rem; }
+@media (max-width: 640px) {
+  .pair-grid { font-size: .78rem; }
+  .pair-grid thead th { padding: 6px 4px; }
+  .pair-grid tbody th { padding: 4px 6px; }
+  .pair-grid td button { padding: 4px 2px; min-width: 50px; }
+}
