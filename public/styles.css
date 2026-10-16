@@ -1811,7 +1811,7 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 .mixed-box .linklike { min-height: 32px; }
 .mixed-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
 .mixed-head .sub { margin: 0; }
-.mixed-min { font-size: .82rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.mixed-min { font-size: .82rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .mixed-min select { min-height: 32px; }
 /* 哩數水準 */
 .lvl { display: inline-flex; align-items: baseline; gap: 6px; width: fit-content; font-size: .74rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin: 2px 0 4px; background: var(--surface-2); color: var(--muted); }

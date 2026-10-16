@@ -111,8 +111,9 @@ const awardSaleTag = (r, c) => { const p = awardSaleFor({ source: r.source, orig
 // 🎁 on a result card: a bank transfer bonus into the card's program running today (rebates paid in bank points are
 // not miles, so left out); each bank's terms in the title, the full list in 點數換算器 › 🎁.
 function transferPromosFor(source) {
-  const col = PROGRAM_TRANSFER[programKeyOf(source)]?.to;
-  return col ? activePromos().filter((p) => p.type === 'transfer' && !p.rebate && promoCol(p) === col) : [];
+  const key = programKeyOf(source);
+  const col = PROGRAM_TRANSFER[key]?.to || key;
+  return activePromos().filter((p) => p.type === 'transfer' && !p.rebate && promoCol(p) === col);
 }
 const promoBonusText = (p) => (p.bonusPer ? `每 ${fmt(p.bonusPer[0])} 哩加贈 ${fmt(p.bonusPer[1])} 哩` : p.bonusPct > 0 ? `加贈 ${p.bonusPct}%` : p.title);
 const promoBankText = (p) => p.bank || `各銀行${p.excludeBanks?.length ? `（${p.excludeBanks.join('、')}除外）` : ''}`;

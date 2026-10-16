@@ -72,7 +72,8 @@ test('結果卡 🎁 轉點加贈: today\'s bank bonuses into the card\'s progra
   assert.match(tag, /凱基：凱基每月5日換亞萬 加贈500哩（到 12\/31）/);
   assert.doesNotMatch(tag, /台新：/);
   assert.equal(ctx.tag({ source: 'eva' }), '', 'not started yet');
-  assert.equal(ctx.tag({ source: 'aeroplan' }), '', 'no Taiwan bank column');
+  assert.equal(ctx.tag({ source: 'aeroplan' }), '', 'no bonus into it');
+  assert.match(ctx.tag({ source: 'asiamiles_est' }), /轉點加贈 8%/, 'the Asia Miles estimate counts as Asia Miles');
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8'), /typeof transferBonusTag === 'function' \? transferBonusTag\(r\) : ''/);
 });
 
