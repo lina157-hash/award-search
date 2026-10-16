@@ -472,7 +472,7 @@ test('trip notes: forecast, climate averages, Taiwan long weekends and destinati
 });
 
 test('cash month calendar: demo grid, validation and RapidAPI round-trip fallback', async () => {
-  const ok = await (await fetch(`${base}/api/cash/calendar?origin=TPE&destination=NRT&start=${isoIn(10)}&end=${isoIn(40)}&trip_days=5`)).json();
+  const ok = await (await fetch(`${base}/api/cash/calendar?origin=TPE&destination=NRT&start=${isoIn(10)}&end=${isoIn(40)}&trip_days=5&ref=8800`)).json();
   assert.equal(ok.days.length, 31);
   assert.ok(ok.round && ok.days.every((d) => d.price > 0));
   assert.equal((await fetch(`${base}/api/cash/calendar?origin=TPE&destination=NRT&start=${isoIn(10)}&end=${isoIn(100)}`)).status, 400);
@@ -485,17 +485,27 @@ test('cash month calendar: demo grid, validation and RapidAPI round-trip fallbac
     return new Response(JSON.stringify({ status: true, data: [{ departure: '2026-11-01', price: 9000 }, { departure: '2026-11-02', price: 'unavailable' }] }));
   } });
   const cal = await q.calendar({ departure_id: 'TPE', arrival_id: 'NRT', start_date: '2026-11-01', end_date: '2026-11-30', trip_days: 5, travel_class: 1, adults: 1 });
-  assert.deepEqual(cal, { round: false, days: [{ date: '2026-11-01', price: 9000 }], currency: 'USD' });
+  assert.deepEqual(cal, { round: false, days: [{ date: '2026-11-01', price: 9000 }], currency: 'auto' });
   assert.equal(seen.length, 2);
   assert.match(seen[1], /getCalendarPicker\?.*start_date=2026-11-01/);
   assert.match(seen[1], /currency=TWD/);
-  // The grid is in US dollars: NT$ at the day's rate, marked as converted; the demo grid (NT$) passes through.
+  // A grid in US dollars becomes NT$ at the day's rate, marked as converted; one already in NT$ is left alone (both seen
+  // live 2026-10-16 for the same request); the demo grid passes through.
   const { calendarTwd } = require('../lib/rapidflights');
-  assert.deepEqual(calendarTwd({ round: false, days: [{ date: '2026-11-01', price: 129 }, { date: '2026-11-02', price: 191 }], currency: 'USD' }, 31.96),
-    { round: false, currency: 'TWD', days: [{ date: '2026-11-01', price: 4123 }, { date: '2026-11-02', price: 6104 }], fx: { from: 'USD', rate: 31.96 } });
+  const usd = [{ date: '2026-11-01', price: 129 }, { date: '2026-11-02', price: 191 }];
+  const converted = { round: false, currency: 'TWD', days: [{ date: '2026-11-01', price: 4123 }, { date: '2026-11-02', price: 6104 }], fx: { from: 'USD', rate: 31.96 } };
+  assert.deepEqual(calendarTwd({ round: false, days: usd, currency: 'USD' }, 31.96), converted);
+  assert.deepEqual(calendarTwd({ round: false, days: usd, currency: 'auto' }, 31.96, 4300), converted);
+  assert.deepEqual(calendarTwd({ round: false, days: usd, currency: 'auto' }, 31.96), converted);
+  const twd = [{ date: '2026-11-01', price: 4202 }, { date: '2026-11-02', price: 4890 }];
+  assert.deepEqual(calendarTwd({ round: false, days: twd, currency: 'auto' }, 31.96, 4300), { round: false, days: twd, currency: 'TWD' });
+  assert.deepEqual(calendarTwd({ round: false, days: twd, currency: 'auto' }, 31.96), { round: false, days: twd, currency: 'TWD' });
+  // A round-trip reference against a one-way grid, or the other way round, still reads right.
+  assert.equal(calendarTwd({ round: false, days: twd, currency: 'auto' }, 31.96, 9800).fx, undefined);
+  assert.ok(calendarTwd({ round: true, days: usd, currency: 'auto' }, 31.96, 2100).fx);
   const demo = { round: true, days: [{ date: '2026-11-01', price: 9000 }] };
   assert.equal(calendarTwd(demo, 31.96), demo);
-  assert.equal(calendarTwd(cal, 0), cal);
+  assert.deepEqual(calendarTwd(cal, 0), { ...cal, currency: 'TWD' });
   assert.doesNotMatch(seen[1], /outbound_date|trip_type/);
 });
 
@@ -655,6 +665,15 @@ test('RapidAPI booking options: documented and drifted seller shapes, and the sh
   const answer = (data) => createRapidFlights({ apiKey: 'k', fetchImpl: async () => new Response(JSON.stringify({ status: true, data })) })({ booking_token: 'r:abc' });
   const doc = await answer([{ partner: 'China Airlines', price: 7114, token: 't1', is_airline: true }]);
   assert.deepEqual(doc.booking_options, [{ together: { book_with: 'China Airlines', price: 7114, link_token: 'r:t1', is_airline: true } }]);
+  // The shape seen live on 2026-10-16: the seller's name is `title`.
+  const live = await answer([
+    { id: 'a', title: 'EVA Air', website: 'https://www.evaair.com', price: 7114, meta: {}, is_airline: true, individualBooking: false, token: 't2' },
+    { id: 'b', title: 'Trip.com', website: 'https://www.trip.com', price: 'NT$6,980', meta: {}, is_airline: false, individualBooking: false, token: 't3' },
+  ]);
+  assert.deepEqual(live.booking_options, [
+    { together: { book_with: 'EVA Air', price: 7114, link_token: 'r:t2', is_airline: true } },
+    { together: { book_with: 'Trip.com', price: 6980, link_token: 'r:t3', is_airline: false } },
+  ]);
   const serpLike = await answer({ booking_options: [{ together: { book_with: 'Trip.com', price: 6900 } }] });
   assert.deepEqual(serpLike.booking_options, [{ together: { book_with: 'Trip.com', price: 6900, link_token: null, is_airline: false } }]);
   const quiet = console.error;
@@ -667,4 +686,10 @@ test('RapidAPI booking options: documented and drifted seller shapes, and the sh
   } finally { console.error = quiet; }
   const { normalizeCash } = require('../lib/cash');
   assert.equal(normalizeCash({ booking_options: [], booking_shape: 'data[0]' }).bookingShape, 'data[0]');
+  // Sellers in US dollars, checked against the fare picked (NT$).
+  const { sellersTwd } = require('../lib/rapidflights');
+  const sellers = [{ bookWith: 'EVA Air', price: 222 }, { bookWith: 'Trip.com', price: 218 }];
+  assert.deepEqual(sellersTwd(sellers, 31.96, 7100), { bookingOptions: [{ bookWith: 'EVA Air', price: 7095 }, { bookWith: 'Trip.com', price: 6967 }], bookingFx: { from: 'USD', rate: 31.96 } });
+  const inTwd = [{ bookWith: 'EVA Air', price: 7114 }, { bookWith: 'X', price: null }];
+  assert.deepEqual(sellersTwd(inTwd, 31.96, 7100), { bookingOptions: inTwd });
 });

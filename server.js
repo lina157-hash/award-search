@@ -954,7 +954,10 @@ async function handleCash(q, req) {
   if (params.departure_token && params.booking_token) throw new BadRequest('回程查詢和預訂選項不能同時查');
   let spent = false;
   const raw = await shared('cash2:' + JSON.stringify(params), 1800, async () => { spent = true; return CASH_MODE === 'mock' ? mock.mockCash(params) : liveCash(params); });
-  return { configured: true, mock: CASH_MODE === 'mock', cached: !spent, returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), provider: raw.provider || 'mock', fallback: raw.fallback || '', ...normalizeCash(raw) };
+  const out = normalizeCash(raw);
+  // RapidAPI sellers can answer in US dollars; `ref` is the fare picked, in NT$, to tell.
+  if (params.booking_token && raw.provider === 'rapid' && out.bookingOptions.length) Object.assign(out, rapid.sellersTwd(out.bookingOptions, (await handleFx()).rates.USD, refPrice(q)));
+  return { configured: true, mock: CASH_MODE === 'mock', cached: !spent, returning: Boolean(params.departure_token), booking: Boolean(params.booking_token), provider: raw.provider || 'mock', fallback: raw.fallback || '', ...out };
 }
 
 // Who flies nonstop (AeroDataBox). Each origin airport costs 6 of ~400 monthly units, then stays cached for two weeks
@@ -1016,8 +1019,14 @@ async function handleCashCalendar(q, req) {
   if (CASH_MODE === 'mock') return { configured: true, mock: true, ...mock.mockCashCalendar(params) };
   if (!rapidQuery) throw new CashError('整月價格要用 RapidAPI 的 Google Flights API，網站還沒設定 RAPIDAPI_KEY', 503);
   let spent = false;
-  const body = await shared('cashcal3:' + JSON.stringify(params), 3600, () => { spent = true; return rapidQuery.calendar(params); });
-  return { configured: true, provider: 'rapid', cached: !spent, ...rapid.calendarTwd(body, (await handleFx()).rates.USD) };
+  const body = await shared('cashcal4:' + JSON.stringify(params), 3600, () => { spent = true; return rapidQuery.calendar(params); });
+  return { configured: true, provider: 'rapid', cached: !spent, ...rapid.calendarTwd(body, (await handleFx()).rates.USD, refPrice(q)) };
+}
+
+// A fare the page already shows in NT$ (`ref`), to tell whether a RapidAPI answer came back in US dollars.
+function refPrice(q) {
+  const n = Number(q.get('ref') || 0);
+  return Number.isFinite(n) && n > 0 && n < 1e8 ? n : 0;
 }
 
 // A RapidAPI seller's booking page (one more request), fetched when the user presses its button.

@@ -2417,6 +2417,10 @@ async function loadCashMonth() {
   try {
     const p = new URLSearchParams({ origin: r.origin, destination: r.destination, start, end, cabin: r.cabin, adults: String(r.adults) });
     if (r.ret) p.set('trip_days', String(tripDays(r)));
+    // The cheapest fare on the page (NT$) lets the server tell a grid that came back in US dollars.
+    const fares = (cash.options || []).map((o) => o.price).filter((x) => x > 0);
+    const ref = fares.length ? Math.min(...fares) : cash.insights?.lowest;
+    if (ref > 0) p.set('ref', String(Math.round(ref)));
     const body = await cashApi(`/api/cash/calendar?${p}`);
     if (n !== seq.cashMonth) return;
     cash.month = { start, end, days: body.days || [], round: body.round, roundFailed: Boolean(r.ret) && !body.round, mock: body.mock, cached: Boolean(body.cached), fx: body.fx || null };
@@ -2508,7 +2512,7 @@ function renderBooking() {
     const list = cash.booking;
     host.innerHTML = `<h3 class="sub">預訂選項</h3>
       ${list.length ? list.map((b) => (b.separate ? `${bookingRowHtml(b.departing, '去程')}${bookingRowHtml(b.returning, '回程')}` : bookingRowHtml(b))).join('') : `<p class="hint">Google 航班沒有提供這組航班的預訂選項，請用下面的連結到 Google 航班或 Skyscanner 訂票。${cash.bookingShape ? `<br><small>技術資訊（截圖給 Claude 可以幫忙修）：${esc(cash.bookingShape)}</small>` : ''}</p>`}
-      ${list.length ? `<p class="hint">價格與行李規定以賣家網站為準，按「前往訂票」會開新分頁。${list.some((b) => b.linkToken) ? '按下去才會取得訂票連結，每按一家用掉 1 次查價。' : ''}</p>` : ''}`;
+      ${list.length ? `<p class="hint">${cash.bookingFx ? 'Google 給的是美金，已用今天的匯率換成台幣，是約略價格。' : ''}價格與行李規定以賣家網站為準，按「前往訂票」會開新分頁。${list.some((b) => b.linkToken) ? '按下去才會取得訂票連結，每按一家用掉 1 次查價。' : ''}</p>` : ''}`;
     $$('[data-book-link]', host).forEach((b) => b.addEventListener('click', () => openBookingLink(b)));
     return;
   }
@@ -2543,10 +2547,13 @@ async function loadBooking() {
   cash.bookingErr = '';
   renderBooking();
   try {
-    const body = await cashApi(`/api/cash?${cashParams(cash.req, null, final.bookingToken)}`);
+    const p = cashParams(cash.req, null, final.bookingToken);
+    if (final.price > 0) p.set('ref', String(Math.round(final.price)));
+    const body = await cashApi(`/api/cash?${p}`);
     if (!fresh()) return;
     cash.booking = body.bookingOptions || [];
     cash.bookingShape = body.bookingShape || '';
+    cash.bookingFx = body.bookingFx || null;
   } catch (err) {
     if (!fresh()) return;
     cash.bookingErr = err.message;
