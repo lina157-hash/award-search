@@ -2460,3 +2460,47 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 @media (max-width: 560px) { .aw-table td { white-space: normal; padding: 8px 10px; } .aw-table td:first-child { min-width: 5.5em; } }
 .aw-table td small { display: block; color: var(--muted); font-size: .78rem; }
 
+
+/* round 9: r9-flight (官方航班資料 flightdata.js, 航班明細 layovers, 出發前小提醒 local time, 桃園航廈) */
+.day.no-direct { background-image: repeating-linear-gradient(135deg, transparent 0 5px, rgba(0, 0, 0, .2) 5px 6.5px, rgba(255, 255, 255, .35) 6.5px 8px); }
+.hol-legend .dot.nd { border-radius: 2px; background: repeating-linear-gradient(135deg, transparent 0 2px, var(--muted) 2px 3.5px); border: 1px solid color-mix(in srgb, var(--muted) 40%, transparent); }
+.tt-list { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 4px; font-size: .86rem; }
+.tt-list li, .ti-list .tt-list li { display: block; line-height: 1.45; font-size: .86rem; }
+.tt-list li b:first-child { font-variant-numeric: tabular-nums; }
+.tt-list sup, .seg-line sup.plus-day { font-size: .68em; color: var(--danger, #b42318); font-weight: 600; margin-left: 1px; }
+.tt-directs { display: block; }
+.tt-directs > .hint { display: block; margin-top: 2px; }
+.tt-more > summary { cursor: pointer; color: var(--accent); font-size: .82rem; }
+.tt-fold .tt-list { max-width: 720px; }
+.ti-term .hint, .ti-time .hint { display: inline; }
+.tag.bad { background: #fde5e8; color: #8c1f33; }
+.seg-conn { margin: 6px 0 0 10px; font-size: .82rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.seg-conn b { color: var(--text); }
+.trip-sort { display: flex; justify-content: flex-end; margin: 0 0 6px; font-size: .84rem; color: var(--muted); }
+.trip-sort label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: .84rem; }
+.trip-sort select { width: auto; font-size: .86rem; padding: 4px 8px; min-height: 32px; }
+.tt-upcoming { margin: 12px 0 0; font-size: .86rem; }
+.tt-upcoming > summary { cursor: pointer; color: var(--muted); min-height: 32px; display: flex; align-items: center; }
+.tt-upcoming > summary:hover { color: var(--accent); }
+.tt-upcoming ul { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 6px; }
+.tt-upcoming .tt-acts { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; margin-left: 6px; }
+.lf-fold { margin-top: 10px; }
+.lf-fold > summary { cursor: pointer; font-size: .86rem; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.lf-grid { display: grid; gap: 3px; max-width: 620px; margin-top: 4px; }
+.lf-row { display: grid; grid-template-columns: 6em repeat(12, minmax(0, 1fr)); gap: 3px; align-items: center; }
+.lf-head span { text-align: center; font-size: .72rem; color: var(--muted); }
+.lf-label { font-size: .8rem; font-weight: 600; display: flex; flex-direction: column; line-height: 1.2; }
+.lf-label small { font-weight: 400; color: var(--muted); font-size: .7rem; }
+.lf-cell { text-align: center; font-size: .72rem; font-variant-numeric: tabular-nums; padding: 5px 0; border-radius: 5px; color: var(--muted); background: color-mix(in srgb, var(--muted) 10%, transparent); }
+.lf-cell.l1 { background: var(--heat-1); color: var(--text); }
+.lf-cell.l2 { background: var(--heat-2); color: var(--text); }
+.lf-cell.l3 { background: var(--heat-3); color: var(--text); }
+.lf-cell.l4 { background: var(--heat-4); color: var(--heat-text-strong); }
+@media (max-width: 640px) {
+  .lf-row { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; }
+  .lf-head > span:first-child { display: none; }
+  .lf-label { grid-column: 1 / -1; flex-direction: row; gap: 6px; align-items: baseline; margin-top: 4px; }
+  .lf-cell { font-size: .66rem; padding: 4px 0; }
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tag.bad { background: #4a1f28; color: #ffc9d2; } }
+:root[data-theme="dark"] .tag.bad { background: #4a1f28; color: #ffc9d2; }

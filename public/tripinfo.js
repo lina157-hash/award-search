@@ -1,6 +1,6 @@
 // 出發前小提醒: visa, travel warning, weather and holidays for a destination, plus who flies the route nonstop.
 // Shared by the award search and the cash tab; also marks holidays on the calendars (see holidayMark).
-/* global $, $$, esc, fmt, mmdd, dowOf, AP, api, airportCity */
+/* global $, $$, esc, fmt, mmdd, dowOf, AP, api, airportCity, configP, loadScripts, ttDirectsFill, tzOffsetMin, tzChanges */
 
 // Created on first use: the formatter loads ICU data, which is slow on phones while the page starts.
 let regionZhDn;
@@ -152,10 +152,16 @@ async function fetchHolidays(to, start, end) {
   } catch { return null; }
 }
 
-// Which airlines fly this pair nonstop, from AeroDataBox's route statistics (cached server-side for two weeks).
+// Which airlines fly this pair nonstop: for Taiwan's airports the official timetable when the site has it
+// (flightdata.js: flights, days, times, aircraft, 桃園航廈; no quota), otherwise AeroDataBox's route statistics (cached
+// server-side for two weeks).
 async function loadDirects(li, from, to) {
   if (!li) return;
   const span = li.lastElementChild;
+  try {
+    const cfg = typeof configP !== 'undefined' ? await configP : {};
+    if (cfg.flightdata?.timetable && (await loadScripts(['flightdata']))[0] && typeof ttDirectsFill === 'function' && (await ttDirectsFill(li, from, to))) return;
+  } catch { /* fall back to AeroDataBox */ }
   try {
     // The owner's passcode (when this device remembers it) unlocks airports beyond the public list.
     const pass = store.get(PASS_KEY, '');

@@ -1126,7 +1126,7 @@ function openAlertDialog(pre = null) {
   $('#alert-summary').hidden = Boolean(pre);
   $('#alert-summary').textContent = pre ? '' : alertSummary({ origin: share.get('o'), destination: share.get('d'), start: share.get('s'), end: share.get('e') || share.get('s'), cabin: '' });
   $('#alert-note').innerHTML = alertCfg.store
-    ? `${pre ? '已依照你的句子填好，確認後按「建立提醒」才會建立。' : ''}每天早上自動檢查一次，有新的獎勵位就${alertCfg.email ? '寄信通知' : '顯示在「機位提醒」裡（網站尚未設定寄信服務）'}；現在已有的座位不會重複通知。`
+    ? `${pre ? pre.note || '已依照你的句子填好，確認後按「建立提醒」才會建立。' : ''}每天早上自動檢查一次，有新的獎勵位就${alertCfg.email ? '寄信通知' : '顯示在「機位提醒」裡（網站尚未設定寄信服務）'}；現在已有的座位不會重複通知。`
     : ALERT_SETUP;
   dlg.showModal();
 }
@@ -1561,6 +1561,7 @@ function renderSearch() {
       ${byChips ? `${matrixTitle}<div class="filters">${p.chips}</div>` : ''}
       <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && p.hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」、改選全部艙位產品，或放寬請假天數。' : gap ? `沒有一班有 ${state.pax} 位以上；下面「差一點」是只差幾位的班次。` : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>
       ${gap}`;
+    if (typeof ttRender === 'function') ttRender();
     return;
   }
 
@@ -1588,6 +1589,7 @@ function renderSearch() {
   renderMatrix(rows, p.allSources);
   $('#cal-fold').addEventListener('toggle', (e) => { calOpen = e.target.open; });
   if (typeof wkRender === 'function') wkRender();
+  if (typeof ttRender === 'function') ttRender(); // 這條航線的直飛班表 (public/flightdata.js)
   if (typeof pairRender === 'function') pairRender(); // 來回配對 (public/pairing.js)
 }
 
@@ -1689,6 +1691,9 @@ function calendarHtml(rows) {
   const dayCell = (iso, text) => {
     const m = lowByDay[iso];
     const mark = holidayMark(hol, iso);
+    // 這天沒有直飛班機 (flightdata.js, the official timetable of flights touching Taiwan).
+    const nd = typeof ttDayMark === 'function' ? ttDayMark(iso) : null;
+    if (nd) Object.assign(mark, { cls: `${mark.cls} ${nd.cls}`, title: [mark.title, nd.title].filter(Boolean).join('；') });
     const note = mark.title ? `\n${mark.title}` : '';
     return m
       ? `<button type="button" class="day has h${level(m)} ${state.day === iso ? 'sel' : ''} ${mark.cls}" data-date="${iso}" title="${iso} 最低 ${fmt(m)} 哩${esc(note)}">${text}<b>${kfmt(m)}</b>${typeof leaveChip === 'function' ? leaveChip(iso) : ''}</button>`
@@ -1724,7 +1729,7 @@ function calendarHtml(rows) {
     body = `<div class="cal-months">${blocks.join('')}</div>`;
   }
   return `${body}
-    <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴${holidayLegend(hol)}</div>`;
+    <div class="legend">便宜 <i style="background:var(--heat-4)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-1)"></i> 較貴${holidayLegend(hol)}${typeof ttLegend === 'function' ? ttLegend() : ''}</div>`;
 }
 
 const MATRIX_ROWS = 120;
@@ -3385,7 +3390,8 @@ function withTools(host, draw) {
 // builds on the one before. The 規則庫 tab (the 書籤小工具 cards), and #cxcal= and #gf? landing links load them too.
 // aihelper.js (交給 AI 助理) comes before cxmuse.js, which copies with its aiCopy; nlsearch.js before cxshot.js, whose
 // 貼上截圖 shows when nl.on (the server has the 一句話搜尋 model).
-const SEARCH_SCRIPTS = ['etrips', 'flightplus', 'pairing', 'seathistory', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'aihelper', 'nlsearch', 'cxmuse', 'cxshot', 'cxcard'];
+// flightdata.js (官方航班資料: the calendar's 沒有直飛 marks, the timetable fold, 航班明細's layovers) before weekday.js reads it.
+const SEARCH_SCRIPTS = ['etrips', 'flightplus', 'pairing', 'seathistory', 'flightdata', 'weekday', 'cxfill', 'cxcal', 'cxlive', 'cxauto', 'aihelper', 'nlsearch', 'cxmuse', 'cxshot', 'cxcard'];
 const loadSearchScripts = () => loadScripts([...TOOL_SCRIPTS, ...SEARCH_SCRIPTS]);
 // The owner's tools, fetched on the owner's device only (account.js, next to 帳號管理): 哪裡都好 under 區域探索,
 // 今日好康's 🎯 我的條件通知 and the 一句話搜尋 box draw themselves when they arrive and follow the passcode after that.
@@ -3475,6 +3481,7 @@ tabInit.cash = () => {
   datePickers.explore.set(isoDate(30), isoDate(44));
   initFeatures();
   configDone(config); // 一句話搜尋 (nlsearch.js) sets itself up from it when it arrives
+  if (config.flightdata?.upcoming) loadScripts(['flightdata']); // 今日好康's 即將開航 row
   if (typeof notifyInit === 'function') notifyInit(config); // 通知狀態、已開票追蹤 (notify.js)
   // Hidden tabs (rules, points, hotels) and the cash quota are set up when first opened.
   dataReady = true;
