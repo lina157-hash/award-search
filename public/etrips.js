@@ -260,6 +260,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     const rank = { ok: 0, check: 1, split: 2, no: 3 };
     all.sort((a, b) => rank[a.e.verdict] - rank[b.e.verdict] || (a.e.price?.miles ?? a.e.splitPrice?.miles ?? 9e9) - (b.e.price?.miles ?? b.e.splitPrice?.miles ?? 9e9));
     out.innerHTML = `<div class="combo-verdict ${vc}"><b>${vt}</b><span>${esc(etName(rule).name)}${etVariant(rule, (v) => `（${v}）`)}・${shape}・直線距離合計 ${fmt(ev.trip.total)} 哩</span></div>
+      ${typeof gcmapLinkHtml === 'function' ? gcmapLinkHtml(legs) : ''}
       <ul class="combo-checks">${ev.lines.map((l) => `<li class="${l.ok === false ? 'bad' : l.ok ? 'ok' : ''}">${l.ok === false ? '✕' : l.ok ? '✓' : 'ⓘ'} ${esc(l.text)}</li>`).join('')}</ul>
       ${rule.pricing === 'none' ? '<p class="combo-price">浮動定價，沒有固定表可估；請按各段「找座位」看實際哩數。</p>' : ''}
       ${priceHtml(ev.price, '固定表估價')}${priceHtml(ev.splitPrice, '拆成單程票估價')}

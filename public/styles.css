@@ -2478,3 +2478,10 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 .sale-note p { margin: 2px 0; }
 .sale-note small, .sale-trip small { display: block; color: var(--muted); font-size: .78rem; }
 .sale-trip { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: var(--accent-soft); }
+/* #17 Great Circle Mapper link, external tools */
+.gcmap-line { margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.gcmap-line a { display: inline-block; padding: 6px 0; }
+.gcmap-line small { color: var(--muted); overflow-wrap: anywhere; }
+.tag.tp { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+.tool-card h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tool-card h3 a { padding: 4px 0; }

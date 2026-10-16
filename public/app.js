@@ -1867,7 +1867,7 @@ function tripHtml(t, i) {
     ${t.segments.map((s) => `<div class="seg-line"><b>${esc(s.flight)}</b><span>${esc(s.from)} ${hhmm(s.departsAt)} → ${esc(s.to)} ${hhmm(s.arrivesAt)}${s.distance ? `　${fmt(s.distance)} 哩` : ''}</span>
       <span></span><span class="ac">${productOfSegment(s).map((p) => `<span class="pill prod" title="${PROD_3P_TITLE}">${esc(p.name)}<sup class="mk-3p" aria-hidden="true">*</sup></span>`).join('') || segAirline(s)}✈ ${esc(aircraftLabel(s) || '機型未提供')}${s.aircraftCode && s.aircraftCode !== aircraftLabel(s) ? `（${esc(s.aircraftCode)}）` : ''}${s.fareClass ? `　艙等代碼 ${esc(s.fareClass)}` : ''}　${seatLinks(s)}</span></div>`).join('')}
     ${dur ? `<div class="hint" style="margin-top:6px">總飛行時間 ${dur}</div>` : ''}
-    ${amTripLine(t)}${typeof alsoFoldHtml === 'function' ? alsoFoldHtml(t) : ''}
+    ${typeof gcmapLinkHtml === 'function' ? gcmapLinkHtml(t.segments) : ''}${amTripLine(t)}${typeof alsoFoldHtml === 'function' ? alsoFoldHtml(t) : ''}
   </div>`;
 }
 
@@ -2929,6 +2929,7 @@ function renderRulesBody() {
     rulesSection(releaseTableHtml(), '', '各計畫最早在出發前幾天開放訂位'),
     rulesSection(pointsHtml(), '', pts ? `${pts.transfers.length} 條銀行點數轉哩程管道、${pts.cobrand.length} 張聯名卡` : ''),
     typeof cardPerksHtml === 'function' ? rulesSection(cardPerksHtml(), '', '只刷稅金的哩程票，旅平險、不便險可能不保') : '', // trips.js
+    ...(typeof prog9Sections === 'function' ? prog9Sections().map(([html, sum]) => rulesSection(html, '', sum)) : []), // prog9.js
     rulesSection(`<h2 class="section" id="r-glossary">名詞解釋</h2>${glossary.sections.map((s) => `<details class="sub-fold" ${q ? 'open' : ''}><summary><h3 class="sub">${esc(s.title)}</h3><small>${s.items.length} 個</small></summary>
       <div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div></details>`).join('')}`,
     '', `${terms.length} 個常見名詞，例如${terms.slice(0, 3).map(esc).join('、')}`),
@@ -3367,9 +3368,10 @@ function loadScripts(names) {
 // Booking-cost helpers (fee chips, cost sort, upgrades) and the 我的點數 extras: drawn by the route results, 航班明細,
 // 點數換算器 and 規則庫, which wait for these first (about 18 KB gzipped).
 // rtw.js (環球票規劃 and the 國泰混艙 calculator in 規則庫) goes first, so toolsIn() also means it has run.
-const TOOL_SCRIPTS = ['rtw', 'award-tools', 'ewallet'];
+// prog9.js: the round 9 規則庫 cards, 看改版前 and the Great Circle Mapper link.
+const TOOL_SCRIPTS = ['rtw', 'award-tools', 'ewallet', 'prog9'];
 const loadTools = () => loadScripts(TOOL_SCRIPTS);
-const toolsIn = () => typeof untilTag === 'function' && typeof upgradeHtml === 'function';
+const toolsIn = () => typeof untilTag === 'function' && typeof upgradeHtml === 'function' && typeof prog9Sections === 'function';
 // Drawn once the tools are in; until then a placeholder (or, if they would not load, a 重試).
 function withTools(host, draw) {
   if (toolsIn()) return true;

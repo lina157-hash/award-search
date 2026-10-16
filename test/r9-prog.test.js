@@ -184,3 +184,21 @@ test('award sales routed by country wait for the airport list (a shared link ope
   assert.equal(f.awardSaleNeedsAirports([{ source: 'united' }]), false);
   assert.match(src('app.js'), /awardSaleNeedsAirports\(body\.results\)\)\)\) await loadAirports\(\);/);
 });
+
+// ---------- #17 Great Circle Mapper ----------
+const P9 = require('../public/prog9.js');
+
+test('gcmap: the route as one path, a comma where it breaks (open jaw or surface sector)', () => {
+  assert.equal(P9.gcmapUrl([{ from: 'TPE', to: 'HKG' }, { from: 'HKG', to: 'LHR' }]), 'https://www.gcmap.com/mapui?P=TPE-HKG-LHR');
+  assert.equal(P9.gcmapPath([{ from: 'tpe', to: 'nrt' }, { from: 'NRT', to: 'HND', surface: true }, { from: 'HND', to: 'TPE' }]), 'TPE-NRT,HND-TPE');
+  assert.equal(P9.gcmapPath([{ from: 'TPE', to: 'HKG' }, { from: 'LHR', to: 'JFK' }]), 'TPE-HKG,LHR-JFK');
+  assert.equal(P9.gcmapUrl([{ from: 'TPE', to: '' }, { from: 'X<Y', to: 'HKG' }]), '');
+  // 航班明細, 中停／開口組合 and 環球票規劃 carry it; prog9.js comes with the tools.
+  assert.match(src('app.js'), /typeof gcmapLinkHtml === 'function' \? gcmapLinkHtml\(t\.segments\)/);
+  assert.match(src('etrips.js'), /gcmapLinkHtml\(legs\)/);
+  assert.match(src('rtw.js'), /gcmapLinkHtml\(trip\.legs\)/);
+  assert.match(src('app.js'), /const TOOL_SCRIPTS = \['rtw', 'award-tools', 'ewallet', 'prog9'\];/);
+  const tools = src('prog9.js').match(/const P9_TOOLS = \[([\s\S]*?)\n {2}\];/)[1];
+  for (const name of ['Great Circle Mapper', 'FlightConnections', 'wheretocredit', 'SeatMaps', 'AeroLOPA', 'CX Planner']) assert.ok(tools.includes(`'${name}'`), name);
+  assert.match(src('prog9.js'), /<span class="tag tp">第三方<\/span>/);
+});
