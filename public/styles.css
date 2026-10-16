@@ -2265,22 +2265,3 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 @media (max-width: 560px) { .aw-table td { white-space: normal; padding: 8px 10px; } .aw-table td:first-child { min-width: 5.5em; } }
 .aw-table td small { display: block; color: var(--muted); font-size: .78rem; }
 
-/* 兌換地圖: 地圖樣式 (mapstyle.js). 灰階 and 復古 are the standard tiles under a filter; in the dark theme 標準 and 灰階
-   keep the inverted look, the others are only dimmed so their own colours stay readable. */
-.ms-ctl.leaflet-bar { background: var(--surface); color: var(--text); padding: 3px 6px 3px 10px; font-size: .78rem; border: 1px solid var(--border); }
-.ms-ctl label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.ms-ctl select { font: inherit; font-size: .8rem; min-height: 32px; padding: 2px 4px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
-.map-gray .leaflet-tile-pane { filter: grayscale(1) contrast(1.05) brightness(1.02); }
-.map-retro .leaflet-tile-pane { filter: sepia(0.6) saturate(0.85) hue-rotate(-10deg) contrast(0.95) brightness(1.03); }
-.map-hot .leaflet-tile-pane, .map-topo .leaflet-tile-pane { filter: saturate(0.85); }
-.map-st-dark .leaflet-tile-pane { filter: none; } /* Stadia's own dark style, as it is in either theme */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .map-gray .leaflet-tile-pane { filter: invert(1) grayscale(1) brightness(0.85) contrast(0.9); }
-  :root:not([data-theme="light"]) .map-retro .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) sepia(0.45) brightness(0.8) contrast(0.9); }
-  :root:not([data-theme="light"]) .map-hot .leaflet-tile-pane, :root:not([data-theme="light"]) .map-topo .leaflet-tile-pane, :root:not([data-theme="light"]) .map-st-light .leaflet-tile-pane { filter: brightness(0.72) contrast(1.08) saturate(0.75); }
-  :root:not([data-theme="light"]) .map-st-toner .leaflet-tile-pane { filter: invert(1) brightness(0.85); }
-}
-:root[data-theme="dark"] .map-gray .leaflet-tile-pane { filter: invert(1) grayscale(1) brightness(0.85) contrast(0.9); }
-:root[data-theme="dark"] .map-retro .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) sepia(0.45) brightness(0.8) contrast(0.9); }
-:root[data-theme="dark"] .map-hot .leaflet-tile-pane, :root[data-theme="dark"] .map-topo .leaflet-tile-pane, :root[data-theme="dark"] .map-st-light .leaflet-tile-pane { filter: brightness(0.72) contrast(1.08) saturate(0.75); }
-:root[data-theme="dark"] .map-st-toner .leaflet-tile-pane { filter: invert(1) brightness(0.85); }

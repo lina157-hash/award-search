@@ -1694,8 +1694,6 @@ async function route(req, res) {
         // the owner's (GET /api/cron/status, GET /api/line behind the passcode).
         line: await line.status().then((s) => ({ configured: s.configured, linked: s.linked, ...(s.configured ? { tokenOk: s.tokenOk } : {}) })).catch(() => ({ configured: line.configured })),
         searchCache: { enabled: searchCache.enabled },
-        // 地圖樣式: Stadia Maps' styles too, once the site's domain is registered with Stadia (MAP_STADIA=1).
-        mapStadia: (process.env.MAP_STADIA || '').trim() === '1',
         telegram: { configured: telegram.configured, linked: (await telegram.status().catch(() => ({}))).linked === true, tokenOk: telegram.configured ? (await telegram.bot()).tokenOk : null },
         booked: Boolean(booked), dealRules: Boolean(dealRules),
         hotels: { callsToday: roomsUsage.day === new Date().toISOString().slice(0, 10) ? roomsUsage.calls : 0, dailyLimit: 1000, accor: Boolean(RAPIDAPI_KEY) || MOCK, watch: Boolean(hotelWatch) },
