@@ -2460,3 +2460,53 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 @media (max-width: 560px) { .aw-table td { white-space: normal; padding: 8px 10px; } .aw-table td:first-child { min-width: 5.5em; } }
 .aw-table td small { display: block; color: var(--muted); font-size: .78rem; }
 
+
+/* round 9: r9-map */
+/* 可搭直飛 tags, 級距提醒 and other-airport lines in 哩程試算, its 經過 comparison, 兌換地圖's layers, 中停／開口組合's map. */
+.mk-bits { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+.mk-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--none); color: var(--muted); font-size: .74rem; line-height: 1.6; white-space: nowrap; }
+.mk-tag.ok { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.mk-edge, .mk-alt { display: block; font-size: .78rem; line-height: 1.45; }
+.mk-edge { color: var(--few-text); }
+.mk-alt { color: var(--accent); }
+.mk-h { margin: 16px 0 8px; font-size: .95rem; }
+.mk-via { margin: 8px 0 0; max-width: 520px; }
+.mk-compare th, .mk-compare td { vertical-align: top; }
+.mk-compare thead th { min-width: 150px; text-align: left; font-weight: 600; }
+.mk-compare thead th:first-child { min-width: 120px; }
+.mk-compare th small, .mk-compare td small { display: block; color: var(--muted); font-size: .76rem; font-weight: 400; }
+.mk-compare .mk-more { color: var(--few-text); font-weight: 600; }
+.mk-compare td .mk-tag { margin-top: 3px; white-space: normal; }
+.mk-compare td.mk-best { background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface)); }
+.mk-compare td.mk-best > b { color: var(--accent); }
+.mk-src { font-size: .78rem; }
+.rmap-layers { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 10px; }
+.mk-layers-h { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.mk-air select { max-width: 260px; }
+.mk-layers-tip { color: var(--muted); font-size: .78rem; }
+.rm-pin.rm-direct .rm-k { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent), 0 1px 6px rgb(0 0 0 / .35); }
+path.mk-ring { stroke: var(--brand); stroke-opacity: .55; fill: none; }
+path.mk-ring.on { stroke: var(--sun-2); stroke-opacity: .95; }
+path.mk-arc { stroke: var(--sun-2); stroke-linecap: round; fill: none; }
+.leaflet-marker-icon.mk-ring-label { white-space: nowrap; padding: 1px 6px; border-radius: 6px; background: var(--surface); color: var(--muted); font-size: .7rem; box-shadow: 0 1px 3px rgb(0 0 0 / .2); }
+.leaflet-marker-icon.mk-ring-label.on { color: var(--text); font-weight: 700; outline: 2px solid var(--sun-2); }
+.mk-pop { margin: 6px 0 0; font-size: .8rem; line-height: 1.45; }
+.mk-pop small { display: block; color: #777; }
+.mk-pop.warn { color: #8a5a00; }
+.mk-list { margin: 8px 0 0; }
+.mk-list > summary { cursor: pointer; font-weight: 600; font-size: .92rem; padding: 4px 0; }
+.mk-list .seg { margin: 6px 0; }
+.mk-cities { margin: 6px 0 0; padding-left: 1.6em; columns: 2 300px; column-gap: 24px; font-size: .86rem; }
+.mk-cities li { break-inside: avoid; padding: 2px 0; }
+.mk-cities li span { margin: 0 6px; }
+.mk-cities li small { color: var(--muted); }
+.combo-map { margin: 10px 0; }
+.combo-map > summary { cursor: pointer; font-weight: 600; font-size: .92rem; padding: 4px 0; }
+.combo-map-box { height: 340px; margin: 6px 0; }
+.combo-dists { margin: 6px 0; padding-left: 1.6em; font-size: .86rem; }
+.combo-dists li.oj { color: var(--muted); list-style: circle; }
+@media (max-width: 640px) {
+  .combo-map-box { height: 260px; }
+  .mk-air, .mk-air select { max-width: 100%; }
+  .mk-compare thead th { min-width: 130px; }
+}
