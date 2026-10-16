@@ -38,17 +38,18 @@ function etAnalyze(legs, apOf) {
   return { kind: rt ? 'rt' : 'ow', n, turn, dirs, stops, openJaws, dist, total: dist.reduce((s, x) => s + x, 0), countries: ap.map((x) => x.to.country) };
 }
 
-// One chart's lowest price for one stretch: { miles, label } or null.
-function etChart(chart, a, b, cabin, dist) {
+// One chart's lowest price for one stretch: { miles, label, bands, d } or null (bands and d: the distance band that set
+// it, for mapkit.js's 級距提醒). Asia Miles prices Cathay's own flights by cxDist (through Hong Kong, amCxDist).
+function etChart(chart, a, b, cabin, dist, cxDist = dist) {
   if (!chart) return null;
   if (chart === 'asiamiles') {
-    const best = ['cx', 'partner'].map((k) => amPrice(k, dist, cabin, a.code, b.code)).filter((x) => x?.miles).sort((x, y) => x.miles - y.miles)[0];
-    return best ? { miles: best.miles, label: best.kind === 'cx' ? '國泰航班' : '夥伴航班' } : null;
+    const best = [['cx', cxDist], ['partner', dist]].map(([k, d]) => ({ ...amPrice(k, d, cabin, a.code, b.code), d })).filter((x) => x.miles).sort((x, y) => x.miles - y.miles)[0];
+    return best ? { miles: best.miles, label: best.kind === 'cx' ? `國泰航班${best.d > dist ? '・經香港' : ''}` : '夥伴航班', bands: data.asiamiles.bands, d: best.d } : null;
   }
   const p = data.charts?.programs?.find((x) => x.id === chart);
   if (!p) return null;
   const best = chartPrices(p, a, b, cabin, dist).sort((x, y) => x.miles - y.miles)[0];
-  return best ? { miles: best.miles, label: best.label } : null;
+  return best ? { miles: best.miles, label: best.label, bands: best.bands, d: best.d } : null;
 }
 
 const etRoute = (legs, idx) => [legs[idx[0]].from, ...idx.map((i) => legs[i].to)].join('→');
@@ -61,9 +62,12 @@ function etPrice(rule, legs, trip, cabin, apOf, split = false) {
     const a = apOf(legs[idx[0]].from);
     const b = apOf(legs[idx[idx.length - 1]].to);
     const dist = idx.reduce((s, i) => s + trip.dist[i], 0);
-    const x = etChart(rule.chart, a, b, cabin, dist);
+    // Cathay's own flights connect in Hong Kong: each leg not touching it counts through it (app.js amCxDist).
+    const cxDist = rule.chart === 'asiamiles' && typeof amCxDist === 'function'
+      ? idx.reduce((s, i) => s + (amCxDist(legs[i].from, legs[i].to, trip.dist[i], false, apOf)?.dist ?? trip.dist[i]), 0) : dist;
+    const x = etChart(rule.chart, a, b, cabin, dist, cxDist);
     const fee = (extraStops || 0) * (rule.stopoverMiles || 0);
-    parts.push({ label, miles: x ? x.miles + fee : null, note: x ? `${x.label}${fee ? `；中停加 ${fmt(fee)}` : ''}` : '固定表查不到這段' });
+    parts.push({ label, miles: x ? x.miles + fee : null, note: x ? `${x.label}${fee ? `；中停加 ${fmt(fee)}` : ''}` : '固定表查不到這段', bands: x?.bands, d: x?.d });
   };
   if (split || rule.pricing === 'segment') {
     legs.forEach((l, i) => add(`${l.from}→${l.to}`, [i], 0));
@@ -74,7 +78,7 @@ function etPrice(rule, legs, trip, cabin, apOf, split = false) {
     const b = apOf(legs[trip.turn].to);
     // Round-trip-total charts double the distance they are given, so hand them half the whole trip.
     const best = p ? chartPrices(p, a, b, cabin, Math.round(trip.total / 2)).sort((x, y) => x.miles - y.miles)[0] : null;
-    parts.push({ label: `整趟 ${fmt(trip.total)} 哩`, miles: best ? best.miles : null, note: best ? best.label : '固定表查不到' });
+    parts.push({ label: `整趟 ${fmt(trip.total)} 哩`, miles: best ? best.miles : null, note: best ? best.label : '固定表查不到', bands: best?.bands, d: best?.d });
   } else {
     trip.dirs.forEach((idx, d) => add(`${trip.kind === 'rt' ? (d ? '回程' : '去程') : '單程'} ${etRoute(legs, idx)}`, idx, trip.stops[d].length));
   }
@@ -174,7 +178,8 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   const comboPanel = $('#combo-panel');
   const comboOpen = () => {
     if (!comboPanel.open) return;
-    Promise.all([etLoad(), loadAirports(), loadMore()]).then(renderCombo).catch((e) => { $('#combo-body').innerHTML = `<p class="status error">${esc(e.message)}</p>`; });
+    // mapkit.js (級距提醒, band names) comes along; it resolves either way.
+    Promise.all([etLoad(), loadAirports(), loadMore(), loadMapkit()]).then(renderCombo).catch((e) => { $('#combo-body').innerHTML = `<p class="status error">${esc(e.message)}</p>`; });
   };
   comboPanel.addEventListener('toggle', comboOpen);
   if (comboPanel.open) setTimeout(comboOpen); // opened before this script arrived
@@ -245,6 +250,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   function renderComboOut() {
     const out = $('#combo-out');
     if (!out) return;
+    if (comboMap) { comboMap.remove(); comboMap = null; }
     const legs = combo.legs;
     // Nothing to judge until every leg has both ends: the result stays hidden (one quiet line once something is typed).
     if (legs.some((l) => !l.from || !l.to)) { out.innerHTML = legs.some((l) => l.from || l.to) ? '<p class="hint">每一段都填好出發地和目的地，就會算出結果。</p>' : ''; return; }
@@ -254,15 +260,18 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     if (ev.error) { out.innerHTML = `<p class="status error">${esc(ev.error)}</p>`; return; }
     const [vt, vc] = verdictText[ev.verdict];
     const shape = ev.trip.kind === 'rt' ? `來回・折返點 ${esc(legs[ev.trip.turn].to)} ${esc(airportCity(legs[ev.trip.turn].to))}` : '單程';
-    const priceHtml = (p, title) => (p ? `<p class="combo-price">${title}：${p.miles != null ? `<b>${fmt(p.miles)} 哩</b>／人・${CABIN_LABEL[c]}` : '<b>部分航段查不到固定價</b>'}<small>${p.parts.map((x) => `${esc(x.label)} ${x.miles != null ? `${fmt(x.miles)} 哩` : '—'}・${esc(x.note)}`).join('；')}</small></p>` : '');
+    // A part priced just over a distance band, or just under the next one, says so (mapkit.js).
+    const edgeHtml = (x) => { const e = typeof mkEdge === 'function' && x.miles != null && mkEdge(x.bands, x.d); return e ? `<span class="mk-edge">⚠ ${esc(x.label)}：${esc(mkEdgeText(e, x.d))}</span>` : ''; };
+    const priceHtml = (p, title) => (p ? `<p class="combo-price">${title}：${p.miles != null ? `<b>${fmt(p.miles)} 哩</b>／人・${CABIN_LABEL[c]}` : '<b>部分航段查不到固定價</b>'}<small>${p.parts.map((x) => `${esc(x.label)} ${x.miles != null ? `${fmt(x.miles)} 哩` : '—'}・${esc(x.note)}`).join('；')}</small>${p.parts.map(edgeHtml).join('')}</p>` : '');
     // Every program side by side, the ones that work first, cheapest first.
     const all = etData.programs.map((r) => ({ r, e: etEvaluate(r, legs, c, comboAp) })).filter((x) => !x.e.error);
     const rank = { ok: 0, check: 1, split: 2, no: 3 };
     all.sort((a, b) => rank[a.e.verdict] - rank[b.e.verdict] || (a.e.price?.miles ?? a.e.splitPrice?.miles ?? 9e9) - (b.e.price?.miles ?? b.e.splitPrice?.miles ?? 9e9));
-    out.innerHTML = `<div class="combo-verdict ${vc}"><b>${vt}</b><span>${esc(etName(rule).name)}${etVariant(rule, (v) => `（${v}）`)}・${shape}・直線距離合計 ${fmt(ev.trip.total)} 哩</span></div>
+    out.innerHTML = `<div class="combo-verdict ${vc}"><b>${vt}</b><span>${esc(etName(rule).name)}${etVariant(rule, (v) => `（${v}）`)}・${shape}・直線距離合計 ${miKm(ev.trip.total)}</span></div>
       <ul class="combo-checks">${ev.lines.map((l) => `<li class="${l.ok === false ? 'bad' : l.ok ? 'ok' : ''}">${l.ok === false ? '✕' : l.ok ? '✓' : 'ⓘ'} ${esc(l.text)}</li>`).join('')}</ul>
       ${rule.pricing === 'none' ? '<p class="combo-price">浮動定價，沒有固定表可估；請按各段「找座位」看實際哩數。</p>' : ''}
       ${priceHtml(ev.price, '固定表估價')}${priceHtml(ev.splitPrice, '拆成單程票估價')}
+      ${comboMapHtml(legs, ev)}
       ${rule.chartNote ? `<p class="hint">${esc(rule.chartNote)}</p>` : ''}
       ${rule.conditions?.length ? `<p class="hint">其他條件：${esc(rule.conditions.join('；'))}</p>` : ''}
       <p class="hint combo-src">${CONFIDENCE_TAG[rule.confidence] || ''}來源：${sourcesHtml(rule)}</p>
@@ -271,10 +280,60 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
           <td>${e.price?.miles != null ? `<b>${fmt(e.price.miles)} 哩</b>` : e.splitPrice?.miles != null ? `${fmt(e.splitPrice.miles)} 哩<small>拆票</small>` : '<small>浮動或查不到</small>'}</td></tr>`).join('')}
       </tbody></table></div></details>
       <p class="hint">依直線距離與公布的最低（Saver）價估算，實際價格以航空公司為準；稅金與燃油費另計。每一段請另外確認有位子。</p>`;
+    if (comboMapOpen) comboMapDraw(legs, ev.trip);
+  }
+
+  // 在地圖上看 (closed until opened, and kept open across redraws): the legs on a map with 環球票規劃's drawing (rtw.js
+  // rtwDrawRoute; an open jaw is a dashed line), each leg's distance, and the distance each priced part counts.
+  let comboMap = null;
+  let comboMapOpen = false;
+  // The stops in order with the gaps between legs (and back to the origin) as legs not flown.
+  function comboPath(legs, trip) {
+    const pts = [];
+    const surface = [];
+    legs.forEach((l, i) => {
+      if (!i || legs[i - 1].to !== l.from) { if (i) surface.push(true); pts.push(l.from); }
+      surface.push(false);
+      pts.push(l.to);
+    });
+    if (trip.openJaws.some((x) => x.at === 'origin')) { surface.push(true); pts.push(legs[0].from); }
+    return { pts: pts.map((code) => ({ code, ap: comboAp(code) })), surface };
+  }
+  function comboMapHtml(legs, ev) {
+    const gap = (a, b) => { const [x, y] = [comboAp(a), comboAp(b)]; return x && y ? `<li class="oj">${esc(a)} ↔ ${esc(b)}　開口（地面段，自行前往）${miKm(haversineMiles(x, y))}</li>` : ''; };
+    const rows = legs.map((l, i) => `<li><b>${esc(l.from)} → ${esc(l.to)}</b>　${miKm(ev.trip.dist[i])}</li>${legs[i + 1] && legs[i + 1].from !== l.to ? gap(l.to, legs[i + 1].from) : ''}`).join('');
+    const back = ev.trip.openJaws.find((x) => x.at === 'origin');
+    const p = ev.price || ev.splitPrice;
+    const bands = typeof mkBandText === 'function' ? (p?.parts || []).filter((x) => x.bands && x.d && x.miles != null) : [];
+    return `<details class="combo-map" id="combo-map" ${comboMapOpen ? 'open' : ''}><summary>在地圖上看・每段距離</summary>
+      <div class="ex-map combo-map-box" id="combo-map-box"><p class="hint">地圖載入中…</p></div>
+      <ol class="combo-dists">${rows}${back ? gap(back.b, back.a) : ''}</ol>
+      ${bands.length ? `<p class="hint">計價距離：${bands.map((x) => `${esc(x.label)} ${fmt(x.d)} 哩，落在 ${esc(mkBandText(x.bands, x.d))}`).join('；')}。</p>` : ''}
+      <p class="hint">距離是兩地的大圓距離（英里），和航空公司的計算可能差幾哩${ev.trip.openJaws.length ? '；虛線是開口，要自己安排交通' : ''}。</p></details>`;
+  }
+  function comboMapDraw(legs, trip) {
+    const box = $('#combo-map-box');
+    if (!box || comboMap || typeof rtwDrawRoute !== 'function') return;
+    loadLeaflet().then(() => {
+      if (comboMap || !box.isConnected) return;
+      const L = window.L;
+      box.innerHTML = '';
+      comboMap = L.map(box, { scrollWheelZoom: false, zoomSnap: 0.25, landCopies: [-360, 360] });
+      addBaseMap(comboMap);
+      keepMapSized(comboMap);
+      const { pts, surface } = comboPath(legs, trip);
+      const all = rtwDrawRoute(L, L.layerGroup().addTo(comboMap), pts, (i) => surface[i], airportCity);
+      comboMap.fitBounds(L.latLngBounds(all), { padding: [28, 28], maxZoom: 5 });
+    }, (err) => { box.innerHTML = `<p class="hint">${esc(err.message)}</p>`; });
   }
 
   const comboBody = $('#combo-body');
   comboBody.addEventListener('submit', (e) => e.preventDefault()); // Enter in an airport box picks, never reloads
+  comboBody.addEventListener('toggle', (e) => {
+    if (e.target.id !== 'combo-map') return;
+    comboMapOpen = e.target.open;
+    if (comboMapOpen) comboMapDraw(combo.legs, etAnalyze(combo.legs, comboAp));
+  }, true);
   comboBody.addEventListener('change', (e) => {
     const t = e.target;
     const legForm = t.closest('.combo-leg');

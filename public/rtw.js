@@ -369,6 +369,43 @@ function rtwArc(a, b, lon0 = a.lon, n = 32) {
   return out;
 }
 
+// A route on a Leaflet layer (環球票規劃, and 中停／開口組合's map in etrips.js): great-circle lines, a leg not flown
+// (surface(i) for pts[i] → pts[i + 1]) dashed, and one numbered pin per place. pts: [{ ap, code }] (ap null: skipped);
+// place(code) names a stop in its tooltip. → every point drawn, for fitBounds.
+function rtwDrawRoute(L, layer, pts, surface = () => false, place = () => '') {
+  // Each stop where the line reaches it, longitudes carried on so the loop keeps going round the world.
+  const at = [];
+  const lines = [];
+  pts.forEach((p, i) => {
+    if (!p.ap) { at.push(null); return; }
+    if (!i || !at[i - 1] || !pts[i - 1].ap) {
+      const prev = at.findLast?.((x) => x) || null;
+      const lon = prev ? p.ap.lon + Math.round((prev[1] - p.ap.lon) / 360) * 360 : p.ap.lon;
+      at.push([p.ap.lat, lon]);
+      return;
+    }
+    const arc = rtwArc(pts[i - 1].ap, p.ap, at[i - 1][1]);
+    lines.push({ arc, surface: surface(i - 1) });
+    at.push(arc.at(-1));
+  });
+  for (const l of lines) L.polyline(l.arc, { className: `rtw-line${l.surface ? ' surface' : ''}`, weight: l.surface ? 2 : 3, dashArray: l.surface ? '5 7' : null, interactive: false }).addTo(layer);
+  // One pin per place: a loop that ends where it began, at the same spot on the map, shows 1・6 on one pin.
+  const pins = new Map();
+  at.forEach((x, i) => {
+    if (!x) return;
+    const k = `${x[0].toFixed(3)},${x[1].toFixed(3)}`;
+    if (!pins.has(k)) pins.set(k, { x, nos: [], code: pts[i].code });
+    pins.get(k).nos.push(i + 1);
+  });
+  for (const p of pins.values()) {
+    // The start and end sit on top when a nearby stop overlaps them at world zoom.
+    const ends = p.nos.includes(1) || p.nos.includes(at.length);
+    L.marker(p.x, { icon: L.divIcon({ className: 'rtw-pin', html: `<span class="rtw-pin-n">${p.nos.join('・')}</span><span class="rtw-pin-c">${esc(p.code)}</span>`, iconSize: null, iconAnchor: [13, 13] }), keyboard: false, zIndexOffset: ends ? 1000 : 0 })
+      .bindTooltip(`${p.nos.join('・')}. ${esc(p.code)} ${esc(place(p.code))}`).addTo(layer);
+  }
+  return [...lines.flatMap((l) => l.arc), ...at.filter(Boolean)];
+}
+
 // ---------- 國泰混艙計算: Asia Miles Standard Award, one direction ----------
 // Official rule (Cathay membership T&C 2026, Standard Awards cl. 3): the zone comes from the direction's summed sector
 // distances; each sector's cabin price in that zone is prorated by its share of the great-circle distance; the sum is
@@ -803,37 +840,7 @@ if (typeof document !== 'undefined') {
     rtwLayer.clearLayers();
     const pts = trip?.pts || [];
     if (!pts.some((p) => p.ap)) { rtwMap.setView([25, 140], 1.5); return; }
-    // Each stop where the line reaches it, longitudes carried on so the loop keeps going round the world.
-    const at = [];
-    const lines = [];
-    pts.forEach((p, i) => {
-      if (!p.ap) { at.push(null); return; }
-      if (!i || !at[i - 1] || !pts[i - 1].ap) {
-        const prev = at.findLast?.((x) => x) || null;
-        const lon = prev ? p.ap.lon + Math.round((prev[1] - p.ap.lon) / 360) * 360 : p.ap.lon;
-        at.push([p.ap.lat, lon]);
-        return;
-      }
-      const arc = rtwArc(pts[i - 1].ap, p.ap, at[i - 1][1]);
-      lines.push({ arc, surface: trip.legs[i - 1]?.surface });
-      at.push(arc.at(-1));
-    });
-    for (const l of lines) L.polyline(l.arc, { className: `rtw-line${l.surface ? ' surface' : ''}`, weight: l.surface ? 2 : 3, dashArray: l.surface ? '5 7' : null, interactive: false }).addTo(rtwLayer);
-    // One pin per place: a loop that ends where it began, at the same spot on the map, shows 1・6 on one pin.
-    const pins = new Map();
-    at.forEach((x, i) => {
-      if (!x) return;
-      const k = `${x[0].toFixed(3)},${x[1].toFixed(3)}`;
-      if (!pins.has(k)) pins.set(k, { x, nos: [], code: pts[i].code });
-      pins.get(k).nos.push(i + 1);
-    });
-    for (const p of pins.values()) {
-      // The start and end sit on top when a nearby stop overlaps them at world zoom.
-      const ends = p.nos.includes(1) || p.nos.includes(at.length);
-      L.marker(p.x, { icon: L.divIcon({ className: 'rtw-pin', html: `<span class="rtw-pin-n">${p.nos.join('・')}</span><span class="rtw-pin-c">${esc(p.code)}</span>`, iconSize: null, iconAnchor: [13, 13] }), keyboard: false, zIndexOffset: ends ? 1000 : 0 })
-        .bindTooltip(`${p.nos.join('・')}. ${esc(p.code)} ${esc(rtwPlace(p.code))}`).addTo(rtwLayer);
-    }
-    const all = [...lines.flatMap((l) => l.arc), ...at.filter(Boolean)];
+    const all = rtwDrawRoute(L, rtwLayer, pts, (i) => trip.legs[i]?.surface, rtwPlace);
     rtwMap.fitBounds(L.latLngBounds(all), { paddingTopLeft: [24, 20], paddingBottomRight: [60, 20], maxZoom: 5 });
   }
 
