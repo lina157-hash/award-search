@@ -99,6 +99,28 @@ function tripSummary(info) {
   return out.join('・');
 }
 
+// 🕐 當地時間 (round 9): the time there now, the difference from Taiwan and the next clock change, from the airport's
+// IANA zone (airportsdata) and the browser's own zone rules. tzOffsetMin and tzChanges are trips.js's.
+function localTimeHtml(info, q = {}) {
+  if (!info.tz || typeof tzOffsetMin !== 'function') return '';
+  const now = Date.now();
+  const off = tzOffsetMin(info.tz, now);
+  const tw = tzOffsetMin('Asia/Taipei', now);
+  if (off == null || tw == null || (off === tw && info.country === 'TW')) return '';
+  const hm = new Date(now + off * 60e3).toISOString().slice(11, 16);
+  const d = off - tw;
+  const hrs = (m) => `${Math.floor(Math.abs(m) / 60)}${Math.abs(m) % 60 ? ` 小時 ${Math.abs(m) % 60} 分` : ' 小時'}`;
+  const diff = d === 0 ? '和台灣同時間' : `比台灣${d < 0 ? '慢' : '快'} ${hrs(d)}`;
+  const next = tzChanges(info.tz, now, 370)[0];
+  const md = (ms) => { const x = new Date(ms + off * 60e3); return `${x.getUTCMonth() + 1}/${x.getUTCDate()}`; };
+  const dst = next ? (next.to > next.from ? `・夏令時間 ${md(next.at)} 起（時鐘撥快 ${hrs(next.to - next.from)}）` : `・夏令時間到 ${md(next.at)}（之後時鐘撥慢 ${hrs(next.from - next.to)}）`) : '';
+  // The trip's own difference when a clock change comes before it.
+  const at = /^\d{4}-\d{2}-\d{2}$/.test(q.start || '') ? Date.parse(`${q.start}T12:00:00Z`) : NaN;
+  const dt = at > now ? (tzOffsetMin(info.tz, at) ?? off) - (tzOffsetMin('Asia/Taipei', at) ?? tw) : d;
+  const trip = dt !== d ? `；${Number(q.start.slice(5, 7))}/${Number(q.start.slice(8))} 出發時${dt === 0 ? '和台灣同時間' : `比台灣${dt < 0 ? '慢' : '快'} <b>${hrs(dt)}</b>`}` : '';
+  return `<li class="ti-time"><span class="ti-k">🕐 當地時間</span><span>現在 <b>${hm}</b>（${diff}）${dst}${trip}</span></li>`;
+}
+
 function tripInfoHtml(info, q) {
   const cc = info.country;
   const city = airportCity(info.airport) || info.airport;
@@ -107,6 +129,7 @@ function tripInfoHtml(info, q) {
     <summary><b>🧳 出發前小提醒｜${esc(city)}${cc && cc !== 'TW' ? `（${esc(countryZh(cc))}）` : ''}</b>${sum ? `<span class="ti-sum">${esc(sum)}</span>` : ''}</summary>
     <ul class="ti-list">
       ${q.from ? `<li class="ti-directs" data-from="${esc(q.from)}" data-to="${esc(q.to)}"><span class="ti-k">✈️ 誰飛直航</span><span class="hint">查詢中…</span></li>` : ''}
+      ${localTimeHtml(info, q)}
       ${visaHtml(info.visa, cc)}
       ${typeof passportLiHtml === 'function' ? passportLiHtml(cc, q) : ''}
       ${warningHtml(info.warning)}
