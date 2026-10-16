@@ -1908,6 +1908,10 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 a.panel-link { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 999px; font-weight: 700; font-size: .9rem; text-decoration: none; color: var(--preset-label); background: var(--preset-bg); border: 1px solid var(--preset-border); }
 a.panel-link span { font-weight: 400; }
 a.panel-link:hover { border-color: var(--accent); }
+/* Lines up with the 機位提醒 and 中停／開口組合 pills beside it: same height, and the same top (their summaries
+   add `details summary`'s 12px to the panel's own 12px). */
+a.alerts-panel.panel-link { display: inline-flex; vertical-align: top; box-sizing: border-box; min-height: 36px; margin-top: 24px; }
+@media (pointer: coarse) { a.alerts-panel.panel-link { min-height: 44px; } }
 .rtw-back { margin: 0 0 4px; font-size: .9rem; }
 .rtw-back a { color: inherit; }
 .rtw-vs { margin: 8px 0 0; color: inherit; opacity: .92; }
