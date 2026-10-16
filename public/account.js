@@ -4,8 +4,9 @@
 // Classic script loaded last; uses the globals of app.js, features.js and hotels.js (store, toast, cashApi, $…).
 
 // localStorage keys carried by the account. The passcode (cashPass) never leaves the device.
-// points6.js adds family members, vouchers, 已登記, the redemption ledger and the expiry suggestions.
-const SYNC_KEYS = ['favSearches', 'recentSearches', 'wallet:v1', 'plan:v1', 'cashSeen:v1', 'hotelSearch:v1', 'alertEmail', 'mileCost:v1', ...(typeof P6_SYNC_KEYS !== 'undefined' ? P6_SYNC_KEYS : [])];
+// passport:v1 is 我的行程's passport expiry (trips.js); points6.js adds family members, vouchers, 已登記, the redemption
+// ledger and the expiry suggestions.
+const SYNC_KEYS = ['favSearches', 'recentSearches', 'wallet:v1', 'plan:v1', 'cashSeen:v1', 'hotelSearch:v1', 'alertEmail', 'mileCost:v1', 'passport:v1', ...(typeof P6_SYNC_KEYS !== 'undefined' ? P6_SYNC_KEYS : [])];
 // What this device last agreed with the server: { email, joined, rev, base, syncedAt }.
 const ACCT_SYNC = 'acct:sync';
 const acct = { configured: false, emailEnabled: false, status: null, syncing: false, syncErr: '', timer: 0, conflicts: 0, lockFlipped: false, lastPull: 0, pending: false };
@@ -79,7 +80,10 @@ const MERGE = {
   'plan:v1'(l, r, b, hasBase) {
     const gone = goneFrom(legsOf(b), legsOf(l), legsOf(r), legId);
     const seen = new Set();
-    const legs = [...legsOf(r), ...legsOf(l)].filter((x) => { const id = legId(x); if (seen.has(id) || gone.has(id)) return false; seen.add(id); return true; });
+    // A leg on both sides keeps the copy this device changed since the base (its 訂位進度, times…), else the account's.
+    const base = new Map(legsOf(b).map((x) => [legId(x), stable(x)]));
+    const mine = new Map(legsOf(l).filter((x) => hasBase && base.has(legId(x)) && base.get(legId(x)) !== stable(x)).map((x) => [legId(x), x]));
+    const legs = [...legsOf(r), ...legsOf(l)].filter((x) => { const id = legId(x); if (seen.has(id) || gone.has(id)) return false; seen.add(id); return true; }).map((x) => mine.get(legId(x)) || x);
     legs.sort((x, y) => String(x.date).localeCompare(String(y.date)));
     const name = hasBase && obj(l).name !== obj(b).name ? obj(l).name : obj(r).name || obj(l).name;
     return { name: name || '我的行程', legs: legs.slice(0, 12) };
@@ -138,7 +142,8 @@ function refreshViews(keys) {
     if (tabDone.has('points') && !$('#points-page')?.contains(document.activeElement)) renderPoints();
     if (currentTab === 'map') syncRmap(); // otherwise when the tab is next shown
   }
-  if (has('plan:v1')) { plan = cleanPlan(store.get(PLAN_KEY, null)); renderPlan(); }
+  if (has('plan:v1')) { plan = cleanPlan(store.get(PLAN_KEY, null)); if (typeof tripRemindSync === 'function') tripRemindSync(); renderPlan(); }
+  if (has('passport:v1') && typeof tpSavePassport === 'function') { $$('li.ti-passport').forEach(tpFillPassport); renderPlan(); }
   if (has('cashSeen:v1')) cashSeen = loadCashSeen();
   if (typeof P6_SYNC_KEYS !== 'undefined' && keys.some((k) => P6_SYNC_KEYS.includes(k))) p6Refresh();
   // hotelSearch:v1 and alertEmail are read when their form opens.

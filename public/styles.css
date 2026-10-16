@@ -1770,6 +1770,7 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .hotel-actions > small { margin-left: auto; }
   .hw-bell > span { display: none; }
   .hw-what small { display: block; margin: 2px 0 0; }
+}
 /* ---- round 6: 搜尋結果與明細 (flightplus.js, pairing.js, seathistory.js) ---- */
 /* 這班還可以用 */
 .also { margin-top: 8px; border-radius: 8px; background: var(--surface-2); padding: 6px 10px; font-size: .85rem; }
@@ -1853,6 +1854,7 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .pair-grid thead th { padding: 6px 4px; }
   .pair-grid tbody th { padding: 4px 6px; }
   .pair-grid td button { padding: 4px 2px; min-width: 50px; }
+}
 /* ---- round 6: 環球票規劃與國泰混艙計算 (rtw.js) ---- */
 #rtw-panel[open] { display: block; }
 .rtw-opts { margin: 10px 0 4px; }
@@ -2105,3 +2107,110 @@ input:focus, select:focus, .chips-box:focus-within { box-shadow: 0 0 0 3px color
 .bm-tools > h2.section { margin-bottom: 4px; }
 .bm-tools .gf-card:first-child { margin-top: 12px; }
 .bm-go button { display: inline; }
+
+/* ---- round 6: 我的行程與出發前 ---- */
+/* 我的行程: status pill, key dates, connection check, editor, paste, passport, reminders (trips.js) */
+.tp-pill { display: inline-block; margin-top: 4px; font: inherit; font-size: .74rem; font-weight: 600; line-height: 1.4; padding: 1px 9px; border-radius: 999px; border: 1px solid transparent; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+button.tp-pill { cursor: pointer; border-color: var(--border); }
+button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent); outline: none; }
+.tp-pill.s-held { background: var(--few); color: var(--few-text); }
+.tp-pill.s-waitlist { background: #ffe7d6; color: #8a3a00; }
+.tp-pill.s-ticketed { background: var(--accent-soft); color: var(--accent); }
+.plan-table td sup { font-size: .7em; }
+.plan-table tr.tp-sub td { padding-top: 0; white-space: normal; }
+.plan-table tr:has(+ tr.tp-sub) td { border-bottom: 0; }
+/* The table scrolls sideways on phones; the notes under a leg wrap within the screen instead. */
+.plan-table tr.tp-sub td > * { max-width: calc(100vw - 88px); box-sizing: border-box; }
+.tp-dates { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.tp-date { font-size: .78rem; padding: 2px 9px; border-radius: 8px; background: var(--surface-2); color: var(--text); }
+.tp-date b { font-weight: 600; color: var(--muted); margin-right: 2px; }
+.tp-date.warn { background: var(--few); }
+.tp-date.warn b { color: var(--few-text); }
+.tp-more { margin-top: 4px; font-size: .84rem; }
+.tp-more summary { color: var(--muted); cursor: pointer; font-size: .8rem; }
+.tp-more ul { margin: 4px 0; padding-left: 1.2em; }
+.tp-conn { list-style: none; margin: 6px 0 2px; padding: 8px 10px; border-left: 3px solid var(--sun-2); border-radius: 0 10px 10px 0; background: var(--surface-2); font-size: .84rem; display: grid; gap: 2px; }
+.tp-conn li.bad { color: var(--danger); font-weight: 600; }
+.tp-conn li.warn { color: var(--few-text); }
+.tp-conn li.ok { color: var(--accent); }
+.tp-conn li.info { color: var(--muted); }
+.tp-edit { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; margin: 8px 0 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.tp-edit .field { flex: 0 1 150px; margin: 0; font-size: .82rem; }
+.tp-edit .field input, .tp-edit .field select { min-width: 0; }
+.tp-edit .field input[name=backup] { width: 15em; }
+.tp-edit .field input[name=pnr] { width: 7em; text-transform: uppercase; }
+.tp-edit .check { font-size: .86rem; display: flex; align-items: center; gap: 6px; flex-basis: 100%; }
+.tp-edit .check input { width: auto; }
+.tp-edit .hint { flex-basis: 100%; margin: 0; }
+.tp-edit .plan-actions { margin: 0; flex-basis: 100%; }
+.tp-pp { margin: 8px 0 0; font-size: .9rem; }
+.tp-pp.bad b { color: var(--danger); }
+.pp-form { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: 6px; }
+.pp-form input[type=date] { font: inherit; font-size: .9rem; padding: 4px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); }
+.pp-form small { flex-basis: 100%; }
+.tp-tip { margin-top: 8px; }
+.tp-paste { margin-top: 12px; padding: 12px; border: 1px dashed var(--accent); border-radius: 12px; }
+.tp-paste textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: .92rem; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); }
+.tp-paste-legs { margin: 6px 0; padding-left: 1.2em; font-size: .9rem; }
+.tp-paste-legs small { display: block; color: var(--muted); }
+/* 現金票累積到哪裡 and 出發前小提醒's passport line */
+.tp-accrual { margin: 12px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-size: .9rem; }
+.tp-accrual summary { cursor: pointer; font-weight: 600; }
+.tp-accrual ul { margin: 8px 0 4px; padding-left: 1.2em; display: grid; gap: 4px; }
+.ti-passport .pp-form { margin: 4px 0 0; }
+/* 請假效率 (leave.js): chips on calendar days and 今日好康, the switch in the result tools */
+.leave-tools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.leave-tools .leave-note { flex-basis: 100%; margin: 0; }
+.lv-chip { display: block; margin-top: 2px; font-size: .62rem; font-weight: 700; line-height: 1.3; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-chip.good { color: #9a5a00; }
+.lv-chip.free { color: #1d7a3a; }
+.day.h4 .lv-chip { color: var(--heat-text-strong); }
+.cal.mini .lv-chip { font-size: .55rem; letter-spacing: -.03em; }
+.deal-mini .lv-chip { font-size: .74rem; margin: 0; }
+/* 台灣出發甜蜜點榜 (sweet.js) */
+.sweet { margin: 18px 0 8px; }
+.sweet > summary { cursor: pointer; list-style: none; }
+.sweet > summary::-webkit-details-marker { display: none; }
+.sweet > summary .section-title::before { content: "▸ "; color: var(--muted); }
+.sweet[open] > summary .section-title::before { content: "▾ "; }
+.sweet-opts { margin: 6px 0 12px; }
+.sweet-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.sweet-group { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; box-shadow: var(--shadow); }
+.sweet-group h3 { margin: 0 0 6px; }
+.sweet-group ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+.sweet-group li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 8px; }
+.sw-city small, .sw-price small { color: var(--muted); font-size: .76rem; }
+.sw-price { grid-column: 1; }
+.sw-price small { display: block; }
+.sw-go { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: .84rem; }
+/* 中停／開口組合 with the site's airport and date pickers (etrips.js) */
+.combo-leg-row[hidden] { display: none; }
+.combo-legs .combo-leg { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr) minmax(150px, .8fr) auto; align-items: end; gap: 6px 8px; }
+.combo-legs .combo-leg::before { align-self: center; margin-top: 18px; }
+.combo-leg .ac-host, .combo-leg .dp-field { margin: 0; }
+.combo-leg .ac-host > label, .combo-leg .dp-field > span { font-size: .78rem; }
+.combo-leg input.chips-q, .combo-leg input.chips-q:focus { flex: 1 1 60px; width: 0; min-width: 56px; border: 0; background: transparent; box-shadow: none; padding: 6px 2px; font-size: 1rem; text-transform: none; }
+.combo-leg .chips-box, .combo-leg .dp-btn { min-height: 42px; }
+/* One airport per end: once picked, the box stays one line (typing still replaces it). */
+.combo-leg .chips-box:has(.chip) { flex-wrap: nowrap; }
+.combo-leg .chips-box .chip { min-width: 0; flex: 0 1 auto; }
+.combo-leg .chips-box:has(.chip) input.chips-q { flex: 1 0 8px; min-width: 8px; }
+.combo-leg .chips-box:has(.chip) input.chips-q::placeholder { color: transparent; }
+.combo-leg-acts { display: flex; align-items: center; gap: 6px; padding-bottom: 4px; }
+@media (max-width: 640px) {
+  .combo-legs .combo-leg { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 1fr); }
+  .combo-legs .combo-leg .dp-field { grid-column: 2 / 4; }
+  .combo-leg-acts { grid-column: 2 / 4; justify-content: space-between; }
+  .combo-leg-acts [data-seek] { font-size: .82rem; padding: 6px 8px; }
+  .sweet-groups { grid-template-columns: 1fr; }
+  .tp-edit .field input[name=backup] { width: 100%; }
+  .tp-edit .field:has(input[name=backup]) { flex-basis: 100%; }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .tp-pill.s-waitlist { background: #4a2a12; color: #ffc89a; }
+  :root:not([data-theme="light"]) .lv-chip.good { color: #f2c66d; }
+  :root:not([data-theme="light"]) .lv-chip.free { color: #7be3a0; }
+}
+:root[data-theme="dark"] .tp-pill.s-waitlist { background: #4a2a12; color: #ffc89a; }
+:root[data-theme="dark"] .lv-chip.good { color: #f2c66d; }
+:root[data-theme="dark"] .lv-chip.free { color: #7be3a0; }

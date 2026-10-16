@@ -1,0 +1,149 @@
+{
+  "lastReviewed": "2026-10-16",
+  "note": "我的行程與出發前小提醒用的官方規定：線上報到開放時間（checkin，依航班號碼的航空公司代碼）、獎勵機票效期與取消期限（tickets，鍵是我的行程裡的計畫代碼：seats.aero 來源或 eva、ci、ana、jal）、各國入境的護照效期要求（passport，鍵是國家代碼，來自外交部領事事務局各國頁面的「簽證資訊」）、現金票累積哩程的官方頁（accrual）與哩程票的信用卡權益（cardPerks）。只收官方頁面寫明的規定；官方頁沒寫或讀不到的不列，頁面上會說「待確認」。",
+  "fields": {
+    "checkin": "hours：起飛前幾小時開放線上報到；usHours：往返美國（含關島）的航班另有規定時的小時數。",
+    "tickets": "validMonths：獎勵機票自開票日起有效的月數；cancel.before：起飛前幾小時以前可以取消或退票（0 表示起飛前）；cancel.text：條件與費用；verify：官方公告本文讀不到，待確認；backup：當作候補的備案時，提醒在期限前取消。",
+    "passport": "months：護照效期至少要剩幾個月；from：entry 從入境日算、exit 從離境日（申根是離開申根區那天）算；plusDays：停留結束後還要剩的天數；quote：領事事務局頁面原文。沒列的國家表示領事事務局頁面沒寫，或還沒查。",
+    "accrual": "各航空公司官方的累積哩程說明頁；其他航空公司只連到 wheretocredit.com。"
+  },
+  "checkin": {
+    "BR": { "hours": 48, "usHours": null, "label": "長榮航空：網路報到（官方）", "url": "https://www.evaair.com/zh-hk/fly-prepare/at-the-airport/check-in/online-check-in/", "quote": "在班機起飛前48小時至1小時，可在本公司網站上辦理長榮航空與立榮航空國際線的報到手續。" },
+    "B7": { "hours": 48, "usHours": null, "label": "長榮航空：網路報到（官方，含立榮國際線）", "url": "https://www.evaair.com/zh-hk/fly-prepare/at-the-airport/check-in/online-check-in/", "quote": "在班機起飛前48小時至1小時，可在本公司網站上辦理長榮航空與立榮航空國際線的報到手續。" },
+    "CI": { "hours": 48, "usHours": 24, "label": "中華航空：網路報到（官方）", "url": "https://www.china-airlines.com/tw/zh/prepare-for-the-fly/information/check-in/online-check-in", "quote": "起飛前 60 分鐘至 48 小時可辦理網路報到；前往美國航班 (含關島) 為起飛前 60 分鐘至 24 小時。" },
+    "JX": { "hours": 48, "usHours": 24, "label": "星宇航空：線上報到（官方）", "url": "https://www.starlux-airlines.com/zh-TW/check-in-fly/check-in-now/online-check-in", "quote": "於起飛前48-1小時，可辦理線上報到；往返美國之航班（含關島）受限當地政府規定，線上報到開放時間為起飛前24-1小時。" }
+  },
+  "tickets": {
+    "eva": {
+      "validMonths": 12,
+      "validText": "長榮／立榮國際線酬賓機票自開票日起一年內有效（立榮國內線 6 個月）",
+      "cancel": { "before": 0, "text": "星空聯盟夥伴獎勵票在長榮官網退票免手續費；長榮／立榮航班的獎勵票要到長榮票務櫃檯退票。長榮自營航班沒搭又沒取消會收 No-show 費：長程 150、短程 100、港澳 40 美元", "backup": true },
+      "sources": [
+        { "label": "長榮酬賓機票規定：長榮／立榮（官方）", "url": "https://www.evaair.com/zh-tw/infinity-mileageLands/mileage-award-program/mileage-redemption/award-ticket/eva-uni-air/" },
+        { "label": "長榮星空聯盟獎勵機票規定（官方）", "url": "https://www.evaair.com/en-us/infinity-mileagelands/mileage-award-program/mileage-redemption/award-ticket/star-alliance/default.html" }
+      ]
+    },
+    "ci": {
+      "validMonths": 12,
+      "validText": "機票自開票日起一年有效（2026-09-15 前開票的官方規定；之後開票的新制官方公告本文讀不到，以開票畫面為準）",
+      "cancel": { "before": 0, "text": "2026-09-16 起開票：官網退票免手續費（官方公告本文讀不到，待確認）；2026-09-15 前開票：No-show 長程 100、短程 50 美元（官方）", "verify": true, "backup": true },
+      "sources": [
+        { "label": "華航國際線酬賓機票規定 PDF，2026-09-15 前開票適用（官方）", "url": "https://cms-externalcontent-prod.s3.ap-northeast-1.amazonaws.com/ci/Member/Reward-Ticket/rt-before-15SEP26-en.pdf" },
+        { "label": "華航獎勵機票（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/redeem/reward-ticket" }
+      ]
+    },
+    "aeroplan": {
+      "cancel": { "before": 2, "text": "起飛前 2 小時仍可改退；最低價位的票取消每張官網 150、客服 175 加幣", "backup": true },
+      "sources": [{ "label": "Aeroplan 獎勵機票政策（官方）", "url": "https://www.aircanada.com/ca/en/aco/home/aeroplan/legal/aeroplan-flight-reward-policy.html" }]
+    },
+    "british": {
+      "cancel": { "before": 24, "text": "起飛 24 小時前取消可退回 Avios、扣 35 英鎊或 55 美元；24 小時內取消或沒搭機，Avios 不退", "backup": true },
+      "sources": [{ "label": "British Airways Club 條款（官方）", "url": "https://www.britishairways.com/content/the-british-airways-club/about-the-club/terms-and-conditions" }]
+    },
+    "qatar": {
+      "validMonths": 12,
+      "validText": "未使用的票自開票日起 12 個月有效",
+      "cancel": { "before": 24, "text": "起飛 24 小時前改票或取消 25 美元，3 到 24 小時前 100 美元；起飛前 3 小時內視同 No-show，Avios 不退", "backup": true },
+      "sources": [{ "label": "卡達：獎勵機票費用（官方）", "url": "https://www.qatarairways.com/en/Privilege-Club/redeem-avios/award-ticket-fees.html" }]
+    },
+    "turkish": {
+      "validMonths": 12,
+      "validText": "開票一年內可改日期或航線、也可退票退回哩程",
+      "cancel": { "before": 0, "text": "起飛前退票退回哩程，國際線每次 70 美元；No-show 後改票或退哩 170 美元", "backup": true },
+      "sources": [{ "label": "土航：獎勵機票條款（官方）", "url": "https://www.turkishairlines.com/en-us/miles-and-smiles/redeem-miles/redeem-miles-on-flights/award-travel-terms-conditions/" }]
+    },
+    "singapore": {
+      "cancel": { "before": 0, "text": "起飛前退票退回哩程 Saver 75 美元；No-show 另收經濟 100、豪經 200、商務與頭等 300 美元", "backup": true },
+      "sources": [{ "label": "新航 KrisFlyer 服務費用表（官方）", "url": "https://www.singaporeair.com/en_UK/au/ppsclub-krisflyer/forms-and-fees/service-fees/" }]
+    },
+    "ana": {
+      "cancel": { "before": 0, "text": "全程未使用、首段起飛前才能退票（3,000 日圓或 3,000 哩）", "backup": true },
+      "sources": [{ "label": "ANA 國際線獎勵機票規定（官方）", "url": "https://www.ana.co.jp/en/us/amc/international-flight-awards/" }]
+    },
+    "jal": {
+      "cancel": { "before": 3, "text": "要在開票一年內、首段起飛前退票，線上最晚起飛前 3 小時（每張 3,100 日圓）", "backup": true },
+      "sources": [{ "label": "日航：國際線獎勵機票取消（官方）", "url": "https://www.jal.co.jp/en/jalmile/use/jal/inter/cancel.html" }]
+    },
+    "lufthansa": {
+      "validMonths": 12,
+      "validText": "獎勵票自開票日起一年有效",
+      "sources": [{ "label": "Miles & More：獎勵機票條款（官方）", "url": "https://www.miles-and-more.com/at/en/general-information/terms-and-conditions/flight-awards.html" }]
+    },
+    "eurobonus": {
+      "cancel": { "before": 24, "text": "訂位後 24 小時內免費取消；之後到起飛 24 小時前都可取消，洲際線 75 歐元", "backup": true },
+      "sources": [{ "label": "SAS：獎勵機票規定（官方）", "url": "https://www.flysas.com/us-en/travel-info/ticket-types/award-tickets" }]
+    },
+    "aeromexico": {
+      "validMonths": 12,
+      "validText": "獎勵票自開票日起一年有效",
+      "sources": [{ "label": "墨航 Rewards：獎勵機票說明（官方）", "url": "https://business.aeromexicorewards.com/mx/utiliza/boletos-rewards?lang=es" }]
+    },
+    "etihad": {
+      "cancel": { "before": 24, "text": "最晚可在起飛 24 小時前改票，依票種可在起飛前取消，越早辦費用越低" },
+      "sources": [{ "label": "阿提哈德：Etihad Guest 常見問題（官方）", "url": "https://www.etihad.com/en-us/help/faq/etihad-guest" }]
+    }
+  },
+  "passport": {
+    "asOf": "2026-10-16",
+    "source": "外交部領事事務局各國「簽證資訊」頁",
+    "listUrl": "https://www.boca.gov.tw/sp-foof-countrylp-01-1.html",
+    "renewMonths": 9,
+    "countries": {
+      "JP": { "months": 0, "from": "exit", "quote": "需持有有效護照且在有效期內返回本國或僑居地者。(註：並未規定效期需大於6個月)", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-29-77969-02-1.html" },
+      "US": { "months": 0, "from": "exit", "quote": "國人以免簽證方式赴美所持護照效期只須與預計在美國停留期間相同即可，不受申請人所持護照在其預計自美國離境日起必須具有6個月以上效期之限制。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-102-4dd30-02-1.html" },
+      "TH": { "months": 6, "from": "entry", "quote": "中華民國（台灣）護照，剩餘效期6個月以上。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-24-dec45-02-1.html" },
+      "SG": { "months": 6, "from": "entry", "quote": "護照應有6個月以上效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-10-fa952-02-1.html" },
+      "ID": { "months": 6, "from": "entry", "quote": "須持效期6個月以上之我國護照。（落地簽證）", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-12-c23b0-02-1.html" },
+      "NZ": { "months": 3, "from": "exit", "quote": "所有入境紐西蘭的旅客都需攜帶護照，有效日期需至少比預計離境日期多三個月。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-19-2e478-02-1.html" },
+      "GB": { "months": 6, "from": "entry", "quote": "持用內載有我國民身分證統一編號之我國護照且效期在六個月以上者，赴英旅遊…均可享免簽證入境待遇。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-58-7c808-02-1.html" },
+      "FR": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-63-4a56f-02-1.html" },
+      "DE": { "months": 3, "from": "exit", "schengen": true, "quote": "在離開申根國當日，護照須仍具有3個月以上效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-73-c9bc1-02-1.html" },
+      "NL": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-57-0527d-02-1.html" },
+      "IT": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-53-ca74a-02-1.html" },
+      "CH": { "months": 3, "from": "exit", "schengen": true, "quote": "護照效期在離開申根區時至少還有3個月以上效期", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-71-9a9e2-02-1.html" },
+      "BE": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-56-1f534-02-1.html" },
+      "GR": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-61-21d56-02-1.html" },
+      "DK": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-64-199b0-02-1.html" },
+      "FI": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-66-e0f12-02-1.html" },
+      "HU": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-77-2fc2d-02-1.html" },
+      "PL": { "months": 3, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有3個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-62-aa8d5-02-1.html" },
+      "PT": { "months": 6, "from": "exit", "schengen": true, "quote": "國人在離開申根國家當日，護照須仍具有6個月以上的效期。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-70-71d1b-02-1.html" },
+      "CZ": { "months": 6, "from": "exit", "schengen": true, "quote": "確認所持護照效期是否在預計離開申根區時，仍有6個月效期", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-55-97d44-02-1.html" },
+      "AT": { "months": 6, "from": "entry", "schengen": true, "quote": "護照效期至少6個月以上。", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-54-b0087-02-1.html" },
+      "AE": { "months": 6, "from": "entry", "quote": "出國前務請確認護照效期有無6個月以上", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-51-e5142-02-1.html" },
+      "QA": { "months": 6, "from": "entry", "quote": "所持護照須效期6個月以上並附回程機票", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-189-44952-02-1.html" },
+      "TR": { "months": 6, "from": "entry", "plusDays": 60, "quote": "得憑6個月以上、且停留土國期限截止日起算至少尚餘60天效期之普通護照（電子簽證）", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-49-60be6-02-1.html" },
+      "IN": { "months": 6, "from": "entry", "quote": "國人持效期至少6個月以上之中華民國護照前往印度觀光、洽商等，均可…上網申請電子簽證", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-21-84369-02-1.html" },
+      "MN": { "months": 6, "from": "entry", "quote": "效期6個月以上之護照（簽證申請）", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-50-c3199-02-1.html" },
+      "LK": { "months": 6, "from": "entry", "quote": "入境斯里蘭卡時務請備妥入境斯國後起算效期超過6個月之護照", "url": "https://www.boca.gov.tw/sp-foof-countrycp-02-182-70658-02-1.html" }
+    },
+    "unstated": ["KR", "MY", "PH", "VN", "AU", "KH", "MV", "ES", "SE"]
+  },
+  "accrual": {
+    "BR": { "label": "長榮 無限萬哩遊：哩程累積比例（官方）", "url": "https://www.evaair.com/zh-tw/infinity-mileagelands/mileage-award-program/earning-mileage/eva-air-and-uni-air/mileage-accrual-ratio-rule/" },
+    "B7": { "label": "長榮 無限萬哩遊：哩程累積比例（官方）", "url": "https://www.evaair.com/zh-tw/infinity-mileagelands/mileage-award-program/earning-mileage/eva-air-and-uni-air/mileage-accrual-ratio-rule/" },
+    "CI": { "label": "華航 華夏哩程：飛行哩程（官方）", "url": "https://www.china-airlines.com/tw/zh/member/miles/earning/flight" },
+    "JX": { "label": "星宇 COSMILE：累積哩程（官方）", "url": "https://www.starlux-airlines.com/zh-TW/cosmile/my-cosmile/mileage-accrual" },
+    "CX": { "label": "國泰：會籍積分與亞洲萬里通計算機（官方）", "url": "https://www.cathaypacific.com/cx/en_HK/membership/miles-and-points-calculator.html" },
+    "wheretocredit": "https://wheretocredit.com/en/"
+  },
+  "cardPerks": {
+    "summary": "只用信用卡付稅金的哩程票，信用卡附贈的旅遊平安險、旅遊不便險可能不保：保險多半要求「全部票款」都用這張卡付，用點數、哩程或酬賓券抵付的票不算。出發前請看你那張卡的保險條款怎麼寫。",
+    "cards": [
+      {
+        "bank": "凱基銀行",
+        "scope": "信用卡綜合保險（旅行平安險、旅遊不便險）",
+        "coversAward": false,
+        "quotes": [
+          "公共運輸工具之全部票款必須全部以信用卡直接支付，方可享有信用卡綜合保險之保障。",
+          "公共運輸工具之全部票款不得有全部或部分以優待憑證(含優惠憑證、兌換券、折價券、酬賓券、抵用券、優待券、點數等)抵付之情形",
+          "因抽獎中獎或其他方式無償獲得之票證，縱以信用卡支付機場稅或兵險附加費等相關費用，仍無本保險適用。"
+        ],
+        "period": "保險期間 115/1/1～115/12/31",
+        "label": "凱基銀行：卡友權益（旅行平安險、旅遊不便險）（官方）",
+        "url": "https://www.kgibank.com.tw/zh-tw/personal/credit-card/insurance-benefit",
+        "checked": "2026-10-16"
+      }
+    ]
+  }
+}

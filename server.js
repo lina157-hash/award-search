@@ -24,7 +24,7 @@ const { createAdmin, AdminError } = require('./lib/admin');
 const lineLib = require('./lib/line');
 const { createHistory } = require('./lib/history');
 const { createSearchCache } = require('./lib/searchcache');
-const { createExpiry } = require('./lib/expiry');
+const { createExpiry, notesFromData } = require('./lib/expiry');
 const { createPromoWatch } = require('./lib/promowatch');
 const P6 = require('./public/points6.js');
 const { createCxcalStore, CxcalError } = require('./lib/cxcal-store');
@@ -34,6 +34,7 @@ const { createNlSearch, pickProvider, NlError } = require('./lib/nlsearch');
 const { createNlImage, MAX_BODY: NL_IMAGE_BODY } = require('./lib/nlimage');
 const { createBooked } = require('./lib/booked');
 const { createDealRules, DealRuleError } = require('./lib/dealrules');
+const { createTicketParse } = require('./lib/ticketparse');
 
 const PORT = Number(process.env.PORT) || 3000;
 const API_KEY = (process.env.SEATS_AERO_API_KEY || '').trim(); // a key pasted into Vercel with a space or line break still works
@@ -50,12 +51,12 @@ const kv = HAS_REDIS ? redisKv({ url: REDIS_URL, token: REDIS_TOKEN }) : memoryK
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'];
 // The page loads the bundle in two parts: `core` is what the first screen needs (form menus, airline and airport names);
 // `more` (points, charts, rules, booking notes…) is fetched when a search, a flight's details or a tab that uses it opens.
 const DATA_PARTS = {
   core: ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'],
-  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'],
+  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'],
 };
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
@@ -734,7 +735,11 @@ const reminderWallet = (d) => (d ? { ...(d['wallet:v1'] || {}), vouchers: d['wal
 const EXPIRY_WAYS = Object.fromEntries(require('./data/programs.json').programs.filter((x) => x.expiryWays?.length).map((x) => [{ evainfinity: 'eva', dynastyflyer: 'ci' }[x.id] || x.id, x.expiryWays]));
 const expiry = createExpiry({
   kv, rules: require('./data/expiry.json').programs, steps: require('./data/expiry.json').reminderDays,
-  loadWallet: async (email) => (accounts ? reminderWallet((await accounts.getData({ email })).data) : null),
+  // One read of the account per run: the wallet with points6's extras, plus 我的行程's key dates and the passport renewal.
+  loadAccount: async (email) => {
+    const d = accounts ? (await accounts.getData({ email })).data : null;
+    return { wallet: reminderWallet(d), notes: notesFromData(d) };
+  },
   sendEmail: alertMailer, notify: (html) => telegram.notify(html), siteUrl: SITE_URL, log: MOCK && !alertMailer ? (m) => console.log(m) : null,
   ways: EXPIRY_WAYS, regItems: (w, today) => P6.regReminders(w, today, POINTS6),
 });
@@ -800,7 +805,7 @@ async function handleAccount(req, res, sub) {
   if (sub === 'data' && m === 'GET') return sendJson(res, 200, await accounts.getData(need()));
   if (sub === 'data' && m === 'PUT') {
     const saved = await accounts.putData(need(), body);
-    await expiry.track(sess.email, reminderWallet(body.data)).catch((e) => console.error('expiry track', e.message));
+    await expiry.track(sess.email, reminderWallet(body.data), notesFromData(body.data)).catch((e) => console.error('expiry track', e.message));
     return sendJson(res, 200, saved);
   }
   if (m !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
@@ -1393,6 +1398,22 @@ const nlSearch = createNlSearch({
   limit: Number(process.env.NL_DAILY_LIMIT) || 100,
   timeoutMs: 15000,
 });
+// 貼上確認信 (我的行程, public/trips.js): an e-ticket or booking e-mail → legs, with the same model and the same owner gate
+// as 一句話搜尋; its own daily cap (TICKET_DAILY_LIMIT, 20). Nothing pasted is stored or logged.
+const ticketParse = createTicketParse({
+  mode: NL.mode, provider: NL.provider || undefined, apiKey: NL.apiKey, kv, today: () => todayTW(), airportCodes: new Set(AIRPORTS.keys()),
+  programs: [...[['eva', '長榮 無限萬哩遊'], ['ci', '華航 華夏哩程'], ['starlux', '星宇 COSMILE'], ['jal', '日航 JMB'], ['ana', '全日空 ANA']].map(([id, name]) => ({ id, name })),
+    ...Object.entries(SOURCE_NAMES).filter(([id, name], i, all) => !id.endsWith('_est') && all.findIndex(([, n]) => n === name) === i && !['eva', 'ci', 'starlux', 'jal', 'ana'].includes(id)).map(([id, name]) => ({ id, name }))],
+  limit: Number(process.env.TICKET_DAILY_LIMIT) || 20,
+});
+async function handleTicket(req) {
+  if (!fromPage(req)) throw new NlError('請從網站頁面使用貼上確認信', 403);
+  if ((await runCaller(req)) !== 'owner') {
+    throw cashPasscode() ? passError(req, '需要通關密碼才能讀確認信') : Object.assign(new CashError('要先在 Vercel 設定 CASH_PASSCODE，才能讀確認信', 401), { code: 'setup' });
+  }
+  const body = await readJson(req, 30_000);
+  return ticketParse.parse(body.text);
+}
 async function handleNl(req) {
   if (!fromPage(req)) throw new NlError('請從網站頁面使用一句話搜尋', 403);
   if ((await runCaller(req)) !== 'owner') {
@@ -1569,6 +1590,11 @@ async function route(req, res) {
       return sendJson(res, 200, await handleCxcal(req, q), req.method === 'GET' ? CACHE.short : null);
     }
     if (p === '/api/deals' && req.method === 'POST') return sendJson(res, 200, await refreshDealsNow(req));
+    if (p === '/api/nl/ticket') {
+      if (!ticketParse.enabled) return sendJson(res, 404, { error: 'not found' });
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleTicket(req));
+    }
     if (p === '/api/nl') {
       if (!nlSearch.enabled) return sendJson(res, 404, { error: 'not found' });
       if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });

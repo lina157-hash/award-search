@@ -146,6 +146,7 @@ function howToBookHtml(program) {
     lines.push(`<li><b>訂位方式</b>　${where}${b.phoneFee ? `；${esc(phoneFeeText(b.phoneFee))}` : ''}${b.note ? `。${esc(b.note)}` : ''}</li>`);
   }
   if (info?.days) lines.push(`<li><b>開票</b>　${esc(info.windowNote || `約 ${info.days} 天前開放`)}</li>`);
+  if (lines.length && typeof cardPerkLine === 'function') lines.push(cardPerkLine()); // trips.js
   const src = info?.sources?.[0];
   if (!lines.length) return '';
   return `<details class="howto"><summary>怎麼用 ${esc(programName(key))} 訂</summary><ul>${lines.join('')}</ul>${src ? `<p class="hint">資料來源：<a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label)} ↗</a>${info.confidence === 'secondary' ? '（第三方整理）' : ''}</p>` : ''}</details>`;
@@ -1092,16 +1093,18 @@ function renderDeals() {
   // Only offer the cabin switch when both cabins found something.
   const cabins = ['J', 'F'].filter((c) => body.groups.some((g) => g.cabin === c && g.items.length));
   if (!cabins.includes(dealsState.cabin)) dealsState.cabin = cabins[0];
-  const groups = body.groups.filter((g) => g.cabin === dealsState.cabin && g.items.length);
+  // leave.js: 請假效率 chips and its 不用請假／請 ≤2 天 filter.
+  const lvOk = (d) => typeof leaveOk !== 'function' || leaveOk(d.date);
+  const groups = body.groups.filter((g) => g.cabin === dealsState.cabin && g.items.filter(lvOk).length);
   host.innerHTML = `<div class="deals-head"><h2 class="section-title">今日好康 <small>台北出發最便宜的獎勵位・${body.generatedAt ? `${ago(body.generatedAt)}整理` : ''}${body.mock ? '（示範資料）' : ''}</small></h2>
-    ${cabins.length > 1 ? `<fieldset class="seg" aria-label="艙等">${[['J', '商務'], ['F', '頭等']].map(([k, l]) => `<label><input type="radio" name="deal-cabin" value="${k}" ${dealsState.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>` : `<span class="hint">${dealsState.cabin === 'F' ? '頭等艙' : '商務艙'}</span>`}</div>
-    ${groups.map((g) => `<div class="deal-group"><h3 class="sub">${esc(g.name)}</h3><div class="deal-row">${g.items.slice(0, 4).map((d) => `
+    ${cabins.length > 1 ? `<fieldset class="seg" aria-label="艙等">${[['J', '商務'], ['F', '頭等']].map(([k, l]) => `<label><input type="radio" name="deal-cabin" value="${k}" ${dealsState.cabin === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>` : `<span class="hint">${dealsState.cabin === 'F' ? '頭等艙' : '商務艙'}</span>`}${typeof leaveToolsHtml === 'function' ? leaveToolsHtml('deals') : ''}</div>
+    ${groups.map((g) => `<div class="deal-group"><h3 class="sub">${esc(g.name)}</h3><div class="deal-row">${g.items.filter(lvOk).slice(0, 4).map((d) => `
       <button type="button" class="deal-mini" data-deal="${esc(d.origin)}|${esc(d.destination)}|${esc(d.date)}">
         <span class="dm-route">${esc(d.origin)} → ${esc(d.destination)} <small>${esc(airportCity(d.destination))}</small></span>
         <span class="dm-miles">${fmt(d.miles)} <small>哩</small>${d.direct ? '<small class="dm-direct">直飛</small>' : ''}</span>
-        <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>
+        <span class="dm-meta">${dayLabel(d.date)} · ${esc(srcName(d.source))}</span>${typeof leaveChip === 'function' ? leaveChip(d.date) : ''}
         ${d.usual ? `<span class="dm-usual${d.miles < d.usual ? ' low' : ''}" title="這條航線這個計畫過去有位的日子，每天最低價的中位數（每日排程記下的，少於 7 天不顯示）">平常約 ${fmt(d.usual)} 哩${d.miles < d.usual ? `・少 ${kfmt(d.usual - d.miles)}` : ''}</span>` : ''}
-      </button>`).join('')}</div></div>`).join('') || '<p class="hint">這個艙等今天沒有整理到好康。</p>'}
+      </button>`).join('')}</div></div>`).join('') || `<p class="hint">${typeof leaveFiltering === 'function' && leaveFiltering() ? '符合請假天數的好康今天沒有，可以放寬「只看」。' : '這個艙等今天沒有整理到好康。'}</p>`}
     <p class="hint">每 12 小時整理一次（早上 8 點多、晚上 9 點多），座位可能已被訂走；點卡片會查那一天前後三天。${dealsRefreshHtml()}</p>`;
   $$('input[name=deal-cabin]', host).forEach((i) => i.addEventListener('change', () => { dealsState.cabin = i.value; renderDeals(); }));
   $('#deals-refresh', host)?.addEventListener('click', async (e) => {
@@ -1304,35 +1307,53 @@ function cleanLeg(x) {
     price: num(x.price),
     note: typeof x.note === 'string' ? x.note.slice(0, 30) : '',
   };
+  // Booking progress and times (trips.js); left out when absent, so older plans and their sync ids stay the same.
+  const day = (v) => str(v, /^\d{4}-\d{2}-\d{2}$/, 10);
+  const hm = (v) => str(v, /^([01]\d|2[0-3]):[0-5]\d$/, 5);
+  const extra = { status: ['held', 'waitlist', 'ticketed'].includes(x.status) ? x.status : null, holdUntil: day(x.holdUntil), ticketedOn: day(x.ticketedOn),
+    backup: typeof x.backup === 'string' && x.backup.trim() ? x.backup.trim().slice(0, 40) : null, dep: hm(x.dep), arr: hm(x.arr), arrDays: [1, 2].includes(x.arrDays) ? x.arrDays : null,
+    pnr: str(x.pnr, /^[A-Z0-9]{5,8}$/, 8), tk: str(x.tk, /^[a-z0-9]{4,8}$/, 8) };
+  for (const [k, v] of Object.entries(extra)) if (v) leg[k] = v;
   return leg.k && leg.date && leg.from && leg.to ? leg : null;
 }
 function cleanPlan(p) {
   const legs = Array.isArray(p?.legs) ? p.legs.map(cleanLeg).filter(Boolean).slice(0, MAX_LEGS) : [];
-  return { name: typeof p?.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 40) : '我的行程', legs };
+  // The dated reminders trips.js works out (保留到期、報到…), read by the daily mail run.
+  const remind = (Array.isArray(p?.remind) ? p.remind : []).filter((n) => n && /^[\w:.-]{1,60}$/.test(n.key) && typeof n.name === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(n.date) && Array.isArray(n.steps))
+    .slice(0, 30).map((n) => ({ key: n.key, name: n.name.slice(0, 80), date: n.date, steps: n.steps.filter((x) => Number.isInteger(x) && x >= 0 && x <= 400).slice(0, 4) }));
+  return { name: typeof p?.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 40) : '我的行程', legs, ...(remind.length ? { remind } : {}) };
 }
 let plan = { name: '我的行程', legs: [] };
 let sharedPlan = null;
-function savePlan() { store.set(PLAN_KEY, plan); renderPlan(); }
+function savePlan() { if (typeof tripRemindUpdate === 'function') tripRemindUpdate(plan); store.set(PLAN_KEY, plan); renderPlan(); }
 function addLegs(legs) {
   const clean = legs.map(cleanLeg).filter(Boolean);
   if (plan.legs.length + clean.length > MAX_LEGS) { toast(`行程最多 ${MAX_LEGS} 段`); return; }
   plan.legs.push(...clean);
-  plan.legs.sort((a, b) => a.date.localeCompare(b.date));
+  plan.legs.sort((a, b) => (a.date + (a.dep || '')).localeCompare(b.date + (b.dep || '')));
   savePlan();
   // 查看 opens the plan, which lives under the 航線查詢 form (from 查現金票 it is on another tab).
   toast('已加入「我的行程」', { label: '查看', run: () => { showTab('search'); const el = $('#plan-panel'); el.hidden = false; el.open = true; requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' })); } });
 }
 function awardLeg(t, pax) {
   const cabin = { economy: 'Y', premium: 'W', business: 'J', first: 'F' }[t.cabin] || 'J';
-  return { k: 'a', date: (t.departsAt || '').slice(0, 10), from: t.segments[0]?.from, to: t.segments.at(-1)?.to, flights: String(t.flightNumbers || '').toUpperCase().replace(/[^A-Z0-9 ,/·-]/g, '').slice(0, 60), cabin, pax: pax || 1, miles: t.miles, program: t.source, tax: t.taxes != null ? { amount: t.taxes / 100, cur: (t.taxesCurrency || '').toUpperCase().slice(0, 3) } : null };
+  // seats.aero times are local to each airport (written with a "Z" that isn't UTC).
+  const dep = String(t.departsAt || '');
+  const arr = String(t.arrivesAt || '');
+  const arrDays = arr && dep ? Math.round((Date.parse(arr.slice(0, 10)) - Date.parse(dep.slice(0, 10))) / 864e5) : 0;
+  return { k: 'a', date: dep.slice(0, 10), from: t.segments[0]?.from, to: t.segments.at(-1)?.to, flights: String(t.flightNumbers || '').toUpperCase().replace(/[^A-Z0-9 ,/·-]/g, '').slice(0, 60), cabin, pax: pax || 1, miles: t.miles, program: t.source, tax: t.taxes != null ? { amount: t.taxes / 100, cur: (t.taxesCurrency || '').toUpperCase().slice(0, 3) } : null,
+    dep: dep.slice(11, 16), arr: arr.slice(11, 16), arrDays };
 }
 function cashLegs() {
   const r = cash.req;
   const { out, back } = cash.chosen;
   const fl = (o) => o.segments.map((s) => (s.flightNumber || '').toUpperCase()).join(' / ').replace(/[^A-Z0-9 ,/·-]/g, '').slice(0, 60);
   const total = (back || out).price;
-  const legs = [{ k: 'c', date: r.depart, from: out.segments[0].from.code, to: out.segments.at(-1).to.code, flights: fl(out), cabin: r.cabin, pax: r.adults, price: total, note: back ? '來回總價' : '' }];
-  if (back) legs.push({ k: 'c', date: r.ret, from: back.segments[0].from.code, to: back.segments.at(-1).to.code, flights: fl(back), cabin: r.cabin, pax: r.adults, price: null, note: '含在去程票價' });
+  // Local times "YYYY-MM-DD HH:MM"; a round trip is one ticket (tk), so its two legs never count as a separate-ticket connection.
+  const times = (o) => { const a = o.segments[0].from.time || ''; const b = o.segments.at(-1).to.time || ''; return { dep: a.slice(11, 16), arr: b.slice(11, 16), arrDays: a && b ? Math.round((Date.parse(b.slice(0, 10)) - Date.parse(a.slice(0, 10))) / 864e5) : 0 }; };
+  const tk = back ? Math.random().toString(36).slice(2, 8) : undefined;
+  const legs = [{ k: 'c', date: r.depart, from: out.segments[0].from.code, to: out.segments.at(-1).to.code, flights: fl(out), cabin: r.cabin, pax: r.adults, price: total, note: back ? '來回總價' : '', ...times(out), tk }];
+  if (back) legs.push({ k: 'c', date: r.ret, from: back.segments[0].from.code, to: back.segments.at(-1).to.code, flights: fl(back), cabin: r.cabin, pax: r.adults, price: null, note: '含在去程票價', ...times(back), tk });
   return legs;
 }
 
@@ -1346,16 +1367,17 @@ function planHtml(p, editable) {
     if (l.k === 'a' && l.tax) taxBy[l.tax.cur || '?'] = (taxBy[l.tax.cur || '?'] || 0) + l.tax.amount * l.pax;
     if (l.k === 'c' && l.price) cashTotal += l.price;
   }
+  const trips = typeof tripRowHtml === 'function'; // trips.js: status, key dates, connection check
   const rows = p.legs.map((l, i) => `<tr>
-    <td>${mmdd(l.date)}（${dowOf(l.date)}）</td><td><b>${esc(l.from)} → ${esc(l.to)}</b><small>${esc(l.flights)}</small></td><td>${CABIN_LABEL[l.cabin]}${l.pax > 1 ? `・${l.pax} 人` : ''}</td>
+    <td>${mmdd(l.date)}（${dowOf(l.date)}）${trips ? tripPill(l, i, editable) : ''}</td><td><b>${esc(l.from)} → ${esc(l.to)}</b><small>${esc(l.flights)}${trips ? tpTime(l) : ''}</small></td><td>${CABIN_LABEL[l.cabin]}${l.pax > 1 ? `・${l.pax} 人` : ''}</td>
     <td>${l.k === 'a' ? `<b>${fmt(l.miles * l.pax)} 哩</b><small>${esc(programName(l.program))}${l.tax ? `・稅 ${esc(l.tax.cur)} ${fmt(Math.round(l.tax.amount * l.pax))}` : ''}</small>${editable && typeof bookedToggleHtml === 'function' ? bookedToggleHtml(l, i) : ''}` : l.price ? `<b>NT$${fmt(l.price)}</b><small>現金票${l.note ? `・${esc(l.note)}` : ''}</small>` : `<small>現金票・${esc(l.note)}</small>`}</td>
-    ${editable ? `<td><button type="button" class="linklike" data-leg-rm="${i}" aria-label="移除這段">✕</button></td>` : ''}</tr>`).join('');
+    ${editable ? `<td><button type="button" class="linklike" data-leg-rm="${i}" aria-label="移除這段">✕</button></td>` : ''}</tr>${trips ? tripRowHtml(p, i, editable) : ''}`).join('');
   const sum = [
     ...Object.entries(milesBy).map(([k, v]) => `${esc(programName(k))} <b>${fmt(v)} 哩</b>`),
     ...Object.entries(taxBy).map(([c, v]) => `稅金 ${esc(c === '?' ? '' : c)} <b>${fmt(Math.round(v))}</b>`),
     cashTotal ? `現金票 <b>NT$${fmt(cashTotal)}</b>` : '',
   ].filter(Boolean).join('　');
-  return `<div class="table-wrap"><table class="plan-table"><tbody>${rows}</tbody></table></div><p class="plan-sum">合計：${sum}</p>${editable && typeof bookedFootHtml === 'function' ? bookedFootHtml() : ''}`;
+  return `<div class="table-wrap"><table class="plan-table"><tbody>${rows}</tbody></table></div><p class="plan-sum">合計：${sum}</p>${editable && typeof bookedFootHtml === 'function' ? bookedFootHtml() : ''}${editable && typeof tripPlanExtras === 'function' ? tripPlanExtras(p) : ''}`;
 }
 function renderPlan() {
   const body = $('#plan-body');
@@ -1368,13 +1390,16 @@ function renderPlan() {
       <div class="plan-actions"><button type="button" class="primary small" id="plan-import">存成我的行程</button><button type="button" class="outline" id="plan-dismiss">不用了</button></div></div>` : ''}
     <label class="field plan-name">行程名稱<input id="plan-name" maxlength="40" value="${esc(plan.name)}"></label>
     ${planHtml(plan, true)}
-    ${plan.legs.length ? '<div class="plan-actions"><button type="button" class="outline" id="plan-share">🔗 複製行程連結</button><button type="button" class="outline" id="plan-clear">清空</button></div>' : ''}`;
+    ${plan.legs.length ? `<div class="plan-actions"><button type="button" class="outline" id="plan-share">🔗 複製行程連結</button>${typeof tripActionsHtml === 'function' ? tripActionsHtml(plan) : ''}<button type="button" class="outline" id="plan-clear">清空</button></div>`
+    : typeof tripActionsHtml === 'function' && tripActionsHtml(plan) ? `<div class="plan-actions">${tripActionsHtml(plan)}</div>` : ''}
+    ${typeof tpPasteHtml === 'function' ? tpPasteHtml() : ''}`;
   $('#plan-name').addEventListener('change', (e) => { plan.name = e.target.value.trim().slice(0, 40) || '我的行程'; store.set(PLAN_KEY, plan); });
   if (typeof bookedBind === 'function') bookedBind(body); // 已開票，便宜了通知我 (notify.js)
-  $$('[data-leg-rm]', body).forEach((b) => b.addEventListener('click', () => { plan.legs.splice(Number(b.dataset.legRm), 1); savePlan(); }));
+  $$('[data-leg-rm]', body).forEach((b) => b.addEventListener('click', () => { plan.legs.splice(Number(b.dataset.legRm), 1); if (typeof tp === 'object') tp.edit = -1; savePlan(); }));
   $('#plan-clear')?.addEventListener('click', () => { if (confirm('清空我的行程？')) { plan.legs = []; savePlan(); } });
   $('#plan-share')?.addEventListener('click', async () => {
-    const json = JSON.stringify(plan);
+    // Booking references and reminders stay on this device; the friend gets the flights and their status.
+    const json = JSON.stringify({ name: plan.name, legs: plan.legs.map(({ pnr, ...l }) => l) });
     const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     const url = `${location.origin}/?plan=${b64}#search`;
     try { await navigator.clipboard.writeText(url); toast('已複製行程連結'); } catch { prompt('複製這個連結：', url); }

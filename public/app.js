@@ -1316,7 +1316,8 @@ function visibleRows() {
   const prod = state.product && state.withTaxes ? productList().find((p) => p.id === state.product) : null;
   return state.results.filter((r) => cab(r, c)?.available && !state.hidden.has(r.source) && enoughSeats(r.cabins[c].seats, state.pax)
     && (!state.affordOnly || walletEmpty() || reach(r.source).total >= r.cabins[c].miles * Math.max(1, state.pax))
-    && (!prod || (!r.estimate && productMatches(prod, r.cabins[c].fleet))));
+    && (!prod || (!r.estimate && productMatches(prod, r.cabins[c].fleet)))
+    && (typeof leaveOk !== 'function' || leaveOk(r.date))); // leave.js: 不用請假／請 ≤2 天
 }
 
 // Result filters that need extra data: my points, and a specific premium product (aircraft from the trips).
@@ -1332,6 +1333,7 @@ function resultToolsHtml() {
     <label class="switch"><input type="checkbox" id="afford-only" ${state.affordOnly ? 'checked' : ''}><span class="knob"></span>只看我換得起的</label>
     ${prods.length ? `<label class="field compact">艙位產品<select id="product-filter"><option value="">全部</option>${prods.map((p) => `<option value="${esc(p.id)}" ${state.product === p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : ''}
     ${prodNote}
+    ${typeof leaveToolsHtml === 'function' ? leaveToolsHtml('search') : ''}
     ${resultSortHtml()}
   </div>`;
 }
@@ -1516,13 +1518,13 @@ function renderSearch() {
   const matrixTitle = `<h2 class="section-title">各計畫比較 <small>點計畫名稱可隱藏／顯示${state.withTaxes ? '；哩數下方是最低稅金' : '；日期範圍超過 45 天不列稅金，點格子可看'}</small></h2>`;
   if (!rows.length) {
     matrixObs?.disconnect();
-    const filtered = state.affordOnly || state.product;
+    const filtered = state.affordOnly || state.product || (typeof leaveFiltering === 'function' && leaveFiltering());
     // Nothing left because programs were unticked: keep the chips so they can be ticked again.
     const byChips = state.hidden.size && state.results.some((r) => state.hidden.has(r.source) && cab(r, c)?.available);
     const gap = !filtered && !byChips && typeof gapHtml === 'function' ? gapHtml(true) : ''; // 差一點 (flightplus.js)
     root.innerHTML = `<div class="section-title">${cabinSeg}</div>${resultToolsHtml()}${release}
       ${byChips ? `${matrixTitle}<div class="filters">${p.chips}</div>` : ''}
-      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && p.hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」或改選全部艙位產品。' : gap ? `沒有一班有 ${state.pax} 位以上；下面「差一點」是只差幾位的班次。` : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>
+      <div class="empty"><div class="empty-icon" aria-hidden="true">🪑</div><p>${byChips && p.hiddenAll ? '已取消勾選所有哩程計畫。點上面的計畫名稱，或按「全部勾選」，就會再顯示結果。' : byChips ? '勾選的計畫在這個艙等沒有獎勵位，點上面的計畫名稱多勾幾個，或按「全部勾選」。' : filtered ? '目前的篩選條件下沒有獎勵位，可以關掉「只看我換得起的」、改選全部艙位產品，或放寬請假天數。' : gap ? `沒有一班有 ${state.pax} 位以上；下面「差一點」是只差幾位的班次。` : '這個艙等在所選日期沒有獎勵位，試試其他艙等、日期或目的地。'}</p></div>
       ${gap}`;
     return;
   }
@@ -1653,7 +1655,7 @@ function calendarHtml(rows) {
     const mark = holidayMark(hol, iso);
     const note = mark.title ? `\n${mark.title}` : '';
     return m
-      ? `<button type="button" class="day has h${level(m)} ${state.day === iso ? 'sel' : ''} ${mark.cls}" data-date="${iso}" title="${iso} 最低 ${fmt(m)} 哩${esc(note)}">${text}<b>${kfmt(m)}</b></button>`
+      ? `<button type="button" class="day has h${level(m)} ${state.day === iso ? 'sel' : ''} ${mark.cls}" data-date="${iso}" title="${iso} 最低 ${fmt(m)} 哩${esc(note)}">${text}<b>${kfmt(m)}</b>${typeof leaveChip === 'function' ? leaveChip(iso) : ''}</button>`
       : `<div class="day ${mark.cls}"${mark.title ? ` title="${esc(mark.title)}"` : ''}>${text}<b>—</b></div>`;
   };
   // Lay days out under weekday headers, padding before the first day.
@@ -2545,6 +2547,7 @@ function renderChosen(box) {
       </div>
     </div>
     <div id="watch-slot"></div>
+    <div id="cash-accrual"></div>
     <div class="booking" id="cash-booking"></div>
     ${cashLinks(r, cash.googleUrl)}
   </div>`;
@@ -2555,6 +2558,7 @@ function renderChosen(box) {
   $('#cash-back').addEventListener('click', () => { seq.booking++; Object.assign(cash, { chosen: null, booking: null, returns: null, outbound: null }); renderCash(); });
   renderBooking();
   bindCashLinks();
+  if (typeof accrualMount === 'function') accrualMount($('#cash-accrual'), [out, back]); // trips.js: 現金票累積到哪裡
 }
 
 function bookingRowHtml(b, label, low = '') {
@@ -2882,6 +2886,7 @@ function renderRulesBody() {
     <div class="cards" id="program-cards"></div>`, 'rules-programs', `${programs.programs.length} 個哩程計畫：計價、中停、燃油附加費、效期`),
     rulesSection(releaseTableHtml(), '', '各計畫最早在出發前幾天開放訂位'),
     rulesSection(pointsHtml(), '', pts ? `${pts.transfers.length} 條銀行點數轉哩程管道、${pts.cobrand.length} 張聯名卡` : ''),
+    typeof cardPerksHtml === 'function' ? rulesSection(cardPerksHtml(), '', '只刷稅金的哩程票，旅平險、不便險可能不保') : '', // trips.js
     rulesSection(`<h2 class="section" id="r-glossary">名詞解釋</h2>${glossary.sections.map((s) => `<details class="sub-fold" ${q ? 'open' : ''}><summary><h3 class="sub">${esc(s.title)}</h3><small>${s.items.length} 個</small></summary>
       <div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div></details>`).join('')}`,
     '', `${terms.length} 個常見名詞，例如${terms.slice(0, 3).map(esc).join('、')}`),
@@ -3279,11 +3284,12 @@ function renderVersion(config) {
 // The data comes in two bundles, each cached per release (?v=): `core` for the first screen (index.html preloads it)
 // and `more` (points, charts, rules, booking notes) once a search, a flight's details or a tab that needs it opens.
 const DATA_CORE = ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'];
-const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'];
+const DATA_MORE = ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'];
 const DATA_KEY = { sourcenames: 'sourceNames', airlinenames: 'airlineNames', airportnames: 'airportNames', promohistory: 'promoHistory' };
 // Niceties the page works without: Chinese airline and airport names (codes show as they are), expiry rules,
-// buy-miles prices, dated rule changes, and the fee, hold, cost-per-mile and upgrade notes.
-const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory'];
+// buy-miles prices, dated rule changes, and the fee, hold, cost-per-mile and upgrade notes, the round-the-world
+// rules, past transfer bonuses and 我的行程's trip rules.
+const DATA_OPTIONAL = ['airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'];
 async function loadPart(part, names) {
   try {
     const all = await api(`/api/data/${part}${ASSET_V ? `?v=${encodeURIComponent(ASSET_V)}` : ''}`);

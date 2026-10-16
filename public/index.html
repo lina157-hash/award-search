@@ -352,7 +352,11 @@
   <!-- Loaded when first needed (app.js loadScripts): rtw.js, award-tools.js and ewallet.js with the results, 航班明細,
        點數換算器 and 規則庫; etrips.js, flightplus.js and pairing.js with the search scripts; hotels.js and
        hotelwatch.js on 查飯店; admin.js on the owner's device (account.js). points6.js stays here: account.js reads its
-       sync keys when it loads. -->
+       sync keys when it loads. trips.js, leave.js and sweet.js stay here too: 我的行程, the results and 今日好康 draw
+       with them, and sweet.js wraps app.js's tabInit.map before the map tab first opens. -->
+  <script src="/trips.js?v=1.32.7"></script>
+  <script src="/leave.js?v=1.32.7"></script>
+  <script src="/sweet.js?v=1.32.7"></script>
   <script src="/aihelper.js?v=1.32.7"></script>
   <script src="/points6.js?v=1.32.7"></script>
   <script src="/account.js?v=1.32.7"></script>
