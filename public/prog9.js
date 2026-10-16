@@ -28,6 +28,9 @@ function gcmapPath(legs) {
 }
 const gcmapUrl = (legs) => { const p = gcmapPath(legs); return p ? `https://www.gcmap.com/mapui?P=${p}` : ''; };
 
+// 「88,000 → 91,000」 as a signed whole percent: +3%, -4%, 0%.
+const p9Pct = (now, was) => { const p = Math.round(((now - was) / was) * 100); return `${p > 0 ? '+' : ''}${p}%`; };
+
 const P9_KIND = { start: ['開始', 'ok'], end: ['結束', ''], rule: ['規則', 'until'], alliance: ['聯盟', 'soon'], rate: ['比率', 'until soon'] };
 const p9Src1 = (p) => (p.sources || []).find((s) => s?.url) || (p.source?.url ? p.source : null);
 const p9PromoWhat = (p) => (p.type === 'award' ? '哩程票特惠' : p.type === 'buy' ? '買哩促銷' : '轉點加贈');
@@ -112,7 +115,7 @@ function weeklyDigest(src, today, siteUrl = '') {
 }
 
 if (typeof module === 'object' && module.exports) {
-  module.exports = { gcmapPath, gcmapUrl, recentChanges, weeklyDigest };
+  module.exports = { gcmapPath, gcmapUrl, p9Pct, recentChanges, weeklyDigest };
 } else {
   // ---------- browser ----------
   // #17: the link under a route. `legs` [{ from, to, surface? }].
@@ -123,6 +126,16 @@ if (typeof module === 'object' && module.exports) {
 
   const p9Link = (s) => (s?.url ? ` <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label || '來源')} ↗</a>` : '');
   const p9Today = () => (typeof twDate === 'function' ? twDate(0) : isoDate(0));
+
+  // #29: 「（原 88,000，+3%）」 after a chart value; shown only while 看改版前 is on.
+  window.beforeCell = (now, was) => (now > 0 && was > 0 && now !== was ? `<small class="was">（原 ${fmt(was)}，${p9Pct(now, was)}）</small>` : '');
+  window.beforeToggleHtml = (b) => `<p class="before-bar"><label class="before-toggle"><input type="checkbox" data-before> 看改版前</label>
+    <small>${esc(b.effective)} 改版${b.confidence === 'secondary' ? '・<span class="tag verify">第三方整理</span><sup class="mk-3p" aria-hidden="true">*</sup>' : '・<span class="tag ok">官方資料</span>'}${(b.sources || [b.source]).filter(Boolean).map(p9Link).join('')}</small></p>`;
+  document.addEventListener('change', (e) => {
+    const box = e.target.closest?.('input[data-before]');
+    if (!box) return;
+    box.closest('.before-host, .rules-sec')?.classList.toggle('show-before', box.checked);
+  });
 
   // #21 最近變動.
   const p9Changes = (opts) => recentChanges({
@@ -147,6 +160,37 @@ if (typeof module === 'object' && module.exports) {
     const parts = [[n('start'), '個優惠開始'], [n('end'), '個結束'], [n('rule') + n('alliance'), '項規則或聯盟異動']].filter(([c]) => c).map(([c, t]) => `${c} ${t}`);
     const rates = next.filter((x) => x.kind === 'rate').length;
     return `過去 30 天：${parts.join('、') || '沒有變動'}${rates ? `・${rates} 家銀行比率快到期` : ''}`;
+  }
+
+  // #29 哩程表改版前後: every charts.json table with old values, plus a pointer to the Asia Miles table's toggle.
+  function beforeHtml() {
+    const progs = (data.charts?.programs || []).filter((p) => p.before && p.tables?.some((t) => t.pairs?.some((pr) => pr.bands.some((b) => b.was))));
+    const am = data.asiamiles?.before;
+    if (!progs.length && !am) return '';
+    const region = (p, id) => esc(String(p.regions?.[id]?.name || id).replace(/（.*$/, ''));
+    const cabins = ['Y', 'W', 'J', 'F'];
+    const tables = progs.map((p) => p.tables.map((t) => t.pairs.filter((pr) => pr.bands.some((b) => b.was)).map((pr) => {
+      const cols = cabins.filter((c) => pr.bands.some((b) => b[c] != null));
+      const rows = pr.bands.map((b, i) => {
+        const lo = i ? pr.bands[i - 1].upTo + 1 : 0;
+        const range = b.upTo == null ? `${fmt(lo)} 哩以上` : `${fmt(lo)}–${fmt(b.upTo)} 哩`;
+        return `<tr><td>${range}</td>${cols.map((c) => `<td>${b[c] == null ? '—' : fmt(b[c])}${beforeCell(b[c], b.was?.[c])}</td>`).join('')}</tr>`;
+      }).join('');
+      return `<div><h4>${region(p, pr.from)} ↔ ${region(p, pr.to)}</h4><div class="table-wrap"><table><thead><tr><th>單程距離</th>${cols.map((c) => `<th>${CABIN_LABEL[c]}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    }).join('')).join('')).join('');
+    const head = progs.map((p) => {
+      const cells = p.tables.flatMap((t) => t.pairs.flatMap((pr) => pr.bands.flatMap((b) => Object.entries(b.was || {}).map(([c, w]) => [b[c], w]))));
+      const up = cells.filter(([n, w]) => n > w).length;
+      const down = cells.filter(([n, w]) => n < w).length;
+      return `<li><b>${esc(p.name)}</b>：${esc(p.before.effective)} 起，${cells.length} 格有調整（漲 ${up} 格、降 ${down} 格）<small>${esc(p.before.note || '')}${p9Link(p.before.source)}</small></li>`;
+    }).join('');
+    const amLi = am ? `<li><b>亞洲萬里通</b>：${esc(am.effective)} 起，國泰航班 ${Object.values(am.cx || {}).reduce((n, x) => n + Object.keys(x).length, 0)} 格有公告的舊值 <span class="tag verify">第三方整理</span><sup class="mk-3p" aria-hidden="true">*</sup>
+      <small>在上面「亞洲萬里通哩數表」打開「看改版前」對照。${esc(am.note || '')}</small></li>` : '';
+    const firstBefore = progs[0]?.before;
+    return `<h2 class="section" id="r-before">哩程表改版前後</h2>
+      <p class="hint">固定哩程表改版時，新舊哩數並排對照；只收官方公告逐格列出的舊值。</p>
+      <div class="promos recent-box"><ul>${head}${amLi}</ul></div>
+      ${tables ? `<div class="before-host">${firstBefore ? beforeToggleHtml(firstBefore) : ''}${progs.map((p) => `<h3 class="sub">${esc(p.name)}・${esc(p.tables[0]?.label || '')}</h3>`).join('')}<div class="before-tables">${tables}</div></div>` : ''}`;
   }
 
   // #27 會籍匹配.
@@ -187,6 +231,7 @@ if (typeof module === 'object' && module.exports) {
   // [html, one-line summary] for renderRulesBody (app.js), in page order; empty ones left out.
   window.prog9Sections = () => [
     [recentHtml(), recentSum()],
+    [beforeHtml(), '加航、亞萬固定哩程表新舊哩數對照'],
     [statusHtml(), `${(data.programs?.statusMatch?.offers || []).filter((o) => !o.ends || o.ends >= p9Today()).length} 個官方會籍匹配：條件與截止日`],
     [toolsHtml(), `${P9_TOOLS.length} 個第三方工具：距離、航點、累積、座位圖`],
   ].filter(([h]) => h);

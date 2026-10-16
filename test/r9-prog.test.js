@@ -306,3 +306,24 @@ test('cash sales: official pages for the four carriers; the fold fills the form 
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   assert.match(html, /<details class="promos cash-sales" id="cash-sales" hidden>/); // closed, and hidden until filled
 });
+
+// ---------- #29 before/after ----------
+test('chart before/after: Aeroplan old values from the official notice, Asia Miles marked third-party', () => {
+  const ac = read('charts.json').programs.find((p) => p.id === 'aeroplan');
+  assert.equal(ac.before.source.official, true);
+  assert.equal(ac.before.effective, '2026-06-01');
+  const cells = ac.tables.flatMap((t) => t.pairs.flatMap((pr) => pr.bands.flatMap((b) => Object.entries(b.was || {}).map(([c, w]) => [`${pr.from}-${pr.to} ${b.upTo} ${c}`, b[c], w]))));
+  assert.equal(cells.length, 41);
+  for (const [k, now, was] of cells) assert.ok(now > 0 && was > 0 && now !== was, k);
+  const get = (k) => cells.find((c) => c[0] === k);
+  assert.deepEqual(get('PAC-NA 11000 J').slice(1), [102500, 87500]);
+  assert.deepEqual(get('PAC-PAC null J').slice(1), [85000, 90000]); // some went down
+  const am = read('asiamiles.json');
+  assert.equal(am.before.confidence, 'secondary');
+  assert.equal(am.charts.cx.long.J, 91000);
+  assert.equal(am.before.cx.long.J, 88000);
+  assert.equal(P9.p9Pct(91000, 88000), '+3%');
+  assert.equal(P9.p9Pct(27000, 28000), '-4%');
+  // 即將變更 says 「X 月起漲約 N%」 when changes.json gives pct.
+  assert.match(src('ewallet.js'), /月起\$\{x\.pct > 0 \? '漲' : '降'\}約/);
+});

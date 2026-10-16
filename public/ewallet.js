@@ -372,7 +372,7 @@ function upcomingChanges(today = isoDate(0), { promoDays = 14, rateDays = 60 } =
       add({ date: n.date, kind: 'alliance', title: `${name}退出${a.name.replace(/\s+[A-Za-z].*$/, '')}`, advice: '用聯盟夥伴哩程換這家航空的票，要在這天前飛完', source: [].concat(n.source || [])[0] });
     }
   }
-  for (const c of data.changes?.changes || []) add({ date: c.date, kind: 'change', program: c.program, title: c.title, advice: c.advice || '', source: c.source });
+  for (const c of data.changes?.changes || []) add({ date: c.date, kind: 'change', program: c.program, title: c.title, advice: c.advice || '', source: c.source, pct: c.pct });
   return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 function upcomingHtml() {
@@ -380,7 +380,9 @@ function upcomingHtml() {
   const list = upcomingChanges(today);
   if (!list.length) return '';
   const first = list[0];
-  const li = (x) => `<li><b>${esc(x.title)}</b> <span class="tag until${x.days <= 30 ? ' soon' : ''}">${ewLeft(x.days)}</span>
+  // 「6 月起漲約 7%」 when changes.json gives the official average change (pct).
+  const pct = (x) => (Number(x.pct) ? ` <span class="tag warn">${Number(x.date.slice(5, 7))} 月起${x.pct > 0 ? '漲' : '降'}約 ${Math.abs(x.pct)}%</span>` : '');
+  const li = (x) => `<li><b>${esc(x.title)}</b>${pct(x)} <span class="tag until${x.days <= 30 ? ' soon' : ''}">${ewLeft(x.days)}</span>
     <small>${ewYmd(x.date, today)}${x.advice ? `・${esc(x.advice)}` : ''}${x.source?.url ? ` <a href="${esc(x.source.url)}" target="_blank" rel="noopener">${esc(x.source.label || '來源')} ↗</a>` : ''}</small></li>`;
   return `<details class="promos upcoming"><summary>⏳ 即將變更 ${list.length} 項 <small>最近：${esc(first.title)}・${ewLeft(first.days)}</small></summary><ul>${list.map(li).join('')}</ul></details>`;
 }

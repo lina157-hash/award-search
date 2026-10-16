@@ -2503,3 +2503,12 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 .sale-go small { flex-basis: 100%; }
 .sale-pages li { display: flex; align-items: center; gap: 6px; }
 .sale-pages a { padding: 6px 0; }
+/* #29 看改版前 */
+.before-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 8px 0; }
+.before-toggle { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; min-height: 32px; }
+.before-bar small { color: var(--muted); }
+small.was { display: none; color: var(--muted); font-size: .76rem; white-space: nowrap; }
+.show-before small.was { display: block; }
+.show-before td:has(small.was) { background: var(--accent-soft); }
+.before-tables h4 { margin: 10px 0 4px; font-size: .92rem; }
+@media (max-width: 640px) { .before-toggle, .gcmap-line a { min-height: 44px; } }

@@ -43,5 +43,19 @@
     "夥伴短程是否也分兩類：有來源列出第二類為 17,500／28,000／37,000／60,000。",
     "夥伴長程頭等艙 135,000 哩：查無實際座位可驗證。",
     "多家航空公司混搭的「寰宇一家多航司獎勵」另有價目，本站不估算。"
-  ]
+  ],
+  "before": {
+    "effective": "2026-05-01",
+    "note": "2026-05-01 改版前的國泰航班哩數，只收國泰改版公告舉的例子（由 The MileLion 轉述，國泰官網公告目前讀不到）；媒體自己查到的其他變動不列。",
+    "confidence": "secondary",
+    "sources": [
+      { "label": "The MileLion：2026 年 5 月 Asia Miles 調整全解析（引用國泰公告範例）", "url": "https://milelion.com/2026/05/03/full-details-cathay-pacifics-asia-miles-devaluation/", "official": false }
+    ],
+    "cx": {
+      "short": { "W": 20000, "J": 28000 },
+      "medium": { "J": 58000 },
+      "long": { "J": 88000 },
+      "ultralong": { "J": 115000 }
+    }
+  }
 }

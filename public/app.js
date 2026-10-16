@@ -3254,11 +3254,14 @@ function amChartHtml() {
     const lo = i ? am.bands[i - 1].max + 1 : 1;
     const range = b.max ? `${fmt(lo)}–${fmt(b.max)} 哩` : `${fmt(lo)} 哩以上`;
     const keys = b.id === 'short' ? [['short', '第一類'], ['short2', '第二類']] : [[b.id, '']];
-    return keys.map(([k, sub]) => `<tr><td><b>${b.name}${sub ? `（${sub}）` : ''}</b><div class="r">${range}</div></td>${Object.keys(CABIN_LABEL).map((c) => `<td>${fmt(chart[k][c])}</td>`).join('')}</tr>`);
+    // 看改版前 (prog9.js): the old value next to a Cathay-flight cell that changed.
+    const was = (k, c) => (chart === am.charts.cx && typeof beforeCell === 'function' ? beforeCell(chart[k][c], am.before?.cx?.[k]?.[c]) : '');
+    return keys.map(([k, sub]) => `<tr><td><b>${b.name}${sub ? `（${sub}）` : ''}</b><div class="r">${range}</div></td>${Object.keys(CABIN_LABEL).map((c) => `<td>${fmt(chart[k][c])}${was(k, c)}</td>`).join('')}</tr>`);
   }).join('');
   const table = (chart) => `<div><h3 class="sub">${esc(chart.name)}</h3><div class="table-wrap"><table><thead>${head}</thead><tbody>${rows(chart)}</tbody></table></div></div>`;
   return `<h2 class="section" id="am-chart">亞洲萬里通哩數表（${esc(am.effective)} 起，單程標準獎勵）</h2>
     <p class="hint">${esc(am.note)} ${esc(am.shortType2Note)}</p>
+    ${am.before && typeof beforeToggleHtml === 'function' ? beforeToggleHtml(am.before) : ''}
     <div class="am-tables">${table(am.charts.cx)}${table(am.charts.partner)}</div>
     <p class="hint">尚待確認：${am.uncertain.map((u) => esc(u.replace(/。$/, ''))).join('；')}</p>
     ${typeof cxMixHtml === 'function' ? cxMixHtml() : ''}
