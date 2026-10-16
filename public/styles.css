@@ -1853,4 +1853,56 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .pair-grid thead th { padding: 6px 4px; }
   .pair-grid tbody th { padding: 4px 6px; }
   .pair-grid td button { padding: 4px 2px; min-width: 50px; }
+/* ---- round 6: 環球票規劃與國泰混艙計算 (rtw.js) ---- */
+#rtw-panel[open] { display: block; }
+.rtw-opts { margin: 10px 0 4px; }
+.rtw-opts .field { max-width: 360px; }
+.seg label.off span { opacity: .4; }
+.rtw-add { margin: 8px 0 4px; max-width: 480px; }
+.rtw-list { list-style: none; margin: 10px 0 6px; padding: 0; }
+.rtw-stop { display: flex; align-items: center; gap: 8px; padding: 6px 0; min-width: 0; }
+.rtw-stop b { letter-spacing: .04em; flex: none; }
+.rtw-stop > span:not(.rtw-no) { color: var(--muted); font-size: .9rem; min-width: 0; flex: 0 100 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rtw-stop select { width: auto; min-width: 0; flex: 0 1 auto; padding: 4px 8px; font-size: .85rem; }
+.rtw-no { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: .75rem; font-weight: 700; }
+.rtw-rm { margin-left: auto; flex: none; font-size: .9rem; }
+.rtw-leg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-left: 10px; padding: 6px 0 6px 18px; border-left: 2px dashed var(--accent-soft); font-size: .85rem; }
+.rtw-leg.surface { border-left-color: var(--border); }
+.rtw-dist { color: var(--muted); min-width: 92px; }
+.rtw-in { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.rtw-in input, .rtw-in select { width: auto; padding: 4px 8px; font-size: .85rem; }
+.rtw-in input[data-air] { width: 4.2em; text-transform: uppercase; }
+.rtw-chk input { width: auto; }
+.rtw-go { font-size: .8rem; padding: 4px 10px; }
+.rtw-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 10px; }
+.rtw-sum { margin: 8px 0; font-size: .9rem; }
+.rtw-cmp { margin: 6px 0; }
+.rtw-cmp td small { display: block; color: var(--muted); font-size: .75rem; }
+.rtw-pick { font-weight: 700; padding: 0; text-align: left; }
+.rtw-price { margin: 10px 0 6px; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.rtw-miles { font-size: 1.3rem; color: var(--accent); }
+.rtw-price small { color: var(--muted); font-size: .82rem; }
+.rtw-checks { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 4px; font-size: .88rem; }
+.rtw-checks li { padding-left: 4px; }
+.rtw-checks li > span { display: inline-block; width: 1.2em; font-weight: 700; }
+.rtw-checks .ok > span { color: var(--heat-4); }
+.rtw-checks .bad { color: var(--danger); }
+.rtw-checks .warn > span { color: var(--few-text); }
+.rtw-checks .na { color: var(--muted); }
+.rtw-rules, .rtw-other { margin: 8px 0; font-size: .88rem; }
+.rtw-rules > summary, .rtw-other > summary { cursor: pointer; color: var(--accent); }
+.rtw-rules ul, .rtw-other ul { margin: 6px 0; padding-left: 20px; }
+.rtw-rules .hint, .rtw-other .hint { margin-top: 4px; }
+.cxmix-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 4px 0 14px; }
+.cxmix-body > .seg { justify-self: start; }
+.cxmix-table td:last-child { font-size: .82rem; color: var(--muted); }
+.cxmix-res { margin: 4px 0; }
+.cxmix-res b { color: #8a1538; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cxmix-res b { color: #f08aa8; } }
+:root[data-theme="dark"] .cxmix-res b { color: #f08aa8; }
+.cxmix-ex > summary { cursor: pointer; color: var(--accent); font-size: .88rem; }
+.cxmix-notes { padding-left: 20px; }
+@media (max-width: 640px) {
+  .rtw-leg { margin-left: 4px; padding-left: 12px; }
+  .rtw-dist { min-width: 0; width: 100%; }
 }
