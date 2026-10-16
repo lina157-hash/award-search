@@ -10,6 +10,7 @@ const { createAlerts, redisStore, memoryStore, resendMailer, AlertError } = requ
 const { createPriceWatch, RESERVE } = require('./lib/pricewatch');
 const { createHotelWatch } = require('./lib/hotelwatch');
 const { createDeals } = require('./lib/deals');
+const { withSeatHints } = require('./lib/seathint');
 const rooms = require('./lib/rooms');
 const rapid = require('./lib/rapidflights');
 const { createTravelInfo } = require('./lib/travelinfo');
@@ -53,12 +54,12 @@ const kv = HAS_REDIS ? redisKv({ url: REDIS_URL, token: REDIS_TOKEN }) : memoryK
 const CACHE_TTL_MS = (Number(process.env.CACHE_TTL_SECONDS) || 1800) * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
-const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'];
+const DATA_FILES = ['airlines', 'alliances', 'airports', 'programs', 'glossary', 'asiamiles', 'sourcenames', 'points', 'booking', 'charts', 'products', 'promos', 'airlinenames', 'airportnames', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips', 'seats'];
 // The page loads the bundle in two parts: `core` is what the first screen needs (form menus, airline and airport names);
 // `more` (points, charts, rules, booking notes…) is fetched when a search, a flight's details or a tab that uses it opens.
 const DATA_PARTS = {
   core: ['airlines', 'alliances', 'airports', 'sourcenames', 'airlinenames', 'airportnames'],
-  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips'],
+  more: ['programs', 'glossary', 'asiamiles', 'points', 'booking', 'charts', 'products', 'promos', 'expiry', 'buymiles', 'changes', 'fees', 'holds', 'milecost', 'upgrades', 'callcenters', 'rtw', 'promohistory', 'trips', 'seats'],
 };
 // Shown in the page footer; bump with `node scripts/bump-version.js`.
 const VERSION = require('./data/version.json');
@@ -407,10 +408,10 @@ let dealsPending = null;
 const DEALS_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 async function handleDeals(q) {
   const at = q.get('at');
-  if (at && DEALS_AT.test(at) && Date.parse(at) <= Date.now() + 60e3) return { mock: MOCK, ...(await withUsual(await deals.get({ atLeast: at }))) };
+  if (at && DEALS_AT.test(at) && Date.parse(at) <= Date.now() + 60e3) return { mock: MOCK, ...(await dealsView(await deals.get({ atLeast: at }))) };
   // Concurrent first visitors share one read (or the very first build) instead of each spending API calls.
   dealsPending ||= deals.get().finally(() => { dealsPending = null; });
-  return { mock: MOCK, ...(await withUsual(await dealsPending)) };
+  return { mock: MOCK, ...(await dealsView(await dealsPending)) };
 }
 // 「平常約 X 哩」 on each deal, from the route history (lib/history.js usual): one store read per saved copy of the
 // deals on this instance (kept by its generatedAt), never a seats.aero call. A failed read just leaves it out.
@@ -426,6 +427,11 @@ async function withUsual(d) {
   return { ...d, groups: d.groups.map((g) => ({ ...g, items: (g.items || []).map((x) => { const n = dealsUsual.map.get(usualKey(g.cabin, x)); return n ? { ...x, usual: n } : x; }) })) };
 }
 
+// …and 「可能斜躺」 on short-haul business deals on airlines with recliner business seats (lib/seathint.js).
+let dealSeats = null;
+const dealsView = async (d) => withSeatHints(await withUsual(d), (dealSeats ||= JSON.parse(DATA.seats.body)), DEAL_AIRLINE_ZH);
+const DEAL_AIRLINE_ZH = Object.fromEntries(require('./data/airline-names.json').airlines.map(([c, zh]) => [c, zh]));
+
 // 「立即更新」 on 今日好康: the owner (passcode) refreshes every group now, about 8 seats.aero calls, at most once an hour.
 // Nothing refreshed (the daily run was updating them, or every group failed): the hour's turn is given back.
 async function refreshDealsNow(req) {
@@ -437,7 +443,7 @@ async function refreshDealsNow(req) {
     d = await deals.refresh({ deadline: Date.now() + 45_000, fresh: true });
   } catch (e) { await release(); throw e; }
   if (!d.refreshed) await release();
-  return { mock: MOCK, ...(await withUsual(d)) };
+  return { mock: MOCK, ...(await dealsView(d)) };
 }
 
 const safeEqual = (a, b) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -1558,6 +1564,9 @@ const MUSE_TPL = { body: MUSE_TPL_BODY, etag: etagOf(MUSE_TPL_BODY) };
 // Which oneworld/Star airlines fly each airport pair (rtw.js's airline menu), fetched when 環球票規劃 opens.
 const RTW_ROUTES_BODY = fs.readFileSync(path.join(DATA_DIR, 'rtw-routes.json'));
 const RTW_ROUTES = { body: RTW_ROUTES_BODY, etag: etagOf(RTW_ROUTES_BODY) };
+// Cash-ticket earning charts and the baggage/lounge links (public/airinfo.js), fetched when one of those opens.
+const AIRLINE_INFO_BODY = JSON.stringify({ accrual: require('./data/accrual.json'), info: require('./data/airline-info.json') });
+const AIRLINE_INFO = { body: AIRLINE_INFO_BODY, etag: etagOf(AIRLINE_INFO_BODY) };
 
 function staticPolicy(rel, q) {
   if (rel.endsWith('.html')) return 'no-cache';
@@ -1765,6 +1774,7 @@ async function route(req, res) {
     if (p === '/api/data/routing') return sendBody(req, res, { ...ROUTING, type: MIME['.json'], cache: CACHE.data });
     if (p === '/api/data/musetemplates') return sendBody(req, res, { ...MUSE_TPL, type: MIME['.json'], cache: CACHE.data });
     if (p === '/api/data/rtwroutes') return sendBody(req, res, { ...RTW_ROUTES, type: MIME['.json'], cache: CACHE.data });
+    if (p === '/api/data/airlineinfo') return sendBody(req, res, { ...AIRLINE_INFO, type: MIME['.json'], cache: CACHE.data });
     const m = p.match(/^\/api\/data\/(\w+)$/);
     if (m && DATA_FILES.includes(m[1])) return sendBody(req, res, { ...DATA[m[1]], type: MIME['.json'], cache: CACHE.data });
     if (p.startsWith('/api/')) return sendJson(res, 404, { error: 'not found' });
