@@ -1210,9 +1210,12 @@ async function handleFlightData(kind, q, req) {
 // 飛機現在在哪's backup (lib/aviationstack.js): only with AVIATIONSTACK_API_KEY set, 100 free requests a month.
 const AVIATIONSTACK_KEY = (process.env.AVIATIONSTACK_API_KEY || '').trim();
 const aviationstack = AVIATIONSTACK_KEY ? createAviationstack({ apiKey: AVIATIONSTACK_KEY, kv, month: monthTW }) : null;
-// 飛機現在在哪's first source (lib/opensky.js): the owner's choice; anonymous unless OPENSKY_CLIENT_ID/_SECRET are set.
-// OPENSKY=off turns it off.
-const opensky = (process.env.OPENSKY || '').trim() === 'off' ? null : createOpenSky({ clientId: (process.env.OPENSKY_CLIENT_ID || '').trim(), clientSecret: (process.env.OPENSKY_CLIENT_SECRET || '').trim(), kv });
+// 飛機現在在哪's OpenSky (the owner's choice) is asked from the owner's own browser (public/flightstatus.js): OpenSky
+// blocks AWS and other cloud hosts, Vercel among them (github.com/openskynetwork/opensky-api: "We may block AWS and other
+// hyperscalers due to generalized abuse from these IPs"; seen live 2026-10-17: token and API both unreachable). The
+// server lookup (lib/opensky.js) stays for a host OpenSky lets in: OPENSKY=server turns it on, signed in with
+// OPENSKY_CLIENT_ID/_SECRET when they are set.
+const opensky = (process.env.OPENSKY || '').trim() !== 'server' ? null : createOpenSky({ clientId: (process.env.OPENSKY_CLIENT_ID || '').trim(), clientSecret: (process.env.OPENSKY_CLIENT_SECRET || '').trim(), kv });
 const flightStatus = RAPIDAPI_KEY ? createFlightStatus({ apiKey: RAPIDAPI_KEY, kv, live: opensky, backup: aviationstack, spend: spendDirectsUnits, refund: (n) => kv.incr(directsKey(), -n).catch(() => {}), onQuota: (q) => Object.assign(directsQuota, q) })
   : MOCK ? createFlightStatus({ mock: true }) : null;
 async function handleFlightStatus(q, req, kind) {

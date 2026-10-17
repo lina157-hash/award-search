@@ -180,7 +180,8 @@ test('OpenSky first, then AeroDataBox\'s own position, then Aviationstack; the l
   assert.equal(r.legs[0].pos.src, 'opensky');
   assert.deepEqual(r.live, { left: 3990, why: '', by: '', authFailed: false });
   assert.equal(live.asked[0].callsign, 'EVA198');
-  assert.ok(!('hex' in r.legs[0]) && !('ends' in r.legs[0]) && !('callsign' in r.legs[0]));
+  assert.ok(!('hex' in r.legs[0]) && !('callsign' in r.legs[0]));
+  assert.deepEqual(r.legs[0].sky, { hex: '8991a6', callsign: 'EVA198' }, 'for the page to ask OpenSky itself');
   const r2 = await fs.status('BR12', '2026-10-17', { from: 'TPE', today: '2026-10-17' });
   assert.equal(r2.legs[0].pos.src, 'aerodatabox', 'OpenSky had nothing: AeroDataBox\'s own');
 });
@@ -194,4 +195,30 @@ test('a plane at height reported at 0 km/h has no speed or heading; the icon the
   assert.equal(page.fstBearing({ lat: 0, lon: 0 }, { lat: 0, lon: 10 }), 90);
   const tpeFra = page.fstBearing({ lat: 25.08, lon: 121.23 }, { lat: 50.03, lon: 8.57 });
   assert.ok(tpeFra > 300 && tpeFra < 340, `Taipei to Frankfurt starts north-west (${tpeFra}°)`);
+});
+
+test('OpenSky from the browser: by transponder code or call sign, kept a minute; no answer and nothing heard are told apart', async () => {
+  const calls = [];
+  const fake = (res) => async (url) => { calls.push(url); if (res instanceof Error) throw res; return { ok: (res.status || 200) < 300, status: res.status || 200, json: async () => res.body }; };
+  const t = Date.parse('2026-10-17T16:20:00Z');
+  const r = await page.fstSkyLookup({ hex: '8991a6', callsign: 'EVA198' }, fake({ body: { states: [STATE] } }), t);
+  assert.equal(calls[0], 'https://opensky-network.org/api/states/all?icao24=8991a6');
+  assert.deepEqual(r, { pos: { lat: 31.75, lon: 133.5, src: 'opensky', altFt: 37000, kmh: 889, track: 52, at: '2026-10-17T03:00:00.000Z' }, why: '', by: 'hex' });
+  await page.fstSkyLookup({ hex: '8991a6' }, fake(new Error('no')), t + 30e3);
+  assert.equal(calls.length, 1, 'kept a minute');
+  const cs = await page.fstSkyLookup({ callsign: 'CAL61' }, fake({ body: { states: [[...STATE.slice(0, 1), 'CAL061  ', ...STATE.slice(2)]] } }), t);
+  assert.equal(calls[1], 'https://opensky-network.org/api/states/all');
+  assert.equal(cs.by, 'callsign');
+  assert.equal(cs.pos.lat, 31.75);
+  assert.equal((await page.fstSkyLookup({ hex: 'aaaaaa' }, fake(new TypeError('Failed to fetch')), t)).why, 'down');
+  assert.equal((await page.fstSkyLookup({ hex: 'bbbbbb' }, fake({ status: 429 }), t)).why, 'quota');
+  assert.equal((await page.fstSkyLookup({ hex: 'cccccc' }, fake({ body: { states: null } }), t)).why, 'unheard');
+  assert.equal((await page.fstSkyLookup({}, fake({ body: {} }), t)).why, 'nokey');
+  assert.equal(page.fstSkyPos([...STATE.slice(0, 8), true, ...STATE.slice(9)]), null, 'on the ground');
+  assert.match(page.fstLiveWhy({ why: 'down', browser: true }), /你的瀏覽器連不上 OpenSky/);
+});
+
+test('the server asks OpenSky only when OPENSKY=server (OpenSky blocks cloud hosts)', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server.js'), 'utf8');
+  assert.match(src, /process\.env\.OPENSKY \|\| ''\)\.trim\(\) !== 'server' \? null/);
 });

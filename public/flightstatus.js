@@ -122,10 +122,55 @@ function fstLiveWhy(live) {
     unheard: `OpenSky ${how}查過，最近沒收到這架飛機的訊號（在海上、中國或中亞上空常收不到，飛到日本、歐美附近再按一次）`,
     nokey: 'OpenSky 查不了：AeroDataBox 沒給這架飛機的識別碼和呼號',
     quota: 'OpenSky 今天的點數用完了，明天再查',
-    down: 'OpenSky 暫時連不上',
+    down: live.browser ? '你的瀏覽器連不上 OpenSky（可能是網路或瀏覽器擋住了）' : 'OpenSky 暫時連不上',
   }[live.why] || '';
   const auth = live.authFailed ? 'OpenSky 帳號登入失敗，改用匿名查（請檢查 Vercel 的 OPENSKY_CLIENT_ID、OPENSKY_CLIENT_SECRET）' : '';
   return [why, auth].filter(Boolean).join('；');
+}
+// OpenSky from the owner's browser (OpenSky blocks the cloud host the server runs on): one anonymous call per click,
+// kept a minute; GET /api/states/all?icao24=<hex>, or every plane in the air matched on the call sign. A state vector:
+// 0 icao24, 1 callsign, 3 time_position (s), 5 longitude, 6 latitude, 7 baro_altitude (m), 8 on_ground, 9 velocity
+// (m/s), 10 true_track (°), 13 geo_altitude (m).
+const FST_SKY = 'https://opensky-network.org/api/states/all';
+const fstSkyMemo = new Map();
+const fstCallKey = (v) => { const m = /^([A-Z]{3})0*(\d{1,4})([A-Z]{0,2})$/.exec(String(v || '').replace(/\s+/g, '').toUpperCase()); return m ? `${m[1]}${m[2]}${m[3]}` : ''; };
+// The plane's state → the page's position (the server's lib/flightstatus.js position() shape); null when not in the air.
+function fstSkyPos(s) {
+  if (!Array.isArray(s) || s[8] || s[5] == null || s[6] == null || Math.abs(s[6]) > 90 || Math.abs(s[5]) > 180) return null;
+  const m = s[7] ?? s[13];
+  const ft = m != null && Number.isFinite(Number(m)) ? Number(m) * 3.28084 : null;
+  const kmh = s[9] != null && Number.isFinite(Number(s[9])) ? Number(s[9]) * 3.6 : null;
+  return {
+    lat: Math.round(s[6] * 1000) / 1000, lon: Math.round(s[5] * 1000) / 1000, src: 'opensky',
+    altFt: ft != null && ft >= 0 && ft < 70000 ? Math.round(ft / 100) * 100 : null,
+    kmh: kmh != null && kmh >= 1 && kmh < 1500 ? Math.round(kmh) : null,
+    track: s[10] != null && Number.isFinite(Number(s[10])) ? Math.round(((Number(s[10]) % 360) + 360) % 360) : null,
+    at: s[3] ? new Date(s[3] * 1000).toISOString() : null,
+  };
+}
+// { pos, why, by }: why '' (found), 'unheard', 'down' (the browser could not get an answer) or 'quota'.
+async function fstSkyLookup({ hex = '', callsign = '' }, fetchImpl = fetch, now = Date.now()) {
+  const cs = fstCallKey(callsign);
+  const by = /^[0-9a-f]{6}$/.test(hex) ? 'hex' : cs ? 'callsign' : '';
+  if (!by) return { pos: null, why: 'nokey', by };
+  const key = by === 'hex' ? hex : cs;
+  const hit = fstSkyMemo.get(key);
+  if (hit && now - hit.at < 60e3) return hit.r;
+  let res;
+  try {
+    res = await fetchImpl(by === 'hex' ? `${FST_SKY}?icao24=${hex}` : FST_SKY, { signal: AbortSignal.timeout(15000) });
+  } catch {
+    return { pos: null, why: 'down', by };
+  }
+  if (res.status === 429) return { pos: null, why: 'quota', by };
+  if (!res.ok) return { pos: null, why: 'down', by };
+  const body = await res.json().catch(() => null);
+  const states = Array.isArray(body?.states) ? body.states : [];
+  const s = by === 'hex' ? states.find((x) => String(x?.[0]).toLowerCase() === hex) : states.find((x) => fstCallKey(x?.[1]) === cs);
+  const pos = fstSkyPos(s);
+  const r = { pos, why: pos ? '' : 'unheard', by };
+  fstSkyMemo.set(key, { at: now, r });
+  return r;
 }
 const FST_SRC = { opensky: ['OpenSky Network', 'https://opensky-network.org'], aerodatabox: ['AeroDataBox', 'https://aerodatabox.com'], aviationstack: ['Aviationstack', 'https://aviationstack.com'] };
 // A flight number on Flightradar24's own page (a link only; nothing is read from that site).
@@ -168,13 +213,16 @@ function fstWhereHtml(l, k, st) {
   if (!FST_FLYING.has(l.status)) return '';
   const fr24 = `<a href="${esc(fstFr24(l.number))}" target="_blank" rel="noopener">在 Flightradar24 看這班 ↗</a>`;
   const why = fstLiveWhy(st.data?.live);
+  const asking = l.sky && !st.data?.live;
+  if (!l.pos && asking) return '<p class="hint fst-nopos">🗺 正在向 OpenSky 查飛機的位置…</p>';
   if (!l.pos) return `<p class="hint fst-nopos">🗺 這次沒有收到飛機的位置${why ? `。${esc(why)}` : '（在海上或偏遠地區常常收不到訊號）'}。${fr24}</p>`;
   const toName = airportCity(l.to.iata) || l.to.iata;
   const text = fstWhereText(l.pos, fstProgress(l.pos, fstAp(l.from.iata), fstAp(l.to.iata)), toName);
   const [name, url] = FST_SRC[l.pos.src] || FST_SRC.aerodatabox;
   const via = st.data?.backup?.spent && l.pos.src === 'aviationstack' ? `，這次用了 1 次（本月約剩 ${fmt(st.data.backup.left)}／${fmt(st.data.backup.limit)} 次）`
-    : l.pos.src === 'opensky' && st.data?.live?.left != null ? `（免費，今天約剩 ${fmt(st.data.live.left)} 點${st.data.live.authFailed ? '；帳號登入失敗，這次是匿名查' : ''}）`
-      : why ? `（${esc(why)}）` : '';
+    : l.pos.src === 'opensky' && st.data?.live?.browser ? '（免費，從你的瀏覽器直接查）'
+      : l.pos.src === 'opensky' && st.data?.live?.left != null ? `（免費，今天約剩 ${fmt(st.data.live.left)} 點${st.data.live.authFailed ? '；帳號登入失敗，這次是匿名查' : ''}）`
+      : asking ? '（正在向 OpenSky 查更新的位置…）' : why ? `（${esc(why)}）` : '';
   return `<details class="fst-where" data-fst-pos="${k}"${st.mapOpen === k ? ' open' : ''}><summary>🗺 飛機現在在哪：${esc(text)}</summary>
     <div class="fst-map" role="img" aria-label="${esc(`${l.number} 的航線和飛機位置地圖：${text}`)}"><p class="hint">地圖載入中…</p></div>
     <p class="hint">${esc(fstPosFacts(l.pos))}。位置來源 <a href="${url}" target="_blank" rel="noopener">${name}</a>${via}・${fr24}</p></details>`;
@@ -279,6 +327,15 @@ async function fstRun(i) {
   }
   st.busy = false;
   fstDraw(i);
+  // A leg in the air: then OpenSky from this browser, its position preferred (fresher than AeroDataBox's).
+  const r = st.data;
+  const k = r && st.kind === 'status' ? (r.legs || []).findIndex((l) => l.sky) : -1;
+  if (k < 0) return;
+  const sky = await fstSkyLookup(r.legs[k].sky).catch(() => ({ pos: null, why: 'down', by: '' }));
+  if (st.data !== r) return; // asked again meanwhile
+  r.live = { why: sky.why, by: sky.by, browser: true };
+  if (sky.pos) r.legs[k] = { ...r.legs[k], pos: sky.pos };
+  fstDraw(i);
 }
 // The leg's two buttons (each opens its panel and asks at once when the leg has one flight), and the cost line.
 function fstBind(host) {
@@ -327,7 +384,7 @@ function fstClick(e) {
   fstRun(i);
 }
 
-if (typeof module === 'object' && module.exports) module.exports = { fstFlights, fstDateNote, fstDelayText, fstPunctText, fstTone, fstKm, fstProgress, fstArc, fstWhereText, fstPosFacts, fstFr24, fstLiveWhy, fstBearing, FST_AHEAD, FST_UNITS };
+if (typeof module === 'object' && module.exports) module.exports = { fstFlights, fstDateNote, fstDelayText, fstPunctText, fstTone, fstKm, fstProgress, fstArc, fstWhereText, fstPosFacts, fstFr24, fstLiveWhy, fstBearing, fstSkyPos, fstSkyLookup, fstCallKey, FST_AHEAD, FST_UNITS };
 else {
   document.addEventListener('click', fstClick);
   document.addEventListener('toggle', fstToggle, true);
