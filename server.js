@@ -1186,9 +1186,10 @@ const flightData = createFlightData({
 let flightDemo = null;
 const flightReady = () => (MOCK ? (flightDemo ||= flightData.refresh().catch(() => null)) : Promise.resolve());
 async function handleFlightData(kind, q, req) {
-  if (kind === 'refresh' || kind === 'status') {
+  // status: the full one for the owner, the trimmed one (flightData.publicStatus) for a plain visit to the address.
+  if (kind === 'status') return (await runCaller(req).catch(() => null)) ? flightData.status() : flightData.publicStatus();
+  if (kind === 'refresh') {
     if (!(await runCaller(req))) throw passError(req, '需要通關密碼');
-    if (kind === 'status') return flightData.status();
     if (req.method !== 'POST') throw new BadRequest('請用 POST');
     return flightData.refresh({ until: Date.now() + 45e3 });
   }

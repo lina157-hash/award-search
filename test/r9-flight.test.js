@@ -235,6 +235,13 @@ test('due(): at most once a day, weekly, or on a Monday after a day; the status 
   const s = JSON.stringify(await fd.status());
   assert.ok(!s.includes('demo-id-123') && !s.includes('demo-secret-456'));
   assert.match(s, /"tdxKey":true/);
+  // Without the passcode: what each source did, nothing else.
+  const pub = await fd.publicStatus();
+  const ps = JSON.stringify(pub);
+  assert.ok(!ps.includes('demo-id-123') && !ps.includes('demo-secret-456') && !ps.includes('http'));
+  assert.equal(pub.tdxKey, true);
+  assert.ok(pub.sources.tdx.ok && pub.sources.lf);
+  assert.ok(!('ms' in pub.sources.tdx) && !('url' in pub.sources.tdx));
 });
 
 test('the timetable is stored in pieces with a stamp; old pieces go', async () => {
