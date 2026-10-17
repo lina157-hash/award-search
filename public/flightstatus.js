@@ -107,6 +107,19 @@ function fstPosFacts(pos, nowMs = Date.now()) {
     age != null && (age < 1 ? '剛剛的位置' : age < 120 ? `${age} 分鐘前的位置` : '位置已經是很久以前的'),
   ].filter(Boolean).join('・');
 }
+// Why OpenSky gave no position, in words (r.live from the server); empty when it was not asked.
+function fstLiveWhy(live) {
+  if (!live) return '';
+  const how = live.by === 'hex' ? '用飛機的識別碼' : '用航班呼號';
+  const why = {
+    unheard: `OpenSky ${how}查過，最近沒收到這架飛機的訊號（在海上、中國或中亞上空常收不到，飛到日本、歐美附近再按一次）`,
+    nokey: 'OpenSky 查不了：AeroDataBox 沒給這架飛機的識別碼和呼號',
+    quota: 'OpenSky 今天的點數用完了，明天再查',
+    down: 'OpenSky 暫時連不上',
+  }[live.why] || '';
+  const auth = live.authFailed ? 'OpenSky 帳號登入失敗，改用匿名查（請檢查 Vercel 的 OPENSKY_CLIENT_ID、OPENSKY_CLIENT_SECRET）' : '';
+  return [why, auth].filter(Boolean).join('；');
+}
 const FST_SRC = { opensky: ['OpenSky Network', 'https://opensky-network.org'], aerodatabox: ['AeroDataBox', 'https://aerodatabox.com'], aviationstack: ['Aviationstack', 'https://aviationstack.com'] };
 // A flight number on Flightradar24's own page (a link only; nothing is read from that site).
 const fstFr24 = (number) => `https://www.flightradar24.com/data/flights/${encodeURIComponent(String(number).replace(/\s+/g, '').toLowerCase())}`;
@@ -147,12 +160,13 @@ const fstAp = (code) => (typeof AP === 'object' && AP.byCode.get(code)) || null;
 function fstWhereHtml(l, k, st) {
   if (!FST_FLYING.has(l.status)) return '';
   const fr24 = `<a href="${esc(fstFr24(l.number))}" target="_blank" rel="noopener">在 Flightradar24 看這班 ↗</a>`;
-  if (!l.pos) return `<p class="hint fst-nopos">🗺 這次沒有收到飛機的位置（在海上或偏遠地區常常收不到訊號）。${fr24}</p>`;
+  const why = fstLiveWhy(st.data?.live);
+  if (!l.pos) return `<p class="hint fst-nopos">🗺 這次沒有收到飛機的位置${why ? `。${esc(why)}` : '（在海上或偏遠地區常常收不到訊號）'}。${fr24}</p>`;
   const toName = airportCity(l.to.iata) || l.to.iata;
   const text = fstWhereText(l.pos, fstProgress(l.pos, fstAp(l.from.iata), fstAp(l.to.iata)), toName);
   const [name, url] = FST_SRC[l.pos.src] || FST_SRC.aerodatabox;
   const via = st.data?.backup?.spent && l.pos.src === 'aviationstack' ? `，這次用了 1 次（本月約剩 ${fmt(st.data.backup.left)}／${fmt(st.data.backup.limit)} 次）`
-    : l.pos.src === 'opensky' && st.data?.live?.left != null ? `（免費，今天約剩 ${fmt(st.data.live.left)} 點）` : '';
+    : l.pos.src === 'opensky' && st.data?.live?.left != null ? `（免費，今天約剩 ${fmt(st.data.live.left)} 點${st.data.live.authFailed ? '；帳號登入失敗，這次是匿名查' : ''}）` : '';
   return `<details class="fst-where" data-fst-pos="${k}"${st.mapOpen === k ? ' open' : ''}><summary>🗺 飛機現在在哪：${esc(text)}</summary>
     <div class="fst-map" role="img" aria-label="${esc(`${l.number} 的航線和飛機位置地圖：${text}`)}"><p class="hint">地圖載入中…</p></div>
     <p class="hint">${esc(fstPosFacts(l.pos))}。位置來源 <a href="${url}" target="_blank" rel="noopener">${name}</a>${via}・${fr24}</p></details>`;
@@ -305,7 +319,7 @@ function fstClick(e) {
   fstRun(i);
 }
 
-if (typeof module === 'object' && module.exports) module.exports = { fstFlights, fstDateNote, fstDelayText, fstPunctText, fstTone, fstKm, fstProgress, fstArc, fstWhereText, fstPosFacts, fstFr24, FST_AHEAD, FST_UNITS };
+if (typeof module === 'object' && module.exports) module.exports = { fstFlights, fstDateNote, fstDelayText, fstPunctText, fstTone, fstKm, fstProgress, fstArc, fstWhereText, fstPosFacts, fstFr24, fstLiveWhy, FST_AHEAD, FST_UNITS };
 else {
   document.addEventListener('click', fstClick);
   document.addEventListener('toggle', fstToggle, true);

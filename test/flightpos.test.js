@@ -109,7 +109,7 @@ test('page: distance, how far along, the great circle across 180°, and the word
   assert.equal(page.fstFr24('BR 198'), 'https://www.flightradar24.com/data/flights/br198');
 });
 
-const { createOpenSky, TOKEN_URL } = require('../lib/opensky');
+const { createOpenSky, callKey, TOKEN_URL } = require('../lib/opensky');
 function fakeSky(responses) {
   const calls = [];
   return { calls, fetchImpl: async (url, opts = {}) => { calls.push({ url: String(url), opts }); const r = responses.shift(); if (r instanceof Error) throw r; return { status: r.status || 200, ok: (r.status || 200) < 300, headers: new Map(Object.entries(r.headers || {})), json: async () => r.body }; } };
@@ -133,21 +133,43 @@ test('OpenSky: the plane by its transponder address, signed in with the client c
   assert.equal(sky.calls.length, 2);
 });
 
-test('OpenSky: anonymous by call sign in a box round the airports; a plane on the ground, 429 and no way to look it up', async () => {
-  const sky = fakeSky([{ body: { states: [['aaaaaa', 'CAL100', '', 1, 1, 130, 30, 1000, false, 200, 10], STATE] } }, { body: { states: [[...STATE.slice(0, 8), true, ...STATE.slice(9)]] } }, { status: 429, headers: { 'x-rate-limit-retry-after-seconds': '600' } }]);
+test('OpenSky: anonymous by call sign across every plane in the air; on the ground, 429, nothing to look it up by', async () => {
+  const sky = fakeSky([{ body: { states: [['aaaaaa', 'CAL100', '', 1, 1, 130, 30, 1000, false, 200, 10], [...STATE.slice(0, 1), 'CAL061  ', ...STATE.slice(2)]] } }, { body: { states: [[...STATE.slice(0, 8), true, ...STATE.slice(9)]] } }, { status: 429, headers: { 'x-rate-limit-retry-after-seconds': '600' } }]);
   const o = createOpenSky({ fetchImpl: sky.fetchImpl });
-  const TPE = { lat: 25.08, lon: 121.23 };
-  const NRT = { lat: 35.76, lon: 140.39 };
-  const r = await o.lookup({ callsign: 'EVA198', from: TPE, to: NRT });
-  assert.equal(sky.calls[0].url, 'https://opensky-network.org/api/states/all?lamin=22.08&lamax=38.76&lomin=118.23&lomax=143.39');
+  const r = await o.lookup({ callsign: 'CAL61' });
+  assert.equal(sky.calls[0].url, 'https://opensky-network.org/api/states/all', 'no box: a long flight bends far past its airports');
   assert.equal(sky.calls[0].opts.headers.authorization, undefined, 'anonymous');
-  assert.equal(r.pos.lat, 31.75);
-  assert.equal((await o.lookup({ icao24: '8991a6' })).pos, null, 'on the ground: no position');
+  assert.deepEqual([r.pos.lat, r.by, r.why], [31.75, 'callsign', ''], 'CAL061 is CAL61');
+  const g = await o.lookup({ icao24: '8991a6' });
+  assert.deepEqual([g.pos, g.by, g.why], [null, 'hex', 'unheard'], 'on the ground: no position');
   assert.equal((await o.lookup({ icao24: '123abc' })).why, 'quota');
   assert.equal((await o.lookup({ icao24: '456def' })).why, 'quota', 'waits out the retry time');
   assert.equal(sky.calls.length, 3);
-  assert.equal((await o.lookup({ callsign: 'EVA12', from: TPE, to: { lat: 33.9, lon: -118.4 } })).why, 'nokey', 'no box across 180°');
   assert.equal((await o.lookup({})).why, 'nokey');
+  assert.deepEqual(['CAL061 ', 'cal61', 'EVA198', 'BR198', ''].map(callKey), ['CAL61', 'CAL61', 'EVA198', '', '']);
+});
+
+test('OpenSky: a sign-in that fails is said, and the lookup goes on anonymously', async () => {
+  const sky = fakeSky([{ status: 401, body: { error: 'invalid_client' } }, { body: { states: [STATE] } }]);
+  const o = createOpenSky({ clientId: 'id', clientSecret: 'bad', fetchImpl: sky.fetchImpl });
+  const r = await o.lookup({ icao24: '8991a6' });
+  assert.equal(r.authFailed, true);
+  assert.equal(r.pos.src, 'opensky');
+  assert.equal(sky.calls[1].opts.headers.authorization, undefined);
+  assert.match(page.fstLiveWhy({ why: '', authFailed: true }), /帳號登入失敗/);
+  assert.match(page.fstLiveWhy({ why: 'unheard', by: 'hex' }), /^OpenSky 用飛機的識別碼查過，最近沒收到/);
+  assert.match(page.fstLiveWhy({ why: 'nokey' }), /沒給這架飛機的識別碼和呼號/);
+  assert.equal(page.fstLiveWhy(null), '');
+});
+
+test('a flight without a call sign is looked for as the airline\'s ICAO code and its number', async () => {
+  const adb = fakeFetch([{ body: [flight({ number: 'CI 61', airline: { name: 'China Airlines', iata: 'CI', icao: 'CAL' }, aircraft: { reg: 'B-18003' }, location: undefined })] }]);
+  const live = { asked: [], lookup: async (q) => { live.asked.push(q); return { pos: null, left: 3990, by: 'callsign', why: 'unheard' }; } };
+  const fs = fsl.createFlightStatus({ apiKey: 'k', fetchImpl: adb.fetchImpl, live });
+  const r = await fs.status('CI61', '2026-10-17', { from: 'TPE', today: '2026-10-17' });
+  assert.deepEqual(live.asked[0], { icao24: '', callsign: 'CAL61' });
+  assert.deepEqual(r.live, { left: 3990, why: 'unheard', by: 'callsign', authFailed: false });
+  assert.equal(r.legs[0].pos, null);
 });
 
 test('OpenSky first, then AeroDataBox\'s own position, then Aviationstack; the lookup keys stay on the server', async () => {
@@ -156,7 +178,7 @@ test('OpenSky first, then AeroDataBox\'s own position, then Aviationstack; the l
   const fs = fsl.createFlightStatus({ apiKey: 'k', fetchImpl: adb.fetchImpl, live });
   const r = await fs.status('BR198', '2026-10-17', { from: 'TPE', today: '2026-10-17' });
   assert.equal(r.legs[0].pos.src, 'opensky');
-  assert.deepEqual(r.live, { left: 3990, why: '' });
+  assert.deepEqual(r.live, { left: 3990, why: '', by: '', authFailed: false });
   assert.equal(live.asked[0].callsign, 'EVA198');
   assert.ok(!('hex' in r.legs[0]) && !('ends' in r.legs[0]) && !('callsign' in r.legs[0]));
   const r2 = await fs.status('BR12', '2026-10-17', { from: 'TPE', today: '2026-10-17' });
