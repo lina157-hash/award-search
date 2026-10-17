@@ -166,7 +166,7 @@ test('N13: the runs of a day stop at the daily cap; a run near its time limit st
   // A new UTC day starts the count again (rooms.aero's quota day).
   clock.t += 864e5;
   fake.calls = 0;
-  const late = await hw.run({ until: Date.now() + 1000 });
+  const late = await hw.run({ until: clock.t + 1000 }); // the fake clock, not the real one (the test broke once the real date passed it)
   assert.equal(fake.calls, 0, 'no call that could not answer in time');
   assert.deepEqual(late.report.map((x) => x.skipped), ['time', 'time']);
   fake.fail = true;
