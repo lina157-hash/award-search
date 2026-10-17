@@ -132,7 +132,7 @@ test('X1: one click is one call on the documented paths; the answer is kept; uni
   const again = await fs.status('br32', '2026-10-16', { from: 'TPE', today: '2026-10-16' });
   assert.equal(calls.length, 1, 'within 10 minutes: no second call');
   assert.equal(again.spent, 0);
-  assert.ok(await kv.get('fstatus:v3:BR32:2026-10-16'), 'shared with other instances');
+  assert.ok(await kv.get('fstatus:v4:BR32:2026-10-16'), 'shared with other instances');
   const d = await fs.delays('BR32');
   assert.equal(calls[1].url, 'https://aerodatabox.p.rapidapi.com/flights/BR32/delays');
   assert.deepEqual(spent, [2, 6]);

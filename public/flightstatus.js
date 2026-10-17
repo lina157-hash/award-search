@@ -59,6 +59,13 @@ function fstKm(a, b) {
   const h = Math.sin(((b.lat - a.lat) * r) / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((b.lon - a.lon) * r) / 2) ** 2;
   return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
+// The initial great-circle heading from a to b, in degrees from north: the plane's way when its own heading is unknown.
+function fstBearing(a, b) {
+  const r = Math.PI / 180;
+  const y = Math.sin((b.lon - a.lon) * r) * Math.cos(b.lat * r);
+  const x = Math.cos(a.lat * r) * Math.sin(b.lat * r) - Math.sin(a.lat * r) * Math.cos(b.lat * r) * Math.cos((b.lon - a.lon) * r);
+  return Math.round(((Math.atan2(y, x) / r) + 360) % 360);
+}
 // How far along: { pct, leftKm } from the two airports and the plane; null without all three.
 function fstProgress(pos, a, b) {
   if (!pos || !a || !b) return null;
@@ -166,7 +173,8 @@ function fstWhereHtml(l, k, st) {
   const text = fstWhereText(l.pos, fstProgress(l.pos, fstAp(l.from.iata), fstAp(l.to.iata)), toName);
   const [name, url] = FST_SRC[l.pos.src] || FST_SRC.aerodatabox;
   const via = st.data?.backup?.spent && l.pos.src === 'aviationstack' ? `，這次用了 1 次（本月約剩 ${fmt(st.data.backup.left)}／${fmt(st.data.backup.limit)} 次）`
-    : l.pos.src === 'opensky' && st.data?.live?.left != null ? `（免費，今天約剩 ${fmt(st.data.live.left)} 點${st.data.live.authFailed ? '；帳號登入失敗，這次是匿名查' : ''}）` : '';
+    : l.pos.src === 'opensky' && st.data?.live?.left != null ? `（免費，今天約剩 ${fmt(st.data.live.left)} 點${st.data.live.authFailed ? '；帳號登入失敗，這次是匿名查' : ''}）`
+      : why ? `（${esc(why)}）` : '';
   return `<details class="fst-where" data-fst-pos="${k}"${st.mapOpen === k ? ' open' : ''}><summary>🗺 飛機現在在哪：${esc(text)}</summary>
     <div class="fst-map" role="img" aria-label="${esc(`${l.number} 的航線和飛機位置地圖：${text}`)}"><p class="hint">地圖載入中…</p></div>
     <p class="hint">${esc(fstPosFacts(l.pos))}。位置來源 <a href="${url}" target="_blank" rel="noopener">${name}</a>${via}・${fr24}</p></details>`;
@@ -201,7 +209,7 @@ function fstMapDraw(fold, l) {
       L.marker(ahead.at(-1), { icon: L.divIcon({ className: 'rtw-pin', html: `<span class="rtw-pin-c">${esc(l.to.iata)}</span>`, iconSize: null, iconAnchor: [13, 13] }), keyboard: false }).addTo(map);
       all.push(...ahead);
     }
-    L.marker(at, { icon: L.divIcon({ className: 'fst-plane', html: `<span style="transform: rotate(${l.pos.track ?? 0}deg)">${FST_PLANE}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }), keyboard: false, zIndexOffset: 1000 })
+    L.marker(at, { icon: L.divIcon({ className: 'fst-plane', html: `<span style="transform: rotate(${l.pos.track ?? (b ? fstBearing(l.pos, b) : 0)}deg)">${FST_PLANE}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }), keyboard: false, zIndexOffset: 1000 })
       .bindTooltip(esc(l.number)).addTo(map);
     all.push(at);
     if (all.length > 1) map.fitBounds(L.latLngBounds(all), { padding: [24, 24], maxZoom: 6 });
@@ -319,7 +327,7 @@ function fstClick(e) {
   fstRun(i);
 }
 
-if (typeof module === 'object' && module.exports) module.exports = { fstFlights, fstDateNote, fstDelayText, fstPunctText, fstTone, fstKm, fstProgress, fstArc, fstWhereText, fstPosFacts, fstFr24, fstLiveWhy, FST_AHEAD, FST_UNITS };
+if (typeof module === 'object' && module.exports) module.exports = { fstFlights, fstDateNote, fstDelayText, fstPunctText, fstTone, fstKm, fstProgress, fstArc, fstWhereText, fstPosFacts, fstFr24, fstLiveWhy, fstBearing, FST_AHEAD, FST_UNITS };
 else {
   document.addEventListener('click', fstClick);
   document.addEventListener('toggle', fstToggle, true);

@@ -184,3 +184,14 @@ test('OpenSky first, then AeroDataBox\'s own position, then Aviationstack; the l
   const r2 = await fs.status('BR12', '2026-10-17', { from: 'TPE', today: '2026-10-17' });
   assert.equal(r2.legs[0].pos.src, 'aerodatabox', 'OpenSky had nothing: AeroDataBox\'s own');
 });
+
+test('a plane at height reported at 0 km/h has no speed or heading; the icon then points toward where it is going', () => {
+  const p = fsl.position({ lat: 26.5, lon: 120.3, pressureAltitude: { feet: 32100 }, groundSpeed: { kt: 0, kmPerHour: 0 }, trueTrack: { deg: 0 } });
+  assert.deepEqual([p.altFt, p.kmh, p.track], [32100, null, null]);
+  const ground = fsl.position({ lat: 25, lon: 121, pressureAltitude: { feet: 100 }, groundSpeed: { kmPerHour: 0 }, trueTrack: { deg: 50 } });
+  assert.deepEqual([ground.kmh, ground.track], [0, 50], 'on the ground 0 is real');
+  assert.equal(page.fstBearing({ lat: 0, lon: 0 }, { lat: 10, lon: 0 }), 0);
+  assert.equal(page.fstBearing({ lat: 0, lon: 0 }, { lat: 0, lon: 10 }), 90);
+  const tpeFra = page.fstBearing({ lat: 25.08, lon: 121.23 }, { lat: 50.03, lon: 8.57 });
+  assert.ok(tpeFra > 300 && tpeFra < 340, `Taipei to Frankfurt starts north-west (${tpeFra}°)`);
+});
