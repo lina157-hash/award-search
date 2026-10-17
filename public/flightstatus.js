@@ -132,6 +132,7 @@ function fstLiveWhy(live) {
 // 0 icao24, 1 callsign, 3 time_position (s), 5 longitude, 6 latitude, 7 baro_altitude (m), 8 on_ground, 9 velocity
 // (m/s), 10 true_track (°), 13 geo_altitude (m).
 const FST_SKY = 'https://opensky-network.org/api/states/all';
+const FST_SKY_ON = false;
 const fstSkyMemo = new Map();
 const fstCallKey = (v) => { const m = /^([A-Z]{3})0*(\d{1,4})([A-Z]{0,2})$/.exec(String(v || '').replace(/\s+/g, '').toUpperCase()); return m ? `${m[1]}${m[2]}${m[3]}` : ''; };
 // The plane's state → the page's position (the server's lib/flightstatus.js position() shape); null when not in the air.
@@ -213,7 +214,7 @@ function fstWhereHtml(l, k, st) {
   if (!FST_FLYING.has(l.status)) return '';
   const fr24 = `<a href="${esc(fstFr24(l.number))}" target="_blank" rel="noopener">在 Flightradar24 看這班 ↗</a>`;
   const why = fstLiveWhy(st.data?.live);
-  const asking = l.sky && !st.data?.live;
+  const asking = FST_SKY_ON && l.sky && !st.data?.live;
   if (!l.pos && asking) return '<p class="hint fst-nopos">🗺 正在向 OpenSky 查飛機的位置…</p>';
   if (!l.pos) return `<p class="hint fst-nopos">🗺 這次沒有收到飛機的位置${why ? `。${esc(why)}` : '（在海上或偏遠地區常常收不到訊號）'}。${fr24}</p>`;
   const toName = airportCity(l.to.iata) || l.to.iata;
@@ -327,9 +328,10 @@ async function fstRun(i) {
   }
   st.busy = false;
   fstDraw(i);
-  // A leg in the air: then OpenSky from this browser, its position preferred (fresher than AeroDataBox's).
+  // A leg in the air: then OpenSky from this browser, its position preferred (fresher than AeroDataBox's). Off since
+  // 2026-10-17: the owner's browser could not reach it either (owner chose to turn it off); FST_SKY_ON brings it back.
   const r = st.data;
-  const k = r && st.kind === 'status' ? (r.legs || []).findIndex((l) => l.sky) : -1;
+  const k = FST_SKY_ON && r && st.kind === 'status' ? (r.legs || []).findIndex((l) => l.sky) : -1;
   if (k < 0) return;
   const sky = await fstSkyLookup(r.legs[k].sky).catch(() => ({ pos: null, why: 'down', by: '' }));
   if (st.data !== r) return; // asked again meanwhile

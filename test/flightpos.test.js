@@ -222,3 +222,8 @@ test('the server asks OpenSky only when OPENSKY=server (OpenSky blocks cloud hos
   const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server.js'), 'utf8');
   assert.match(src, /process\.env\.OPENSKY \|\| ''\)\.trim\(\) !== 'server' \? null/);
 });
+
+test('OpenSky from the browser is off (the owner chose it on 2026-10-17: unreachable from the site)', () => {
+  const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'flightstatus.js'), 'utf8');
+  assert.match(src, /const FST_SKY_ON = false;/);
+});
