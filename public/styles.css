@@ -2428,6 +2428,15 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 .fst-punct li { margin: 2px 0; }
 .fst-src a { color: var(--accent); }
 .fst-note { margin-top: 6px; font-size: .78rem; }
+.fst-where { margin: 6px 0 0; }
+.fst-where > summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 36px; display: flex; align-items: center; }
+.fst-map { height: 240px; margin-top: 6px; border-radius: 10px; border: 1px solid var(--border); overflow: hidden; background: var(--surface); }
+.fst-map .hint { padding: 12px; }
+.fst-where .hint a, .fst-nopos a { color: var(--accent); }
+.leaflet-marker-icon.fst-plane { background: none; border: 0; }
+.fst-plane span { display: block; width: 26px; height: 26px; transform-origin: 50% 50%; }
+.fst-plane svg { fill: var(--brand); stroke: var(--surface); stroke-width: 1.2; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .35)); }
+path.rtw-line.fst-ahead { stroke: var(--muted); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fst-chip.bad { background: #4a1f2a; color: #ffb3c0; } }
 :root[data-theme="dark"] .fst-chip.bad { background: #4a1f2a; color: #ffb3c0; }
 

@@ -16,6 +16,8 @@ const rapid = require('./lib/rapidflights');
 const { createTravelInfo } = require('./lib/travelinfo');
 const { createDirects, DirectsError } = require('./lib/aerodatabox');
 const { createFlightStatus } = require('./lib/flightstatus');
+const { createAviationstack } = require('./lib/aviationstack');
+const { createOpenSky } = require('./lib/opensky');
 const { createAnywhere, REGIONS: ANYWHERE_REGIONS } = require('./lib/anywhere');
 const hotelCash = require('./lib/hotelcash');
 const { redisKv, memoryKv, takeLock, waitLock, sharedCache, getMany, hashKey, KvError } = require('./lib/kv');
@@ -1205,7 +1207,13 @@ async function handleFlightData(kind, q, req) {
 
 // 查航班動態 / 這班過去準點率 (我的行程, lib/flightstatus.js): the owner's, like the cash fares (the passcode), one click
 // one lookup, out of the same AeroDataBox units as 直飛資料 (a status 2, delay statistics 6). The demo makes them up.
-const flightStatus = RAPIDAPI_KEY ? createFlightStatus({ apiKey: RAPIDAPI_KEY, kv, spend: spendDirectsUnits, refund: (n) => kv.incr(directsKey(), -n).catch(() => {}), onQuota: (q) => Object.assign(directsQuota, q) })
+// 飛機現在在哪's backup (lib/aviationstack.js): only with AVIATIONSTACK_API_KEY set, 100 free requests a month.
+const AVIATIONSTACK_KEY = (process.env.AVIATIONSTACK_API_KEY || '').trim();
+const aviationstack = AVIATIONSTACK_KEY ? createAviationstack({ apiKey: AVIATIONSTACK_KEY, kv, month: monthTW }) : null;
+// 飛機現在在哪's first source (lib/opensky.js): the owner's choice; anonymous unless OPENSKY_CLIENT_ID/_SECRET are set.
+// OPENSKY=off turns it off.
+const opensky = (process.env.OPENSKY || '').trim() === 'off' ? null : createOpenSky({ clientId: (process.env.OPENSKY_CLIENT_ID || '').trim(), clientSecret: (process.env.OPENSKY_CLIENT_SECRET || '').trim(), kv });
+const flightStatus = RAPIDAPI_KEY ? createFlightStatus({ apiKey: RAPIDAPI_KEY, kv, live: opensky, backup: aviationstack, spend: spendDirectsUnits, refund: (n) => kv.incr(directsKey(), -n).catch(() => {}), onQuota: (q) => Object.assign(directsQuota, q) })
   : MOCK ? createFlightStatus({ mock: true }) : null;
 async function handleFlightStatus(q, req, kind) {
   if (!flightStatus) return { configured: false };

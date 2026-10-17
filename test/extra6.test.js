@@ -122,7 +122,7 @@ test('X1: one click is one call on the documented paths; the answer is kept; uni
   let quota = null;
   const fs = fsl.createFlightStatus({ apiKey: 'k', fetchImpl, kv, spend: async (n) => { spent.push(n); return true; }, refund: async (n) => { refunded.push(n); }, onQuota: (q) => { quota = q; } });
   const r = await fs.status('BR 32', '2026-10-16', { from: 'TPE', today: '2026-10-16' });
-  assert.equal(calls[0].url, 'https://aerodatabox.p.rapidapi.com/flights/number/BR32/2026-10-16?withAircraftImage=false&withLocation=false');
+  assert.equal(calls[0].url, 'https://aerodatabox.p.rapidapi.com/flights/number/BR32/2026-10-16?withAircraftImage=false&withLocation=true');
   assert.equal(calls[0].headers['x-rapidapi-key'], 'k');
   assert.equal(calls[0].headers['x-rapidapi-host'], 'aerodatabox.p.rapidapi.com');
   assert.deepEqual(spent, [2]);
@@ -132,7 +132,7 @@ test('X1: one click is one call on the documented paths; the answer is kept; uni
   const again = await fs.status('br32', '2026-10-16', { from: 'TPE', today: '2026-10-16' });
   assert.equal(calls.length, 1, 'within 10 minutes: no second call');
   assert.equal(again.spent, 0);
-  assert.ok(await kv.get('fstatus:v1:BR32:2026-10-16'), 'shared with other instances');
+  assert.ok(await kv.get('fstatus:v2:BR32:2026-10-16'), 'shared with other instances');
   const d = await fs.delays('BR32');
   assert.equal(calls[1].url, 'https://aerodatabox.p.rapidapi.com/flights/BR32/delays');
   assert.deepEqual(spent, [2, 6]);

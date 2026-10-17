@@ -1530,13 +1530,18 @@ function addBaseMap(map, i = 0) {
   if (b.cls) map.getContainer().classList.add(b.cls);
   let loaded = 0;
   let failed = 0;
-  layer.on('tileload', () => { loaded++; });
-  layer.on('tileerror', () => {
-    if (loaded || ++failed < 4) return;
+  let gone = false;
+  const next = () => {
+    if (gone) return;
+    gone = true;
     map.removeLayer(layer);
     if (b.cls) map.getContainer().classList.remove(b.cls);
     addBaseMap(map, i + 1);
-  });
+  };
+  layer.on('tileload', () => { loaded++; });
+  layer.on('tileerror', () => { if (!loaded && ++failed >= 4) next(); });
+  // A small map asks for fewer than 4 tiles: every one of them failing counts too ('load' comes when all are done).
+  layer.on('load', () => { if (!loaded && failed) setTimeout(next); });
 }
 // Leaflet measures its box only on window resizes, and a map in a hidden tab measures 0 × 0 and keeps that: re-measure
 // when the tab is shown (tabShown) and whenever the box itself changes size while it is on screen.
