@@ -1771,7 +1771,7 @@ async function route(req, res) {
     if (p === '/api/config') {
       return sendJson(res, 200, {
         // callsToday: this instance's seats.aero calls; callsTodayAll: every instance's (visitors' lookups and the daily jobs).
-        mock: MOCK, callsToday: usage.calls, callsTodayAll: Number(await kv.get(seatsAllKey()).catch(() => 0)) || 0, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, cashLocked: Boolean(cashPasscode()),
+        mock: MOCK, callsToday: usage.calls, callsTodayAll: Number(await kv.get(seatsAllKey()).catch(() => 0)) || 0, dailyLimit: 1000, cash: CASH_MODE, cashSources: { rapid: Boolean(RAPIDAPI_KEY), serpapi: Boolean(SERPAPI_KEY) }, planePos: { aviationstack: Boolean(aviationstack) }, cashLocked: Boolean(cashPasscode()),
         alerts: { store: Boolean(alerts), email: Boolean(alertMailer) }, watch: Boolean(priceWatch),
         nl: nlSearch.enabled,
         accounts: Boolean(accounts), accountEmail: Boolean(accounts?.mailOn && alertMailer),
