@@ -224,6 +224,13 @@ test('due(): at most once a day, weekly, or on a Monday after a day; the status 
   assert.equal(fd.tdxOn, true);
   await fd.refresh();
   t += 21 * 3600e3; // Thursday
+  // A file that failed (the demo's load factor here) is tried again the next day; once every file reads, weekly.
+  assert.ok(Object.values((await kv.get(F.KEY.meta)).sources).some((x) => !x.ok && !x.off));
+  assert.equal(await fd.due(), true);
+  const meta = await kv.get(F.KEY.meta);
+  for (const x of Object.values(meta.sources)) x.ok = true;
+  await kv.set(F.KEY.meta, meta);
+  await fd.status(); // re-reads the stored meta
   assert.equal(await fd.due(), false);
   t = Date.parse('2026-10-19T04:00:00Z'); // the next Monday
   assert.equal(await fd.due(), true);
@@ -312,4 +319,10 @@ test('demo endpoints: route, terminals, upcoming, load factor, config flags; ref
   assert.equal(s.status, 200); // the demo has no passcode: the owner
   assert.equal(s.json.tdxKey, false);
   assert.equal((await get('/api/flightdata/refresh')).status, 400);
+});
+
+test('a file that cannot be read shows its first lines on the status page', () => {
+  assert.throws(() => F.parseCaaSchedule('甲,乙\n1,2\n'), /找不到欄位名稱（航班、起訖機場）｜開頭：甲\|乙｜1\|2/);
+  const ty = F.parseTaoyuan('kind,a,b\nPD,X,Y\n');
+  assert.equal(ty.sample, 'PD|X|Y');
 });
