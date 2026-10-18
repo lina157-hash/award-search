@@ -1648,6 +1648,9 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 .cxc-w { color: var(--muted); font-size: .76rem; }
 .cxc #cx-live:empty { display: none; }
 .cxc .cx-live-card { margin: 8px 0 0; padding: 8px 0 0; border: 0; border-top: 1px dashed var(--border); border-radius: 0; background: none; box-shadow: none; max-width: none; }
+/* Folded card (cxcard.js): one cabin line and 「其他艙等與工具 ▾」. */
+.cxc:not(.open) .cxc-row:not(.cxc-lead), .cxc:not(.open) .cxc-acts, .cxc:not(.open) .cxc-head small { display: none; }
+.cxc-more { margin-top: 4px; font-size: .82rem; }
 .cxc-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .cxc-act { font: inherit; font-size: .82rem; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 12px; min-height: 32px; cursor: pointer; }
 .cxc-act::after { content: " ▾"; color: var(--muted); }
@@ -1663,7 +1666,10 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 .cxc-panel .cxm-chip small { color: var(--muted); font-size: .74rem; }
 .cx-head { margin: 0 0 4px; }
 .cx-head small { color: var(--muted); font-size: .8rem; }
-.prog-toggle { display: none; }
+/* 計畫 (N) ▾ folds the program chips on every screen (it used to be phones only). */
+.prog-toggle { display: inline-flex; margin: 0 0 8px; }
+.prog-toggle[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.prog-chips:not(.open) { display: none; }
 @media (max-width: 600px) {
   .cxc { padding: 10px 12px 12px; }
   .cxc-head small { flex-basis: 100%; }
@@ -1672,9 +1678,6 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .cxc-d { min-width: 0; }
   .cxc-w { flex-basis: 100%; padding-left: calc(4em + 10px); }
   .cxc-row:not(.cur) .cxc-w { display: none; }
-  .prog-toggle { display: inline-flex; margin: 0 0 8px; }
-  .prog-toggle[aria-expanded="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
-  .prog-chips:not(.open) { display: none; }
 }
 
 /* ---------- ui5: 外觀 switch and the owner's status line in the footer (siteopts.js) ---------- */
@@ -2781,3 +2784,29 @@ small.was { display: none; color: var(--muted); font-size: .76rem; white-space: 
 .show-before td:has(small.was) { background: var(--accent-soft); }
 .before-tables h4 { margin: 10px 0 4px; font-size: .92rem; }
 @media (max-width: 640px) { .before-toggle, .gcmap-line a { min-height: 44px; } }
+
+/* ---------- declutter: 更多分析, the ⋯ menu by the results, the folded 熱門航線 ---------- */
+.more-fold { margin-top: 18px; }
+.more-fold[open] > summary { margin-bottom: 4px; }
+.more-fold > :not(summary) { margin-left: 4px; padding-left: 12px; border-left: 3px solid var(--border); }
+.more-fold > :empty { display: none; }
+.more-fold .cal-fold > summary .section-title { font-size: 1rem; }
+.more-fold .trip-info, .more-fold .pos-box, .more-fold details.hist { margin-top: 10px; }
+.more-acts { position: relative; }
+.more-acts > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-weight: 700; }
+.more-acts > summary::-webkit-details-marker { display: none; }
+.more-acts[open] > summary { border-color: var(--accent); color: var(--accent); }
+.more-acts-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); white-space: nowrap; }
+.presets .hot-toggle { font: inherit; font-size: .85rem; font-weight: 700; color: var(--preset-label); background: none; border: 0; box-shadow: none; padding: 5px 0; cursor: pointer; }
+.presets .hot-toggle::after { content: " ▴"; font-weight: 400; }
+.presets.folded .hot-toggle::after { content: " ▾"; }
+.presets.folded button[data-o] { display: none; }
+.presets .hot-toggle:hover { background: none; text-decoration: underline; }
+.calc-table tr.calc-more td { text-align: center; padding: 10px; background: var(--surface); }
+.cond-toggle { display: none; }
+@media (max-width: 600px) {
+  .cond-toggle { display: block; width: 100%; font: inherit; font-size: .9rem; text-align: left; padding: 10px 14px; border: 1px dashed var(--border); border-radius: 12px; background: transparent; color: var(--muted); cursor: pointer; }
+  .cond-toggle[aria-expanded="true"] { border-style: solid; color: var(--accent); }
+  #search-form:not(.cond-open) .cond-field { display: none; }
+}
+.more-fold .cal-fold > summary .section-title { margin: 8px 0; }

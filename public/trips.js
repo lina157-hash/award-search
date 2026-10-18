@@ -582,7 +582,7 @@ const tpAirOpen = new Set();
 const tpAirKey = (l) => `${l.date}|${l.from}|${l.to}|${l.flights}`;
 function tpAirHtml(l, i) {
   if (!tpCarrier(l.flights)) return '';
-  return `<details class="tp-air" data-tp-air="${i}"${tpAirOpen.has(tpAirKey(l)) ? ' open' : ''}><summary>🧳 行李・貴賓室${l.k === 'c' ? '・累積哩程' : ''}</summary><div class="tp-air-body"><p class="hint">載入中…</p></div></details>`;
+  return `<details class="tp-air" data-tp-air="${i}"${tpAirOpen.has(tpAirKey(l)) ? ' open' : ''}><summary>行李・貴賓室${l.k === 'c' ? '・累積哩程' : ''}</summary><div class="tp-air-body"><p class="hint">載入中…</p></div></details>`;
 }
 function tpAirFill(d) {
   const l = plan.legs[Number(d.dataset.tpAir)];

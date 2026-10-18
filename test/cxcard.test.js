@@ -104,7 +104,7 @@ test('the card is the only hook; 請 AI 助理查官網 is one of its actions an
   assert.doesNotMatch(src('cxfill.js'), /search:done[^}]*run\(\)/);
 });
 
-test('phones: the program chips fold behind 「計畫 (N) ▾」', () => {
+test('the program chips fold behind 「計畫 (N) ▾」 on every screen', () => {
   const c = { state: { hidden: new Set() } };
   vm.createContext(c);
   vm.runInContext(`let progOpen = false;\n${grab('app.js', /function progToggleHtml\(sources\) \{[\s\S]*?\n\}/)}\nthis.f = progToggleHtml; this.open = (v) => { progOpen = v; };`, c);
@@ -114,6 +114,26 @@ test('phones: the program chips fold behind 「計畫 (N) ▾」', () => {
   c.open(true);
   assert.match(c.f(all), /aria-expanded="true"[^>]*>計畫 \(2\/3\) ▴</);
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-  assert.match(css, /\.prog-toggle \{ display: none; \}/, 'desktop: no toggle');
-  assert.match(css, /@media \(max-width: 600px\) \{[^}]*\{[^}]*\}[\s\S]*?\.prog-chips:not\(\.open\) \{ display: none; \}/);
+  assert.match(css, /^\.prog-toggle \{ display: inline-flex;/m, 'desktop too');
+  assert.match(css, /^\.prog-chips:not\(\.open\) \{ display: none; \}/m);
+});
+
+test('declutter: 國泰 card folds to one line, 更多分析 gathers the extra folds, 熱門航線 folds after a search', () => {
+  const card = src('cxcard.js');
+  assert.match(card, /const lead = rows\.find\(\(x\) => x\.c === c\) \|\| rows\[0\];/);
+  assert.match(card, /data-cxc-more aria-expanded/);
+  assert.match(card, /search:start', \(\) => \{ cc\.open = ''; cc\.more = false; \}/);
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+  assert.match(css, /\.cxc:not\(\.open\) \.cxc-row:not\(\.cxc-lead\)/);
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(html, /id="more-fold" hidden>[\s\S]*id="wk-slot"[\s\S]*id="search-pos"[\s\S]*id="search-trip"[\s\S]*<\/details>/);
+  assert.match(src('weekday.js'), /\$\('#wk-slot'\)/);
+  assert.match(src('flightdata.js'), /\$\('#cal-fold'\) && \$\('#tt-slot'\)/);
+  assert.match(src('etrips.js'), /if \(!\$\('#search-pos'\)\)/);
+  const app = src('app.js');
+  assert.match(app, /function moreSync\(\)/);
+  assert.match(app, /search:start', \(\) => \{ \$\('#hot-presets'\)\.classList\.add\('folded'\)/);
+  assert.match(app, /\$\$\('\.presets button\[data-o\]'\)/);
+  assert.match(app, /<details class="more-acts">[\s\S]*?id="fav-btn"[\s\S]*?id="share-btn"/);
+  assert.match(app, /const folded = !bank && !mine && !calcState\.allBanks && picked\.length > CALC_FEW;/);
 });

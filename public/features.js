@@ -71,7 +71,7 @@ function promosHtml() {
   const transfer = list.filter((p) => p.type === 'transfer');
   const buy = list.filter((p) => p.type === 'buy');
   const award = list.filter((p) => p.type === 'award');
-  return `<details class="promos"><summary>🎁 進行中的優惠 ${list.length} 項 <small>${updated}</small></summary>
+  return `<details class="promos"><summary>進行中的優惠 ${list.length} 項 <small>${updated}</small></summary>
     ${transfer.length ? `<h3 class="sub">轉點加贈</h3><ul>${transfer.map(row).join('')}</ul>` : ''}
     ${buy.length ? `<h3 class="sub">買哩促銷</h3><ul>${buy.map(row).join('')}</ul>` : ''}
     ${award.length ? `<h3 class="sub">哩程票特惠</h3><ul>${award.map(awardSaleLi).join('')}</ul>` : ''}
@@ -102,7 +102,7 @@ const awardSaleNeedsAirports = (rows) => activePromos().some((p) => p.type === '
 const saleWindow = (p) => `${mmdd(p.travelFrom)}–${mmdd(p.travelTo)} 搭乘、${mmdd(p.end)} 前開票`;
 const saleSrc = (p) => (p.sources || []).slice(0, 1).map((x) => ` <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)} ↗</a>`).join('');
 const saleTag = (p) => `<span class="tag sale" title="${esc(`${p.title}：${saleWindow(p)}`)}">🏷 哩程票特惠 −${p.discountPct}%</span>`;
-// 點數換算 › 🎁 進行中的優惠.
+// 點數換算 › 進行中的優惠.
 const awardSaleLi = (p) => `<li><b>${esc(p.title)}</b> <span class="pill">−${p.discountPct}%</span>
   <small>${saleWindow(p)}${p.routeNote ? `・${esc(p.routeNote)}` : ''}${p.conditions ? `・${esc(p.conditions)}` : ''}　${CONFIDENCE_TAG[p.confidence] || ''}${saleSrc(p)}</small></li>`;
 // A best-deal card in the results (app.js) and a 今日好康 card.
@@ -461,7 +461,7 @@ function releaseNotices(programs, start, end) {
 function releaseNoticeHtml(programs, start, end, route) {
   const list = releaseNotices(programs, start, end);
   if (!list.length) return '';
-  return `<details class="release"><summary>⏳ 有 ${list.length} 個計畫還沒開放你查的部分日期</summary>
+  return `<details class="release"><summary>有 ${list.length} 個計畫還沒開放你查的部分日期</summary>
     <ul>${list.map((n) => `<li>${esc(programName(n.program))}：約 ${n.days} 天前開放，${mmdd(n.first)} 的座位約 <b>${n.opens.slice(0, 4) !== isoDate(0).slice(0, 4) ? `${n.opens.slice(0, 4)}/` : ''}${mmdd(n.opens)}</b> 開放
       <button type="button" class="linklike" data-ics="${esc(n.program)}|${n.opens}|${n.first}|${esc(route)}">📅 加入行事曆</button></li>`).join('')}</ul>
     <p class="hint">天數依各計畫公告或常見整理，實際開放時間可能差一兩天。</p></details>`;

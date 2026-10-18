@@ -88,7 +88,7 @@ function pairRender() {
   const cost = `用 ${calls > 1 ? `最多 ${calls}` : 1} 次查詢`;
   if (pair.status !== 'done') {
     host.innerHTML = `<div class="pair-box">${pair.status === 'loading' ? `<p class="hint">正在查回程 ${esc(back)}…</p>`
-      : `<button type="button" class="outline" id="pair-go">🔁 ${pair.status === 'error' ? '再試一次' : '配對回程'}（${cost}）</button>
+      : `<button type="button" class="outline" id="pair-go">${pair.status === 'error' ? '再試一次' : '配對回程'}（${cost}）</button>
         <small class="hint">${pair.status === 'error' ? `<span class="error">${esc(pair.err)}</span>` : `查回程 ${esc(back)}（${mmdd(range.start)}–${mmdd(range.end)}），排出去回加起來最省的組合，可以混用不同計畫`}</small>`}</div>`;
     return;
   }

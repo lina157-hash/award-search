@@ -929,7 +929,29 @@ $('#swap').addEventListener('click', () => {
   pickers.destination.set(o);
 });
 
-$$('.presets button').forEach((b) => b.addEventListener('click', () => {
+// The ⋯ menu by the results closes on a click outside it or on one of its buttons.
+document.addEventListener('click', (e) => {
+  for (const d of $$('.more-acts[open]')) if (!d.contains(e.target) || e.target.closest('.more-acts-menu button')) d.open = false;
+});
+
+// Phones (CSS): 航空聯盟／航空公司／人數 sit behind 「更多條件」, which names what is picked so nothing is forgotten.
+function condSync() {
+  const f = $('#search-form');
+  const picked = ['alliance', 'carrier', 'pax'].map((n) => f[n]).filter((el) => el.value).map((el) => el.selectedOptions[0]?.textContent.replace(/（.*）/, '').trim());
+  const open = f.classList.contains('cond-open');
+  $('#cond-toggle').textContent = `更多條件${picked.length ? `：${picked.join('、')}` : ''} ${open ? '▴' : '▾'}`;
+  $('#cond-toggle').setAttribute('aria-expanded', String(open));
+}
+$('#cond-toggle').addEventListener('click', () => { $('#search-form').classList.toggle('cond-open'); condSync(); });
+$('#search-form').addEventListener('change', condSync);
+document.addEventListener('search:start', condSync);
+condSync();
+
+// After a search the 熱門航線 row folds to its label (a button); the label opens it again.
+$('#hot-toggle').addEventListener('click', () => { const p = $('#hot-presets'); p.classList.toggle('folded'); $('#hot-toggle').setAttribute('aria-expanded', String(!p.classList.contains('folded'))); });
+document.addEventListener('search:start', () => { $('#hot-presets').classList.add('folded'); $('#hot-toggle').setAttribute('aria-expanded', 'false'); });
+
+$$('.presets button[data-o]').forEach((b) => b.addEventListener('click', () => {
   const f = $('#search-form');
   pickers.origin.set(b.dataset.o.split(','));
   pickers.destination.set(b.dataset.d.split(','));
@@ -1349,7 +1371,7 @@ async function runSearch(share, pre, autoRange = false) {
     state.withTaxes = Boolean(body.withTaxes);
     const newest = body.results.map((r) => r.updatedAt).filter(Boolean).sort().at(-1);
     status.innerHTML = `<span>${autoRange ? `沒有選日期，先查未來 1 個月（${esc(range)}）：` : ''}找到 <b>${body.results.length}</b> 筆日期與計畫組合${body.mock ? '（示範資料）' : ''}${body.truncated ? '。結果太多，只列出一部分，縮短日期範圍可以看到完整結果' : ''}${newest ? `<small class="fresh" title="seats.aero 快取最後更新的時間；表格中有虛線框的格子超過 3 天沒更新">🕒 資料最新 ${ago(newest)}更新</small>` : ''}</span>
-      <span class="status-actions"><button type="button" class="outline" id="fav-btn">☆ 加入常用</button><button type="button" class="outline" id="alert-btn">🔔 新機位通知</button><button type="button" class="outline" id="to-cash">💵 比現金票價</button><button type="button" class="outline" id="share-btn">🔗 分享</button></span>`;
+      <span class="status-actions"><button type="button" class="outline" id="alert-btn">🔔 新機位通知</button><button type="button" class="outline" id="to-cash">💵 比現金票價</button><details class="more-acts"><summary class="outline" aria-label="更多動作">⋯</summary><div class="more-acts-menu"><button type="button" class="outline" id="fav-btn">☆ 加入常用</button><button type="button" class="outline" id="share-btn">🔗 分享</button></div></details></span>`;
     $('#alert-btn').addEventListener('click', openAlertDialog);
     $('#share-btn').addEventListener('click', copyShare);
     renderSearchFav();
@@ -1672,9 +1694,25 @@ function refreshPrograms(focusSel) {
   if (hadFocus) $(`#search-results ${focusSel}`)?.focus({ preventScroll: true });
 }
 
+// 更多分析 (index.html): shown once one of its parts has something, its heading naming them. The parts arrive on
+// their own (history, trip info and the official timetable are fetched after the results), so this watches the box.
+function moreSync() {
+  const fold = $('#more-fold');
+  if (!fold) return;
+  const has = (sel) => { const el = $(sel); return Boolean(el && el.textContent.trim()); };
+  const names = [
+    $('#wk-fold') && '星期幾比較有位', $('#tt-slot #tt-fold') && '直飛班表', has('#search-trip') && '出發前小提醒',
+    has('#search-hist') && '釋位紀錄', has('#search-pos') && '從外站出發',
+  ].filter(Boolean);
+  const sum = names.join('・');
+  if ($('#more-sum').textContent !== sum) $('#more-sum').textContent = sum;
+  if (fold.hidden !== !names.length) fold.hidden = !names.length;
+}
+if ($('#more-fold') && typeof MutationObserver === 'function') new MutationObserver(moreSync).observe($('#more-fold'), { childList: true, subtree: true, characterData: true });
+
 // The results calendar starts folded (it is tall); opening it is remembered while this page is open.
 let calOpen = false;
-// Phones only (CSS): the program chips fold behind 「計畫 (N) ▾」, N = the ticked programs (「12/15」 when not all).
+// The program chips fold behind 「計畫 (N) ▾」, N = the ticked programs (「12/15」 when not all).
 // Open or not is remembered like the calendar.
 let progOpen = false;
 function progToggleHtml(sources) {
@@ -1980,7 +2018,7 @@ async function openTrips(id, title, cabin) {
     $('#trip-body').innerHTML = sortHtml + `<div id="trip-main">${main.map((t, i) => tripHtml(t, i)).join('') || '<p class="hint">此艙等沒有航班明細。</p>'}</div>` +
       (rest.length ? `<details><summary>其他艙等 ${rest.length} 筆</summary>${rest.map((t, i) => tripHtml(t, main.length + i)).join('')}</details>` : '') +
       (all.some((t) => t.segments.some((s) => productOfSegment(s).length)) ? `<p class="hint prod-3p-note">${PROD_3P_NOTE}</p>` : '') +
-      (main.length && cashCfg.enabled ? `<div class="value-box" id="value-box"><button type="button" class="outline" id="value-btn">💵 和當天現金票比一比，算每哩價值（用 1 次查價）</button></div>` : '') +
+      (main.length && cashCfg.enabled ? `<div class="value-box" id="value-box"><button type="button" class="outline" id="value-btn">和當天現金票比一比，算每哩價值（用 1 次查價）</button></div>` : '') +
       (links ? `<div class="links">${links}</div>` : '') +
       (first ? bookingNotesHtml(first.source, first.miles * pax) + homeProgramHtml(first.carriers) + earnHtml(first.source, first.miles * pax) + howToBookHtml(first.source) : '');
     $('#value-btn')?.addEventListener('click', () => mileValue(main[0]));
@@ -2888,7 +2926,7 @@ async function loadCashQuota() {
     const left = srcs.reduce((n, [, x]) => n + (x.left ?? x.limit ?? 0), 0);
     const part = ([name, x]) => (x.left == null ? `${name} 還沒有查詢紀錄${x.limit ? `（每月 ${fmt(x.limit)} 次）` : ''}` : `${name} 剩 ${fmt(x.left)}${x.limit ? `／${fmt(x.limit)}` : ''} 次`);
     const last = PROVIDER_NAME[cash.provider] ? `上一次查詢用的是 ${PROVIDER_NAME[cash.provider]}。` : '';
-    el.innerHTML = `📊 本月還能查 <b>${fmt(left)}</b> 次${q.mock ? '（示範數字）' : ''}
+    el.innerHTML = `本月還能查 <b>${fmt(left)}</b> 次${q.mock ? '（示範數字）' : ''}
       <details class="info-i"><summary aria-label="查價額度明細">ⓘ</summary><p>${srcs.map(part).join('・')}。${q.rapid && q.serpapi ? '會先用 RapidAPI，用完、出錯或一次查多個機場時才用 SerpApi。' : ''}${last}</p></details>`;
     el.hidden = false;
   } catch { el.hidden = true; }
@@ -3122,7 +3160,8 @@ function pointsHtml() {
 // Dynamic conversion table: one row per bank points program, one column per airline program.
 const CALC_COLS = [['eva', '長榮'], ['asiamiles', '亞洲萬里通'], ['ci', '華航'], ['sq', '新航'], ['other', '其他計畫']];
 const CALC_PRESETS = [5000, 10000, 30000, 50000, 100000];
-const calcState = { mode: 'p2m', amount: 10000, bank: '', detail: false, kind: 'air' };
+const calcState = { mode: 'p2m', amount: 10000, bank: '', detail: false, kind: 'air', allBanks: false };
+const CALC_FEW = 8;
 // Hotel transfers reuse the same table: each hotel program is a column and its rate's `miles` holds hotel points.
 function calcView(pts) {
   const h = pts.calc?.hotels;
@@ -3211,7 +3250,13 @@ function renderCalc() {
   const unit = mode === 'p2m' ? view.unit : '點';
   const ratioText = (r) => `${fmt(r.points)} 點 = ${fmt(r.miles)} ${view.unit}`;
   // In "my points" mode each bank row converts its own balance from the wallet.
-  const sources = view.sources.filter((s) => (!bank || (bank === '__mine' ? wallet.banks[s.id] : s.bank === bank)) && (!mine || wallet.banks[s.id]));
+  const picked = view.sources.filter((s) => (!bank || (bank === '__mine' ? wallet.banks[s.id] : s.bank === bank)) && (!mine || wallet.banks[s.id]));
+  // 全部銀行 opens on the points in 我的點數 (none filled in: the first CALC_FEW rows); 看全部 shows the rest.
+  const own = picked.filter((s) => wallet.banks[s.id]);
+  const folded = !bank && !mine && !calcState.allBanks && picked.length > CALC_FEW;
+  const sources = folded ? (own.length ? own : picked.slice(0, CALC_FEW)) : picked;
+  const moreRow = !bank && !mine && picked.length > CALC_FEW
+    ? `<tr class="calc-more"><td colspan="${view.cols.length + 1}"><button type="button" class="linklike" id="calc-all" aria-expanded="${!folded}">${folded ? `看全部 ${picked.length} 種點數（還有 ${picked.length - sources.length} 種）▾` : `收起，只看${own.length ? '我的點數裡的' : `前 ${CALC_FEW} 種`} ▴`}</button></td></tr>` : '';
   // U10: a rate past its validUntil is greyed, marked 待確認 and never the best (points6.js).
   const expired = (s, r) => typeof calcRateExpired === 'function' && calcRateExpired(s, r);
   const amountOf = (s) => (mine ? wallet.banks[s.id] || 0 : typed);
@@ -3284,7 +3329,7 @@ function renderCalc() {
   const sum6 = (s) => (typeof calcRowSummaryHtml === 'function' ? calcRowSummaryHtml(rowBest(s), s.id) : '');
   const open6 = (s) => (typeof calcRowOpen === 'function' && calcRowOpen(s.id) ? ' class="open"' : '');
   const rows = sources.map((s) => `<tr${open6(s)}><th scope="row"><b>${esc(s.bank)}</b><small>${esc(s.program)}${s.variant ? `（${esc(s.variant)}）` : ''}</small>${mine ? `<small>我有 ${fmt(amountOf(s))} 點</small>` : ''}${verifyTag(s)}${untilTag(s)}${detail && s.note ? `<small class="note">${esc(s.note)}</small>` : ''}${sum6(s)}</th>${CALC_COLS.map(([col, label]) => cell(s, col).replace('<td', `<td data-l="${esc(label)}"`)).join('')}</tr>`);
-  table.innerHTML = `<thead><tr><th>${mine ? '我的點數可換' : mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} ${view.unit}需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>`;
+  table.innerHTML = `<thead><tr><th>${mine ? '我的點數可換' : mode === 'p2m' ? `${fmt(amount)} 點可換` : `換 ${fmt(amount)} ${view.unit}需要`}</th>${CALC_COLS.map(([, label]) => `<th>${label}</th>`).join('')}</tr></thead><tbody>${rows.join('')}${moreRow}</tbody>`;
 }
 
 function bindCalc() {
@@ -3306,6 +3351,7 @@ function bindCalc() {
   amountEl.addEventListener('input', sync);
   $('#calc-bank').addEventListener('change', () => { calcState.bankPicked = true; sync(); });
   $('#calc-detail').addEventListener('change', sync);
+  $('#calc-table').addEventListener('click', (e) => { if (e.target.closest('#calc-all')) { calcState.allBanks = !calcState.allBanks; renderCalc(); $('#calc-all')?.focus({ preventScroll: true }); } });
   $('#calc-kind')?.addEventListener('change', (e) => { calcState.kind = e.target.value; renderPoints(); });
   $$('.calc-presets button').forEach((b) => b.addEventListener('click', () => { if (calcState.mode === 'mine') modeEl.value = 'p2m'; amountEl.value = b.dataset.n; sync(); }));
   sync();

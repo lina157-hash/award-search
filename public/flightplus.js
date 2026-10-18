@@ -153,7 +153,7 @@ function alsoFoldHtml(t) {
   if (alsoTrips.size > 200) alsoTrips.clear();
   const k = String(++alsoSeq);
   alsoTrips.set(k, t);
-  return `<details class="also" data-also="${k}"><summary>🔁 這班還可以用 <small>其他 ${ids.length} 個計畫的固定哩程表估算</small></summary><div class="also-body"><p class="hint">計算中…</p></div></details>`;
+  return `<details class="also" data-also="${k}"><summary>這班還可以用 <small>其他 ${ids.length} 個計畫的固定哩程表估算</small></summary><div class="also-body"><p class="hint">計算中…</p></div></details>`;
 }
 async function alsoFill(box) {
   const t = alsoTrips.get(box.dataset.also);

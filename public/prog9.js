@@ -122,7 +122,7 @@ if (typeof module === 'object' && module.exports) {
   // #17: the link under a route. `legs` [{ from, to, surface? }].
   window.gcmapLinkHtml = (legs, cls = '') => {
     const url = gcmapUrl(legs);
-    return url ? `<p class="hint gcmap-line ${cls}"><a href="${esc(url)}" target="_blank" rel="noopener" title="第三方網站：畫出這條航線、算每段大圓距離">🗺 在 Great Circle Mapper 開啟 ↗</a> <span class="tag tp">第三方</span> <small>${esc(gcmapPath(legs))}</small></p>` : '';
+    return url ? `<p class="hint gcmap-line ${cls}"><a href="${esc(url)}" target="_blank" rel="noopener" title="第三方網站：畫出這條航線、算每段大圓距離">在 Great Circle Mapper 開啟 ↗</a> <span class="tag tp">第三方</span> <small>${esc(gcmapPath(legs))}</small></p>` : '';
   };
 
   const p9Link = (s) => (s?.url ? ` <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.label || '來源')} ↗</a>` : '');
@@ -236,12 +236,20 @@ if (typeof module === 'object' && module.exports) {
   }
 
   // [html, one-line summary] for renderRulesBody (app.js), in page order; empty ones left out.
-  window.prog9Sections = () => [
-    [recentHtml(), recentSum()],
-    [beforeHtml(), '加航、亞萬固定哩程表新舊哩數對照'],
-    [statusHtml(), `${(data.programs?.statusMatch?.offers || []).filter((o) => !o.ends || o.ends >= p9Today()).length} 個官方會籍匹配：條件與截止日`],
-    [toolsHtml(), `${P9_TOOLS.length} 個第三方工具：距離、航點、累積、座位圖`],
-  ].filter(([h]) => h);
+  // 哩程表改版前後 and 會籍匹配 fold inside 最近變動 (one section instead of three): their h2 becomes a sub-fold's h3.
+  const p9Sub = (html, sum) => html.replace(/^\s*<h2 class="section" id="([^"]+)">([^<]*)<\/h2>([\s\S]*)$/,
+    (m, id, title, body) => `<details class="sub-fold" id="${id}"><summary><h3 class="sub">${title}</h3><small>${sum}</small></summary>${body}</details>`);
+  window.prog9Sections = () => {
+    const before = beforeHtml();
+    const status = statusHtml();
+    const nStatus = (data.programs?.statusMatch?.offers || []).filter((o) => !o.ends || o.ends >= p9Today()).length;
+    const recentSub = [before && p9Sub(before, '加航、亞萬固定哩程表新舊哩數對照'), status && p9Sub(status, `${nStatus} 個官方會籍匹配：條件與截止日`)].filter(Boolean).join('');
+    const subSum = [before && '哩程表改版前後', status && `會籍匹配 ${nStatus} 個`].filter(Boolean).join('、');
+    return [
+      [recentHtml() + recentSub, `${recentSum()}${subSum ? `；也有${subSum}` : ''}`],
+      [toolsHtml(), `${P9_TOOLS.length} 個第三方工具：距離、航點、累積、座位圖`],
+    ].filter(([h]) => h);
+  };
 
   // #28 查現金票: the carriers' own fare sales (promos.json cashSales). 「用這個日期查」 fills the form and stops;
   // the search (and its quota) waits for the visitor's 「搜尋票價」.

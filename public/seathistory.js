@@ -84,7 +84,7 @@ async function histShow(share) {
   const cabin = share.get('c') || 'J';
   const days = Math.max(...body.routes.map((r) => (r.observed.length ? histDayNum(r.observed.at(-1)) - histDayNum(r.observed[0]) + 1 : 0)));
   box.innerHTML = `<details class="hist">
-    <summary>📈 過去 ${days} 天這條航線的釋位紀錄${body.mock ? '<small>（示範資料）</small>' : ''}</summary>
+    <summary>過去 ${days} 天這條航線的釋位紀錄${body.mock ? '<small>（示範資料）</small>' : ''}</summary>
     <div class="hist-body">
       ${body.routes.map((r) => histRoute(r, cabin)).join('')}
       <p class="hist-legend"><span><i class="h0"></i>沒位</span><span><i class="h1"></i><i class="h2"></i><i class="h3"></i><i class="h4"></i>有位的出發日 少 → 多</span><span><i class="hx"></i>空白：那天沒有檢查</span></p>

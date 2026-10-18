@@ -405,7 +405,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   });
 
   // ---------- E10: 外站出發建議 (under the route search results, only on a click) ----------
-  $('#search-results').insertAdjacentHTML('afterend', '<div id="search-pos"></div>');
+  if (!$('#search-pos')) $('#search-results').insertAdjacentHTML('afterend', '<div id="search-pos"></div>'); // index.html has it in 更多分析
   const pos = { share: null, hubs: [], byHub: null, cash: {}, busy: false, home: [] };
   const posCache = new Map(); // same URL as a normal search, so the server and browser caches answer repeats
   const posHub = (id) => pos.hubs.find((h) => h.id === id);
@@ -441,7 +441,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
     const longRange = dayCount(pos.share.get('s'), pos.share.get('e') || pos.share.get('s')) > 150;
     if (!pos.byHub) {
       box.innerHTML = `<div class="pos-box">
-        <button type="button" class="outline" id="pos-run" ${pos.busy ? 'disabled' : ''}>${pos.busy ? '查詢中…' : `✈ 看看從外站出發：查 ${n} 個外站（用 ${n} 次查詢）`}</button>
+        <button type="button" class="outline" id="pos-run" ${pos.busy ? 'disabled' : ''}>${pos.busy ? '查詢中…' : `看看從外站出發：查 ${n} 個外站（用 ${n} 次查詢）`}</button>
         <span class="hint">同樣的目的地和日期，改從${esc(names)}出發${longRange ? '；日期範圍很長時每站可能多用 1 次' : ''}</span></div>`;
       $('#pos-run').addEventListener('click', runPos);
       return;
@@ -534,7 +534,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   const bm = $('#bm-list');
   if (bm) $('#bm-tools').hidden = false;
   (bm || $('#rules')).insertAdjacentHTML(bm ? 'beforeend' : 'afterend', `<details class="card gf-card" id="gf-card">
-    <summary><b>🔖 Google 航班快捷</b><small>在 Google 航班看到想飛的航線，一鍵帶到這裡查哩程票</small></summary>
+    <summary><b>Google 航班快捷</b><small>在 Google 航班看到想飛的航線，一鍵帶到這裡查哩程票</small></summary>
     <div id="gf-body"><p class="hint">載入中…</p></div></details>`);
   $('#gf-card').addEventListener('toggle', () => {
     if (!$('#gf-card').open || window.GF) return renderGf();

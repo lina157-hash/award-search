@@ -126,7 +126,7 @@ function tripInfoHtml(info, q) {
   const city = airportCity(info.airport) || info.airport;
   const sum = tripSummary(info);
   return `<details class="trip-info">
-    <summary><b>🧳 出發前小提醒｜${esc(city)}${cc && cc !== 'TW' ? `（${esc(countryZh(cc))}）` : ''}</b>${sum ? `<span class="ti-sum">${esc(sum)}</span>` : ''}</summary>
+    <summary><b>出發前小提醒｜${esc(city)}${cc && cc !== 'TW' ? `（${esc(countryZh(cc))}）` : ''}</b>${sum ? `<span class="ti-sum">${esc(sum)}</span>` : ''}</summary>
     <ul class="ti-list">
       ${q.from ? `<li class="ti-directs" data-from="${esc(q.from)}" data-to="${esc(q.to)}"><span class="ti-k">✈️ 誰飛直航</span><span class="hint">查詢中…</span></li>` : ''}
       ${localTimeHtml(info, q)}
@@ -150,7 +150,7 @@ async function loadTripInfo(box, q, opts = {}) {
   const n = (tripSeq.get(box) || 0) + 1;
   tripSeq.set(box, n);
   if (!/^[A-Z]{3}$/.test(to) || !q.start) { box.innerHTML = ''; return; }
-  box.innerHTML = '<div class="trip-info loading">🧳 正在整理出發前小提醒…</div>';
+  box.innerHTML = '<div class="trip-info loading">正在整理出發前小提醒…</div>';
   try {
     const p = new URLSearchParams({ to, start: q.start, end: q.end || q.start });
     const info = await api(`/api/trip-info?${p}`);
