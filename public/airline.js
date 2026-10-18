@@ -98,7 +98,7 @@ function alTripMount(body, trips) {
     }
   }
   if (!pairs.length) return;
-  body.insertAdjacentHTML('beforeend', '<details class="al-fold" id="al-trip-fold"><summary>🧳 行李與貴賓室 <small>依實際營運的航空公司和艙等</small></summary><div class="al-fold-body"><p class="hint">載入中…</p></div></details>');
+  body.insertAdjacentHTML('beforeend', '<details class="al-fold" id="al-trip-fold"><summary>行李與貴賓室 <small>依實際營運的航空公司和艙等</small></summary><div class="al-fold-body"><p class="hint">載入中…</p></div></details>');
   const d = $('#al-trip-fold', body);
   d.addEventListener('toggle', () => {
     if (!d.open || d.dataset.done) return;
@@ -108,7 +108,7 @@ function alTripMount(body, trips) {
 
 // 點數換算器 › 點數換算: 累積哩程試算 behind a closed fold (the calculator and its data load when it opens).
 function accrualToolHtml() {
-  return '<details class="acc-tool" id="acc-tool"><summary>✈ 買現金票能累積多少哩？<small>累積哩程試算：長榮、華航、星宇、國泰的票累積到各計畫</small></summary><div class="acc-tool-body"><p class="hint">載入中…</p></div></details>';
+  return '<details class="acc-tool" id="acc-tool"><summary>買現金票能累積多少哩？<small>累積哩程試算：長榮、華航、星宇、國泰的票累積到各計畫</small></summary><div class="acc-tool-body"><p class="hint">載入中…</p></div></details>';
 }
 
 if (typeof document !== 'undefined') {

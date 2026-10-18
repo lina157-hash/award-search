@@ -384,7 +384,7 @@ function upcomingHtml() {
   const pct = (x) => (Number(x.pct) ? ` <span class="tag warn">${Number(x.date.slice(5, 7))} 月起${x.pct > 0 ? '漲' : '降'}約 ${Math.abs(x.pct)}%</span>` : '');
   const li = (x) => `<li><b>${esc(x.title)}</b>${pct(x)} <span class="tag until${x.days <= 30 ? ' soon' : ''}">${ewLeft(x.days)}</span>
     <small>${ewYmd(x.date, today)}${x.advice ? `・${esc(x.advice)}` : ''}${x.source?.url ? ` <a href="${esc(x.source.url)}" target="_blank" rel="noopener">${esc(x.source.label || '來源')} ↗</a>` : ''}</small></li>`;
-  return `<details class="promos upcoming"><summary>⏳ 即將變更 ${list.length} 項 <small>最近：${esc(first.title)}・${ewLeft(first.days)}</small></summary><ul>${list.map(li).join('')}</ul></details>`;
+  return `<details class="promos upcoming"><summary>即將變更 ${list.length} 項 <small>最近：${esc(first.title)}・${ewLeft(first.days)}</small></summary><ul>${list.map(li).join('')}</ul></details>`;
 }
 // A small badge on a 規則庫 program card when data/changes.json has a dated change for it.
 function programChangeTag(id) {

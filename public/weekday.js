@@ -84,7 +84,8 @@ function wkRender() {
     usePast ? wkRow(`過去 ${past.days} 天累積`, `每日排程・所有計畫${past.mock ? '（示範）' : ''}`, past) : '',
   ].join('');
   const heat = $('#search-hist details.hist') ? ' <button type="button" class="linklike" data-wk-hist>看每天的釋位熱度圖</button>' : '';
-  cal.insertAdjacentHTML('afterend', `<details class="cal-fold wk-fold" id="wk-fold"${wkOpen ? ' open' : ''}>
+  const slot = $('#wk-slot'); // inside 更多分析 (index.html)
+  (slot || cal).insertAdjacentHTML(slot ? 'beforeend' : 'afterend', `<details class="cal-fold wk-fold" id="wk-fold"${wkOpen ? ' open' : ''}>
     <summary><h2 class="section-title">星期幾比較有位 <small>${esc(head)}</small></h2></summary>
     ${useMine || usePast ? `<div class="wk-grid">
       <div class="wk-row wk-head"><span></span>${WK_NAMES.map((n) => `<span>${n}</span>`).join('')}</div>

@@ -157,7 +157,8 @@ function ttRender() {
   const sum = list.length
     ? `${al.join('、')}${weekly ? `・每週 ${weekly} 班` : ''}${ends.length ? `・${ends.slice(0, 2).map((f) => `${esc(f.fn)} 這條直飛只飛到 ${ttMd(f.to)}`).join('、')}` : ''}${later.length && !ends.length ? `・${esc(later[0].fn)} ${ttMd(later[0].from)} 起` : ''}`
     : '官方班表沒有直飛，要轉機';
-  anchor.insertAdjacentHTML('afterend', `<details class="cal-fold tt-fold" id="tt-fold"${TT.open ? ' open' : ''}>
+  const slot = $('#cal-fold') && $('#tt-slot'); // with results it goes in 更多分析 (index.html)
+  (slot || anchor).insertAdjacentHTML(slot ? 'beforeend' : 'afterend', `<details class="cal-fold tt-fold" id="tt-fold"${TT.open ? ' open' : ''}>
     <summary><h2 class="section-title">這條航線的直飛班表 <small>${sum}</small></h2></summary>
     ${list.length ? `<ul class="tt-list">${list.map((f) => ttFlightHtml(f, b.horizon, { pair })).join('')}</ul>` : '<p class="hint">要轉機的行程不在這份班表裡。</p>'}
     <p class="hint">官方定期班表，時間為當地時間；臨時加班、取消或換機型不會列出。班表公布到 ${esc(ttMd(b.horizon))}，之後的日期不標「沒有直飛」。資料來源：${esc(ttSrc(b))}（${esc(b.updated)} 更新）${b.mock ? '（示範資料）' : ''}。</p>

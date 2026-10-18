@@ -41,7 +41,7 @@ function cxCardRows(results, routes, pax = 0) {
 // ---------- page ----------
 if (typeof document !== 'undefined' && document.getElementById('search-results')) {
   const CN = { Y: '經濟', W: '豪華經濟', J: '商務', F: '頭等' };
-  const cc = { open: '' }; // the open panel: '', 'cal', 'fill', 'hkg' or 'ai'
+  const cc = { open: '', more: false }; // the open panel: '', 'cal', 'fill', 'hkg' or 'ai'; more: the folded part shown
   // Owner: the passcode on this device or an account unlocked with it (as 今日好康's 立即更新 and 帳號管理).
   const ownerHere = () => Boolean(store.get(PASS_KEY, '') || (typeof acct === 'object' && acct.status?.unlocked) || !cashCfg.locked);
   const parts = () => ({ auto: window.cxAutoPart, fill: window.cxFillPart, hkg: window.cxHkgPart, muse: window.cxMusePart, live: window.cxLivePart });
@@ -67,9 +67,9 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
 
   // 「商務  約 58,000 哩起  國泰有位 6/15 天  11/20 TPE→HKG・國泰」: the price is a real Asia Miles one unless 「約」.
   // On phones the where-and-when shows on the chosen cabin's line only.
-  function rowHtml(x, cur, total) {
+  function rowHtml(x, cur, total, lead) {
     const pr = x.price;
-    return `<li class="cxc-row${x.c === cur ? ' cur' : ''}"><span class="cxc-cab">${CN[x.c]}</span>`
+    return `<li class="cxc-row${x.c === cur ? ' cur' : ''}${lead ? ' cxc-lead' : ''}"><span class="cxc-cab">${CN[x.c]}</span>`
       + `<span class="cxc-p">${pr ? `${pr.real ? '' : '約 '}<b>${fmt(pr.miles)}</b> 哩起` : ''}</span>`
       + `<span class="cxc-d">${x.days ? `國泰有位 <b>${x.days}</b>/${total} 天` : ''}</span>`
       + `${pr ? `<small class="cxc-w">${mmdd(pr.date)} ${esc(pr.origin)}→${esc(pr.destination)}${pr.airlines ? `・${carriersHtml(pr.airlines)}` : ''}${pr.real ? '・實際有位' : ''}${pr.via ? `・${AM_VIA_TEXT}` : ''}</small>` : ''}</li>`;
@@ -85,11 +85,18 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     const panel = cc.open ? panelHtml(cc.open, c) : '';
     if (!panel) cc.open = '';
     const total = p.auto?.total() || (state.start && state.end ? dayCount(state.start, state.end) : 0);
-    return `<section class="cxc" id="cxc-card" aria-label="國泰／亞洲萬里通">
+    // Folded, the card is one line: the searched cabin's (else the first cabin's), and 「其他艙等與工具 ▾」 for the rest.
+    const lead = rows.find((x) => x.c === c) || rows[0];
+    const open = cc.more || Boolean(cc.open);
+    const moreBits = [rows.length > 1 ? `其他 ${rows.length - 1} 個艙等` : '', ...acts.map(([, label]) => label.replace(/^\p{Extended_Pictographic}\s*/u, ''))].filter(Boolean);
+    const moreBtn = moreBits.length ? `<button type="button" class="linklike cxc-more" data-cxc-more aria-expanded="${open}">${open ? '收起 ▴' : `${esc(moreBits.join('・'))} ▾`}</button>` : '';
+    return `<section class="cxc${open || !moreBtn ? ' open' : ''}" id="cxc-card" aria-label="國泰／亞洲萬里通">
       <div class="cxc-head"><b>國泰／亞洲萬里通</b>${rows.length ? '<small>每人單程、未含稅；「約」依<a href="#rules" data-goto="rules">哩數表</a>估算，以國泰官網為準</small>' : live ? '' : '<small class="cxc-none">這次的日期沒有查到國泰航班或亞洲萬里通的座位</small>'}</div>
-      ${rows.length ? `<ul class="cxc-rows">${rows.map((x) => rowHtml(x, c, total)).join('')}</ul>` : ''}
+      ${rows.length ? `<ul class="cxc-rows">${rows.map((x) => rowHtml(x, c, total, x === lead)).join('')}</ul>` : ''}
+      ${open ? '' : moreBtn}
       <div id="cx-live">${live}</div>
       ${acts.length ? `<div class="cxc-acts">${acts.map(([k, label]) => `<button type="button" class="cxc-act${k === 'ai' ? ' cxc-ai' : ''}" data-cxc="${k}" aria-expanded="${k === cc.open}" aria-controls="cxc-panel">${esc(label)}</button>`).join('')}</div>` : ''}
+      ${open ? moreBtn : ''}
       <div class="cxc-panel" id="cxc-panel"${panel ? '' : ' hidden'}>${panel}</div>
     </section>`;
   }
@@ -125,7 +132,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     if (focus) card?.querySelector(`[data-cxc="${focus}"]`)?.focus({ preventScroll: true });
   };
 
-  document.addEventListener('search:start', () => { cc.open = ''; });
+  document.addEventListener('search:start', () => { cc.open = ''; cc.more = false; });
   // Open `k`'s panel in the card ('' closes it), with each action's aria-expanded to match.
   function showPanel(card, k) {
     cc.open = k;
@@ -138,6 +145,13 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
     afterPanel(panel);
   }
   document.getElementById('search-results').addEventListener('click', (e) => {
+    if (e.target.closest('[data-cxc-more]')) {
+      cc.more = !(cc.more || cc.open);
+      if (!cc.more) cc.open = '';
+      window.cxCardRedraw();
+      document.querySelector('#cxc-card [data-cxc-more]')?.focus({ preventScroll: true });
+      return;
+    }
     const b = e.target.closest('[data-cxc]');
     if (!b) return;
     showPanel(b.closest('#cxc-card'), cc.open === b.dataset.cxc ? '' : b.dataset.cxc);

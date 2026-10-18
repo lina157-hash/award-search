@@ -966,7 +966,7 @@
   const bm = $('#bm-list');
   if (bm) $('#bm-tools').hidden = false;
   (bm || $('#rules')).insertAdjacentHTML(bm ? 'beforeend' : 'afterend', `<details class="card gf-card" id="cx-card">
-    <summary><b>🗓 國泰哩程日曆</b><small>把你在國泰官網查獎勵位時看到的日期和哩程，整理成一張月曆</small></summary>
+    <summary><b>國泰哩程日曆</b><small>把你在國泰官網查獎勵位時看到的日期和哩程，整理成一張月曆</small></summary>
     <div id="cx-body"></div></details>`);
   // Keep it right after the Google 航班快捷 card (etrips.js adds that one next to #rules too).
   const gf = document.getElementById('gf-card');
