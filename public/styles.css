@@ -2810,3 +2810,6 @@ small.was { display: none; color: var(--muted); font-size: .76rem; white-space: 
   #search-form:not(.cond-open) .cond-field { display: none; }
 }
 .more-fold .cal-fold > summary .section-title { margin: 8px 0; }
+/* explore cut short by seats.aero: what it covered, and the route search for the rest */
+.ex-trunc { flex-basis: 100%; margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); color: var(--text); line-height: 1.6; }
+.ex-trunc button { margin-top: 6px; display: block; white-space: normal; text-align: left; }

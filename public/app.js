@@ -2101,7 +2101,7 @@ $('#explore-form').addEventListener('submit', async (e) => {
     await loadAirports();
     if (!fresh()) return;
     done();
-    Object.assign(ex, { rows: body.results, cabin: body.cabin, f: {}, shown: PAGE, sort: { key: 'miles', dir: 1 }, mock: body.mock, truncated: body.truncated });
+    Object.assign(ex, { rows: body.results, cabin: body.cabin, f: {}, shown: PAGE, sort: { key: 'miles', dir: 1 }, mock: body.mock, truncated: body.truncated, q: { start: params.get('start'), end: params.get('end') || params.get('start') } });
     renderExplore();
     status.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
@@ -2125,6 +2125,28 @@ function applyExploreShare(share) {
   if (cab) cab.checked = true;
   if (d.past) return toast('這個連結的日期已經過了，請選新的日期再按「開始探索」');
   f.requestSubmit();
+}
+
+// seats.aero's bulk search hands rows back in date order, so a cut-off answer (a year between two big regions) covers
+// only the first days asked. What it covered, and the route search that would cover the rest once the result filters
+// name a few airports each way: that search asks per route, like seats.aero's own page (its pages: server.js pagesFor).
+function exploreCoverage(e) {
+  if (!e.truncated || !e.rows.length) return null;
+  const dates = e.rows.map((r) => r.date).sort();
+  const o = [...(e.f.origin || [])];
+  const d = [...(e.f.destination || [])];
+  const end = e.q?.end || dates.at(-1);
+  const route = o.length && d.length && o.length <= 5 && d.length <= 5 && e.q?.start
+    ? { o: o.join(','), d: d.join(','), s: e.q.start, e: end, c: e.cabin, calls: 1 + Math.floor((Date.parse(end) - Date.parse(e.q.start)) / 864e5 / 120) }
+    : null;
+  return { from: dates[0], to: dates.at(-1), end, route };
+}
+function exploreTruncNote(cov) {
+  if (!cov) return '';
+  const tail = cov.to < cov.end ? `${mmdd(cov.to)} 之後的日期這次沒查到，不代表沒位` : '最後幾天可能不完整';
+  return `<p class="hint ex-trunc">資料太多，seats.aero 這次只給到 ${mmdd(cov.from)}–${mmdd(cov.to)} 出發的部分，${tail}。${cov.route
+    ? ` <button type="button" class="outline" id="ex-route">改用航線查詢看 ${esc(cov.route.o)} → ${esc(cov.route.d)} 的完整日期（最多 ${cov.route.calls} 次查詢）</button>`
+    : '縮短日期，或在「篩選結果」選好出發和抵達機場，就能一鍵改用航線查詢看完整日期。'}</p>`;
 }
 
 // Rows matching every filter except `skip` (used to count options in each airport picker).
@@ -2286,7 +2308,7 @@ function renderExplore() {
 
   const rows = exploreFiltered();
   status.className = 'status';
-  status.innerHTML = `<span>共 <b>${all.length}</b> 筆${ex.mock ? '（示範資料）' : ''}${rows.length !== all.length ? `，篩選後 <b>${rows.length}</b> 筆` : ''}${ex.truncated ? '。結果超過 5,000 筆，請縮小日期或區域範圍以看到全部' : ''}</span>`;
+  status.innerHTML = `<span>共 <b>${all.length}</b> 筆${ex.mock ? '（示範資料）' : ''}${rows.length !== all.length ? `，篩選後 <b>${rows.length}</b> 筆` : ''}</span>${exploreTruncNote(exploreCoverage(ex))}`;
 
   $('#ex-view').innerHTML = `<fieldset class="seg" aria-label="顯示方式">${[['table', '表格'], ['map', '有位地圖']].map(([k, l]) => `<label><input type="radio" name="ex-view" value="${k}" ${ex.view === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}</fieldset>`;
   if (ex.view === 'map') { renderExploreMap(rows); return; }
@@ -2306,6 +2328,11 @@ function renderExplore() {
   </table></div>
   ${rows.length > ex.shown ? `<div class="more"><button type="button" class="outline" id="ex-more">再顯示 ${Math.min(PAGE, rows.length - ex.shown)} 筆（還有 ${fmt(rows.length - ex.shown)} 筆）</button></div>` : ''}`;
 }
+$('#explore-status').addEventListener('click', (e) => {
+  if (e.target.id !== 'ex-route') return;
+  const r = exploreCoverage(ex)?.route;
+  if (r) applyShare(new URLSearchParams({ o: r.o, d: r.d, s: r.s, e: r.e, c: r.c }));
+});
 // One set of listeners for the explore table (it is redrawn on every sort and filter).
 $('#explore-results').addEventListener('click', (e) => {
   const th = e.target.closest('#ex-table th.sortable');
