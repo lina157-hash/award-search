@@ -174,14 +174,19 @@ function ttLfHtml() {
   const pairs = Object.entries(L.routes);
   const rows = pairs.flatMap(([route, als]) => Object.entries(als).map(([al, vals]) => ({ route, al, vals })));
   if (!rows.length) return '';
-  const label = (r) => `${esc(ttAl(r.al))}${pairs.length > 1 ? `<small>${esc(r.route.replace('-', '–'))}</small>` : ''}`;
-  const body = L.monthly
+  const label = (r) => `${esc(ttAl(r.al))}${pairs.length > 1 ? `<small>${esc(r.route.replace(/^TW-/, '全台–').replace('-', '–'))}</small>` : ''}`;
+  // Months with a number: 民航局's monthly file holds one month, so a lone month is a list, not a grid of dashes.
+  const months = L.monthly ? [...new Set(rows.flatMap((r) => r.vals.map((v, i) => (v == null ? 0 : i + 1))))].filter(Boolean).sort((a, b) => a - b) : [];
+  const nation = pairs.some(([route]) => route.startsWith('TW-'));
+  const body = months.length === 1
+    ? `<ul class="tt-list">${rows.map((r) => `<li>${label(r)}：${months[0]} 月 <b>${r.vals[months[0] - 1] ?? '–'}%</b></li>`).join('')}</ul>`
+    : L.monthly
     ? `<div class="lf-grid"><div class="lf-row lf-head"><span></span>${Array.from({ length: 12 }, (_, i) => `<span>${i + 1}</span>`).join('')}</div>
       ${rows.map((r) => `<div class="lf-row"><span class="lf-label">${label(r)}</span>${r.vals.map((v, i) => `<span class="lf-cell ${lvl(v)}" title="${i + 1} 月：${v == null ? '沒有資料' : `${v}%`}">${v == null ? '–' : v}</span>`).join('')}</div>`).join('')}</div>`
     : `<ul class="tt-list">${rows.map((r) => `<li>${label(r)}：全年 <b>${r.vals[0]}%</b></li>`).join('')}</ul>`;
   return `<details class="lf-fold"><summary>各月載客率（民航局，${L.year} 年）</summary>
     ${body}
-    <p class="hint">數字是載客率 %（載客人數 ÷ 座位數，去程回程合計），顏色越濃越滿。我推測載客率高的月份獎勵位比較少（僅供參考）。資料晚一年：民航局每年 1 月更新，這是 ${L.year} 年的。資料來源：${esc(L.source?.name || '交通部民用航空局')}${L.mock ? '（示範資料）' : ''}。</p>
+    <p class="hint">數字是載客率 %（載客人數 ÷ 座位數，去程回程合計），顏色越濃越滿。我推測載客率高的月份獎勵位比較少（僅供參考）。${nation ? '民航局這份只分航點和航空公司，所以是全台各機場飛這個航點的合計。' : ''}這是 ${L.year} 年${months.length && months.length < 12 ? ` ${months.join('、')} 月` : ''}的統計，會比現在晚幾個月。資料來源：${esc(L.source?.name || '交通部民用航空局')}${L.mock ? '（示範資料）' : ''}。</p>
   </details>`;
 }
 
