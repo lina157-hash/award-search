@@ -82,12 +82,23 @@ test('民航局 47492 表36 (2026-10): two header rows, the month from the title
     ['', '', '中華航空', '100', '30,000', '24,000', '80.0', '50', '15,000', '12,000', '80.0', '50', '15,000', '12,000', '80.0'],
     ['', '', '小計', '220', '66,000', '55,500', '84.1', '', '', '', '', '', '', '', ''],
     ['2', '香港', '中華航空', '200', '50,000', '45,000', '90.0', '100', '25,000', '22,500', '90.0', '100', '25,000', '22,500', '90.0'],
+    // The header again (a new printed page), then short names the name lists miss.
+    ['序號', '航 點', '航空公司', '合 計', '', '', '', '入 境', '', '', '', '出 境', '', '', ''],
+    ['', '', '星宇', '10', '3,000', '2,700', '90.0', '', '', '', '', '', '', '', ''],
+    ['3', '名古屋', '中華', '10', '3,000', '2,400', '80.0', '', '', '', '', '', '', '', ''],
+    ['', '', '真航', '10', '3,000', '2,100', '70.0', '', '', '', '', '', '', '', ''],
+    ['', '', '泰獅', '10', '3,000', '1,800', '60.0', '', '', '', '', '', '', '', ''],
   ];
-  const r = F.parseLoadFactor(rows, { airportNames: [['成田', 'NRT'], ['香港', 'HKG']], airlineZh: { CI: '中華航空', BR: '長榮航空' } });
+  const r = F.parseLoadFactor(rows, { airportNames: [['成田', 'NRT'], ['香港', 'HKG'], ['名古屋中部', 'NGO']], airlineZh: { CI: '中華航空', BR: '長榮航空', JX: '星宇航空', LJ: '真航空' } });
   assert.equal(r.year, 2026);
   assert.equal(r.monthly, true);
   assert.equal(r.routes['TW-NRT'].BR[7], 88); // 31,500 / 36,000, the 合計 group
   assert.equal(r.routes['TW-NRT'].CI[7], 80);
   assert.equal(r.routes['TW-HKG'].CI[7], 90);
-  assert.equal(r.used, 3);
+  assert.equal(r.routes['TW-NGO'].CI[7], 80);
+  assert.equal(r.routes['TW-NGO'].LJ[7], 70);
+  assert.equal(r.routes['TW-NGO'].SL[7], 60);
+  assert.equal(r.routes['TW-HKG'].JX[7], 90); // under the repeated header, still 香港 from the page before
+  assert.equal(r.used, 7);
+  assert.deepEqual([...r.unknown], []);
 });
