@@ -278,7 +278,7 @@ test('D7/C1/C4: alliance notes follow official releases; 哩程 in visible data 
   const lm = programs.find((p) => p.id === 'lifemiles');
   assert.doesNotMatch(`${lm.expiry}${lm.pooling}`, /里程/);
   assert.ok(JSON.stringify(programs).includes('華航哩程轉讓（官方）'));
-  assert.ok(read('promos.json').promos.some((p) => p.title === '阿聯酋 Skywards 買哩最高加贈 30%'));
+  assert.ok([...read('promos.json').promos, ...read('promos-history.json').promos].some((p) => p.title === '阿聯酋 Skywards 買哩最高加贈 30%'));
   // Several sources on one note are all linked.
   assert.match(pub('app.js'), /\[\]\.concat\(n\.source \|\| \[\]\)/);
 });

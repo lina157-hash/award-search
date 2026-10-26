@@ -168,7 +168,7 @@ function sandbox(today = '2026-10-14', bare = false, tweak = null) {
   const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
   const calcConvert = app.match(/function calcConvert\(rate, amount, mode\) \{[\s\S]*?\n\}/)[0];
   const ctx = {
-    data: bare ? {} : { points: read('points.json'), promos: read('promos.json'), alliances: read('alliances.json'), expiry: read('expiry.json'), buymiles: read('buymiles.json'), changes: read('changes.json') },
+    data: bare ? {} : { points: read('points.json'), promos: { ...read('promos.json'), promos: [...read('promos.json').promos, ...read('promos-history.json').promos.filter((p) => p.end >= '2026-10-14')] }, alliances: read('alliances.json'), expiry: read('expiry.json'), buymiles: read('buymiles.json'), changes: read('changes.json') },
     fmt: (n) => Number(n).toLocaleString('en-US'),
     esc: (s) => String(s ?? ''),
     mmdd: (iso) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`,

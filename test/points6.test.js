@@ -21,7 +21,8 @@ const { createPromoWatch } = require('../lib/promowatch');
 const { memoryKv } = require('../lib/kv');
 
 const read = (f) => JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', f), 'utf8'));
-const PROMOS = read('promos.json').promos;
+// The promos running on 2026-10-16, the day these tests are set on: the live list plus those since moved to history.
+const PROMOS = [...read('promos.json').promos, ...read('promos-history.json').promos.filter((p) => p.end >= '2026-10-16')];
 const SOURCES = read('points.json').calc.sources;
 const HOLDS = read('holds.json');
 const PROGRAMS = read('programs.json').programs;
@@ -110,7 +111,7 @@ test('promoHistoryStats: ended transfer bonuses for this bank and column in the 
 test('promos-history.json: only ended, official promos, ids not repeated in promos.json', () => {
   const h = read('promos-history.json');
   assert.ok(Array.isArray(h.promos) && h.promos.length >= 1);
-  const live = new Set(PROMOS.map((p) => p.id));
+  const live = new Set(read('promos.json').promos.map((p) => p.id));
   for (const p of h.promos) {
     assert.ok(p.end < h.updated, `${p.id} ended`);
     assert.ok(['transfer', 'buy'].includes(p.type), p.id);
