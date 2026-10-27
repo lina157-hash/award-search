@@ -17,7 +17,7 @@
       "price": { "kind": "distance", "chartRef": "jal_partner", "basis": "flown", "max": 50000 },
       "cabins": ["Y", "J", "F"],
       "mixedCabin": { "pricing": "highest", "extraLegCabins": ["W"], "extraWith": ["J", "F"], "text": "艙等不同時依較高艙等計價；豪華經濟艙航段可以放在商務或頭等獎勵裡，經濟艙獎勵不行", "quote": "When different classes of service are involved in a journey, the required mileage for the higher class will apply. Premium Economy Class is not eligible with an Economy Class award, but is eligible with a First Class award or Business Class award.", "url": "https://www.jal.co.jp/en/jalmile/use/partner_air/oneworld/conditions.html" },
-      "example": { "stops": ["TPE", "NRT", "JFK", "LHR", "HKG", "TPE"], "airlines": ["JL", "JL", "BA", "CX", "CX"] },
+      "example": { "stops": ["TPE", "NRT", "BOS", "LHR", "HKG", "TPE"], "airlines": ["JL", "JL", "BA", "CX", "CX"] },
       "rules": {
         "carriers": { "list": ["JL", "AS", "AA", "BA", "CX", "FJ", "AY", "IB", "MH", "WY", "QF", "QR", "AT", "RJ", "UL"], "min": 2 },
         "maxFlights": 8,

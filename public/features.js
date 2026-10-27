@@ -1114,6 +1114,11 @@ function chartProgram(id, full = '', alt = '') {
   return { name: known || (m ? full.slice(0, m.index) : full) || id, variant: m ? m[1] || m[2] : '' };
 }
 const rmapProgramName = (id) => chartProgram(id, data.charts?.programs?.find((p) => p.id === id)?.name).name;
+// The menu's label: the chart's own wording beside a name two charts share (日航 JMB's own flights and its 寰宇一家 chart).
+const rmapMenuName = (id, ids) => {
+  const p = chartProgram(id, data.charts?.programs?.find((x) => x.id === id)?.name);
+  return p.variant && ids.some((o) => o !== id && rmapProgramName(o) === p.name) ? `${p.name}（${p.variant}）` : p.name;
+};
 // A chart from a third-party summary (charts.json confidence secondary); Asia Miles' own chart is not in charts.json.
 const rmapThirdParty = (id) => data.charts?.programs?.find((p) => p.id === id)?.confidence === 'secondary';
 // Asia Miles one-way prices from a to b (airports with coordinates), straight distance `dist`: Cathay's own flights by
@@ -1201,7 +1206,7 @@ function rmapHtml() {
         <input type="hidden" name="origin" value="${esc(rmap.origins.join(','))}">
         <div class="ac-list" id="ac-rm-origin" role="listbox" aria-label="出發地建議" hidden></div>
       </div>
-      <label class="field">計畫<select name="program"><option value="">全部有固定表的計畫</option>${progs.map((id) => `<option value="${esc(id)}" ${rmap.program === id ? 'selected' : ''}>${esc(rmapProgramName(id))}</option>`).join('')}</select></label>
+      <label class="field">計畫<select name="program"><option value="">全部有固定表的計畫</option>${progs.map((id) => `<option value="${esc(id)}" ${rmap.program === id ? 'selected' : ''}>${esc(rmapMenuName(id, progs))}</option>`).join('')}</select></label>
       <label class="field">我有幾哩（選填）<input name="budget" inputmode="numeric" placeholder="例如 30000" value="${rmap.budget || ''}"></label>
     </div>
     <div class="opts-row">
@@ -1660,7 +1665,9 @@ let plan = { name: '我的行程', legs: [] };
 let sharedPlan = null;
 function savePlan() { if (typeof tripRemindUpdate === 'function') tripRemindUpdate(plan); store.set(PLAN_KEY, plan); renderPlan(); }
 function addLegs(legs) {
-  const clean = legs.map(cleanLeg).filter(Boolean);
+  const same = (a, b) => ['k', 'date', 'from', 'to', 'flights', 'program', 'cabin'].every((f) => (a[f] || '') === (b[f] || ''));
+  const clean = legs.map(cleanLeg).filter(Boolean).filter((l) => !plan.legs.some((p) => same(p, l)));
+  if (!clean.length) { toast('已經在「我的行程」裡'); return; }
   if (plan.legs.length + clean.length > MAX_LEGS) { toast(`行程最多 ${MAX_LEGS} 段`); return; }
   plan.legs.push(...clean);
   plan.legs.sort((a, b) => (a.date + (a.dep || '')).localeCompare(b.date + (b.dep || '')));

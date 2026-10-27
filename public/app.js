@@ -939,9 +939,13 @@ $('#swap').addEventListener('click', () => {
   pickers.destination.set(o);
 });
 
-// The ⋯ menu by the results closes on a click outside it or on one of its buttons.
+// The ⋯ menu by the results closes on a click outside it, on one of its buttons, or on Esc.
 document.addEventListener('click', (e) => {
   for (const d of $$('.more-acts[open]')) if (!d.contains(e.target) || e.target.closest('.more-acts-menu button')) d.open = false;
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  for (const d of $$('.more-acts[open]')) { d.open = false; if (d.contains(document.activeElement)) d.querySelector('summary')?.focus(); }
 });
 
 // Phones (CSS): 航空聯盟／航空公司／人數 sit behind 「更多條件」, which names what is picked so nothing is forgotten.

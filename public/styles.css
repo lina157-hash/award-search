@@ -1986,6 +1986,9 @@ a.alerts-panel.panel-link { display: inline-flex; box-sizing: border-box; min-he
 .rtw-price-note { flex-basis: 100%; }
 .leaflet-marker-icon.rtw-pin { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
 .rtw-pin-n { display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; background: var(--accent); color: #fff; font-size: .72rem; font-weight: 700; border: 2px solid #fff; box-shadow: 0 1px 4px rgb(0 0 0 / .35); }
+/* Summer night's accent is a light cyan: dark numbers on it. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rtw-pin-n { color: #0e1620; } }
+:root[data-theme="dark"] .rtw-pin-n { color: #0e1620; }
 .rtw-pin-c { padding: 1px 6px; border-radius: 6px; background: var(--surface); color: var(--text); font-size: .72rem; font-weight: 700; box-shadow: 0 1px 3px rgb(0 0 0 / .25); }
 path.rtw-line { stroke: var(--accent); stroke-linecap: round; }
 path.rtw-line.surface { stroke: var(--muted); }
