@@ -1639,6 +1639,7 @@ const SPLIT_HUBS = { body: SPLIT_HUBS_BODY, etag: etagOf(SPLIT_HUBS_BODY) };
 
 function staticPolicy(rel, q) {
   if (rel.endsWith('.html')) return 'no-cache';
+  if (/\.json$/.test(rel) && q.has('v')) return CACHE.immutable;
   if (rel === '/airports.min.json' || /^\/icon-[\w-]+\.png$/.test(rel) || /^\/logos\/\w+\.webp$/.test(rel)) return 'public, max-age=86400, stale-while-revalidate=604800';
   // Script and style URLs carry ?v=<version> when the page links them that way; otherwise revalidate (cheap with the ETag).
   if (/\.(js|css)$/.test(rel)) return q.has('v') ? CACHE.immutable : 'public, max-age=0, must-revalidate';

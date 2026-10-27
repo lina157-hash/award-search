@@ -56,15 +56,25 @@ const ASSET_V = (() => { try { return new URL(document.currentScript.src).search
 // unlocked account counts only here.
 async function api(path, opts = {}) {
   let res;
+  // A server that never answers (weak signal, a stuck function) ends after 65 s (past Vercel's own 60 s limit) instead of spinning for ever.
+  const signal = opts.signal || (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(65000) : undefined);
   try {
-    res = await fetch(path, { ...opts, headers: { 'x-requested-with': 'fetch', ...(opts.headers || {}) } });
+    res = await fetch(path, { ...opts, signal, headers: { 'x-requested-with': 'fetch', ...(opts.headers || {}) } });
   } catch (err) {
+    if (err && err.name === 'TimeoutError') throw Object.assign(new Error('伺服器回應太慢，請按重試。'), { code: 'timeout', cause: err });
+    if (err && err.name === 'AbortError') throw err;
     // fetch only throws on a network failure ("Failed to fetch"); say it in words people understand.
     throw Object.assign(new Error('連不上伺服器，請檢查網路後再試。'), { code: 'offline', cause: err });
   }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(body.error || `HTTP ${res.status}`), { code: body.code, status: res.status });
+  if (!res.ok) throw Object.assign(new Error(body.error || httpWords(res.status)), { code: body.code, status: res.status });
   return body;
+}
+// Vercel's own error pages (a crash, the 60 s limit) carry no JSON message: say what the status means.
+function httpWords(status) {
+  if (status === 504) return '伺服器處理逾時，請縮短日期範圍或稍後重試。';
+  if (status >= 500) return `伺服器暫時出錯（HTTP ${status}），請稍後按重試。`;
+  return `HTTP ${status}`;
 }
 
 // Each async view keeps a request counter so a slow older response cannot overwrite a newer one.
@@ -1381,7 +1391,7 @@ async function runSearch(share, pre, autoRange = false) {
     document.dispatchEvent(new CustomEvent('search:done', { detail: { share: share.toString(), body } }));
     loadTripInfo($('#search-trip'), { from: share.get('o'), to: share.get('d'), start: state.start, end: state.end }, { hol: HOL.search, onHolidays: () => { if (fresh() && state.results.length) renderCalendar(); } });
     if (typeof histShow === 'function') histShow(share);
-    status.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    requestAnimationFrame(() => status.scrollIntoView({ behavior: 'smooth', block: 'start' })); // after the new table's layout, not forcing it
   } catch (err) {
     if (!fresh()) return;
     done();
@@ -3593,6 +3603,8 @@ tabInit.cash = () => {
   if (isShare || NEEDS_MORE[currentTab]) warmMore();
   if (BOOT_HASH.startsWith('#cxcal=') || BOOT_HASH.startsWith('#gf?') || new URLSearchParams(location.search).get('gfr')) loadSearchScripts();
   const [config, core] = await Promise.all([api('/api/config'), loadPart('core', DATA_CORE)]);
+  // On a slow first visit both can arrive before the later scripts (features.js: watchCfg, loadWatches) have run.
+  if (document.readyState === 'loading') await new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true }));
   putData(core, DATA_CORE);
   SOURCE_NAMES = data.sourceNames.names;
   indexAirlineNames(data.airlineNames);

@@ -75,3 +75,14 @@ test('今日好康 leaves out a seat seats.aero last saw over a week ago; 哪裡
   assert.deepEqual(bestByDestination(rows, 'J', '2026-10-28', { maxAge: 8 * 864e5 }).map((x) => x.destination), ['LAX']);
   assert.equal(bestByDestination(rows, 'J', '2026-10-28').length, 2);
 });
+
+test('page start waits for the later scripts; server errors and a silent server are said in words', () => {
+  const app = require('fs').readFileSync(require('path').join(__dirname, '../public/app.js'), 'utf8');
+  const init = app.slice(app.indexOf("await Promise.all([api('/api/config')"));
+  assert.ok(init.indexOf("document.readyState === 'loading'") < init.indexOf('watchCfg.on'), 'init waits for DOMContentLoaded before using features.js');
+  assert.match(app, /AbortSignal\.timeout\(65000\)/);
+  const httpWords = new Function(`${app.slice(app.indexOf('function httpWords'), app.indexOf('}\n', app.indexOf('function httpWords')) + 1)}; return httpWords;`)();
+  assert.match(httpWords(504), /逾時/);
+  assert.match(httpWords(502), /伺服器暫時出錯（HTTP 502）/);
+  assert.equal(httpWords(404), 'HTTP 404');
+});

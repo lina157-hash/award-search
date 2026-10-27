@@ -7,10 +7,11 @@
     { "path": "/api/cron/daily", "schedule": "10 13 * * *" }
   ],
   "headers": [
-    { "source": "/airports.min.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }] },
+    { "source": "/airports.min.json", "missing": [{ "type": "query", "key": "v" }], "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }] },
     { "source": "/logos/(.*)\\.webp", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }] },
     { "source": "/icon-(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }] },
     { "source": "/(.*)\\.(js|css)", "missing": [{ "type": "query", "key": "v" }], "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }] },
+    { "source": "/(.*)\\.json", "has": [{ "type": "query", "key": "v" }], "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
     { "source": "/(.*)\\.(js|css)", "has": [{ "type": "query", "key": "v" }], "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
     { "source": "/(.*)", "headers": [
       { "key": "X-Content-Type-Options", "value": "nosniff" },

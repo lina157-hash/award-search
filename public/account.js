@@ -21,7 +21,7 @@ async function acctCall(path, method = 'GET', body, headers = {}) {
     throw Object.assign(new Error('連不上伺服器，請檢查網路後再試。'), { code: 'offline' });
   }
   const out = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(out.error || `HTTP ${res.status}`), { code: out.code, status: res.status, body: out });
+  if (!res.ok) throw Object.assign(new Error(out.error || (typeof httpWords === 'function' ? httpWords(res.status) : `HTTP ${res.status}`)), { code: out.code, status: res.status, body: out });
   return out;
 }
 // JSON with sorted keys, so two copies of the same data compare equal whatever order they were built in.

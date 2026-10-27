@@ -1514,7 +1514,7 @@ function addBaseMap(map, i = 0) {
   const L = window.L;
   if (i >= BASEMAPS.length) {
     map.getContainer().classList.add('map-plain');
-    (landJson ||= fetch('/land.json').then((r) => r.json()).then(landAcross)).then((g) => {
+    (landJson ||= fetch(`/land.json${ASSET_V ? `?v=${ASSET_V}` : ''}`).then((r) => r.json()).then(landAcross)).then((g) => {
       if (!map.getContainer().isConnected) return;
       L.geoJSON(g, { interactive: false, style: { className: 'map-land', weight: 0.8, fillOpacity: 1 } }).addTo(map).bringToBack();
       // A map whose lines run past ±180° (環球票規劃) asks for the land again on those sides: map.options.landCopies.
