@@ -318,7 +318,9 @@ test('demo endpoints: route, terminals, upcoming, load factor, config flags; ref
   const s = await get('/api/flightdata/status');
   assert.equal(s.status, 200); // the demo has no passcode: the owner
   assert.equal(s.json.tdxKey, false);
-  assert.equal((await get('/api/flightdata/refresh')).status, 400);
+  assert.equal((await get('/api/flightdata/refresh')).status, 405);
+  const pr = await get('/api/flightdata/refresh', { method: 'POST' });
+  assert.equal(pr.status, 200);
 });
 
 test('a file that cannot be read shows its first lines on the status page', () => {

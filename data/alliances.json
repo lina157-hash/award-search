@@ -8,7 +8,7 @@
       "members": ["AA", "AS", "BA", "CX", "AY", "HA", "IB", "JL", "MH", "QF", "QR", "AT", "RJ", "UL", "FJ", "WY"],
       "summary": "國泰、日航、英航、美航、阿拉斯加航空等。哩程計畫多半以「距離」計價，跨航司的夥伴票通常沒有動態加價。夏威夷航空 2026-04-23 正式加入；菲律賓航空已宣布將加入，日期未定。",
       "memberNotes": [
-        { "code": "HA", "status": "joined", "date": "2026-04-23", "note": "夏威夷航空成為正式成員（日本時間）。", "source": { "label": "日航新聞稿（2026-04）", "url": "https://press.jal.co.jp/en/release/202604/009496.html" } },
+        { "code": "HA", "status": "joined", "date": "2026-04-23", "note": "夏威夷航空成為正式成員（當地時間）。", "source": { "label": "日航新聞稿（2026-04）", "url": "https://press.jal.co.jp/en/release/202604/009496.html" } },
         { "code": "PR", "status": "upcoming", "date": null, "note": "即將加入：菲律賓航空 2026-06-06 簽署備忘錄、將成為正式成員，加入日期未公布，尚未列入 members。", "source": { "label": "oneworld 新聞稿（2026-06-06）", "url": "https://oneworld.com/news/philippine-airlines-to-join-oneworld-alliance" } }
       ],
       "url": "https://www.oneworld.com/members"

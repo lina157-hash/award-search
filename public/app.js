@@ -2137,7 +2137,7 @@ function exploreCoverage(e) {
   const d = [...(e.f.destination || [])];
   const end = e.q?.end || dates.at(-1);
   const route = o.length && d.length && o.length <= 5 && d.length <= 5 && e.q?.start
-    ? { o: o.join(','), d: d.join(','), s: e.q.start, e: end, c: e.cabin, calls: 1 + Math.floor((Date.parse(end) - Date.parse(e.q.start)) / 864e5 / 120) }
+    ? { o: o.join(','), d: d.join(','), s: e.q.start, e: end, c: e.cabin, calls: 1 + Math.floor((Date.parse(end) - Date.parse(e.q.start)) / 864e5 / 150) }
     : null;
   return { from: dates[0], to: dates.at(-1), end, route };
 }

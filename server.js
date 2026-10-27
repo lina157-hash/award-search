@@ -1182,7 +1182,8 @@ const flightData = createFlightData({
   fetchImpl: MOCK ? require('./lib/flightdata-mock').mockFetch(todayTW()) : fetch,
   tzOf: (c) => AIRPORTS.get(c)?.tz || '',
   airportNames: [...Object.entries(AIRPORT_ZH_FILE.names).map(([c, n]) => [n, c]), ...AIRPORT_ZH_FILE.groups.map((g) => [g.zh, g.codes[0]])],
-  airlineZh: Object.fromEntries(require('./data/airline-names.json').airlines.map(([c, n]) => [c, n])),
+  // Airlines still flying only: a closed one's name (國泰港龍) must not catch a live one's rows.
+  airlineZh: Object.fromEntries(require('./data/airline-names.json').airlines.filter(([c]) => !require('./data/airline-names.json').defunct?.[c]).map(([c, n]) => [c, n])),
   log: (m) => console.log(m),
 });
 let flightDemo = null;
@@ -1759,6 +1760,11 @@ async function route(req, res) {
     if (p === '/api/hotel-watch') {
       if (!['GET', 'POST', 'DELETE'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
       return sendJson(res, 200, await handleHotelWatch(req, q));
+    }
+    // The owner's 官方航班資料 refresh is a POST, so it is routed before the GET-only gate below.
+    if (p === '/api/flightdata/refresh') {
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'method not allowed' });
+      return sendJson(res, 200, await handleFlightData('refresh', q, req));
     }
     // HEAD only where the answer is a fixed file: the data files and the static site.
     const headOk = p.startsWith('/api/data/') || !p.startsWith('/api/');

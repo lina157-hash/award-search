@@ -35,8 +35,8 @@ test('a cut-off answer names the days it covered and that later days were not ch
 
 test('with airports picked, a button opens the route search over the same dates and cabin', () => {
   const cov = exploreCoverage(ex({ f: { origin: new Set(['TPE']), destination: new Set(['PVG']) } }));
-  assert.deepEqual({ ...cov.route }, { o: 'TPE', d: 'PVG', s: '2026-10-18', e: '2027-10-17', c: 'Y', calls: 4 });
-  assert.match(exploreTruncNote(cov), /id="ex-route"[^>]*>改用航線查詢看 TPE → PVG 的完整日期（最多 4 次查詢）/);
+  assert.deepEqual({ ...cov.route }, { o: 'TPE', d: 'PVG', s: '2026-10-18', e: '2027-10-17', c: 'Y', calls: 3 });
+  assert.match(exploreTruncNote(cov), /id="ex-route"[^>]*>改用航線查詢看 TPE → PVG 的完整日期（最多 3 次查詢）/);
   // Only one side picked, or too many airports: no button.
   assert.equal(exploreCoverage(ex({ f: { origin: new Set(['TPE']) } })).route, null);
   assert.equal(exploreCoverage(ex({ f: { origin: new Set(['TPE']), destination: new Set(['A', 'B', 'C', 'D', 'E', 'F']) } })).route, null);
