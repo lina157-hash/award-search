@@ -371,8 +371,9 @@ function rtwArc(a, b, lon0 = a.lon, n = 32) {
 
 // A route on a Leaflet layer (環球票規劃, and 中停／開口組合's map in etrips.js): great-circle lines, a leg not flown
 // (surface(i) for pts[i] → pts[i + 1]) dashed, and one numbered pin per place. pts: [{ ap, code }] (ap null: skipped);
-// place(code) names a stop in its tooltip. → every point drawn, for fitBounds.
-function rtwDrawRoute(L, layer, pts, surface = () => false, place = () => '') {
+// place(code) names a stop in its tooltip; map (the layer's) moves pins apart at each zoom (rtwPinShift). → every point
+// drawn, for fitBounds.
+function rtwDrawRoute(L, layer, pts, surface = () => false, place = () => '', map = null) {
   // Each stop where the line reaches it, longitudes carried on so the loop keeps going round the world.
   const at = [];
   const lines = [];
@@ -397,13 +398,48 @@ function rtwDrawRoute(L, layer, pts, surface = () => false, place = () => '') {
     if (!pins.has(k)) pins.set(k, { x, nos: [], code: pts[i].code });
     pins.get(k).nos.push(i + 1);
   });
+  const marks = [];
   for (const p of pins.values()) {
     // The start and end sit on top when a nearby stop overlaps them at world zoom.
     const ends = p.nos.includes(1) || p.nos.includes(at.length);
-    L.marker(p.x, { icon: L.divIcon({ className: 'rtw-pin', html: `<span class="rtw-pin-n">${p.nos.join('・')}</span><span class="rtw-pin-c">${esc(p.code)}</span>`, iconSize: null, iconAnchor: [13, 13] }), keyboard: false, zIndexOffset: ends ? 1000 : 0 })
+    const icon = (dy) => L.divIcon({ className: 'rtw-pin', html: `<span class="rtw-pin-n">${p.nos.join('・')}</span><span class="rtw-pin-c">${esc(p.code)}</span>`, iconSize: null, iconAnchor: [13, 13 - dy] });
+    const m = L.marker(p.x, { icon: icon(0), keyboard: false, zIndexOffset: ends ? 1000 : 0 })
       .bindTooltip(`${p.nos.join('・')}. ${esc(p.code)} ${esc(place(p.code))}`).addTo(layer);
+    marks.push({ m, p, icon, ends, dy: 0 });
+  }
+  // Two stops close together (HKG beside TPE at world zoom) would hide one number under the other pin: at each zoom a
+  // pin that would cover one already placed moves just below or above it. The start and end keep their spot.
+  if (map) {
+    const order = [...marks.filter((k) => k.ends), ...marks.filter((k) => !k.ends)];
+    const fix = () => {
+      const z = map.getZoom();
+      const dys = rtwPinShift(order.map(({ m, p }) => ({ ...map.project(p.x, z), w: m.getElement()?.offsetWidth || rtwPinWidth(p) })));
+      order.forEach((k, i) => { if (k.dy !== dys[i]) { k.dy = dys[i]; k.m.setIcon(k.icon(k.dy)); } });
+    };
+    if (layer.rtwPinFix) map.off('zoomend', layer.rtwPinFix); // the pins of the previous route on this layer
+    layer.rtwPinFix = fix;
+    map.whenReady(fix);
+    map.on('zoomend', fix);
   }
   return [...lines.flatMap((l) => l.arc), ...at.filter(Boolean)];
+}
+// A pin's width before it is on screen: the number (26px, wider for 「1・6」) and the code beside it.
+const rtwPinWidth = (p) => 26 + 7 * Math.max(0, p.nos.join('・').length - 1) + 3 + 36;
+// Pins at { x, y } (pixels at the map's zoom; each drawn from 13px left of x, w wide and about 26px tall around y), in
+// the order they are placed → how far to move each down (> 0) or up (< 0) so that it covers none placed before it.
+// A pin moves the way it already lies from the one it hits (below it when level), so the map still reads right.
+function rtwPinShift(pins, h = 28) {
+  const placed = [];
+  return pins.map((p) => {
+    let dy = 0;
+    for (let tries = 0; tries <= placed.length; tries++) {
+      const hit = placed.find((q) => Math.abs(p.y + dy - q.y) < h && p.x - 13 < q.x - 13 + q.w && q.x - 13 < p.x - 13 + p.w);
+      if (!hit) break;
+      dy = p.y + dy >= hit.y ? hit.y + h - p.y : hit.y - h - p.y;
+    }
+    placed.push({ x: p.x, y: p.y + dy, w: p.w });
+    return Math.round(dy);
+  });
 }
 
 // ---------- 國泰混艙計算: Asia Miles Standard Award, one direction ----------
@@ -840,7 +876,7 @@ if (typeof document !== 'undefined') {
     rtwLayer.clearLayers();
     const pts = trip?.pts || [];
     if (!pts.some((p) => p.ap)) { rtwMap.setView([25, 140], 1.5); return; }
-    const all = rtwDrawRoute(L, rtwLayer, pts, (i) => trip.legs[i]?.surface, rtwPlace);
+    const all = rtwDrawRoute(L, rtwLayer, pts, (i) => trip.legs[i]?.surface, rtwPlace, rtwMap);
     rtwMap.fitBounds(L.latLngBounds(all), { paddingTopLeft: [24, 20], paddingBottomRight: [60, 20], maxZoom: 5 });
   }
 

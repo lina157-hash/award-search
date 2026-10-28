@@ -135,6 +135,7 @@ const skeleton = (n = 4) => `<div class="skeleton">${'<div></div>'.repeat(n)}</d
 // ---------- tabs ----------
 // 'rtw' (環球票規劃) is a page without a tab button: 航線查詢 links to it (#rtw).
 const TABS = ['search', 'explore', 'map', 'cash', 'hotels', 'points', 'rules', 'rtw'];
+const TAB_OF = { rtw: 'search' }; // the tab button lit while a page without one is open
 // Each tab keeps its own query string, so one tab's search parameters don't leak into another tab's URL.
 const tabQuery = {};
 const tabSub = {}; // sub-view in the hash, e.g. #points/wallet
@@ -170,10 +171,11 @@ function showTab(name, { push = true } = {}) {
   if (sub) tabSub[tab] = sub;
   const moved = tab !== currentTab;
   currentTab = tab;
-  // One tab stop for the strip; the arrow keys move between tabs (below).
-  $$('.tabs button').forEach((b) => { b.setAttribute('aria-selected', String(b.dataset.tab === tab)); b.tabIndex = b.dataset.tab === tab ? 0 : -1; });
+  // One tab stop for the strip; the arrow keys move between tabs (below). 環球票規劃 is opened from 航線查詢, which stays lit.
+  const lit = TAB_OF[tab] || tab;
+  $$('.tabs button').forEach((b) => { b.setAttribute('aria-selected', String(b.dataset.tab === lit)); b.tabIndex = b.dataset.tab === lit ? 0 : -1; });
   // On phones the tab strip scrolls sideways; keep the open tab in view.
-  const tb = $(`.tabs [data-tab="${tab}"]`);
+  const tb = $(`.tabs [data-tab="${lit}"]`);
   const strip = tb?.parentElement;
   if (strip && strip.scrollWidth > strip.clientWidth) strip.scrollLeft = Math.max(0, tb.offsetLeft - strip.offsetLeft - 40);
   $$('.panel').forEach((p) => (p.hidden = p.id !== `tab-${tab}`));
@@ -929,6 +931,7 @@ function createDatePicker(form, label, opts = {}) {
       write(s, e);
     },
     value: () => startIn.value,
+    drop: () => dlg.remove(), // a picker in a form that is taken away again (機位提醒「修改」)
   };
 }
 const datePickers = { search: createDatePicker($('#search-form'), '出發日期'), explore: createDatePicker($('#explore-form'), '出發日期') };
@@ -1173,23 +1176,42 @@ function alertFilterValues(f) {
   };
 }
 const PAX_OPTIONS = [['', '不限'], ['2', '至少 2 位'], ['3', '至少 3 位'], ['4', '至少 4 位'], ['5', '至少 5 位']];
-// 「修改」: the watch's conditions in a form inside its own row, filled in with what it has now.
+// 「修改」: the watch's conditions in a form inside its own row, filled in with what it has now. The airports and dates
+// use the search form's own pickers (alertEditOpen); one row is open at a time, so the ids are fixed.
 function alertEditHtml(a) {
   const opt = (v, t, on) => `<option value="${esc(v)}" ${on ? 'selected' : ''}>${esc(t)}</option>`;
-  const lo = isoDate(0);
-  return `<form class="alert-edit" data-id="${esc(a.id)}">
+  const ap = (name, label) => `<div class="field ac-host${name === 'destination' ? ' ac-end' : ''}"><label for="ae-${name}">${label}</label>
+      <div class="chips-box" data-for="${name}"><span class="chips"></span><input id="ae-${name}" class="chips-q" placeholder="城市、機場或代碼" autocapitalize="off" spellcheck="false" enterkeyhint="done"
+        role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-ae-${name}"></div>
+      <input type="hidden" name="${name}" value="${esc(a[name])}"><div class="ac-list" id="ac-ae-${name}" role="listbox" aria-label="${label}建議" hidden></div></div>`;
+  return `<form class="alert-edit" id="alert-edit" data-id="${esc(a.id)}" autocomplete="off">
     <div class="alert-edit-grid">
-      <label class="field">出發地<input name="origin" value="${esc(a.origin)}" autocomplete="off" autocapitalize="characters" required placeholder="TPE"></label>
-      <label class="field">目的地<input name="destination" value="${esc(a.destination)}" autocomplete="off" autocapitalize="characters" required placeholder="NRT"></label>
-      <label class="field">出發日期（從）<input type="date" name="start" value="${esc(a.start < lo ? lo : a.start)}" min="${lo}" max="${isoDate(MAX_AHEAD_DAYS)}" required></label>
-      <label class="field">到<input type="date" name="end" value="${esc(a.end)}" min="${lo}" max="${isoDate(MAX_AHEAD_DAYS)}" required></label>
+      ${ap('origin', '出發地')}${ap('destination', '目的地')}
+      <div class="field dp-field"><span>出發日期</span><button type="button" class="dp-btn" aria-haspopup="dialog"></button><input type="hidden" name="start"><input type="hidden" name="end"></div>
       <label class="field">座位數<select name="pax">${PAX_OPTIONS.map(([v, t]) => opt(v, t, String(a.pax || '') === v)).join('')}</select></label>
     </div>
     <div class="field"><span>艙等（可複選）</span>${alertCabinChipsHtml(alertCabins(a))}</div>
     ${alertFiltersHtml(new URLSearchParams({ ...(a.alliance ? { al: a.alliance } : {}), ...(a.direct ? { direct: '1' } : {}) }), a)}
-    <p class="hint">機場可填多個，用逗號分開（例如 TPE,TSA）。儲存後會重新記下目前已有的座位，之後只通知新出現的；通知方式不變。</p>
+    <p class="hint">出發地、目的地都可以加好幾個機場。儲存後會重新記下目前已有的座位，之後只通知新出現的；通知方式不變。</p>
+    <p class="status" aria-live="polite"></p>
     <div class="alert-edit-actions"><button type="button" class="outline" data-edit-cancel>取消</button><button type="submit" class="primary small">儲存修改</button></div>
   </form>`;
+}
+// The open 「修改」 row's pickers; its date picker's dialog goes when the row closes (each picker adds one to the page).
+let alertEd = null;
+function alertEditOpen(li, a) {
+  li.insertAdjacentHTML('beforeend', alertEditHtml(a));
+  const f = $('.alert-edit', li);
+  const lo = isoDate(0);
+  alertEd = { origin: createAirportPicker(f, 'origin'), destination: createAirportPicker(f, 'destination'), dates: createDatePicker(f, '出發日期') };
+  alertEd.dates.set(a.start < lo ? lo : a.start, a.end < lo ? lo : a.end);
+  alertEd.origin.focus();
+}
+function alertEditClose(box) {
+  $$('.alert-edit', box).forEach((x) => x.remove());
+  $$('[data-edit]', box).forEach((x) => x.setAttribute('aria-expanded', 'false'));
+  alertEd?.dates.drop();
+  alertEd = null;
 }
 const ALERT_SETUP = `<p class="hint">機位提醒還沒啟用。網站主人要在 Vercel 做兩件事：① Storage 分頁用 Marketplace 建一個 Upstash Redis（免費方案），它會自動加上連線設定；② 到 resend.com 申請免費金鑰，在 Environment Variables 新增 <code>RESEND_API_KEY</code>。都設好後重新部署。</p>`;
 // The route and dates the open dialog will save: the search's own (shown as a line), or, from 一句話搜尋 (`pre`),
@@ -1255,6 +1277,7 @@ async function loadAlerts() {
     $('[data-unlock]', box).addEventListener('click', () => unlockFor('機位提醒', loadAlerts));
     return;
   }
+  alertEditClose(box);
   box.innerHTML = '<p class="hint">載入中…</p>';
   try {
     const body = await cashApi('/api/alerts', { pass: '機位提醒' });
@@ -1272,22 +1295,21 @@ async function loadAlerts() {
       const li = b.closest('li');
       const was = $('.alert-edit', li);
       // One row at a time; a second click on 修改 closes it again.
-      $$('.alert-edit', box).forEach((x) => x.remove());
-      $$('[data-edit]', box).forEach((x) => x.setAttribute('aria-expanded', 'false'));
+      alertEditClose(box);
       if (was) return;
-      li.insertAdjacentHTML('beforeend', alertEditHtml(list.find((x) => x.id === b.dataset.edit)));
       b.setAttribute('aria-expanded', 'true');
-      $('.alert-edit [name=origin]', li).focus();
+      alertEditOpen(li, list.find((x) => x.id === b.dataset.edit));
     }));
     box.onclick = (e) => {
-      if (!e.target.closest('[data-edit-cancel]')) return;
-      e.target.closest('.alert-edit').remove();
-      $$('[data-edit]', box).forEach((x) => x.setAttribute('aria-expanded', 'false'));
+      if (e.target.closest('[data-edit-cancel]')) alertEditClose(box);
     };
     box.onsubmit = async (e) => {
       const f = e.target.closest('.alert-edit');
       if (!f) return;
       e.preventDefault();
+      // Typed airport text becomes chips first; a name that matches nothing is said under its field, as in the search.
+      const problem = await checkAirports(f, [alertEd.origin, alertEd.destination]);
+      if (problem) return formError($('.status', f), problem);
       const btn = $('button[type=submit]', f);
       btn.disabled = true;
       try {
@@ -2996,8 +3018,9 @@ const ALLIANCE_SHORT = { oneworld: '寰宇一家', star: '星空聯盟', skyteam
 const rulesState = { alliance: '', q: '' };
 
 // The search box and chapter links sit at the top; the search covers every section, not just the program cards.
-// [anchor, label, short label for phones]
-const RULES_CHAPTERS = [['r-alliances', '航空聯盟', '聯盟'], ['am-chart', '亞萬哩數表', '亞萬表'], ['r-programs', '計畫規則', '計畫'], ['release-dates', '開票日', '開票'], ['points-rules', '信用卡轉點', '轉點'], ['r-glossary', '名詞解釋', '名詞']];
+// [anchor, label, short label for phones], in page order; a chip whose section is not drawn hides (renderRulesBody).
+const RULES_CHAPTERS = [['r-alliances', '航空聯盟', '聯盟'], ['am-chart', '亞萬哩數表', '亞萬表'], ['r-programs', '計畫規則', '計畫'], ['release-dates', '開票日', '開票'], ['points-rules', '信用卡轉點', '轉點'],
+  ['r-cardperks', '信用卡權益', '刷卡'], ['r-recent', '最近變動', '變動'], ['r-tools', '外部工具', '工具'], ['r-glossary', '名詞解釋', '名詞']];
 // Every chapter and every card starts folded to one line (a heading and a short summary), so the page reads as a short
 // index; the search, the chapter chips and 「全部展開」 open what they point at. The chapter chips stay on screen.
 // A section whose html starts with its <h2>: the heading and `sum` (one line, html) become the summary of a <details>.
@@ -3095,6 +3118,7 @@ function renderRulesBody() {
   ].join('');
   // The section itself folds now, so its table opens with it instead of needing a second tap.
   $$('#rules-body .release-wrap').forEach((d) => (d.open = true));
+  $$('.rules-nav [data-jump]').forEach((b) => (b.hidden = !document.getElementById(b.dataset.jump)));
 
   $$('#alliance-filter .chip').forEach((b) => b.addEventListener('click', () => {
     rulesState.alliance = b.dataset.a;

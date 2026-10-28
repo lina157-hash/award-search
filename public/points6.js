@@ -786,8 +786,8 @@ function p6Init() {
       const id = madd.dataset.p6Madd;
       const pick = $(`[data-p6-mpick="${id}"]`);
       const amt = $(`[data-p6-mamt="${id}"]`);
-      if (!pick.value) { pick.focus(); return; }
-      if (!cleanCount(amt.value)) { amt.focus(); return; }
+      if (!pick.value) return walletAddHint(pick, W_ADD_MISSING.pick); // features.js
+      if (!cleanCount(amt.value)) return walletAddHint(amt, W_ADD_MISSING.amt);
       const [kind, key] = pick.value.split(':');
       p6SetFamily((f) => { const m = f.members.find((x) => x.id === id); if (m) m[kind === 'b' ? 'banks' : 'miles'][key] = cleanCount(amt.value); });
       renderWallet6(true);
