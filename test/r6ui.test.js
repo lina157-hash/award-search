@@ -219,7 +219,8 @@ test('U15: hotels, admin, etrips, ewallet and award-tools are not in the page; t
   assert.match(app, /function renderPoints\(\) \{\n  const host = \$\('#points-page'\);\n  if \(!host \|\| !withTools\(host, renderPoints\)\) return;/);
   assert.match(app, /function renderRules\(\) \{\n  if \(!withTools\(\$\('#rules'\), renderRules\)\) return;/);
   assert.match(app, /api\(`\/api\/trips\/\$\{encodeURIComponent\(id\)\}`\), loadMore\(\), loadTools\(\)\]/, '航班明細');
-  assert.match(app, /\[pre \|\| api\(`\/api\/search\?\$\{params\}`\), loadMore\(\), loadSearchScripts\(\)\]/, 'route results');
+  // Route results: the table waits for the tools; the search scripts draw their parts when they arrive (r10-speed.test.js).
+  assert.match(app, /\[pre \|\| api\(`\/api\/search\?\$\{params\}`\), loadMore\(\), loadTools\(\)\]/, 'route results');
   assert.match(app, /loadScripts\(\['hotels', 'hotelwatch'\]\)\.then/);
   assert.match(read('account.js'), /if \(ownerHere\(\)\) loadAdmin\(\);/);
   // Only app.js and features.js use the tools' functions, and only on those paths; hotels.js and admin.js are used

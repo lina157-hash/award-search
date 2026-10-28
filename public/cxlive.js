@@ -143,7 +143,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   const saved = () => { cache.clear(); savedAt = Date.now(); };
   document.addEventListener('cxcal:saved', saved); // cxmuse.js saved a route
   document.addEventListener('search:start', () => { st.seq++; st.share = null; st.body = null; st.cal.clear(); });
-  document.addEventListener('search:done', async (e) => {
+  onSearchDone(async (e) => {
     const n = ++st.seq;
     st.share = new URLSearchParams(e.detail.share);
     if (!codes(st.share.get('o')).length || !codes(st.share.get('d')).length) return;

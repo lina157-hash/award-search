@@ -415,7 +415,7 @@ function openProgramCard(id) {
   const first = !tabDone.has('rules');
   showTab('rules');
   if (!first) renderRules();
-  const el = document.getElementById(`prog-${id}`);
+  const el = rulesFind(`prog-${id}`); // its section may not be built yet (app.js)
   if (!el) return;
   // Folded on phones: open the card and its section first.
   for (let d = el; d; d = d.parentElement?.closest('details')) d.open = true;

@@ -112,7 +112,7 @@ function ttLegTerminal(l) {
 
 // ---------- the award search: calendar marks and the timetable fold ----------
 document.addEventListener('search:start', () => { TT.search = null; });
-document.addEventListener('search:done', (e) => { ttSearchDone(new URLSearchParams(e.detail?.share || '')).catch(() => {}); });
+onSearchDone((e) => { ttSearchDone(new URLSearchParams(e.detail?.share || '')).catch(() => {}); });
 async function ttSearchDone(share) {
   const from = ttCodes(share.get('o'));
   const to = ttCodes(share.get('d'));

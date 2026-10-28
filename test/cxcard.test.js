@@ -134,6 +134,6 @@ test('declutter: 國泰 card folds to one line, 更多分析 gathers the extra f
   assert.match(app, /function moreSync\(\)/);
   assert.match(app, /search:start', \(\) => \{ \$\('#hot-presets'\)\.classList\.add\('folded'\)/);
   assert.match(app, /\$\$\('\.presets button\[data-o\]'\)/);
-  assert.match(app, /<details class="more-acts">[\s\S]*?id="fav-btn"[\s\S]*?id="share-btn"/);
+  assert.match(app, /<details class="more-acts">[\s\S]*?\$\{id\('fav-btn'\)\}[\s\S]*?\$\{id\('share-btn'\)\}/);
   assert.match(app, /const folded = !bank && !mine && !calcState\.allBanks && picked\.length > CALC_FEW;/);
 });

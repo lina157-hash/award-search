@@ -158,6 +158,8 @@ button.outline:hover { border-color: var(--accent); color: var(--accent); }
 .skeleton { display: grid; gap: 10px; margin-top: 16px; }
 .skeleton div { height: 54px; border-radius: 12px; background: linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
+/* A results or tab placeholder fills most of the screen, so the footer doesn't show under it and jump away. */
+#search-results > .skeleton, #hotels-page > .skeleton { min-height: 85vh; align-content: start; }
 
 /* ---------- results ---------- */
 .section-title { font-size: 1.05rem; margin: 26px 0 12px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -388,6 +390,7 @@ button.primary.small { padding: 7px 14px; font-size: .85rem; }
   .spark { width: 100%; }
 }
 .status-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.status-hold { visibility: hidden; } /* the room the status line's buttons will take, while searching (app.js) */
 /* chosen flights (after the last leg is picked) */
 .chosen-leg { margin-top: 12px; }
 .leg-label { display: block; font-size: .85rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
@@ -1651,6 +1654,11 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
 /* Folded card (cxcard.js): one cabin line and 「其他艙等與工具 ▾」. */
 .cxc:not(.open) .cxc-row:not(.cxc-lead), .cxc:not(.open) .cxc-acts, .cxc:not(.open) .cxc-head small { display: none; }
 .cxc-more { margin-top: 4px; font-size: .82rem; }
+/* Its placeholder while cxcard.js is on its way (app.js cxWaitHtml): the folded card's heading, cabin line and 其他 ▾. */
+.cxc-wait > i { display: block; height: 22px; border-radius: 8px; background: linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+.cxc-wait > i:first-child { width: 9em; }
+.cxc-wait > i.r { margin-top: 6px; }
+.cxc-wait > i.m { height: 32px; margin-top: 4px; width: 14em; max-width: 100%; }
 .cxc-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .cxc-act { font: inherit; font-size: .82rem; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 4px 12px; min-height: 32px; cursor: pointer; }
 .cxc-act::after { content: " ▾"; color: var(--muted); }
@@ -1678,6 +1686,7 @@ button.outline.adm-del:hover { border-color: var(--acct-danger); color: var(--ac
   .cxc-d { min-width: 0; }
   .cxc-w { flex-basis: 100%; padding-left: calc(4em + 10px); }
   .cxc-row:not(.cur) .cxc-w { display: none; }
+  .cxc-wait > i.r { height: 41px; } /* the place and date wrap to a second line */
 }
 
 /* ---------- ui5: 外觀 switch and the owner's status line in the footer (siteopts.js) ---------- */

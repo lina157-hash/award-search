@@ -122,7 +122,8 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
   };
   // Something arrived later (官網實查, the 經香港轉機 offer) or the passcode changed: draw the card again in place.
   window.cxCardRedraw = () => {
-    const old = document.getElementById('cxc-card');
+    // Or its placeholder, when the results were drawn before this script arrived (app.js cxWaitHtml).
+    const old = document.getElementById('cxc-card') || document.querySelector('#search-results .cxc-wait');
     if (!old && !document.getElementById('am-host')) return; // no results on the page
     const focus = old?.contains(document.activeElement) ? document.activeElement.closest('[data-cxc]')?.dataset.cxc : '';
     const h = cardHtml(state.cabin);

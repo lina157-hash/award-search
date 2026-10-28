@@ -159,7 +159,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-results')
 
   window.cxHkgPart = { offered: () => Boolean(st.share), html: () => stitchHtml() };
   document.addEventListener('search:start', () => { stSeq++; Object.assign(st, { share: null, legs: null, busy: false, all: false }); });
-  document.addEventListener('search:done', (e) => {
+  onSearchDone((e) => {
     const share = new URLSearchParams(e.detail.share);
     if (!cxStitchOffer(share.get('o'), share.get('d'), apOf)) return;
     st.share = share;
