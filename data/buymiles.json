@@ -1,22 +1,22 @@
 {
   "updated": "2026-10-14",
-  "note": "各計畫直接買哩的一般價格（沒有促銷時），用來估算「還差多少哩、買要多少錢」。價格是第三方整理的概估，未經官方核實；多半另加稅費、有每年購買上限，實際以航空公司購買頁為準。亞洲萬里通與新航只能在兌換時補差額。進行中的買哩促銷寫在 promos.json 的 buy 項目（有 price 時優先採用）。perThousand 是每 1,000 哩的價格。",
+  "note": "各計畫直接買哩的一般價格（沒有促銷時），用來估算「還差多少哩、買要多少錢」。有 official 的四家（土航、阿聯酋、長榮、新航）2026-10-28 依官網核對；其餘官網購買頁要登入或只能用瀏覽器開，仍是第三方整理的概估；多半另加稅費、有每年購買上限，實際以航空公司購買頁為準。亞洲萬里通與新航只能在兌換時補差額。進行中的買哩促銷寫在 promos.json 的 buy 項目（有 price 時優先採用）。perThousand 是每 1,000 哩的價格。",
   "confidence": "unverified",
   "source": { "label": "AwardTravelFinder 買點價格整理（2026-04-13 查核）", "url": "https://awardtravelfinder.com/buy-points", "official": false },
   "programs": {
     "aeroplan": { "currency": "USD", "perThousand": 35 },
     "united": { "currency": "USD", "perThousand": 37.6 },
     "lifemiles": { "currency": "USD", "perThousand": 33 },
-    "turkish": { "currency": "USD", "perThousand": 30 },
-    "emirates": { "currency": "USD", "perThousand": 30 },
+    "turkish": {"currency": "USD", "perThousand": 30, "official": {"checked": "2026-10-28", "url": "https://www.turkishairlines.com/en-tr/miles-and-smiles/miles-features/purchasing-miles/", "cap": "每年最多 250,000 哩，含稅"}},
+    "emirates": {"currency": "USD", "perThousand": 30, "official": {"checked": "2026-10-28", "url": "https://emirates.com/us/english/skywards/do-more-with-your-miles", "cap": "每年最多 100,000 哩（金卡以上 200,000，買與贈送合計）"}},
     "asiamiles": { "currency": "USD", "perThousand": 30, "note": "只能在兌換時補足差額" },
     "flyingblue": { "currency": "USD", "perThousand": 30.5 },
     "american": { "currency": "USD", "perThousand": 37.6 },
     "british": { "currency": "USD", "perThousand": 24.5 },
     "qatar": { "currency": "USD", "perThousand": 25 },
     "alaska": { "currency": "USD", "perThousand": 37.6, "url": "https://www.alaskaair.com/atmosrewards/content/buy-share-gift-points" },
-    "singapore": { "currency": "USD", "perThousand": 40, "note": "只能在兌換時補足差額" },
-    "eva": { "currency": "USD", "perThousand": 40 },
+    "singapore": {"currency": "USD", "perThousand": 40, "official": {"checked": "2026-10-28", "url": "https://singaporeair.com/milestopup", "cap": "只能在兌換時補足差額，至少一半哩數要自己有"}},
+    "eva": {"currency": "USD", "perThousand": 40, "official": {"checked": "2026-10-28", "url": "https://www.evaair.com/en-global/infinity-mileagelands/mileage-award-program/purchase-miles/", "cap": "每年最多 150,000 哩（購買與補足合計），一張獎勵票最多一半用買的"}},
     "etihad": { "currency": "USD", "perThousand": 20 },
     "qantas": { "currency": "USD", "perThousand": 54 }
   }

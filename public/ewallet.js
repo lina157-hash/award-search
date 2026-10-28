@@ -312,8 +312,13 @@ function buyMilesHtml(key, short, compact = false) {
   const money = `${sign(c.currency)}${fmt(Math.ceil(c.amount))}${twdText(Math.ceil(c.amount), c.currency)}`;
   if (compact) return `<small class="buy-short">買哩約 ${money}</small>`;
   const src = price.promo ? (price.promo.sources || [])[0] : data.buymiles?.source;
-  const how = price.promo ? `促銷價 ${sign(c.currency)}${c.perThousand}／千哩` : `一般價約 ${sign(c.currency)}${c.perThousand}／千哩，未核實${price.base?.note ? `；${esc(price.base.note)}` : ''}`;
-  return `<p class="buy-line">💵 差的 ${fmt(short)} 哩用買的約 <b>${money}</b><small>${how}${!price.promo && sale ? `・${saleText}` : ''}・多半另加稅費、有購買上限${src ? `・<a href="${esc(price.base?.url || src.url)}" target="_blank" rel="noopener">${price.base?.url ? '購買頁' : '價格來源'} ↗</a>` : ''}</small></p>`;
+  // A price checked on the program's own page (buymiles.json `official`) says so, with its cap and that page.
+  const off = !price.promo && price.base?.official;
+  const how = price.promo ? `促銷價 ${sign(c.currency)}${c.perThousand}／千哩`
+    : off ? `官網一般價 ${sign(c.currency)}${c.perThousand}／千哩（${esc(off.checked)} 查）${off.cap ? `；${esc(off.cap)}` : ''}`
+      : `一般價約 ${sign(c.currency)}${c.perThousand}／千哩，未核實${price.base?.note ? `；${esc(price.base.note)}` : ''}`;
+  const link = off ? { url: off.url, label: '官網購買頁' } : src ? { url: price.base?.url || src.url, label: price.base?.url ? '購買頁' : '價格來源' } : null;
+  return `<p class="buy-line">💵 差的 ${fmt(short)} 哩用買的約 <b>${money}</b><small>${how}${!price.promo && sale ? `・${saleText}` : ''}${off ? '' : '・多半另加稅費、有購買上限'}${link ? `・<a href="${esc(link.url)}" target="_blank" rel="noopener">${link.label} ↗</a>` : ''}</small></p>`;
 }
 // 哩程試算 rows: what the wallet reaches for that program and, when short, what buying the rest costs.
 function shortfallHtml(chartId, miles) {

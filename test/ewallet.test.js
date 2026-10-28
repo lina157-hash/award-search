@@ -179,7 +179,7 @@ function sandbox(today = '2026-10-14', bare = false, tweak = null) {
   };
   if (tweak) tweak(ctx.data);
   vm.createContext(ctx);
-  vm.runInContext(`${calcConvert}\n${fs.readFileSync(path.join(__dirname, '..', 'public', 'ewallet.js'), 'utf8')}\nthis.api = { planTransfers, ewPointsFor, parseBuyPrice, buyPriceFor, buyCost, untilTag, upcomingChanges, programChangeTag, expiryOfEntry, walletExpiryList, calcConvert };`, ctx);
+  vm.runInContext(`${calcConvert}\n${fs.readFileSync(path.join(__dirname, '..', 'public', 'ewallet.js'), 'utf8')}\nthis.api = { planTransfers, ewPointsFor, parseBuyPrice, buyPriceFor, buyCost, buyMilesHtml, untilTag, upcomingChanges, programChangeTag, expiryOfEntry, walletExpiryList, calcConvert };`, ctx);
   return ctx.api;
 }
 
@@ -265,4 +265,12 @@ test('countdowns: validUntil on a bank or its rates, promos ending soon, leaving
   assert.deepEqual([...bare.upcomingChanges('2026-10-14')], []);
   assert.equal(bare.programChangeTag('emirates'), '');
   assert.equal(bare.buyPriceFor('alaska'), null);
+});
+
+test('a buy price checked on the program\'s own page says so, with its cap and that page; the others stay unverified', () => {
+  const api = sandbox('2026-10-28');
+  const eva = api.buyMilesHtml('eva', 20000);
+  assert.match(eva, /官網一般價 US\$40／千哩（2026-10-28 查）；每年最多 150,000 哩/);
+  assert.match(eva, /href="https:\/\/www\.evaair\.com\/[^"]+"[^>]*>官網購買頁/);
+  assert.match(api.buyMilesHtml('united', 20000), /一般價約 US\$37\.6／千哩，未核實/);
 });
