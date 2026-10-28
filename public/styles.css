@@ -107,7 +107,7 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .chip small { color: var(--muted); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; }
 .chip button { border: 0; background: none; color: var(--muted); font-size: 1rem; line-height: 1; width: 32px; height: 32px; margin: -4px -2px -4px 0; border-radius: 8px; cursor: pointer; padding: 0; }
 .chip button:hover { background: var(--surface); color: var(--danger); }
-.route-row input.chips-q, .route-row input.chips-q:focus { flex: 1 1 90px; width: 0; min-width: 72px; border: 0; background: transparent; box-shadow: none; padding: 6px 2px; font-size: 1rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.route-row input.chips-q, .route-row input.chips-q:focus, .alert-edit input.chips-q, .alert-edit input.chips-q:focus { flex: 1 1 90px; width: 0; min-width: 72px; border: 0; background: transparent; box-shadow: none; padding: 6px 2px; font-size: 1rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
 .ac-host > label { color: var(--muted); }
 .ac-list { position: absolute; top: calc(100% + 6px); left: 0; width: max(100%, 400px); max-height: 360px; overflow-y: auto; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow), 0 12px 32px rgb(16 24 40 / .12); padding: 6px; z-index: 30; }
 .ac-end .ac-list { left: auto; right: 0; }
@@ -615,6 +615,8 @@ details.release li { margin: 3px 0; }
 .w-add { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
 .w-add select { flex: 1 1 220px; min-width: 0; }
 .w-add input { flex: 0 1 130px; min-width: 90px; text-align: right; }
+.w-add [aria-invalid] { border-color: var(--danger); }
+.w-add + .w-add-err { margin: -2px 0 4px; }
 .w-del { border: 0; background: none; color: var(--muted); font-size: 1.2rem; line-height: 1; padding: 4px 6px; cursor: pointer; }
 .w-del:hover { color: var(--coral); }
 .w-empty { color: var(--muted); font-size: .9rem; margin: 6px 0; }
@@ -632,6 +634,8 @@ details.release li { margin: 3px 0; }
 /* The title, the 商務／頭等 switch and 請假效率 share one centre line; the switches sit together on the right. */
 .deals-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding-top: 26px; }
 .deals-head .section-title { margin: 0 auto 0 0; }
+.deals-fail { margin: 26px 0 0; }
+.deals-fail .linkish { margin-left: 6px; }
 .deal-group h3.sub { margin: 14px 0 8px; font-size: .9rem; color: var(--muted); }
 .deal-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(200px, calc((100% - 30px) / 4)), 1fr)); gap: 10px; }
 /* Tablets: two columns, so a region's four cards make two full rows instead of three and an orphan. */
@@ -667,6 +671,25 @@ details.release li { margin: 3px 0; }
 .plan-sum { margin: 10px 0 0; font-size: .92rem; }
 .plan-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .plan-shared { border: 1px dashed var(--accent); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; }
+/* Phones: each leg is a card instead of a table that scrolls sideways: the date and flight on top, 艙等・哩數・計畫・稅金
+   under them, ✕ at the top right; the leg's dates and notes (tr.tp-sub, tr.fst-row) stay inside its card. */
+@media (max-width: 600px) {
+  .plan-table, .plan-table tbody, .plan-table tr { display: block; }
+  .plan-table tr:not(.tp-sub, .fst-row) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date date rm" "route route route" "cabin fare fare"; gap: 4px 12px; padding: 8px 4px 4px 12px; }
+  .plan-table tr + tr:not(.tp-sub, .fst-row) { border-top: 1px solid var(--border); }
+  .plan-table td, .plan-table td:first-child { display: block; min-width: 0; padding: 0; border: 0; position: static; background: none; white-space: normal; }
+  .plan-table td:nth-child(1) { grid-area: date; align-self: center; }
+  .plan-table td:nth-child(2) { grid-area: route; }
+  .plan-table td:nth-child(3) { grid-area: cabin; }
+  .plan-table td:nth-child(4) { grid-area: fare; }
+  .plan-table td:nth-child(5) { grid-area: rm; }
+  .plan-table td:nth-child(1) .tp-pill { margin: 0 0 0 8px; }
+  .plan-table td:nth-child(1) button.tp-pill { margin: -7px 0 -7px 8px; }
+  .plan-table [data-leg-rm] { min-width: 36px; min-height: 36px; text-decoration: none; color: var(--muted); }
+  .plan-table tr.tp-sub td, .plan-table tr.fst-row td { padding: 2px 12px 10px; }
+  .plan-table tr.tp-sub td > * { max-width: none; }
+  .plan-table .tp-air > summary { padding: 6px 0; }
+}
 @media (max-width: 640px) {
   .w-row input { width: 110px; flex-basis: 110px; }
   /* one swipeable row per region keeps the home page short on phones */
@@ -971,6 +994,8 @@ details.ti-src p { margin: 4px 0 0; }
 
 /* hotels */
 .h-row .h-where { flex: 2 1 220px; }
+/* Top-aligned: 「請輸入城市或地區。」 under 城市或地區 makes that field taller without lifting its box above the others. */
+.h-row { align-items: flex-start; }
 .h-row .h-small { flex: 1 1 120px; }
 .h-progs { display: flex; flex-wrap: wrap; gap: 6px; border: 0; margin: 0; padding: 0; min-width: 0; }
 .h-chip { cursor: pointer; }
@@ -1369,7 +1394,8 @@ details.sub-fold > .cards { margin: 6px 0 12px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .alogo:not(.alogo-code) { background-color: #eef1f4; box-shadow: none; } }
 :root[data-theme="dark"] .alogo:not(.alogo-code) { background-color: #eef1f4; box-shadow: none; }
 @media (max-width: 640px) {
-  .rules-nav { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; padding: 6px 16px; }
+  /* Nine chapters: two rows of five (one row of nine is too narrow for 亞萬表). */
+  .rules-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 6px 16px; }
   .rules-nav button { min-width: 0; min-height: 36px; padding: 4px 0; white-space: nowrap; }
   details.rules-fold > summary h2.section { font-size: 1.02rem; }
   .alogo.md { width: 32px; height: 32px; border-radius: 9px; }
@@ -1520,6 +1546,11 @@ dialog.cx-dlg { width: min(560px, calc(100vw - 24px)); overflow: auto; }
 .alert-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .alert-actions [aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
 @media (max-width: 640px) { .alert-edit-grid { grid-template-columns: 1fr 1fr; } }
+/* The search form's airport chips and date picker take two columns each; on phones each takes a row, as in the search. */
+.alert-edit .ac-host, .alert-edit .dp-field { grid-column: span 2; }
+.alert-edit .status { margin: 4px 0 0; }
+.alert-list .ac-list small { display: inline; }
+@media (max-width: 640px) { .alert-edit .ac-host, .alert-edit .dp-field { grid-column: 1 / -1; } }
 details.cal-fold > summary { list-style: none; margin-top: 0; color: inherit; }
 details.cal-fold > summary::-webkit-details-marker { display: none; }
 details.cal-fold > summary .section-title::after { content: "▾"; color: var(--muted); font-size: .85rem; font-weight: 400; }
@@ -2187,6 +2218,13 @@ path.rtw-line.surface { stroke: var(--muted); }
 }
 
 @media (pointer: coarse) and (max-width: 640px) { .route-row { grid-template-columns: minmax(0, 1fr) 44px; } }
+/* Narrow windows with a mouse (touch has the 44px rule above): the text-sized link buttons (今日好康's 📬／🎯／立即更新,
+   the footer's 帳號管理) get a 32px hit area the same way, and keep their look. */
+@media (max-width: 600px) and (pointer: fine) {
+  .linkish { padding-top: 6px; padding-bottom: 6px; margin-top: -6px; margin-bottom: -6px; }
+}
+/* Phones: 我的點數's ×; 我的行程's status pill is with its other rules (round 6). */
+@media (max-width: 600px) { .w-del { min-width: 32px; min-height: 32px; } }
 
 /* U4: 追蹤降價 says it in one line; how often and which quota sit behind the ⓘ. */
 .watch-note { position: relative; }
@@ -2201,7 +2239,7 @@ path.rtw-line.surface { stroke: var(--muted); }
    inputs a stronger ring, the date picker's chosen days a ring in the text colour. */
 .seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 input:focus, select:focus, .chips-box:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); }
-.route-row input.chips-q:focus { box-shadow: none; }
+.route-row input.chips-q:focus, .alert-edit input.chips-q:focus { box-shadow: none; }
 .dp-day.start:focus-visible, .dp-day.end:focus-visible, .dp-day.center:focus-visible { outline: 2px solid var(--text); outline-offset: -3px; }
 
 /* U17: an inline error under 出發地 no longer moves the route row (wide screens; on phones the row is a grid). */
@@ -2311,6 +2349,12 @@ button.tp-pill:hover, button.tp-pill:focus-visible { border-color: var(--accent)
 .tp-pill.s-held { background: var(--few); color: var(--few-text); }
 .tp-pill.s-waitlist { background: #ffe7d6; color: #8a3a00; }
 .tp-pill.s-ticketed { background: var(--accent-soft); color: var(--accent); }
+/* Phones: the pill's transparent top and bottom border makes a 32px hit area; the pill drawn (its background, kept
+   inside the border whatever status colour sets it, and an inset outline) stays as it was. */
+@media (max-width: 600px) {
+  .plan-table button.tp-pill { border-width: 7px 0; border-color: transparent; background-clip: padding-box !important; box-shadow: inset 0 0 0 1px var(--border); }
+  .plan-table button.tp-pill:hover, .plan-table button.tp-pill:focus-visible { border-color: transparent; box-shadow: inset 0 0 0 1px var(--accent); }
+}
 .plan-table td sup { font-size: .7em; }
 .plan-table tr.tp-sub td { padding-top: 0; white-space: normal; }
 .plan-table tr:has(+ tr.tp-sub) td { border-bottom: 0; }
@@ -2795,6 +2839,8 @@ small.was { display: none; color: var(--muted); font-size: .76rem; white-space: 
 .more-fold > :empty { display: none; }
 .more-fold .cal-fold > summary .section-title { font-size: 1rem; }
 .more-fold .trip-info, .more-fold .pos-box, .more-fold details.hist { margin-top: 10px; }
+/* Phones: the ▾ stays on the 更多分析 line; the list of what is inside goes on the line under it. */
+@media (max-width: 600px) { .more-fold > summary .section-title small { order: 1; flex-basis: 100%; } }
 .more-acts { position: relative; }
 .more-acts > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-weight: 700; }
 .more-acts > summary::-webkit-details-marker { display: none; }

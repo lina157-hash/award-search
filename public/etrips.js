@@ -323,7 +323,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
       addBaseMap(comboMap);
       keepMapSized(comboMap);
       const { pts, surface } = comboPath(legs, trip);
-      const all = rtwDrawRoute(L, L.layerGroup().addTo(comboMap), pts, (i) => surface[i], airportCity);
+      const all = rtwDrawRoute(L, L.layerGroup().addTo(comboMap), pts, (i) => surface[i], airportCity, comboMap);
       comboMap.fitBounds(L.latLngBounds(all), { padding: [28, 28], maxZoom: 5 });
     }, (err) => { box.innerHTML = `<p class="hint">${esc(err.message)}</p>`; });
   }

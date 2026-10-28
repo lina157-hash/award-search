@@ -639,13 +639,27 @@ function setWallet(ref, value) {
   if (kind === 'm' && !n && wallet.expiry) delete wallet.expiry[id];
   if (walletEmpty()) store.del(WALLET_KEY); else store.set(WALLET_KEY, wallet);
 }
+// 加入 with no point type or no amount: a line under the row says which (like the search forms' 「請輸入出發地。」),
+// on the field that needs it, and goes once that field changes. Also the family rows (points6.js).
+const W_ADD_MISSING = { pick: '先選一種點數', amt: '請填數量' };
+function walletAddHint(el, msg) {
+  const row = el.closest('.w-add');
+  let p = row.nextElementSibling?.matches('.w-add-err') ? row.nextElementSibling : null;
+  if (!p) { row.insertAdjacentHTML('afterend', '<p class="field-err w-add-err" role="alert"></p>'); p = row.nextElementSibling; }
+  p.textContent = msg;
+  $$('[aria-invalid]', row).forEach((x) => x.removeAttribute('aria-invalid'));
+  el.setAttribute('aria-invalid', 'true');
+  el.focus();
+  const clear = () => { p.remove(); el.removeAttribute('aria-invalid'); };
+  el.addEventListener('input', clear, { once: true });
+}
 function bindWallet(host) {
   const refresh = () => { renderWalletList(); renderWalletSum(); };
   const add = () => {
     const ref = $('#w-pick', host).value;
     const amt = $('#w-amt', host);
-    if (!ref) { $('#w-pick', host).focus(); return; }
-    if (!cleanCount(amt.value)) { amt.focus(); return; }
+    if (!ref) return walletAddHint($('#w-pick', host), W_ADD_MISSING.pick);
+    if (!cleanCount(amt.value)) return walletAddHint(amt, W_ADD_MISSING.amt);
     setWallet(ref, amt.value);
     $('#w-pick', host).value = '';
     amt.value = '';
@@ -1395,7 +1409,9 @@ async function loadDeals() {
     renderDeals();
     if (!AP.loaded) onAirports(renderDeals); // city names under the codes
   } catch {
-    host.innerHTML = '';
+    // Failed or timed out: one line says so, with 重試 (an empty box looked like there were no deals today).
+    host.innerHTML = '<p class="hint deals-fail">今日好康暫時載入失敗，稍後再試。<button type="button" class="linkish" id="deals-retry">重試</button></p>';
+    $('#deals-retry', host).addEventListener('click', (e) => { e.currentTarget.disabled = true; e.currentTarget.textContent = '載入中…'; loadDeals(); });
   }
   host.removeAttribute('aria-busy'); // drops the reserved height (index.html), see styles.css
 }
