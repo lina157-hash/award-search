@@ -28,6 +28,8 @@ const date = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Taipei' }).forma
 v.version = version;
 v.updated = date;
 v.history = [{ version, date, note }, ...(v.history || [])].slice(0, 20);
+// What this release's cached files hold (test/assets-version.test.js checks nothing changed after the bump).
+v.assets = require('./asset-hash').assetHash();
 fs.writeFileSync(file, `${JSON.stringify(v, null, 2)}\n`);
 // Cache-bust the page's script and stylesheet URLs (?v=) so browsers fetch the new release, and keep the preloaded
 // data bundle URL the same as the one app.js asks for (it takes ?v= from its own script URL).
