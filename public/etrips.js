@@ -411,7 +411,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
   const posHub = (id) => pos.hubs.find((h) => h.id === id);
   let posSeq = 0;
   document.addEventListener('search:start', () => { posSeq++; $('#search-pos').innerHTML = ''; pos.share = null; });
-  document.addEventListener('search:done', async (e) => {
+  onSearchDone(async (e) => {
     const share = new URLSearchParams(e.detail.share);
     const n = posSeq;
     try { await etLoad(); } catch { return; }
@@ -577,7 +577,7 @@ if (typeof document !== 'undefined' && document.getElementById('search-form')) {
           applyShare(new URLSearchParams({ o: s.get('d'), d: s.get('o'), s: back, e: back, c: s.get('c') || 'J', ...(s.get('n') ? { n: s.get('n') } : {}) }));
         } });
       };
-      document.addEventListener('search:done', onFirst);
+      onSearchDone(onFirst);
     } else if (BOOT_HASH.startsWith('#gf?')) {
       const fill = () => {
         if (!dataReady) { setTimeout(fill, 150); return; }

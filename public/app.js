@@ -131,6 +131,9 @@ function toast(msg, action) {
 }
 
 const skeleton = (n = 4) => `<div class="skeleton">${'<div></div>'.repeat(n)}</div>`;
+// Runs `fn` after the browser has painted what was just drawn, when it is idle (or after a second at most; a timer
+// where there is no requestIdleCallback, as on Safari): extras that shouldn't hold up the results' first paint.
+const afterPaint = (fn) => requestAnimationFrame(() => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1000 }) : setTimeout(fn, 0)));
 
 // ---------- tabs ----------
 // 'rtw' (環球票規劃) is a page without a tab button: 航線查詢 links to it (#rtw).
@@ -1362,7 +1365,24 @@ function searchQuery(share) {
   return params;
 }
 
-// `pre` is a search already started for a share link while the page data was still loading.
+// 搜尋結果's status line: what was found, then its buttons (on a phone a second row). While searching, a hidden copy
+// of the buttons and the 🕒 line keeps their room, so the results don't move down when the answer comes.
+function statusActionsHtml(hold = false) {
+  const id = (x) => (hold ? '' : ` id="${x}"`);
+  return `<span class="status-actions${hold ? ' status-hold' : ''}"${hold ? ' aria-hidden="true"' : ''}><button type="button" class="outline"${id('alert-btn')}>🔔 新機位通知</button><button type="button" class="outline"${id('to-cash')}>💵 比現金票價</button><details class="more-acts"><summary class="outline" aria-label="更多動作">⋯</summary><div class="more-acts-menu"><button type="button" class="outline"${id('fav-btn')}>☆ 加入常用</button><button type="button" class="outline"${id('share-btn')}>🔗 分享</button></div></details></span>`;
+}
+function searchingStatusHtml(autoNote = '') {
+  return `<span>${autoNote ? `${esc(autoNote)}<small class="fresh">搜尋中…</small>` : '正在搜尋各哩程計畫的獎勵位…<small class="fresh status-hold" aria-hidden="true">🕒 資料最新 剛剛更新</small>'}</span>${statusActionsHtml(true)}`;
+}
+
+// The finished route search's search:done detail (null while one runs). A search script that arrives after the
+// results (runSearch doesn't wait for them) registers with onSearchDone, which also runs it for those results.
+let lastSearchDone = null;
+function onSearchDone(fn) {
+  document.addEventListener('search:done', fn);
+  if (lastSearchDone) fn(new CustomEvent('search:done', { detail: lastSearchDone }));
+}
+
 // `pre` is a search already started for a share link while the page data was still loading;
 // `autoRange` says the dates were filled in because none were picked.
 async function runSearch(share, pre, autoRange = false) {
@@ -1386,18 +1406,20 @@ async function runSearch(share, pre, autoRange = false) {
   const range = `${dayLabel(state.start)} – ${dayLabel(state.end)}`;
   const autoNote = autoRange ? `沒有選日期，先查未來 1 個月（${range}），要換日期可以點上面的出發日期。` : '';
   status.className = 'status';
-  status.textContent = autoNote || '正在搜尋各哩程計畫的獎勵位…';
-  if (autoNote) status.insertAdjacentHTML('beforeend', '<small class="fresh">搜尋中…</small>');
+  status.innerHTML = searchingStatusHtml(autoNote);
   $('#search-empty').hidden = true;
   $('#search-results').innerHTML = skeleton();
   setHolidays(HOL.search, {});
   $('#search-trip').innerHTML = '';
   if (typeof histShow === 'function') histShow(null);
+  lastSearchDone = null;
   document.dispatchEvent(new CustomEvent('search:start'));
   const done = busy($('#search-form button[type=submit]'), '搜尋中…');
   reveal(status);
   try {
-    const [body] = await Promise.all([pre || api(`/api/search?${params}`), loadMore(), loadSearchScripts()]);
+    // The table needs the answer, the second data part and the booking-cost tools. The search scripts (國泰 card,
+    // 來回配對, 拆兩段查, 釋位紀錄…) add their parts when they arrive: see after the table below.
+    const [body] = await Promise.all([pre || api(`/api/search?${params}`), loadMore(), loadTools()]);
     // Cathay trips that connect in Hong Kong are priced by both sectors' distances, which needs the airport list.
     // So do 哩程票特惠 routed by country (features.js).
     if (!AP.loaded && (body.results.some(amNeedsHub) || (typeof awardSaleNeedsAirports === 'function' && awardSaleNeedsAirports(body.results)))) await loadAirports();
@@ -1407,17 +1429,28 @@ async function runSearch(share, pre, autoRange = false) {
     state.withTaxes = Boolean(body.withTaxes);
     const newest = body.results.map((r) => r.updatedAt).filter(Boolean).sort().at(-1);
     status.innerHTML = `<span>${autoRange ? `沒有選日期，先查未來 1 個月（${esc(range)}）：` : ''}找到 <b>${body.results.length}</b> 筆日期與計畫組合${body.mock ? '（示範資料）' : ''}${body.truncated ? '。結果太多，只列出一部分，縮短日期範圍可以看到完整結果' : ''}${newest ? `<small class="fresh" title="seats.aero 快取最後更新的時間；表格中有虛線框的格子超過 3 天沒更新">🕒 資料最新 ${ago(newest)}更新</small>` : ''}</span>
-      <span class="status-actions"><button type="button" class="outline" id="alert-btn">🔔 新機位通知</button><button type="button" class="outline" id="to-cash">💵 比現金票價</button><details class="more-acts"><summary class="outline" aria-label="更多動作">⋯</summary><div class="more-acts-menu"><button type="button" class="outline" id="fav-btn">☆ 加入常用</button><button type="button" class="outline" id="share-btn">🔗 分享</button></div></details></span>`;
+      ${statusActionsHtml()}`;
     $('#alert-btn').addEventListener('click', openAlertDialog);
     $('#share-btn').addEventListener('click', copyShare);
     renderSearchFav();
     $('#fav-btn').addEventListener('click', () => { toast(toggleFav(tabParams('search')) ? '已加入常用航線' : '已從常用移除'); renderSearchFav(); });
     $('#to-cash').addEventListener('click', () => toCash(share));
+    const drawnWith = searchScriptsIn();
     renderSearch();
-    document.dispatchEvent(new CustomEvent('search:done', { detail: { share: share.toString(), body } }));
-    loadTripInfo($('#search-trip'), { from: share.get('o'), to: share.get('d'), start: state.start, end: state.end }, { hol: HOL.search, onHolidays: () => { if (fresh() && state.results.length) renderCalendar(); } });
-    if (typeof histShow === 'function') histShow(share);
+    lastSearchDone = { share: share.toString(), body };
+    document.dispatchEvent(new CustomEvent('search:done', { detail: lastSearchDone }));
     requestAnimationFrame(() => status.scrollIntoView({ behavior: 'smooth', block: 'start' })); // after the new table's layout, not forcing it
+    // 更多分析's 出發前小提醒 and 釋位紀錄 (whose 哩數水準 redraws the cards) once the table is on screen. Search scripts
+    // that arrived after the table: draw it again with their parts (they ran their search:done part on arrival).
+    afterPaint(() => {
+      if (!fresh()) return;
+      loadTripInfo($('#search-trip'), { from: share.get('o'), to: share.get('d'), start: state.start, end: state.end }, { hol: HOL.search, onHolidays: () => { if (fresh() && state.results.length) renderCalendar(); } });
+      loadSearchScripts().then(() => {
+        if (!fresh()) return;
+        if (!drawnWith) renderSearch();
+        if (typeof histShow === 'function') histShow(share);
+      });
+    });
   } catch (err) {
     if (!fresh()) return;
     done();
@@ -1638,8 +1671,9 @@ function resultParts(rows) {
     </button>`;
   }).join('');
 
-  // With the 國泰 scripts loaded these numbers are in their 國泰／亞洲萬里通 card (cxcard.js) instead.
-  parts.am = typeof cxBadgeHtml === 'function' ? '' : `${amReal.length ? `<div class="am-callout">
+  // With the 國泰 scripts loaded these numbers are in their 國泰／亞洲萬里通 card (cxcard.js) instead; while they are on
+  // their way, in its placeholder (renderSearch).
+  parts.am = typeof cxBadgeHtml === 'function' || cxCardComing() ? '' : `${amReal.length ? `<div class="am-callout">
       <div><b>國泰 亞洲萬里通</b>　最低 <b class="am-miles">${fmt(amReal[0].cabins[c].miles)} 哩</b>（${mmdd(amReal[0].date)} ${esc(amReal[0].origin)} → ${esc(amReal[0].destination)}，${carriersHtml(amReal[0].cabins[c].airlines)}），共 ${amReal.length} 個日期／航線有位</div>
       <div class="hint">來自 seats.aero 的亞洲萬里通實際資料。可在下方表格「國泰 亞洲萬里通」欄點選看航班。</div>
     </div>` : ''}
@@ -1688,7 +1722,7 @@ function renderSearch() {
     ${resultToolsHtml()}
     ${release}
     <div class="res-part" id="am-host">${p.am}</div>
-    ${typeof cxBadgeHtml === 'function' ? cxBadgeHtml(c) : ''}
+    ${typeof cxBadgeHtml === 'function' ? cxBadgeHtml(c) : cxCardComing() ? cxWaitHtml() : ''}
     <div class="res-part" id="deals-host">${p.deals}</div>
     ${typeof gapHtml === 'function' ? gapHtml() : ''}
     <div class="res-part" id="pair-host"></div>
@@ -2032,7 +2066,8 @@ async function openTrips(id, title, cabin) {
   const aiP = loadScripts(['aihelper']);
   try {
     // flightdata.js and the airport list (time zones) for the layovers and the time difference.
-    const extras = Promise.all([loadScripts(['flightdata']), loadAirports()]);
+    // From the route results, the search scripts too (混艙, 這班還可以用, 也看混艙行程) if they are still on their way.
+    const extras = Promise.all([loadScripts(['flightdata']), loadAirports(), $('#tab-search').hidden ? null : loadSearchScripts()]);
     const [body] = await Promise.all([api(`/api/trips/${encodeURIComponent(id)}`), loadMore(), loadTools()]);
     await extras;
     if (!fresh()) return;
@@ -3024,10 +3059,28 @@ const RULES_CHAPTERS = [['r-alliances', '航空聯盟', '聯盟'], ['am-chart', 
 // Every chapter and every card starts folded to one line (a heading and a short summary), so the page reads as a short
 // index; the search, the chapter chips and 「全部展開」 open what they point at. The chapter chips stay on screen.
 // A section whose html starts with its <h2>: the heading and `sum` (one line, html) become the summary of a <details>.
+// Its body is put in the page when it first opens (all of them at once was a long wait on a phone); with a query
+// every section is open, so built at once. rulesLazy: the bodies not in the page yet, by data-lazy.
+let rulesLazy = [];
 function rulesSection(html, cls = '', sum = '') {
   const m = /^\s*(<h2[\s\S]*?<\/h2>)([\s\S]*)$/.exec(html);
   if (!m) return html ? `<section class="rules-sec ${cls}">${html}</section>` : '';
-  return `<details class="rules-sec rules-fold ${cls}" ${rulesState.q ? 'open' : ''}><summary>${m[1]}${sum ? `<small class="sec-sum">${sum}</small>` : ''}</summary><div class="sec-body">${m[2]}</div></details>`;
+  const body = rulesState.q ? `<div class="sec-body">${m[2]}</div>` : `<div class="sec-body" data-lazy="${rulesLazy.push(m[2]) - 1}"></div>`;
+  return `<details class="rules-sec rules-fold ${cls}" ${rulesState.q ? 'open' : ''}><summary>${m[1]}${sum ? `<small class="sec-sum">${sum}</small>` : ''}</summary>${body}</details>`;
+}
+// Puts the bodies of the folded sections inside `root` (one section, or #rules-body for all) in the page.
+function rulesBuild(root) {
+  for (const box of $$('.sec-body[data-lazy]', root)) {
+    box.innerHTML = rulesLazy[box.dataset.lazy];
+    box.removeAttribute('data-lazy');
+    rulesWire(box);
+    bindTabLinks(box);
+  }
+}
+// An element of 規則庫 by id, building the folded sections first when it is inside one.
+function rulesFind(id) {
+  if (!document.getElementById(id) && $('#rules-body')) rulesBuild($('#rules-body'));
+  return document.getElementById(id);
 }
 function syncRulesAll() {
   const b = $('#rules-all');
@@ -3057,11 +3110,15 @@ function renderRules() {
   });
   // 全部展開 opens every chapter and card; once everything is open it reads 全部收合.
   $('#rules-all').addEventListener('click', () => {
+    rulesBuild($('#rules-body'));
     const all = $$('#rules-body details');
     const open = all.some((d) => !d.open);
     all.forEach((d) => (d.open = open));
     syncRulesAll();
   });
+  // A section's body comes in as it opens: on the tap itself (before it shows), or else on its toggle.
+  $('#rules-body').addEventListener('click', (e) => { const d = e.target.closest('summary')?.parentElement; if (d?.matches('.rules-fold')) rulesBuild(d); }, true);
+  $('#rules-body').addEventListener('toggle', (e) => { if (e.target.open && e.target.matches('.rules-fold')) rulesBuild(e.target); }, true);
   $('#rules-body').addEventListener('toggle', syncRulesAll, true);
   renderRulesBody();
 }
@@ -3095,6 +3152,7 @@ function renderRulesBody() {
   const pts = data.points;
   const terms = glossary.sections.flatMap((s) => s.items.map((i) => i.term.replace(/\s*[（(].*$/, '')));
 
+  rulesLazy = [];
   $('#rules-body').innerHTML = [
     rulesSection(`<h2 class="section" id="r-alliances">航空聯盟</h2><div class="cards">${allianceCards}</div>
       <p class="hint logo-credit">標誌僅供辨識，商標屬各航空公司與聯盟（<a href="/logos/CREDITS.txt" target="_blank" rel="noopener">來源與授權</a>）。</p>`, '',
@@ -3116,19 +3174,24 @@ function renderRulesBody() {
       <div class="cards">${s.items.map((i) => `<div class="card"><h3>${esc(i.term)}</h3><p>${esc(i.desc)}</p></div>`).join('')}</div></details>`).join('')}`,
     '', `${terms.length} 個常見名詞，例如${terms.slice(0, 3).map(esc).join('、')}`),
   ].join('');
-  // The section itself folds now, so its table opens with it instead of needing a second tap.
-  $$('#rules-body .release-wrap').forEach((d) => (d.open = true));
+  rulesWire($('#rules-body'));
+  // A chapter whose section is not drawn (its data missing) hides its jump chip. Headings sit outside the folded bodies.
   $$('.rules-nav [data-jump]').forEach((b) => (b.hidden = !document.getElementById(b.dataset.jump)));
+  bindTabLinks($('#rules'));
+  filterRules();
+}
+// What a section's body needs once it is in the page (rulesBuild, or renderRulesBody for those built at once).
+function rulesWire(root) {
+  // The section itself folds now, so its table opens with it instead of needing a second tap.
+  $$('.release-wrap', root).forEach((d) => (d.open = true));
 
-  $$('#alliance-filter .chip').forEach((b) => b.addEventListener('click', () => {
+  $$('#alliance-filter .chip', root).forEach((b) => b.addEventListener('click', () => {
     rulesState.alliance = b.dataset.a;
     $$('#alliance-filter .chip').forEach((x) => x.classList.toggle('on', x === b));
     renderProgramCards();
   }));
-  renderProgramCards();
-  bindPoints();
-  bindTabLinks($('#rules'));
-  filterRules();
+  if ($('#program-cards', root)) renderProgramCards();
+  bindPoints(root);
 }
 
 // With a query: hide cards and table rows that don't mention it, hide sections left empty, and highlight the matches.
@@ -3176,7 +3239,7 @@ function bindTabLinks(root) {
   $$('[data-tab-link]', root).forEach((a) => a.addEventListener('click', (e) => {
     e.preventDefault();
     showTab(a.dataset.tabLink);
-    const target = a.dataset.anchor && document.getElementById(a.dataset.anchor);
+    const target = a.dataset.anchor && rulesFind(a.dataset.anchor);
     target?.closest('details')?.setAttribute('open', '');
     if (target) window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 76 });
     else window.scrollTo({ top: 0 });
@@ -3422,8 +3485,8 @@ function bindCalc() {
   sync();
 }
 
-function bindPoints() {
-  $$('.points-filter .chip').forEach((b) => b.addEventListener('click', () => {
+function bindPoints(root = document) {
+  $$('.points-filter .chip', root).forEach((b) => b.addEventListener('click', () => {
     $$('.points-filter .chip').forEach((x) => x.classList.toggle('on', x === b));
     const p = b.dataset.p;
     let shown = 0;
@@ -3543,19 +3606,22 @@ function loadMore() {
   moreP ||= loadPart('more', DATA_MORE).then((all) => { putData(all, DATA_MORE); moreReady = true; }).catch((err) => { moreP = null; throw err; });
   return moreP;
 }
-// Start on the first sign of a search (a tap or focus on the search page), so the results don't wait for it.
-const warmMore = () => { loadMore().catch(() => {}); loadSearchScripts(); };
+// Start on the first sign of a search (a tap or focus on the search page), so the results don't wait for it. What
+// the table needs comes first; the search scripts after it, so on a slow line they don't share the bandwidth.
+const warmMore = () => { Promise.allSettled([loadMore(), loadTools()]).then(() => loadSearchScripts()); };
 for (const ev of ['pointerdown', 'focusin']) $('#tab-search').addEventListener(ev, warmMore, { once: true });
 // Scripts fetched when first needed instead of with the page; each runs once, in the order asked for (async = false).
 // Resolves to one true/false per script; one that fails to load is fetched again on the next ask.
 const lazyScripts = {};
+const lazyIn = new Set(); // the ones that have run
+const lazyOut = new Set(); // the ones whose last fetch failed
 function loadScripts(names) {
   return Promise.all(names.map((name) => (lazyScripts[name] ||= new Promise((resolve) => {
     const el = document.createElement('script');
     el.src = `/${name}.js${ASSET_V ? `?v=${ASSET_V}` : ''}`;
     el.async = false;
-    el.onload = () => resolve(true);
-    el.onerror = () => { delete lazyScripts[name]; el.remove(); resolve(false); };
+    el.onload = () => { lazyIn.add(name); lazyOut.delete(name); resolve(true); };
+    el.onerror = () => { lazyOut.add(name); delete lazyScripts[name]; el.remove(); resolve(false); };
     document.body.append(el);
   }))));
 }
@@ -3586,6 +3652,12 @@ function withTools(host, draw) {
 // flightdata.js (官方航班資料: the calendar's 沒有直飛 marks, the timetable fold, 航班明細's layovers) before weekday.js reads it.
 const SEARCH_SCRIPTS = ['etrips', 'flightplus', 'pairing', 'seathistory', 'flightdata', 'weekday', 'cxfill', 'hubsplit', 'cxcal', 'cxlive', 'cxauto', 'aihelper', 'nlsearch', 'cxmuse', 'cxshot', 'cxcard'];
 const loadSearchScripts = () => loadScripts([...TOOL_SCRIPTS, ...SEARCH_SCRIPTS]);
+const searchScriptsIn = () => SEARCH_SCRIPTS.every((n) => lazyIn.has(n));
+// The results came before cxcard.js (the last search script): its 國泰 card gets a placeholder of its folded size
+// instead of the plain Asia Miles callouts, which are only for when it can't load. The card has a cabin line when the
+// results have Asia Miles seats or estimates (cxCardRows), else just its heading and 「其他… ▾」.
+const cxCardComing = () => !lazyIn.has('cxcard') && !lazyOut.has('cxcard');
+const cxWaitHtml = () => `<div class="cxc cxc-wait" aria-hidden="true"><i></i>${state.results.some((r) => /^asiamiles(_est)?$/.test(r.source) && Object.values(r.cabins || {}).some((x) => x?.available && x.miles)) ? '<i class="r"></i>' : ''}<i class="m"></i></div>`;
 // The owner's tools, fetched on the owner's device only (account.js, next to 帳號管理): 哪裡都好 under 區域探索,
 // 今日好康's 🎯 我的條件通知 and the 一句話搜尋 box draw themselves when they arrive and follow the passcode after that.
 const OWNER_SCRIPTS = ['anywhere', 'dealrules', 'nlsearch'];
@@ -3625,7 +3697,7 @@ tabInit.cash = () => {
   if (isShare && !share.get('al') && !normalizeShare(new URLSearchParams(share)).past) {
     pre = api(`/api/search?${searchQuery(normalizeShare(new URLSearchParams(share)))}`);
     pre.catch(() => {}); // handled when awaited
-    $('#search-status').textContent = '正在搜尋各哩程計畫的獎勵位…';
+    $('#search-status').innerHTML = searchingStatusHtml();
   }
   // A link that opens results or a tab drawn from the second part fetches it alongside the first.
   if (isShare || NEEDS_MORE[currentTab]) warmMore();

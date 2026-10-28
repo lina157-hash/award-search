@@ -987,7 +987,7 @@ if (typeof document !== 'undefined') {
     e.preventDefault();
     showTab('rules');
     setTimeout(() => {
-      const m = $('#cxmix');
+      const m = rulesFind('cxmix'); // built with its 規則庫 section (app.js)
       if (!m) return;
       m.closest('details:not(#cxmix)')?.setAttribute('open', '');
       m.open = true;
