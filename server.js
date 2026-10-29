@@ -1061,6 +1061,9 @@ async function handleSearch(q, req) {
   return { mock: MOCK, truncated: out.truncated, withTaxes: Boolean(params.include_trips), results: out.results };
 }
 
+// 區域探索's page cap: seats.aero's bulk list comes in date order, 1,000 rows a page, one call each. The owner raised it
+// (2026-10-29) from 3 + 1 per 90 days (7 for a year) to EXPLORE_PAGE_X times that.
+const EXPLORE_PAGE_X = 3;
 async function handleExplore(q, req) {
   const params = {
     // `program`, not `source`: Vercel's rewrite drops a `source` query param.
@@ -1078,8 +1081,9 @@ async function handleExplore(q, req) {
   params.cabin = CABIN_NAMES[cabin];
   // Ship one compact row per result for the requested cabin; the browser filters and sorts.
   return sharedSearch('explore:' + JSON.stringify(params), async () => {
-    const pages = pagesFor(params, 3);
-    const { items, hasMore } = MOCK ? { items: mock.mockAvailability(params), hasMore: false } : await budgeted(req, 'seats', pages, (c) => c.availability(params, { maxPages: pages }));
+    const pages = pagesFor(params, 3) * EXPLORE_PAGE_X;
+    const until = Date.now() + 50e3; // inside Vercel's 60 s limit; the pages not reached are refunded
+    const { items, hasMore } = MOCK ? { items: mock.mockAvailability(params), hasMore: false } : await budgeted(req, 'seats', pages, (c) => c.availability(params, { maxPages: pages, until }));
     const results = items.map(normalizeAvailability).filter((r) => r.cabins[cabin].available).map((r) => {
       const c = r.cabins[cabin];
       return { id: r.id, date: r.date, origin: r.origin, destination: r.destination, source: r.source, distance: r.distance, miles: c.miles, seats: c.seats, airlines: c.airlines, direct: c.direct, updatedAt: r.updatedAt };
@@ -1591,8 +1595,15 @@ const CACHE = {
 
 // Errors are never cached.
 function sendJson(res, status, body, cache, extra = {}) {
-  res.writeHead(status, { 'content-type': MIME['.json'], 'cache-control': status === 200 && cache ? cache : 'no-store', ...extra });
-  res.end(JSON.stringify(body));
+  const headers = { 'content-type': MIME['.json'], 'cache-control': status === 200 && cache ? cache : 'no-store', ...extra };
+  const json = JSON.stringify(body);
+  // A big answer (a long 區域探索 list) goes gzipped: Vercel refuses function responses over 4.5 MB.
+  if (json.length > 1e6 && /\bgzip\b/.test(String(res.req?.headers['accept-encoding'] || ''))) {
+    res.writeHead(status, { ...headers, 'content-encoding': 'gzip', vary: 'Accept-Encoding' });
+    return res.end(require('node:zlib').gzipSync(json));
+  }
+  res.writeHead(status, headers);
+  res.end(json);
 }
 
 // A fixed body with a validator: answers If-None-Match with 304, and HEAD with headers only.
