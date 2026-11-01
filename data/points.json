@@ -397,8 +397,8 @@
    ],
    "toName": "華航 華夏哩程",
    "ratio": "11 點 = 14 哩",
-   "notes": "官方頁未寫兌換單位（回饋以每 100 點計），兌換後不可取消。比率為活動期間 2026/09/01–2026/10/31 適用，11/1 後可能調整，請再到台新活動頁確認。可用台新 Point 與台新 Point（信用卡）合併兌換。",
-   "confidence": "official",
+   "notes": "官方頁未寫兌換單位（回饋以每 100 點計），兌換後不可取消。比率為活動期間 2026/09/01–2026/10/31 適用；11/1 起的比例官網頁面本站讀不到（台新另有「年末玩旅季」活動頁），待確認。可用台新 Point 與台新 Point（信用卡）合併兌換。",
+   "confidence": "verify",
    "source": {
     "label": "台新：台新 Point 兌換哩程活動頁",
     "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
@@ -414,14 +414,14 @@
    ],
    "toName": "長榮 無限萬哩遊",
    "ratio": "11 點 = 13 哩",
-   "confidence": "official",
+   "confidence": "verify",
    "source": {
     "label": "台新：台新 Point 兌換哩程活動頁",
     "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
    },
    "date": "2026-10-14",
    "validUntil": "2026-10-31",
-   "notes": "比率為活動期間 2026/09/01–2026/10/31 適用，11/1 後可能調整，請再到台新活動頁確認。可用台新 Point 與台新 Point（信用卡）合併兌換。"
+   "notes": "比率為活動期間 2026/09/01–2026/10/31 適用；11/1 起的比例官網頁面本站讀不到（台新另有「年末玩旅季」活動頁），待確認。可用台新 Point 與台新 Point（信用卡）合併兌換。"
   },
   {
    "bank": "台新",
@@ -431,14 +431,14 @@
    ],
    "toName": "亞洲萬里通",
    "ratio": "10 點 = 18 哩",
-   "confidence": "official",
+   "confidence": "verify",
    "source": {
     "label": "台新：台新 Point 兌換哩程活動頁",
     "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/"
    },
    "date": "2026-10-14",
    "validUntil": "2026-10-31",
-   "notes": "比率為活動期間 2026/09/01–2026/10/31 適用，11/1 後可能調整，請再到台新活動頁確認。亞洲萬里通只能用台新 Point（信用卡）兌換。"
+   "notes": "比率為活動期間 2026/09/01–2026/10/31 適用；11/1 起的比例官網頁面本站讀不到（台新另有「年末玩旅季」活動頁），待確認。亞洲萬里通只能用台新 Point（信用卡）兌換。"
   },
   {
    "bank": "台新",
@@ -1677,7 +1677,7 @@
     "bank": "台新",
     "program": "台新 Point",
     "confidence": "official",
-    "note": "官方頁未寫兌換單位（活動回饋以每 100 點計），兌換後不可取消。比率為 2026/09/01–10/31 活動期間適用；亞洲萬里通只能用台新 Point（信用卡）。",
+    "note": "官方頁未寫兌換單位（活動回饋以每 100 點計），兌換後不可取消。比率為 2026/09/01–10/31 活動期間適用，11/1 起待確認（官網頁面讀不到）；亞洲萬里通只能用台新 Point（信用卡）。",
     "rates": [
      {
       "to": "ci",
