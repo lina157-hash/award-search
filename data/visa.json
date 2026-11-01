@@ -1,9 +1,9 @@
 {
  "note": "Visa rules for Republic of China (Taiwan) passport holders, curated from the Bureau of Consular Affairs PDF list; countries it omits come from ilyankou/passport-index-dataset. Notes are our own wording. Re-check when the BOCA list changes (data.gov.tw dataset 30749 RSS).",
  "source": "外交部領事事務局",
- "sourceDetail": "外交部領事事務局「國人可以免簽證、落地簽證及電子簽證前往之國家與地區」(2026-10-07 版 PDF)；未列國家以 ilyankou/passport-index-dataset 補足",
+ "sourceDetail": "外交部領事事務局「國人可以免簽證、落地簽證及電子簽證前往之國家與地區」(2026-10-22 版 PDF)；未列國家以 ilyankou/passport-index-dataset 補足",
  "sourceUrl": "https://www.boca.gov.tw/cp-37-220-9f130-1.html",
- "asOf": "2026-10-07",
+ "asOf": "2026-10-22",
  "countries": {
   "AD": {
    "type": "free",
