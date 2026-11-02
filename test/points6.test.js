@@ -114,7 +114,7 @@ test('promos-history.json: only ended, official promos, ids not repeated in prom
   const live = new Set(read('promos.json').promos.map((p) => p.id));
   for (const p of h.promos) {
     assert.ok(p.end < h.updated, `${p.id} ended`);
-    assert.ok(['transfer', 'buy'].includes(p.type), p.id);
+    assert.ok(['transfer', 'buy', 'award'].includes(p.type), p.id);
     assert.ok(p.sources?.some((s) => s.official && /^https:\/\//.test(s.url)), `${p.id} official source`);
     assert.ok(!live.has(p.id), `${p.id} moved, not copied`);
   }

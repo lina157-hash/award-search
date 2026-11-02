@@ -1,7 +1,582 @@
 {
   "note": "已結束的轉點加贈與買哩促銷（欄位同 promos.json），給點數換算的「過去 12 個月加贈 N 次、最高 +X%」與參考用。每週更新 promos.json 時，把 end 已過的活動整筆移到這裡（保留 sources），不要刪掉；endedNote 可補充結束原因。只收有官方來源的活動。",
-  "updated": "2026-10-26",
+  "updated": "2026-11-02",
   "promos": [
+    {
+      "id": "turkish-award-30off-asia-202610",
+      "type": "award",
+      "bank": null,
+      "program": "turkish",
+      "title": "土航 Miles&Smiles 台北等 12 個城市往返土耳其 經濟艙獎勵機票少 30%",
+      "bonusPct": 0,
+      "discountPct": 30,
+      "price": null,
+      "start": "2026-10-16",
+      "end": "2026-10-30",
+      "travelFrom": "2026-11-01",
+      "travelTo": "2026-11-30",
+      "carriers": [
+        "TK"
+      ],
+      "routes": [
+        {
+          "between": "TR",
+          "and": [
+            "TPE",
+            "HKG",
+            "PEK",
+            "PKX",
+            "TFU",
+            "CAN",
+            "PVG",
+            "ICN",
+            "KUL",
+            "SIN",
+            "SYD",
+            "MEL",
+            "UBN"
+          ],
+          "cabins": "Y"
+        }
+      ],
+      "routeNote": "官網列的城市：北京、成都、廣州、香港、吉隆坡、墨爾本、首爾、雪梨、新加坡、上海、台北、烏蘭巴托，往返土耳其，單程或來回皆可",
+      "termsChecked": "2026-10-16",
+      "conditions": "10/16–10/30 開票，11/1–11/30 搭乘；只限經濟艙「促銷獎勵機票」與土航自營定期航班，不含聯營與星盟夥伴；改票限同航線；稅金另付；座位有限",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "土航 Miles&Smiles：土耳其與東亞、東南亞、澳洲經濟艙獎勵機票 30% off",
+          "url": "https://www.turkishairlines.com/zh-tw/miles-and-smiles/campaigns/30-percent-off-miles-promotional-award-tickets-selected-routes-turkiye-far-east-oceania/",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "krisflyer-escapes-202610",
+      "type": "award",
+      "bank": null,
+      "program": "singapore",
+      "title": "新航 KrisFlyer Spontaneous Escapes：新加坡出發往返多條航線 Saver 獎勵機票少 30%",
+      "bonusPct": 0,
+      "discountPct": 30,
+      "price": null,
+      "start": "2026-10-15",
+      "end": "2026-10-31",
+      "travelFrom": "2026-11-01",
+      "travelTo": "2026-11-30",
+      "carriers": [
+        "SQ"
+      ],
+      "routes": [
+        {
+          "from": "SIN",
+          "to": "BWN",
+          "cabins": "Y"
+        },
+        {
+          "from": "BWN",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "DPS",
+          "cabins": "Y"
+        },
+        {
+          "from": "DPS",
+          "to": "SIN",
+          "cabins": "J"
+        },
+        {
+          "from": "SIN",
+          "to": "CGK",
+          "cabins": "J"
+        },
+        {
+          "from": "CGK",
+          "to": "SIN",
+          "cabins": "J"
+        },
+        {
+          "from": "SIN",
+          "to": "KUL",
+          "cabins": "YJ"
+        },
+        {
+          "from": "KUL",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "SUB",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SUB",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "BKK",
+          "cabins": "YJ"
+        },
+        {
+          "from": "BKK",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "DAD",
+          "cabins": "YJ"
+        },
+        {
+          "from": "DAD",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "HAN",
+          "to": "SIN",
+          "cabins": "J"
+        },
+        {
+          "from": "SIN",
+          "to": "SGN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SGN",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "MNL",
+          "cabins": "Y"
+        },
+        {
+          "from": "MNL",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "KTI",
+          "cabins": "YJ"
+        },
+        {
+          "from": "KTI",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "HKT",
+          "cabins": "Y"
+        },
+        {
+          "from": "HKT",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "SAI",
+          "cabins": "Y"
+        },
+        {
+          "from": "SAI",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "HGH",
+          "cabins": "YJ"
+        },
+        {
+          "from": "HGH",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "AMD",
+          "to": "SIN",
+          "cabins": "J"
+        },
+        {
+          "from": "CMB",
+          "to": "SIN",
+          "cabins": "J"
+        },
+        {
+          "from": "SIN",
+          "to": "CMB",
+          "cabins": "YJ"
+        },
+        {
+          "from": "DAC",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "DAC",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "DRW",
+          "cabins": "J"
+        },
+        {
+          "from": "SIN",
+          "to": "ADL",
+          "cabins": "Y"
+        },
+        {
+          "from": "ADL",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "BNE",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "CNS",
+          "cabins": "YJ"
+        },
+        {
+          "from": "CNS",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "MEL",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "SYD",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "IST",
+          "cabins": "YW"
+        },
+        {
+          "from": "IST",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "AMS",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "BRU",
+          "cabins": "YW"
+        },
+        {
+          "from": "BRU",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "CPH",
+          "cabins": "YW"
+        },
+        {
+          "from": "CPH",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "FRA",
+          "cabins": "YW"
+        },
+        {
+          "from": "FRA",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "LGW",
+          "cabins": "Y"
+        },
+        {
+          "from": "LGW",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "LHR",
+          "cabins": "Y"
+        },
+        {
+          "from": "LHR",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "MXP",
+          "cabins": "YW"
+        },
+        {
+          "from": "MXP",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "MUC",
+          "cabins": "YW"
+        },
+        {
+          "from": "MUC",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "CDG",
+          "cabins": "YW"
+        },
+        {
+          "from": "CDG",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "FCO",
+          "cabins": "Y"
+        },
+        {
+          "from": "FCO",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "ZRH",
+          "cabins": "Y"
+        },
+        {
+          "from": "ZRH",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "FRA",
+          "to": "JFK",
+          "cabins": "YW"
+        },
+        {
+          "from": "JFK",
+          "to": "FRA",
+          "cabins": "W"
+        },
+        {
+          "from": "SIN",
+          "to": "LAX",
+          "cabins": "Y"
+        },
+        {
+          "from": "LAX",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "SFO",
+          "cabins": "YW"
+        },
+        {
+          "from": "SFO",
+          "to": "SIN",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "SEA",
+          "cabins": "Y"
+        },
+        {
+          "from": "SEA",
+          "to": "SIN",
+          "cabins": "Y"
+        }
+      ],
+      "routeNote": "都是新加坡進出（沒有台灣航線），可搭配外站出發；金邊為新機場 KTI、暹粒為 SAI",
+      "termsChecked": "2026-10-16",
+      "conditions": "10/15–10/31 在新航官網或 App 開票，11/1–11/30 搭乘；不能改票、退票，不能中停，不能和其他優惠合併；稅金不打折；不含聯營航班；先到先得、各航班有不適用日期；酷航指定航班經濟艙少 15%（航線見酷航官網，未列入）",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "新航 KrisFlyer Spontaneous Escapes",
+          "url": "https://www.singaporeair.com/kfescapes",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "taishin-point-ci-202609",
+      "type": "transfer",
+      "bank": "台新",
+      "program": "ci",
+      "title": "台新Point換華航哩程 回饋5%點數",
+      "bonusPct": 5,
+      "price": null,
+      "start": "2026-09-01",
+      "end": "2026-10-31",
+      "registration": null,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
+      "conditions": "回饋為台新Point；每兌100點送5點，每人每月上限100點、限1,000名；需Richart Life會員，先到先得；今年1-8月未換過任何航空哩程者，首次累積兌換滿100點另送20點（可跨航空累積，限一次）",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "台新銀行 台新Point兌換航空哩程活動",
+          "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/",
+          "official": true
+        }
+      ],
+      "rebate": true
+    },
+    {
+      "id": "taishin-point-eva-202609",
+      "type": "transfer",
+      "bank": "台新",
+      "program": "eva",
+      "title": "台新Point換長榮哩程 回饋5%點數",
+      "bonusPct": 5,
+      "price": null,
+      "start": "2026-09-01",
+      "end": "2026-10-31",
+      "registration": null,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
+      "conditions": "回饋為台新Point；每兌100點送5點，每人每月上限100點、限1,000名；今年1-8月未換過任何航空哩程者，首次累積兌換滿100點另送20點（可跨航空累積，限一次）",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "台新銀行 台新Point兌換航空哩程活動",
+          "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/",
+          "official": true
+        },
+        {
+          "label": "長榮航空 台新Point兌換哩程活動",
+          "url": "https://www.evaair.com/zh-tw/plan-and-book/special-offers/promotions/ff-promotion/2026Taishin_promo.html",
+          "official": true
+        }
+      ],
+      "rebate": true
+    },
+    {
+      "id": "taishin-point-asiamiles-202609",
+      "type": "transfer",
+      "bank": "台新",
+      "program": "asiamiles",
+      "title": "台新Point換亞萬 回饋8%點數",
+      "bonusPct": 8,
+      "price": null,
+      "start": "2026-09-01",
+      "end": "2026-10-31",
+      "registration": null,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
+      "conditions": "回饋為台新Point非哩程；每兌100點送8點，每人每月上限160點、每月限1,000名；需Richart Life會員；今年1-8月未換過任何航空哩程者，首次累積兌換滿100點另送20點（可跨航空累積，限一次）",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "台新銀行 台新Point兌換航空哩程活動",
+          "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002286/",
+          "official": true
+        },
+        {
+          "label": "台新銀行 亞洲萬里通子頁",
+          "url": "https://www.taishinbank.com.tw/TSB/personal/common/bonus/TSBankBonus-002292/",
+          "official": true
+        }
+      ],
+      "rebate": true
+    },
+    {
+      "id": "cub-cube-asiamiles-autumn-202610",
+      "type": "transfer",
+      "bank": "國泰世華",
+      "program": "asiamiles",
+      "title": "國泰世華小樹點換亞萬 秋日遊加贈",
+      "bonusPct": 8,
+      "price": null,
+      "start": "2026-10-01",
+      "end": "2026-10-31",
+      "registration": true,
+      "creditBy": null,
+      "termsChecked": "2026-10-16",
+      "conditions": "須登錄，限2,000名正卡戶；換滿1萬哩送800、2萬哩送1,600；滿3萬哩起每萬哩再送800無上限",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "國泰航空 國泰世華秋日遊加贈頁",
+          "url": "https://www.cathaypacific.com/cx/zh_TW/offers/current/cub_800miles.html",
+          "official": true
+        }
+      ],
+      "bonusPer": [
+        10000,
+        800
+      ]
+    },
+    {
+      "id": "cx-80th-card-conversion-tw-202610",
+      "type": "transfer",
+      "bank": null,
+      "program": "asiamiles",
+      "title": "國泰80周年 卡點換哩每萬哩加贈800哩",
+      "bonusPct": 8,
+      "price": null,
+      "start": "2026-10-01",
+      "end": "2026-10-31",
+      "registration": true,
+      "registerBy": "2026-10-31",
+      "creditBy": "2026-11-30",
+      "bonusBy": "2026-12-31",
+      "termsChecked": "2026-10-16",
+      "conditions": "須線上登記，限台灣地址會員前10萬名；適用中信、富邦、台新、玉山、凱基、AE等13家；聯名卡及小樹點除外；轉入的基本里數交易日須在10/1–10/31，且11/30前入帳才算（渣打、華南等作業較慢的銀行要提早轉）",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "國泰航空 80周年 換里滿萬加碼",
+          "url": "https://www.cathaypacific.com/cx/zh_TW/offers/current/autumn_conversion202610tw.html",
+          "official": true
+        }
+      ],
+      "excludeBanks": [
+        "國泰世華"
+      ],
+      "bonusPer": [
+        10000,
+        800
+      ]
+    },
     {
       "id": "turkish-buy-miles-202609",
       "type": "buy",

@@ -11,7 +11,9 @@ const read = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data', f), 'utf8
 const src = (f) => fs.readFileSync(path.join(ROOT, 'public', f), 'utf8');
 
 // The top of features.js (programs, transfer rates, promos, wallet, Avios, reach) with app.js's calcConvert.
-function featSandbox({ today = '2026-10-16', promos = read('promos.json') } = {}) {
+// The promos running on the tests' fixed date (2026-10-16): the live list plus those since moved to promos-history.json.
+const PROMOS_1016 = () => ({ ...read('promos.json'), promos: [...read('promos.json').promos, ...read('promos-history.json').promos.filter((p) => p.end >= '2026-10-16')] });
+function featSandbox({ today = '2026-10-16', promos = PROMOS_1016() } = {}) {
   const feat = src('features.js');
   const head = `${feat.slice(0, feat.indexOf('// ---------- booking channels'))}\n${feat.match(/const promosFor = .*;/)[0]}`;
   const calcConvert = src('app.js').match(/function calcConvert\(rate, amount, mode\) \{[\s\S]*?\n\}/)[0];
@@ -115,7 +117,7 @@ const { createPromoWatch } = require('../lib/promowatch');
 const { memoryKv } = require('../lib/kv');
 
 test('award sales: official sources, booking and travel windows, routes in the documented shape', () => {
-  const award = read('promos.json').promos.filter((p) => p.type === 'award');
+  const award = PROMOS_1016().promos.filter((p) => p.type === 'award');
   assert.ok(award.length >= 1);
   const iso = /^\d{4}-\d{2}-\d{2}$/;
   for (const p of award) {
