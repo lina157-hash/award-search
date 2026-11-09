@@ -1,6 +1,6 @@
 {
   "note": "Active Taiwan bank transfer bonuses, airline buy-miles sales and award sales; refreshed weekly. type transfer|buy|award. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only). bonusPct 0 = fixed or capped bonus that the calculator cannot apply; listed only. registration true = the official page says you must register first (registerBy = last day to register), null = the official page does not say. creditBy = the transferred miles must reach the airline account by this day (only when the official page says so); the site subtracts each bank's slowest transfer time (holds.json) to show 最晚轉點日; without creditBy the transfer only has to be made by end. termsChecked = the day those fields were read from the official page. Ended promos move to promos-history.json (keep the whole entry). Award sales (type award, 哩程票特惠): discountPct = miles off; start/end = the booking (ticketing) window; travelFrom/travelTo = the travel window; carriers = operating airlines it covers (codeshares excluded); routes = [{ from, to, cabins }] one way, or [{ between, and, cabins }] both ways; a 2-letter code is a country, 3 letters an airport; cabins Y/W/J/F letters. Only official pages, never a blog summary. cashSales = official cash fare sales from Taiwan carriers for 查現金票 (start/end = sale dates, travelFrom/travelTo, from, to = airports, price text); cashSalePages = each carrier's official offers page, listed while nothing is curated.",
-  "updated": "2026-11-02",
+  "updated": "2026-11-09",
   "promos": [
     {
       "id": "kgi-asiamiles-5th-202610",
@@ -16,12 +16,59 @@
       "creditBy": null,
       "termsChecked": "2026-10-16",
       "conditions": "限每月5日把哩程點1,000點換成1,000哩；每月前100名正卡人、每戶每月一次，每月加贈上限500哩",
-      "cap": { "miles": 500, "per": "月" },
+      "cap": {
+        "miles": 500,
+        "per": "月"
+      },
       "confidence": "official",
       "sources": [
         {
           "label": "凱基銀行 雙幣哩程卡",
           "url": "https://www.kgibank.com.tw/zh-tw/personal/credit-card/list/dual-currency-mileage-credit-card",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "emirates-buy-miles-202611",
+      "type": "buy",
+      "bank": null,
+      "program": "emirates",
+      "title": "阿聯酋 Skywards 買哩最高加贈 30%",
+      "bonusPct": 30,
+      "price": null,
+      "start": "2026-11-08",
+      "end": "2026-11-22",
+      "registration": null,
+      "termsChecked": "2026-11-09",
+      "conditions": "購買或贈送哩程皆適用，最低5,000哩；買越多加贈比例越高，分級細節見官方條款",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Emirates Tiered Bonus Miles",
+          "url": "https://www.emirates.com/english/special-offers/tiered-bonus-miles/",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "starlux-buy-miles-itf-202610",
+      "type": "buy",
+      "bank": null,
+      "program": "starlux",
+      "title": "星宇 COSMILE 旅展買哩 6 折",
+      "bonusPct": 0,
+      "price": null,
+      "start": "2026-10-15",
+      "end": "2026-11-09",
+      "registration": null,
+      "termsChecked": "2026-11-09",
+      "conditions": "結帳打 6 折（折 40%），購買哩數不設上限；為 2026 台北國際旅展活動",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "星宇航空 2026 國際旅展",
+          "url": "https://www.starlux-airlines.com/flights/zh-tw/international-travel-fair-2026",
           "official": true
         }
       ]
