@@ -1,7 +1,12 @@
 {
-  "version": "1.40.5",
-  "updated": "2026-11-09",
+  "version": "1.40.6",
+  "updated": "2026-11-16",
   "history": [
+    {
+      "version": "1.40.6",
+      "date": "2026-11-16",
+      "note": "本週優惠：星宇旅展買哩 6 折 11/9 結束，移到歷史紀錄"
+    },
     {
       "version": "1.40.5",
       "date": "2026-11-09",
@@ -96,12 +101,7 @@
       "version": "1.38.5",
       "date": "2026-10-18",
       "note": "飛機現在在哪：Aviationstack 金鑰生效，AeroDataBox 沒給位置時改問 Aviationstack"
-    },
-    {
-      "version": "1.38.4",
-      "date": "2026-10-18",
-      "note": "飛機現在在哪：關掉 OpenSky（我們的網站連不上它）；位置用 AeroDataBox，設了 Aviationstack 金鑰後再加它當第二來源"
     }
   ],
-  "assets": "9c687c3b4624e186"
+  "assets": "687ddb746dcf09f0"
 }

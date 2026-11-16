@@ -1,6 +1,6 @@
 {
   "note": "已結束的轉點加贈與買哩促銷（欄位同 promos.json），給點數換算的「過去 12 個月加贈 N 次、最高 +X%」與參考用。每週更新 promos.json 時，把 end 已過的活動整筆移到這裡（保留 sources），不要刪掉；endedNote 可補充結束原因。只收有官方來源的活動。",
-  "updated": "2026-11-02",
+  "updated": "2026-11-16",
   "promos": [
     {
       "id": "turkish-award-30off-asia-202610",
@@ -615,6 +615,28 @@
         {
           "label": "Emirates Tiered Bonus Miles",
           "url": "https://www.emirates.com/english/special-offers/tiered-bonus-miles/",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "starlux-buy-miles-itf-202610",
+      "type": "buy",
+      "bank": null,
+      "program": "starlux",
+      "title": "星宇 COSMILE 旅展買哩 6 折",
+      "bonusPct": 0,
+      "price": null,
+      "start": "2026-10-15",
+      "end": "2026-11-09",
+      "registration": null,
+      "termsChecked": "2026-11-09",
+      "conditions": "結帳打 6 折（折 40%），購買哩數不設上限；為 2026 台北國際旅展活動",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "星宇航空 2026 國際旅展",
+          "url": "https://www.starlux-airlines.com/flights/zh-tw/international-travel-fair-2026",
           "official": true
         }
       ]

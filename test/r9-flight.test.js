@@ -265,33 +265,34 @@ test('the timetable is stored in pieces with a stamp; old pieces go', async () =
 });
 
 test('trips.js time zones: offsets, the clock changes, and the .ics at the real flight times', () => {
+  // Los Angeles, not Vancouver: British Columbia stays on daylight time all year from 2026 (tzdata 2026b), so newer Node builds give Vancouver no winter change.
   assert.equal(T.tzOffsetMin('Asia/Taipei', Date.UTC(2026, 6, 1)), 480);
   assert.equal(T.tzOffsetMin('Europe/Berlin', Date.UTC(2026, 6, 1)), 120);
-  assert.equal(T.tzOffsetMin('America/Vancouver', Date.UTC(2026, 11, 1)), -480);
+  assert.equal(T.tzOffsetMin('America/Los_Angeles', Date.UTC(2026, 11, 1)), -480);
   const ch = T.tzChanges('Europe/Berlin', Date.UTC(2026, 9, 1), 200);
   assert.deepEqual(ch.map((c) => [new Date(c.at).toISOString(), c.from, c.to]), [['2026-10-25T01:00:00.000Z', 120, 60], ['2027-03-28T01:00:00.000Z', 60, 120]]);
   assert.deepEqual(T.tzChanges('Asia/Taipei', Date.UTC(2026, 0, 1), 400), []);
-  assert.equal(T.tzInstant('America/Vancouver', '2026-11-01', '01:30'), Date.UTC(2026, 10, 1, 8, 30)); // the first 01:30 (PDT)
+  assert.equal(T.tzInstant('America/Los_Angeles', '2026-11-01', '01:30'), Date.UTC(2026, 10, 1, 8, 30)); // the first 01:30 (PDT)
   assert.equal(T.tzInstant('Asia/Taipei', '2026-11-02', '23:50'), Date.UTC(2026, 10, 2, 15, 50));
 
-  const ap = (c) => ({ TPE: { country: 'TW', tz: 'Asia/Taipei' }, YVR: { country: 'CA', tz: 'America/Vancouver' }, NRT: { country: 'JP' } }[c] || null);
-  const plan = { name: '溫哥華', legs: [
-    { k: 'a', date: '2026-11-02', from: 'TPE', to: 'YVR', flights: 'BR 10', dep: '23:50', arr: '19:40', cabin: 'J', pax: 1, miles: 75000, program: 'eva' },
-    { k: 'a', date: '2026-11-20', from: 'YVR', to: 'TPE', flights: 'BR 9', dep: '01:50', arr: '05:35', arrDays: 1, cabin: 'J', pax: 1, miles: 75000, program: 'eva' },
+  const ap = (c) => ({ TPE: { country: 'TW', tz: 'Asia/Taipei' }, LAX: { country: 'US', tz: 'America/Los_Angeles' }, NRT: { country: 'JP' } }[c] || null);
+  const plan = { name: '洛杉磯', legs: [
+    { k: 'a', date: '2026-11-02', from: 'TPE', to: 'LAX', flights: 'BR 12', dep: '23:50', arr: '19:40', cabin: 'J', pax: 1, miles: 75000, program: 'eva' },
+    { k: 'a', date: '2026-11-20', from: 'LAX', to: 'TPE', flights: 'BR 11', dep: '01:50', arr: '05:35', arrDays: 1, cabin: 'J', pax: 1, miles: 75000, program: 'eva' },
     { k: 'a', date: '2026-12-01', from: 'TPE', to: 'NRT', flights: 'BR 198', dep: '08:50', arr: '13:15', cabin: 'Y', pax: 1, miles: 20000, program: 'eva' },
     { k: 'a', date: '2026-12-05', from: 'NRT', to: 'TPE', flights: 'BR 197', cabin: 'Y', pax: 1, miles: 20000, program: 'eva' },
   ] };
   const ics = T.tripIcs(plan, { trips: {}, holds: {}, today: '2026-10-16', ap, keyOf: (x) => x, name: (x) => x, stamp: '20261016T000000Z' }).replace(/\r\n /g, '');
-  assert.match(ics, /DTSTART;TZID=Asia\/Taipei:20261102T235000\r\nDTEND;TZID=America\/Vancouver:20261102T194000\r\n/);
-  assert.match(ics, /DTSTART;TZID=America\/Vancouver:20261120T015000\r\nDTEND;TZID=Asia\/Taipei:20261121T053500\r\n/);
+  assert.match(ics, /DTSTART;TZID=Asia\/Taipei:20261102T235000\r\nDTEND;TZID=America\/Los_Angeles:20261102T194000\r\n/);
+  assert.match(ics, /DTSTART;TZID=America\/Los_Angeles:20261120T015000\r\nDTEND;TZID=Asia\/Taipei:20261121T053500\r\n/);
   assert.match(ics, /TRIGGER:-PT3H/);
   // NRT has no zone here: the leg starts at its real time and has no end; a leg without a time stays all-day.
   assert.match(ics, /DTSTART;TZID=Asia\/Taipei:20261201T085000\r\nSUMMARY:✈ BR 198 TPE→NRT\r\n/);
   assert.match(ics, /DTSTART;VALUE=DATE:20261205\r\nDTEND;VALUE=DATE:20261206\r\nSUMMARY:✈ BR 197 NRT→TPE\r\n/);
-  // One VTIMEZONE per zone, before the events; Vancouver's with the 11/1 change back to standard time.
+  // One VTIMEZONE per zone, before the events; Los Angeles' with the 11/1 change back to standard time.
   assert.equal(ics.split('BEGIN:VTIMEZONE').length - 1, 2);
   assert.ok(ics.indexOf('END:VTIMEZONE') < ics.indexOf('BEGIN:VEVENT'));
-  assert.match(ics, /TZID:America\/Vancouver\r\nBEGIN:DAYLIGHT\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:-0700\r\nTZOFFSETTO:-0700\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20261101T020000\r\nTZOFFSETFROM:-0700\r\nTZOFFSETTO:-0800\r\nEND:STANDARD/);
+  assert.match(ics, /TZID:America\/Los_Angeles\r\nBEGIN:DAYLIGHT\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:-0700\r\nTZOFFSETTO:-0700\r\nEND:DAYLIGHT\r\nBEGIN:STANDARD\r\nDTSTART:20261101T020000\r\nTZOFFSETFROM:-0700\r\nTZOFFSETTO:-0800\r\nEND:STANDARD/);
   assert.match(ics, /TZID:Asia\/Taipei\r\nBEGIN:STANDARD\r\nDTSTART:19700101T000000\r\nTZOFFSETFROM:\+0800\r\nTZOFFSETTO:\+0800\r\nEND:STANDARD\r\nEND:VTIMEZONE/);
 });
 
