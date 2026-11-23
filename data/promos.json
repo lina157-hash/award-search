@@ -1,6 +1,6 @@
 {
   "note": "Active Taiwan bank transfer bonuses, airline buy-miles sales and award sales; refreshed weekly. type transfer|buy|award. bank null = any bank (minus excludeBanks). bonusPer [miles, bonus] = bonus miles per full block; rebate = paid back in bank points, not miles (listed only). bonusPct 0 = fixed or capped bonus that the calculator cannot apply; listed only. registration true = the official page says you must register first (registerBy = last day to register), null = the official page does not say. creditBy = the transferred miles must reach the airline account by this day (only when the official page says so); the site subtracts each bank's slowest transfer time (holds.json) to show 最晚轉點日; without creditBy the transfer only has to be made by end. termsChecked = the day those fields were read from the official page. Ended promos move to promos-history.json (keep the whole entry). Award sales (type award, 哩程票特惠): discountPct = miles off; start/end = the booking (ticketing) window; travelFrom/travelTo = the travel window; carriers = operating airlines it covers (codeshares excluded); routes = [{ from, to, cabins }] one way, or [{ between, and, cabins }] both ways; a 2-letter code is a country, 3 letters an airport; cabins Y/W/J/F letters. Only official pages, never a blog summary. cashSales = official cash fare sales from Taiwan carriers for 查現金票 (start/end = sale dates, travelFrom/travelTo, from, to = airports, price text); cashSalePages = each carrier's official offers page, listed while nothing is curated.",
-  "updated": "2026-11-16",
+  "updated": "2026-11-23",
   "promos": [
     {
       "id": "kgi-asiamiles-5th-202610",
@@ -30,23 +30,261 @@
       ]
     },
     {
-      "id": "emirates-buy-miles-202611",
-      "type": "buy",
+      "id": "krisflyer-escapes-202611",
+      "type": "award",
       "bank": null,
-      "program": "emirates",
-      "title": "阿聯酋 Skywards 買哩最高加贈 30%",
-      "bonusPct": 30,
+      "program": "singapore",
+      "title": "新航 KrisFlyer Spontaneous Escapes：新加坡出發往返多條航線 Saver 獎勵機票少 30%",
+      "bonusPct": 0,
+      "discountPct": 30,
       "price": null,
-      "start": "2026-11-08",
-      "end": "2026-11-22",
-      "registration": null,
-      "termsChecked": "2026-11-09",
-      "conditions": "購買或贈送哩程皆適用，最低5,000哩；買越多加贈比例越高，分級細節見官方條款",
+      "start": "2026-11-16",
+      "end": "2026-11-30",
+      "travelFrom": "2026-12-01",
+      "travelTo": "2026-12-31",
+      "carriers": [
+        "SQ"
+      ],
+      "routes": [
+        {
+          "from": "SIN",
+          "to": "DPS",
+          "cabins": "Y"
+        },
+        {
+          "from": "DPS",
+          "to": "SIN",
+          "cabins": "J"
+        },
+        {
+          "from": "SIN",
+          "to": "CGK",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "KUL",
+          "cabins": "YJ"
+        },
+        {
+          "from": "KUL",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "KNO",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "SUB",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SUB",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "BKK",
+          "cabins": "YJ"
+        },
+        {
+          "from": "BKK",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "SGN",
+          "cabins": "J"
+        },
+        {
+          "from": "SGN",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "MNL",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "PNH",
+          "cabins": "YJ"
+        },
+        {
+          "from": "PNH",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "HKT",
+          "cabins": "YJ"
+        },
+        {
+          "from": "HKT",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "DAC",
+          "cabins": "YJ"
+        },
+        {
+          "from": "DAC",
+          "to": "SIN",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "DRW",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "PER",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "ADL",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "BNE",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "CNS",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "MEL",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "SYD",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "WSI",
+          "cabins": "YJ"
+        },
+        {
+          "from": "SIN",
+          "to": "AMS",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "BRU",
+          "cabins": "YW"
+        },
+        {
+          "from": "BRU",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "CPH",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "FRA",
+          "cabins": "YW"
+        },
+        {
+          "from": "FRA",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "LGW",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "LHR",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "MXP",
+          "cabins": "YW"
+        },
+        {
+          "from": "MXP",
+          "to": "SIN",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "MUC",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "CDG",
+          "cabins": "YW"
+        },
+        {
+          "from": "FRA",
+          "to": "JFK",
+          "cabins": "YW"
+        },
+        {
+          "from": "SIN",
+          "to": "LAX",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "SEA",
+          "cabins": "Y"
+        },
+        {
+          "from": "SIN",
+          "to": "SFO",
+          "cabins": "W"
+        },
+        {
+          "from": "NRT",
+          "to": "LAX",
+          "cabins": "W"
+        },
+        {
+          "from": "SIN",
+          "to": "EWR",
+          "cabins": "W"
+        },
+        {
+          "from": "SIN",
+          "to": "JFK",
+          "cabins": "W"
+        }
+      ],
+      "routeNote": "都是新加坡進出（沒有台灣航線），可搭配外站出發；WSI 為雪梨西部新機場；法蘭克福—紐約官網只寫 New York，本站以 JFK 比對（我推測）",
+      "termsChecked": "2026-11-23",
+      "conditions": "11/16–11/30 在新航官網或 App 開票，12/1–12/31 搭乘；不能改票、退票，不能中停，不能和其他優惠合併；稅金不打折；不含聯營航班；各航班有不適用日期；酷航指定航班經濟艙少 15%（航線見酷航官網，未列入）",
       "confidence": "official",
       "sources": [
         {
-          "label": "Emirates Tiered Bonus Miles",
-          "url": "https://www.emirates.com/english/special-offers/tiered-bonus-miles/",
+          "label": "新航 KrisFlyer Spontaneous Escapes",
+          "url": "https://www.singaporeair.com/kfescapes",
           "official": true
         }
       ]

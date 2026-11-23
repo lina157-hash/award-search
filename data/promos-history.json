@@ -1,6 +1,6 @@
 {
   "note": "已結束的轉點加贈與買哩促銷（欄位同 promos.json），給點數換算的「過去 12 個月加贈 N 次、最高 +X%」與參考用。每週更新 promos.json 時，把 end 已過的活動整筆移到這裡（保留 sources），不要刪掉；endedNote 可補充結束原因。只收有官方來源的活動。",
-  "updated": "2026-11-16",
+  "updated": "2026-11-23",
   "promos": [
     {
       "id": "turkish-award-30off-asia-202610",
@@ -637,6 +637,28 @@
         {
           "label": "星宇航空 2026 國際旅展",
           "url": "https://www.starlux-airlines.com/flights/zh-tw/international-travel-fair-2026",
+          "official": true
+        }
+      ]
+    },
+    {
+      "id": "emirates-buy-miles-202611",
+      "type": "buy",
+      "bank": null,
+      "program": "emirates",
+      "title": "阿聯酋 Skywards 買哩最高加贈 30%",
+      "bonusPct": 30,
+      "price": null,
+      "start": "2026-11-08",
+      "end": "2026-11-22",
+      "registration": null,
+      "termsChecked": "2026-11-09",
+      "conditions": "購買或贈送哩程皆適用，最低5,000哩；買越多加贈比例越高，分級細節見官方條款",
+      "confidence": "official",
+      "sources": [
+        {
+          "label": "Emirates Tiered Bonus Miles",
+          "url": "https://www.emirates.com/english/special-offers/tiered-bonus-miles/",
           "official": true
         }
       ]
